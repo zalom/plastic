@@ -9,7 +9,7 @@ module Plastic
         # Opens a ready item's intent, its spec.md holding the batch and item's
         # goal and done criteria, then links the intent to the roadmap.
         class Open < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :kind, :intent_id
 

@@ -10,7 +10,7 @@ module Plastic
       # A record changed on both sides stops the call, exit 3, and every
       # conflict is listed.
       class Down < Routine
-        extend CLI::SyncOptions
+        extend CLI::SyncOptions::Down
 
         option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
 

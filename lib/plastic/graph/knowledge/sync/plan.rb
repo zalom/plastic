@@ -47,15 +47,23 @@ module Plastic
           # The changed files of `entries` that sync up would read and cannot.
           def self.unreadable_files(readability, retrieval, entries)
             rowed = retrieval.intents.map(&:dir)
-            readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
+            found = readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
+            found.transform_keys { |path| owner(path) }
           end
+
+          # The file a path belongs to: the clusters and the links are parts of the index.
+          def self.owner(path) = Prints::Parts.path?(path) ? StoreFolder::INDEX : path
 
           # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
             path = entry.path
             return path == StoreFolder::INDEX && entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
 
-            %i[read conflict].include?(entry.action(:up)) && rowed.any? { |dir| path.start_with?("#{dir}/") }
+            %i[read conflict].include?(entry.action(:up)) && readable_path?(path, rowed)
+          end
+
+          def self.readable_path?(path, rowed)
+            StoreFolder.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -78,11 +86,11 @@ module Plastic
 
           def entries_for(action) = actions.select { |_entry, found| found == action }.keys
 
-          # The context views and roadmaps a person changed that this sync prints again from their rows.
-          def printed_over = entries_for(:print).select { |entry| Entry.view?(entry.path) && entry.hand_edited? }.map(&:path)
-
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home.size
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra
+
+          # The reads of a second home that no entry already counts.
+          def second_home_extra = second_home.size - (second_home.paths & entries_for(:read).map(&:path)).size
 
           def merging? = resolution.merging?
 
@@ -99,7 +107,7 @@ module Plastic
           def settled(entry)
             return generated_up(entry) if direction == :up && entry.generated?
             path = entry.path
-            return :none if unreadable_files.key?(path)
+            return :none if unreadable_files.key?(Plan.owner(path))
 
             action = entry.action(direction)
             return resolution.side if action == :conflict && resolution.overwrites?(path)
@@ -107,13 +115,12 @@ module Plastic
             named_print?(entry) ? :print : action
           end
 
-          # A context view or a roadmap a person changed prints again from its rows. An index a person changed is
-          # read when it can be and kept as written when it cannot; one that arrived and was never printed here,
-          # or that another home printed, prints from the rows.
+          # The index prints from the rows when another home printed it and this home holds no print of it. An index
+          # that a person changed and that has rows is read into rows. When it cannot be read, it is kept as written
+          # if this home holds a print of it, and printed from the rows if not. Any other index is left as it is.
           def generated_up(entry)
-            return :print if entry.printed_elsewhere
+            return :print if entry.reprinted?
             return :none unless entry.hand_edited? && entry.rows_sha
-            return :print if Entry.view?(entry.path)
             return :read unless unreadable_files.key?(entry.path)
 
             entry.printed_sha ? :none : :print

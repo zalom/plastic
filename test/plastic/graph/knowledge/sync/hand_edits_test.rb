@@ -9,14 +9,21 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).hand_edited(kinds, facts)
   end
 
-  def test_a_hand_edited_roadmap_is_given_no_reason_since_sync_up_prints_it_again
+  def test_a_hand_edited_roadmap_that_reads_has_no_reason
     cli("roadmap", "new", "r1")
-    write("roadmaps/r1.md", "# by hand\n")
+    write("roadmaps/r1.md", folder.read("roadmaps/r1.md").sub(/^# .*/, "# By hand"))
 
     assert_equal({ "roadmaps/r1.md" => nil }, hand_edited([:roadmap], { slug: "r1" }))
   end
 
-  def test_a_hand_edited_context_json_is_given_no_reason_since_sync_up_prints_it_again
+  def test_a_hand_edited_roadmap_in_an_older_form_is_given_its_reason
+    cli("roadmap", "new", "r1")
+    write("roadmaps/r1.md", "# by hand\n")
+
+    assert_equal ["roadmaps/r1.md is in an older form that this release does not read"], hand_edited([:roadmap], { slug: "r1" }).values
+  end
+
+  def test_a_hand_edited_context_json_that_reads_has_no_reason
     specified
     cli("intent", "discover", "1", "spec")
     path = "#{retrieval.intent("1").dir}/context.json"
@@ -25,13 +32,13 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     assert_equal({ path => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
 
-  def test_an_index_that_another_home_printed_is_not_a_hand_edit
+  def test_an_index_that_another_home_printed_is_a_hand_edit_that_reads_on_a_home_that_holds_a_print_of_it
     specified
     index = JSON.parse(folder.read("store/index.json"))
     index.fetch("intents").each { |entry| entry["origin_id"] = "zzzz" }
     write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
 
-    assert_empty hand_edited([:intent], { intent_id: "1" })
+    assert_equal({ "store/index.json" => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
 
   def test_a_hand_edited_intent_file_that_reads_has_no_reason

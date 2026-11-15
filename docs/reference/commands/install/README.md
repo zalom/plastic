@@ -114,7 +114,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | 3 | prints no next: line | [`install.rb:25`](../../../../lib/plastic/workflows/code/install.rb#L25) |
 | Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:18`](../../../../lib/plastic/workflows/agent/install.rb#L18) |
 | a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

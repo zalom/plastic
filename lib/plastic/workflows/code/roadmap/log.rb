@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require_relative "../../../code_workflow"
+require_relative "roadmap_workflow"
 
 module Plastic
   module Workflows
     module Code
       module Roadmap
         # Appends one log line to a roadmap, stamped with the session id.
-        class Log < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+        class Log < RoadmapWorkflow
+          clear_declarations
+
+          roadmap_gate
 
           sets :line
-
-          gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 
           step "write the log line", done: ->(context) { !context.line.nil? } do |context|
             context[:line] = context.work.add_log(context.slug, context.text)

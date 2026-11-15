@@ -12,7 +12,7 @@ module Plastic
       # Searches literal indexed passages in the selected local stores and
       # reports them as one fused list.
       class Search < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :problem
 

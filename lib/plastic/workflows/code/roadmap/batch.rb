@@ -9,7 +9,7 @@ module Plastic
       module Roadmap
         # Writes a roadmap batch's goal and done criteria on a roadmap that exists.
         class Batch < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           gate "no roadmap %{slug}", stops: :failure, offers: "plastic roadmap new %{slug}",
             because: "a batch belongs to a roadmap that roadmap new created",

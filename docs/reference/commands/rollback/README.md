@@ -88,7 +88,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no previous release to go back to | 3 | prints no next: line | [`preview.rb:29`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L29) |
 | the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:39`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L39) |
 | this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:26`](../../../../lib/plastic/workflows/code/rollback.rb#L26) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

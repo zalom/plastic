@@ -10,7 +10,7 @@ module Plastic
         class Restore
           # Lists the databases a restore would replace, and changes nothing.
           class Preview < CodeWorkflow
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             read "preview the restore" do |context|
               next unless context.dry_run

@@ -49,10 +49,10 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
 
   def empty_graph_sha = Plastic::Graph::Prints.empty_graph_sha(GRAPH)
 
-  def test_graph_json_is_not_a_generated_path_but_context_json_and_the_index_are
+  def test_only_the_index_is_a_generated_path
     generated = ->(path) { Entry.new(path, "a", "a", Entry::NO_PRINT).generated? }
 
-    assert_equal [false, true, true], [GRAPH, "store/1--alpha/context.json", "store/index.json"].map(&generated)
+    assert_equal [false, false, false, true], [GRAPH, "store/1--alpha/context.json", "roadmaps/r1.md", "store/index.json"].map(&generated)
   end
 
   def test_a_hand_edited_graph_json_is_read_up
@@ -145,13 +145,19 @@ class KnowledgeSyncEntryOriginTest < Plastic::TestCase
   INDEX = "store/index.json"
   OURS = "{\n  \"origin_id\": \"ours\",\n  \"intents\": []\n}\n"
 
-  def entry_of(bytes)
+  def entry_of(bytes, printed_sha = "p")
     write(INDEX, bytes)
-    Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, OURS))
+    Entry.for(folder, INDEX, printed_sha, Print.text(INDEX, :work, OURS))
   end
 
-  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways
+  def test_an_index_that_another_home_printed_is_a_hand_edit_on_a_home_that_holds_a_print_of_it
     entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }))
+
+    assert_equal [false, true, true], [entry.level?, entry.hand_edited?, entry.printed_elsewhere]
+  end
+
+  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways_on_a_home_with_no_print_of_it
+    entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }), nil)
 
     assert_equal [false, false, %i[print print]], [entry.level?, entry.hand_edited?, %i[up down].map { |way| entry.action(way) }]
   end

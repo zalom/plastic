@@ -10,7 +10,7 @@ module Plastic
         class Down
           # Previews sync down in a copy before the normal write workflow.
           class Preview < Up::Preview
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             # Sync down reads no files by hand, so it has no gates of unreadable files.
             def self.readable_gates = nil

@@ -2,6 +2,8 @@
 
 require_relative "../../invalid"
 require_relative "reader/index_file"
+require_relative "reader/cluster_file"
+require_relative "reader/link_file"
 require_relative "reader/intent_file"
 require_relative "reader/roadmap_file"
 require_relative "../prints"
@@ -48,11 +50,22 @@ module Plastic
         private
 
         def file_of(path)
-          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) if path == StoreFolder::INDEX
+          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs, @intents) if path == StoreFolder::INDEX
+          return part_file(path) if Prints::Parts.path?(path)
           return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
 
           intent_file(path)
         end
+
+        def part_file(path)
+          index = @folder.read(StoreFolder::INDEX)
+          return ClusterFile.new(index, @writer.origin_id) if Prints::ClusterPart.path?(path)
+
+          LinkFile.new(index, @writer.origin_id, printed?(path))
+        end
+
+        # A part with a printed row has a last print to judge a removal against.
+        def printed?(path) = !@retrieval.nil? && @retrieval.printed.key?(path)
 
         def intent_file(path)
           dir = path.split("/").first(2).join("/")

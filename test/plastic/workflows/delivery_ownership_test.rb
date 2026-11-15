@@ -6,9 +6,11 @@ require_relative "../../../lib/plastic/workflows/delivery_ownership"
 class WorkflowDeliveryOwnershipTest < Plastic::TestCase
   Context = Data.define(:retrieval, :intent_id, :session)
 
-  def problem(session: "s-1") = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session))
+  NOW = Time.parse(STAMP)
 
-  def lock(session_id, renewed_at: Time.now.utc.iso8601)
+  def problem(session: "s-1") = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session), now: NOW)
+
+  def lock(session_id, renewed_at: STAMP)
     row = { store: retrieval.store, intent_id: "1", session_id:, mode: "auto", locked_at: renewed_at, renewed_at: }
     store_graphs.databases[:local].transaction { |batch| batch.put(:locks, row) }
   end
@@ -26,7 +28,7 @@ class WorkflowDeliveryOwnershipTest < Plastic::TestCase
   end
 
   def test_an_expired_lock_of_another_session_is_no_problem
-    lock("s-2", renewed_at: STAMP)
+    lock("s-2", renewed_at: Plastic.now(NOW - Plastic::Graph::Lock::TTL - 1))
 
     assert_nil problem
   end

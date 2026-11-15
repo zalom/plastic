@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 574" width="760" height="574" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 658" width="760" height="658" role="img" xml:space="preserve">
 <title>How Down runs in plastic sync down</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -87,63 +87,69 @@
 <text x="476" y="120" class="tm" text-anchor="start">%{failure}</text>
 <path d="M 226 134 L 226 144" class="wire"/>
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
-<rect x="16" y="144" width="420" height="98" rx="6" class="card"/>
+<rect x="16" y="144" width="420" height="154" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">sync_steps.rb:113</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">sync_steps.rb:103</text>
 <text x="26" y="176" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 162 L 464 162" class="wire-refusal"/>
 <path d="M 456 157 L 464 162 L 456 167 Z" class="head"/>
-<rect x="466" y="144" width="270" height="98" rx="6" class="stop-refusal"/>
+<rect x="466" y="144" width="270" height="154" rx="6" class="stop-refusal"/>
 <text x="476" y="159" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
 <text x="476" y="175" class="tm" text-anchor="start">changed on both sides since</text>
 <text x="476" y="189" class="tm" text-anchor="start">the last print, nothing</text>
-<text x="476" y="203" class="tm" text-anchor="start">written: %{conflicts}; pass</text>
-<text x="476" y="217" class="tm" text-anchor="start">--overwrite PATH, --overwrite</text>
-<text x="476" y="231" class="tm" text-anchor="start">or --merge</text>
-<path d="M 226 242 L 226 252" class="wire"/>
-<path d="M 221 244 L 226 252 L 231 244 Z" class="head"/>
-<rect x="16" y="252" width="420" height="59" rx="6" class="card"/>
-<text x="26" y="267" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="267" class="tm tag-muted" text-anchor="end">sync_steps.rb:117</text>
-<text x="26" y="284" class="t" text-anchor="start">apply the changes</text>
-<text x="26" y="299" class="tm" text-anchor="start">done when plan(context, direction).pending.zero?</text>
-<path d="M 436 270 L 464 270" class="wire-failure"/>
-<path d="M 456 265 L 464 270 L 456 275 Z" class="head"/>
-<rect x="466" y="252" width="270" height="56" rx="6" class="stop-failure"/>
-<text x="476" y="267" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="283" class="tm" text-anchor="start">the step ran and its done</text>
-<text x="476" y="297" class="tm" text-anchor="start">check still fails</text>
-<path d="M 226 311 L 226 321" class="wire"/>
-<path d="M 221 313 L 226 321 L 231 313 Z" class="head"/>
-<rect x="16" y="321" width="420" height="45" rx="6" class="card"/>
-<text x="26" y="336" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="336" class="tm tag-muted" text-anchor="end">sync_steps.rb:118</text>
-<text x="26" y="353" class="t" text-anchor="start">say what changed</text>
-<path d="M 226 366 L 226 376" class="wire"/>
-<path d="M 221 368 L 226 376 L 231 368 Z" class="head"/>
-<rect x="16" y="376" width="420" height="98" rx="6" class="card"/>
-<text x="26" y="391" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="391" class="tm tag-muted" text-anchor="end">sync_steps.rb:119</text>
-<text x="26" y="408" class="tm" text-anchor="start">passes when public_send(name, context)</text>
-<path d="M 436 394 L 464 394" class="wire-refusal"/>
-<path d="M 456 389 L 464 394 L 456 399 Z" class="head"/>
-<rect x="466" y="376" width="270" height="98" rx="6" class="stop-refusal"/>
-<text x="476" y="391" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
-<text x="476" y="407" class="tm" text-anchor="start">changed on both sides since</text>
-<text x="476" y="421" class="tm" text-anchor="start">the last print, left as they</text>
-<text x="476" y="435" class="tm" text-anchor="start">are: %{conflicts}; pass</text>
-<text x="476" y="449" class="tm" text-anchor="start">--overwrite PATH or</text>
-<text x="476" y="463" class="tm" text-anchor="start">--overwrite</text>
-<path d="M 226 474 L 226 484" class="wire"/>
-<path d="M 221 476 L 226 484 L 231 476 Z" class="head"/>
-<text x="16" y="496" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="504" width="300" height="56" rx="6" class="card"/>
-<text x="26" y="520" class="tm" text-anchor="start">:done</text>
-<text x="26" y="536" class="tm tag-muted" text-anchor="start">always</text>
-<path d="M 316 520 L 352 520" class="wire"/>
-<path d="M 344 515 L 352 520 L 344 525 Z" class="head"/>
-<rect x="352" y="504" width="392" height="56" rx="6" class="end"/>
-<text x="362" y="521" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="535" class="t" text-anchor="start">next: plastic next</text>
-<text x="362" y="549" class="t" text-anchor="start">because: the files hold every row that changed</text>
+<text x="476" y="203" class="tm" text-anchor="start">written. --overwrite PATH</text>
+<text x="476" y="217" class="tm" text-anchor="start">prints that record&#39;s rows over</text>
+<text x="476" y="231" class="tm" text-anchor="start">the file, --overwrite prints</text>
+<text x="476" y="245" class="tm" text-anchor="start">every record, --merge applies</text>
+<text x="476" y="259" class="tm" text-anchor="start">the one-sided changes and</text>
+<text x="476" y="273" class="tm" text-anchor="start">lists the rest. The records:</text>
+<text x="476" y="287" class="tm" text-anchor="start">%{conflicts}</text>
+<path d="M 226 298 L 226 308" class="wire"/>
+<path d="M 221 300 L 226 308 L 231 300 Z" class="head"/>
+<rect x="16" y="308" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="323" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="323" class="tm tag-muted" text-anchor="end">sync_steps.rb:117</text>
+<text x="26" y="340" class="t" text-anchor="start">apply the changes</text>
+<text x="26" y="355" class="tm" text-anchor="start">done when plan(context, direction).pending.zero?</text>
+<path d="M 436 326 L 464 326" class="wire-failure"/>
+<path d="M 456 321 L 464 326 L 456 331 Z" class="head"/>
+<rect x="466" y="308" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="323" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="339" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="353" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 367 L 226 377" class="wire"/>
+<path d="M 221 369 L 226 377 L 231 369 Z" class="head"/>
+<rect x="16" y="377" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="392" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="392" class="tm tag-muted" text-anchor="end">sync_steps.rb:118</text>
+<text x="26" y="409" class="t" text-anchor="start">say what changed</text>
+<path d="M 226 422 L 226 432" class="wire"/>
+<path d="M 221 424 L 226 432 L 231 424 Z" class="head"/>
+<rect x="16" y="432" width="420" height="126" rx="6" class="card"/>
+<text x="26" y="447" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="447" class="tm tag-muted" text-anchor="end">sync_steps.rb:103</text>
+<text x="26" y="464" class="tm" text-anchor="start">passes when public_send(name, context)</text>
+<path d="M 436 450 L 464 450" class="wire-refusal"/>
+<path d="M 456 445 L 464 450 L 456 455 Z" class="head"/>
+<rect x="466" y="432" width="270" height="126" rx="6" class="stop-refusal"/>
+<text x="476" y="447" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="463" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="477" class="tm" text-anchor="start">the last print, left as they</text>
+<text x="476" y="491" class="tm" text-anchor="start">are. --overwrite PATH prints</text>
+<text x="476" y="505" class="tm" text-anchor="start">that record&#39;s rows over the</text>
+<text x="476" y="519" class="tm" text-anchor="start">file, --overwrite prints every</text>
+<text x="476" y="533" class="tm" text-anchor="start">record. The records:</text>
+<text x="476" y="547" class="tm" text-anchor="start">%{conflicts}</text>
+<path d="M 226 558 L 226 568" class="wire"/>
+<path d="M 221 560 L 226 568 L 231 560 Z" class="head"/>
+<text x="16" y="580" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="588" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="604" class="tm" text-anchor="start">:done</text>
+<text x="26" y="620" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 604 L 352 604" class="wire"/>
+<path d="M 344 599 L 352 604 L 344 609 Z" class="head"/>
+<rect x="352" y="588" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="605" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="619" class="t" text-anchor="start">next: plastic next</text>
+<text x="362" y="633" class="t" text-anchor="start">because: the files hold every row that changed</text>
 </svg>

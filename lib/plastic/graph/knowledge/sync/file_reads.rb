@@ -19,8 +19,8 @@ module Plastic
           end
 
           # One line for each path read. A path the database refuses is left as it is and gets no line.
-          def call(paths, extra = [])
-            reads = paths.map(&reader.method(:read)) + extra
+          def call(paths)
+            reads = paths.map(&reader.method(:read))
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)
@@ -65,7 +65,7 @@ module Plastic
           end
 
           def reprint(reads)
-            fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
+            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
             @printer.print(reads.map { |found| fresh[found.path] || roadmap_print(found.path) || found.kept_print(@folder) })
           end
         end

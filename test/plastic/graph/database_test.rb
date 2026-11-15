@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require "minitest/autorun"
+require "tmpdir"
+require "sqlite3"
+require_relative "../../varar/support/kernel_command"
 
 class DatabaseTest < Plastic::TestCase
   Database = Plastic::Graph::Database
@@ -405,5 +409,106 @@ class DatabaseWriteLogTest < Plastic::TestCase
     end
 
     assert_equal 8000, database.row("SELECT count(*) AS n FROM notes")["n"]
+  end
+end
+
+class WrittenPhraseTest < Plastic::TestCase
+  def test_nothing_written_has_no_phrase
+    assert_nil database.written_phrase
+  end
+
+  def test_one_table_written_is_one_phrase
+    insert("a", table: :tallies)
+    insert("b", table: :tallies)
+
+    assert_equal "2 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_two_tables_join_with_and
+    insert("t", table: :tallies)
+    insert("n", table: :notes)
+
+    assert_equal "1 tallies and 1 notes in work_graph.db", database.written_phrase
+  end
+
+  def test_the_routine_run_row_is_left_out_of_the_phrase
+    insert("a")
+    insert("t", table: :tallies)
+
+    assert_equal "1 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_only_the_routine_run_row_written_has_no_phrase
+    insert("a")
+
+    assert_nil database.written_phrase
+  end
+
+  def test_three_tables_join_with_commas
+    insert("a", table: :tallies)
+    insert("t", table: :notes)
+    insert("n", table: :stored)
+
+    assert_equal "1 tallies, 1 notes, and 1 stored in work_graph.db", database.written_phrase
+  end
+
+  def test_an_uncounted_write_is_kept_off_the_phrase
+    database.transaction { |batch| batch.add("INSERT INTO notes VALUES ('x')") }
+
+    assert_nil database.written_phrase
+  end
+
+  def test_a_write_that_changes_nothing_counts_nothing
+    database.transaction { |batch| batch.write(:notes, "DELETE FROM notes") }
+
+    assert_nil database.written_phrase
+  end
+end
+
+# A command that meets a local.db held by another process prints the plain line, never the name of the error class.
+# Each test builds its own throwaway home, so the shared test home never meets the rival connection.
+class DatabaseErrorLineTest < Minitest::Test
+  HELD = "local.db is held by another process; run the command again when it is free"
+
+  def held_home
+    Dir.mktmpdir do |home|
+      kernel = KernelCommand.new(home)
+      kernel.command!("intent", "new", "Alpha")
+      hold(File.join(kernel.plastic_home, "local.db")) { yield kernel }
+    end
+  end
+
+  # The older column name sends the next command through the migration, which needs the write lock the rival holds.
+  def hold(path)
+    rival = SQLite3::Database.new(path)
+    rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at")
+    rival.execute("BEGIN IMMEDIATE")
+    yield
+  ensure
+    rival&.close
+  end
+
+  def test_intent_lock_status_names_the_held_file_with_no_class_name
+    held_home do |kernel|
+      call = kernel.command("intent", "lock", "status", "1")
+
+      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+    end
+  end
+
+  def test_next_names_the_held_file_with_no_class_name
+    held_home do |kernel|
+      call = kernel.command("next")
+
+      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+    end
+  end
+
+  def test_hook_stop_names_the_held_file_with_no_class_name_and_exits_0
+    held_home do |kernel|
+      call = kernel.command("hook", "stop", input: '{"session_id":"s-1"}', env: { "PLASTIC_SESSION" => "s-1" })
+
+      assert_equal [0, "", "plastic hook: #{HELD}\n"], [call.code, call.out, call.err]
+    end
   end
 end

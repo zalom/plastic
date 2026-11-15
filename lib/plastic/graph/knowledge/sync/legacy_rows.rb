@@ -26,6 +26,8 @@ module Plastic
             ["imported #{Graph::Knowledge::StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
           end
 
+          def print_index = @sync.printer.print([Prints.index(@retrieval)])
+
           private
 
           def write_index

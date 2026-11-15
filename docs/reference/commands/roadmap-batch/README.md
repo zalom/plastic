@@ -53,7 +53,7 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`batch.rb:16`](../../../../lib/plastic/commands/roadmap/batch.rb#L16) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:80`](../../../../lib/plastic/graph/prints.rb#L80) |
+| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:78`](../../../../lib/plastic/graph/prints.rb#L78) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
@@ -69,7 +69,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no roadmap SLUG | 1 | plastic roadmap new SLUG | [`batch.rb:14`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L14) |
 | batch POSITION of SLUG is written | 0 | plastic roadmap show SLUG | [`batch.rb:29`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

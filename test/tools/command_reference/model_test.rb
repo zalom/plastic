@@ -30,16 +30,16 @@ class CommandReferenceModelTest < Minitest::Test
   def test_a_command_from_an_included_module_shows_the_module_call
     own = page("backup list").own_call
 
-    assert_equal "lib/plastic/commands/backup_store.rb", own.file
+    assert_equal "lib/plastic/cli/backup_store.rb", own.file
     assert_includes own.code.first, "def call"
   end
 
   def test_a_command_with_no_workflow_gets_one_box_for_its_call
-    project = page("project list")
+    project = page("status")
 
     assert_equal :command, project.kind
     assert_empty project.flows
-    assert_includes project.own_call.code.join("\n"), "scope.projects"
+    assert_includes project.own_call.code.join("\n"), "output.rows"
   end
 
   def test_a_hook_gets_one_box_for_respond_and_is_found_under_hooks

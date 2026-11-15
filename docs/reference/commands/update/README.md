@@ -114,7 +114,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic RELEASE is downloaded and checked; this command installs it | 0 | COMMAND | [`update.rb:45`](../../../../lib/plastic/workflows/code/update.rb#L45) |
 | Plastic ACTIVE is the newest release on its channel | 0 | plastic version | [`update.rb:47`](../../../../lib/plastic/workflows/code/update.rb#L47) |
 | run the installer command above, then update again | 0 | plastic update | [`update.rb:49`](../../../../lib/plastic/workflows/code/update.rb#L49) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 | Usage error: --channel takes stable, beta or alpha | 2 | prints no next: line | [`update.rb:18`](../../../../lib/plastic/commands/update.rb#L18) |
 
 ## What the page leaves out

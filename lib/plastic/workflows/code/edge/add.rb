@@ -9,7 +9,7 @@ module Plastic
         # Writes one guarded edge: fails on a self edge, a missing or removed
         # node, or a loop back to its own start.
         class Add < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent, :problem, :added
 

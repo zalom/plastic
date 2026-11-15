@@ -105,7 +105,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | a live session holds intent INTENT_ID | 0 | plastic intent brief INTENT_ID | [`status.rb:58`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L58) |
 | WHY | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
 | the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

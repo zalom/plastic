@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../code_workflow"
+require_relative "roadmap_workflow"
 require_relative "../../../graph/knowledge/roadmap/check"
 
 module Plastic
@@ -8,12 +8,12 @@ module Plastic
     module Code
       module Roadmap
         # Prints each finding, or "no findings"; a finding fails the call.
-        class Check < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+        class Check < RoadmapWorkflow
+          clear_declarations
+
+          roadmap_gate
 
           sets :findings
-
-          gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 
           read "find problems" do |context|
             context[:findings] = Plastic::Graph::Knowledge::Roadmap::Check.new(context.retrieval, context.slug).all

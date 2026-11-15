@@ -10,7 +10,7 @@ module Plastic
         # Writes a new node, open and ready, unless the intent is done or
         # abandoned.
         class Add < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :id
 

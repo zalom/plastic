@@ -11,7 +11,7 @@ module Plastic
       # command: the spec, the start, the brief, a failed node, the check or
       # the ready list. Several candidates offer status; none offers a new intent.
       class Next < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :next_command, :why, :handoff_text
 

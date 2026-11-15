@@ -88,4 +88,41 @@ class WorkflowTest < Plastic::TestCase
 
     assert_includes error.message, "outcome late follows the fallback done"
   end
+
+  def test_clearing_the_declarations_of_a_workflow_empties_its_facts_and_outcomes
+    flow = Class.new(Plastic::Workflow)
+    flow.sets :name
+    flow.outcome :done, because: "done"
+    flow.clear_declarations
+
+    assert_equal [[], []], [flow.facts, flow.outcomes]
+  end
+
+  def test_clearing_the_declarations_of_a_code_workflow_empties_its_steps_too
+    flow = code do
+      sets :name
+      gate "stop", stops: :failure, pass: ->(_context) { true }
+      outcome :done, because: "done"
+    end
+    flow.clear_declarations
+
+    assert_equal [[], [], []], [flow.facts, flow.steps, flow.outcomes]
+  end
+
+  def test_clearing_the_declarations_of_an_agent_workflow_empties_its_steps_too
+    flow = agent do
+      step "read", done: ->(_context) { true }, say: "read"
+      outcome :done, because: "done"
+    end
+    flow.clear_declarations
+
+    assert_equal [[], []], [flow.steps, flow.outcomes]
+  end
+
+  def test_clearing_the_declarations_leaves_the_lists_of_another_workflow_as_they_are
+    kept = code { outcome :done, because: "done" }
+    code.clear_declarations
+
+    assert_equal 1, kept.outcomes.size
+  end
 end

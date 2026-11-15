@@ -88,6 +88,11 @@ module Plastic
 
         ["#{key}: the last outcome line needs no if:, so that one outcome always holds"]
       end
+
+      def clear_declarations
+        super
+        steps.clear
+      end
     end
 
     def call = self.class.steps.lazy.filter_map { |step| perform(step) }.first || pick

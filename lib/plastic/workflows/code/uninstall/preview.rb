@@ -14,7 +14,7 @@ module Plastic
         # releases and the launcher among them when no harness stays installed,
         # and the home it keeps.
         class Preview < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           read "list what the uninstall would remove or change" do |context|
             if context.dry_run

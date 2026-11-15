@@ -59,7 +59,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`show.rb:22`](../../../../lib/plastic/workflows/code/intent/show.rb#L22) |
 | intent INTENT_ID is shown | 0 | plastic intent brief INTENT_ID | [`show.rb:50`](../../../../lib/plastic/workflows/code/intent/show.rb#L50) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

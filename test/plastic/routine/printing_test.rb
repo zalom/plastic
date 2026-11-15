@@ -109,3 +109,268 @@ class RoutinePrintingTest < Plastic::TestCase
     refute_includes cli("intent", "revise", "1", "Beta", "--why", "because", "--dry-run").err, "changed by hand"
   end
 end
+
+# The hand edit check compares a context file by its content, as it does the index.
+class RoutinePrintingContextTest < Plastic::TestCase
+  include LifecycleHelper
+  include HandEditHelper
+
+  def context_path
+    intent = specified
+    cli("intent", "discover", "1", "spec")
+    path = "#{intent.dir}/context.json"
+    flunk "discover printed no context.json" unless folder.exist?(path)
+    path
+  end
+
+  def context_data(path) = JSON.parse(File.read(store_path(path)))
+
+  def level_context?(path) = File.read(store_path(path)) == "#{JSON.pretty_generate(context_data(path))}\n"
+
+  def test_a_re_indented_context_lets_approve_node_add_and_note_pass_and_is_printed_again
+    path = context_path
+    write(path, JSON.generate(context_data(path)))
+    results = [cli("intent", "approve", "1"), cli("node", "add", "1", "Deliver", "--criterion", KEY), cli("intent", "note", "1", "a line")]
+    found = results.map { |result| [result.code, level_context?(path)] }
+
+    assert_equal [[0, true]] * 3, found, results.map(&:err).join
+  end
+
+  def edited_context
+    path = context_path
+    write(path, JSON.generate(context_data(path).merge("context" => { "hand" => true })))
+    path
+  end
+
+  def test_a_context_with_other_content_than_its_rows_is_refused
+    edited_context
+    refused = cli("intent", "note", "1", "a line")
+
+    assert_equal [1, "next: plastic sync up"], [refused.code, refused.out[/^next: .*$/]], refused.err
+  end
+
+  def test_sync_up_reads_a_context_with_other_content_into_its_rows
+    path = edited_context
+    named = cli("sync", "up")
+    again = cli("intent", "note", "1", "a line")
+    rows = JSON.parse(retrieval.contexts("1").first.data)
+
+    assert_equal [0, 0, true, { "hand" => true }], [named.code, again.code, level_context?(path), rows], again.err
+  end
+end
+
+class RoutinePrintingIndexTest < Plastic::TestCase
+  include LifecycleHelper
+  include HandEditHelper
+
+  def test_an_edited_index_refuses_intent_new_with_no_intent_written
+    open_intent
+    write("store/index.json", "{}\n")
+    result = cli("intent", "new", "Second")
+
+    assert_refused(result, "store/index.json")
+    assert_nil retrieval.intent("2")
+  end
+
+  def test_a_changed_index_that_was_never_printed_refuses_intent_new_with_no_intent_written
+    write("store/index.json", "{}\n")
+    result = cli("intent", "new", "First")
+
+    assert_refused(result, "store/index.json")
+    assert_nil retrieval.intent("1")
+  end
+
+  def compact_index
+    write("store/index.json", JSON.generate(JSON.parse(File.read(store_path("store/index.json")))))
+  end
+
+  def printed_index = JSON.pretty_generate(JSON.parse(File.read(store_path("store/index.json")))) + "\n"
+
+  def test_a_re_indented_index_lets_approve_pass_and_is_printed_again
+    specified
+    compact_index
+    result = cli("intent", "approve", "1")
+
+    assert_equal [0, true], [result.code, File.read(store_path("store/index.json")) == printed_index]
+  end
+
+  def test_a_re_indented_index_lets_intent_new_pass_and_is_printed_again
+    open_intent
+    compact_index
+    result = cli("intent", "new", "Beta")
+
+    assert_equal [0, true, "Beta"], [result.code, File.read(store_path("store/index.json")) == printed_index, retrieval.intent("2")&.title]
+  end
+
+  def test_an_index_that_was_never_printed_is_cleared_by_sync_up_and_intent_new_passes
+    write("store/index.json", "{}\n")
+    refused = cli("intent", "new", "First")
+    named = cli("sync", "up")
+    again = cli("intent", "new", "First")
+
+    assert_equal [1, "next: plastic sync up", 0, 0], [refused.code, refused.out[/^next: .*$/], named.code, again.code], again.err
+  end
+
+  def add_imported_cluster
+    data = JSON.parse(File.read(store_path("store/index.json")))
+    write("store/index.json", JSON.generate(data.merge("clusters" => [{ "name" => "imported", "intents" => ["1"] }])))
+  end
+
+  def test_an_index_with_other_content_than_the_rows_is_refused_though_printed_before_and_sync_up_clears_it
+    open_intent
+    add_imported_cluster
+    results = [cli("intent", "new", "Beta"), cli("sync", "up"), cli("intent", "new", "Beta")]
+
+    assert_equal [1, 0, 0], results.map(&:code), results.last.err
+    assert_includes File.read(store_path("store/index.json")), "imported"
+  end
+
+  def open_roadmap
+    cli("roadmap", "new", "r1")
+    cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "Batch goal", "--done", "batch done")
+    cli("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done")
+  end
+
+  def test_an_edited_index_refuses_roadmap_open
+    open_intent
+    open_roadmap
+    write("store/index.json", "{}\n")
+
+    assert_refused(cli("roadmap", "open", "r1", "a"), "store/index.json")
+  end
+
+  def test_an_edited_roadmap_file_refuses_roadmap_open
+    open_roadmap
+    write("roadmaps/r1.md", folder.read("roadmaps/r1.md").sub(/^# .*/, "# By hand"))
+
+    assert_refused(cli("roadmap", "open", "r1", "a"), "roadmaps/r1.md")
+  end
+end
+
+# A refusal of the hand edit check names a command, and that command clears the refusal.
+class RoutinePrintingWayOutTest < Plastic::TestCase
+  include LifecycleHelper
+  include HandEditHelper
+
+  def note = cli("intent", "note", "1", "a line")
+
+  def named_command(result) = result.out[/^next: plastic (.*)$/, 1].to_s.split
+
+  # The refused call, the command it names, then the refused call again.
+  def round_trip(call)
+    refused = call.call
+    named = cli(*named_command(refused))
+    [refused.code, named.code, call.call.code]
+  end
+
+  def test_an_edited_intent_file_is_cleared_by_the_command_the_refusal_names
+    write("#{specified.dir}/intent.md", "# by hand\n")
+
+    assert_equal [1, 0, 0], round_trip(method(:note))
+  end
+
+  def test_an_edited_spec_is_cleared_by_the_command_the_refusal_names
+    write("#{specified.dir}/spec.md", "#{keyed_spec}\nEdited.\n")
+
+    assert_equal [1, 0, 0], round_trip(method(:note))
+  end
+
+  def test_an_edited_savepoint_is_cleared_by_the_command_the_refusal_names
+    intent = specified
+    cli("intent", "approve", "1")
+    write("#{intent.dir}/savepoint.md", "by hand\n")
+
+    assert_equal [1, 0, 0], round_trip(method(:note))
+  end
+
+  def test_an_edited_graph_that_reads_is_cleared_by_the_command_the_refusal_names
+    path = "#{specified.dir}/graph.json"
+    write(path, "#{File.read(store_path(path))}\n")
+
+    assert_equal [1, 0, 0], round_trip(method(:note))
+  end
+
+  def junk_graph
+    path = "#{specified.dir}/graph.json"
+    write(path, "{\"hand\":true}\n")
+    path
+  end
+
+  def test_a_graph_that_cannot_be_read_is_refused_with_the_reason_and_the_overwrite_that_prints_it_again
+    path = junk_graph
+    refused = note
+
+    assert_equal [1, true, "next: plastic sync down --overwrite #{path}"], [refused.code, refused.err.include?("cannot be read"), refused.out[/^next: .*$/]], refused.err
+  end
+
+  def test_a_graph_that_cannot_be_read_is_cleared_by_the_command_the_refusal_names_and_printed_again
+    path = junk_graph
+    found = round_trip(method(:note))
+
+    assert_equal [[1, 0, 0], false], [found, File.read(store_path(path)).include?("hand")]
+  end
+
+  def test_junk_in_another_intents_graph_is_cleared_in_the_two_steps_that_are_named
+    intent = specified
+    other = open_intent("Beta")
+    write("#{other.dir}/graph.json", "{\"hand\":true}\n")
+    write("#{intent.dir}/spec.md", "#{keyed_spec}\nEdited.\n")
+    steps = followed(note, 2)
+
+    assert_equal [%w[sync up], %w[sync down --overwrite] + ["#{other.dir}/graph.json"], 0], [steps[0], steps[1], note.code]
+  end
+
+  # The command each refusal names, run in turn `count` times.
+  def followed(result, count)
+    Array.new(count) do
+      named = named_command(result)
+      result = cli(*named)
+      named
+    end
+  end
+
+  # The refused call names sync up and says the file is printed again from its rows;
+  # sync up names the file, prints it again and exits 0; the refused call then runs.
+  def generated_round_trip(path, hand_text, call)
+    refused = call.call
+    up = cli("sync", "up")
+
+    [refused.out[/^next: .*$/], refused.err.include?("read it into rows"), up.code, up.out.include?("read #{path}"), holds?(path, hand_text), call.call.code]
+  end
+
+  def holds?(path, text) = File.read(store_path(path)).include?(text)
+
+  def test_a_hand_edited_roadmap_is_refused_with_sync_up_which_reads_it_into_rows_and_clears_the_refusal
+    cli("roadmap", "new", "r1")
+    write("roadmaps/r1.md", File.read(store_path("roadmaps/r1.md")).sub(/^title:.*$/, "title: by hand"))
+    batch = -> { cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d") }
+
+    assert_equal ["next: plastic sync up", true, 0, true, true, 0], generated_round_trip("roadmaps/r1.md", "by hand", batch)
+  end
+
+  def test_a_hand_edited_context_json_is_refused_with_sync_up_which_reads_it_into_rows_and_clears_the_refusal
+    intent = specified
+    cli("intent", "discover", "1", "spec")
+    path = "#{intent.dir}/context.json"
+    write(path, JSON.generate(JSON.parse(File.read(store_path(path))).merge("context" => { "my_note" => "keep this" })))
+    add = -> { cli("node", "add", "1", "T", "--criterion", KEY) }
+
+    assert_equal ["next: plastic sync up", true, 0, true, true, 0], generated_round_trip(path, "my_note", add)
+  end
+
+  def test_a_bare_overwrite_of_sync_down_leaves_a_one_sided_hand_edit_alone
+    path = "#{specified.dir}/spec.md"
+    write(path, "#{keyed_spec}\nEdited.\n")
+    result = cli("sync", "down", "--overwrite")
+
+    assert_equal [0, true], [result.code, File.read(store_path(path)).include?("Edited.")], result.err
+  end
+
+  def test_an_overwrite_of_one_path_prints_it_from_its_rows_though_the_rows_did_not_change
+    path = "#{specified.dir}/spec.md"
+    write(path, "#{keyed_spec}\nEdited.\n")
+    result = cli("sync", "down", "--overwrite", path)
+
+    assert_equal [0, false], [result.code, File.read(store_path(path)).include?("Edited.")], result.err
+  end
+end

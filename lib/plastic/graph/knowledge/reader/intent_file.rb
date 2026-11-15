@@ -57,13 +57,12 @@ module Plastic
 
           def graph(batch) = GraphFile.new(text, @intent_id, origin_id, @file.path).apply(batch)
 
+          # The rows of this home replace the rows of the file; the rows of another origin stay.
           def context(batch)
-            raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it" if context_rows?
-
-            ContextFile.new(text, @intent_id, @file.path).rows.each { |table, row| batch.put(table, row) }
+            rows = ContextFile.new(text, @intent_id, @file.path).rows
+            ContextFile::TABLES.each_value { |table| batch.remove(table, intent_id: @intent_id) }
+            rows.each { |table, row| batch.put(table, row) }
           end
-
-          def context_rows? = @retrieval && [@retrieval.contexts(@intent_id), @retrieval.discoveries(@intent_id)].any?(&:any?)
 
           def savepoint(batch)
             previous = Array(@retrieval&.savepoints(@intent_id)).group_by(&:line)

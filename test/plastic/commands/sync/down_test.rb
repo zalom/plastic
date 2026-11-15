@@ -33,7 +33,9 @@ class SyncDownTest < Plastic::TestCase
 
     result = sync_down
 
-    assert_call result, code: 3, err: ["plastic: refused, changed on both sides since the last print, nothing written: #{path}"]
+    assert_call result, code: 3, err: ["plastic: refused, changed on both sides since the last print, nothing written. " \
+                                       "--overwrite PATH prints that record's rows over the file, --overwrite prints every record, " \
+                                       "--merge applies the one-sided changes and lists the rest. The records: #{path}"]
     assert_equal "owner edit after restore", folder.read(path)
   end
 end

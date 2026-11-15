@@ -8,7 +8,7 @@ module Plastic
       module Graph
         # Lists the ready nodes of one intent's work graph.
         class Ready < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent, :nodes, :first
 

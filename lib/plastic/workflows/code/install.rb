@@ -10,7 +10,7 @@ module Plastic
       # Copies the core files into the home. A reinstall also syncs the
       # harnesses Plastic is installed into.
       class Install < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :broken, :present, :installed
 

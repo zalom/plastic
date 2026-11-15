@@ -9,7 +9,7 @@ module Plastic
         # Writes one ruling; fails on an unknown intent, or when --supersedes
         # names no such ruling.
         class Rule < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent, :problem, :id
 

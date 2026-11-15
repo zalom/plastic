@@ -13,7 +13,7 @@ module Plastic
         # when no harness is set up yet, with the running package. A dry run
         # names both and what the update would do.
         class Preview < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :from, :to
 

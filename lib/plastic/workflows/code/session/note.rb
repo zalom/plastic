@@ -8,7 +8,7 @@ module Plastic
       module Session
         # Writes the one prose line of a session.
         class Note < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :session_id, :written
 

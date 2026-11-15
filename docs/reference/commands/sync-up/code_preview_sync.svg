@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 782" width="760" height="782" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 838" width="760" height="838" role="img" xml:space="preserve">
 <title>How Preview runs in plastic sync up</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -87,93 +87,97 @@
 <text x="476" y="120" class="tm" text-anchor="start">%{failure}</text>
 <path d="M 226 134 L 226 144" class="wire"/>
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
-<rect x="16" y="144" width="420" height="98" rx="6" class="card"/>
+<rect x="16" y="144" width="420" height="140" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
 <text x="426" y="159" class="tm tag-muted" text-anchor="end">preview.rb:61</text>
 <text x="26" y="176" class="tm" text-anchor="start">passes when as_real?(context, :writes?)</text>
 <path d="M 436 162 L 464 162" class="wire-refusal"/>
 <path d="M 456 157 L 464 162 L 456 167 Z" class="head"/>
-<rect x="466" y="144" width="270" height="98" rx="6" class="stop-refusal"/>
+<rect x="466" y="144" width="270" height="140" rx="6" class="stop-refusal"/>
 <text x="476" y="159" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
 <text x="476" y="175" class="tm" text-anchor="start">changed on both sides since</text>
 <text x="476" y="189" class="tm" text-anchor="start">the last print, nothing</text>
-<text x="476" y="203" class="tm" text-anchor="start">written: %{conflicts}; pass</text>
-<text x="476" y="217" class="tm" text-anchor="start">--overwrite PATH, --overwrite</text>
-<text x="476" y="231" class="tm" text-anchor="start">or --merge</text>
-<path d="M 226 242 L 226 252" class="wire"/>
-<path d="M 221 244 L 226 252 L 231 244 Z" class="head"/>
-<rect x="16" y="252" width="420" height="98" rx="6" class="card"/>
-<text x="26" y="267" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="267" class="tm tag-muted" text-anchor="end">preview.rb:62</text>
-<text x="26" y="284" class="tm" text-anchor="start">passes when as_real?(context, :settled?)</text>
-<path d="M 436 270 L 464 270" class="wire-refusal"/>
-<path d="M 456 265 L 464 270 L 456 275 Z" class="head"/>
-<rect x="466" y="252" width="270" height="98" rx="6" class="stop-refusal"/>
-<text x="476" y="267" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
-<text x="476" y="283" class="tm" text-anchor="start">changed on both sides since</text>
-<text x="476" y="297" class="tm" text-anchor="start">the last print, left as they</text>
-<text x="476" y="311" class="tm" text-anchor="start">are: %{conflicts}; pass</text>
-<text x="476" y="325" class="tm" text-anchor="start">--overwrite PATH or</text>
-<text x="476" y="339" class="tm" text-anchor="start">--overwrite</text>
-<path d="M 226 350 L 226 360" class="wire"/>
-<path d="M 221 352 L 226 360 L 231 352 Z" class="head"/>
-<rect x="16" y="360" width="420" height="98" rx="6" class="card"/>
-<text x="26" y="375" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="375" class="tm tag-muted" text-anchor="end">preview.rb:67</text>
-<text x="26" y="392" class="tm" text-anchor="start">passes when as_real?(context, :readable?)</text>
-<path d="M 436 378 L 464 378" class="wire-failure"/>
-<path d="M 456 373 L 464 378 L 456 383 Z" class="head"/>
-<rect x="466" y="360" width="270" height="98" rx="6" class="stop-failure"/>
-<text x="476" y="375" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="391" class="tm" text-anchor="start">intent folders that could not</text>
-<text x="476" y="405" class="tm" text-anchor="start">be read, the others were read:</text>
-<text x="476" y="419" class="tm" text-anchor="start">%{unreadable} fix or remove</text>
-<text x="476" y="433" class="tm" text-anchor="start">each folder named, then run</text>
-<text x="476" y="447" class="tm" text-anchor="start">plastic sync up again</text>
-<path d="M 226 458 L 226 468" class="wire"/>
-<path d="M 221 460 L 226 468 L 231 460 Z" class="head"/>
-<rect x="16" y="468" width="420" height="70" rx="6" class="card"/>
-<text x="26" y="483" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="483" class="tm tag-muted" text-anchor="end">preview.rb:68</text>
-<text x="26" y="500" class="tm" text-anchor="start">passes when as_real?(context, :files_read?)</text>
-<path d="M 436 486 L 464 486" class="wire-failure"/>
-<path d="M 456 481 L 464 486 L 456 491 Z" class="head"/>
-<rect x="466" y="468" width="270" height="70" rx="6" class="stop-failure"/>
-<text x="476" y="483" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="499" class="tm" text-anchor="start">files that cannot be read into</text>
-<text x="476" y="513" class="tm" text-anchor="start">rows, the others were read:</text>
-<text x="476" y="527" class="tm" text-anchor="start">%{unreadable_files}</text>
-<path d="M 226 538 L 226 548" class="wire"/>
-<path d="M 221 540 L 226 548 L 231 540 Z" class="head"/>
-<rect x="16" y="548" width="420" height="70" rx="6" class="card"/>
-<text x="26" y="563" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="563" class="tm tag-muted" text-anchor="end">preview.rb:70</text>
-<text x="26" y="580" class="tm" text-anchor="start">passes when as_real?(context, :rowless_read?)</text>
-<path d="M 436 566 L 464 566" class="wire-failure"/>
-<path d="M 456 561 L 464 566 L 456 571 Z" class="head"/>
-<rect x="466" y="548" width="270" height="70" rx="6" class="stop-failure"/>
-<text x="476" y="563" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="579" class="tm" text-anchor="start">files that cannot be read into</text>
-<text x="476" y="593" class="tm" text-anchor="start">rows, the others were read:</text>
-<text x="476" y="607" class="tm" text-anchor="start">%{unreadable_files}</text>
-<path d="M 226 618 L 226 628" class="wire"/>
-<path d="M 221 620 L 226 628 L 231 620 Z" class="head"/>
-<text x="16" y="640" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="648" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="664" class="tm" text-anchor="start">:done</text>
-<text x="26" y="680" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
-<path d="M 316 664 L 352 664" class="wire"/>
-<path d="M 344 659 L 352 664 L 344 669 Z" class="head"/>
-<rect x="352" y="648" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="665" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="679" class="t" text-anchor="start">next: %{original_command}</text>
-<text x="362" y="693" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
-<text x="362" y="707" class="t" text-anchor="start">copy</text>
-<rect x="16" y="726" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="742" class="tm" text-anchor="start">:continue</text>
-<text x="26" y="758" class="tm tag-muted" text-anchor="start">otherwise</text>
-<path d="M 316 742 L 352 742" class="wire"/>
-<path d="M 344 737 L 352 742 L 344 747 Z" class="head"/>
-<rect x="352" y="726" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="743" class="t" text-anchor="start">next workflow: Up</text>
+<text x="476" y="203" class="tm" text-anchor="start">written. --overwrite PATH</text>
+<text x="476" y="217" class="tm" text-anchor="start">reads that file into rows,</text>
+<text x="476" y="231" class="tm" text-anchor="start">--overwrite reads every file,</text>
+<text x="476" y="245" class="tm" text-anchor="start">--merge applies the one-sided</text>
+<text x="476" y="259" class="tm" text-anchor="start">changes and lists the rest.</text>
+<text x="476" y="273" class="tm" text-anchor="start">The records: %{conflicts}</text>
+<path d="M 226 284 L 226 294" class="wire"/>
+<path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
+<rect x="16" y="294" width="420" height="112" rx="6" class="card"/>
+<text x="26" y="309" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">preview.rb:62</text>
+<text x="26" y="326" class="tm" text-anchor="start">passes when as_real?(context, :settled?)</text>
+<path d="M 436 312 L 464 312" class="wire-refusal"/>
+<path d="M 456 307 L 464 312 L 456 317 Z" class="head"/>
+<rect x="466" y="294" width="270" height="112" rx="6" class="stop-refusal"/>
+<text x="476" y="309" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="325" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="339" class="tm" text-anchor="start">the last print, left as they</text>
+<text x="476" y="353" class="tm" text-anchor="start">are. --overwrite PATH reads</text>
+<text x="476" y="367" class="tm" text-anchor="start">that file into rows,</text>
+<text x="476" y="381" class="tm" text-anchor="start">--overwrite reads every file.</text>
+<text x="476" y="395" class="tm" text-anchor="start">The records: %{conflicts}</text>
+<path d="M 226 406 L 226 416" class="wire"/>
+<path d="M 221 408 L 226 416 L 231 408 Z" class="head"/>
+<rect x="16" y="416" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="431" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="431" class="tm tag-muted" text-anchor="end">preview.rb:67</text>
+<text x="26" y="448" class="tm" text-anchor="start">passes when as_real?(context, :readable?)</text>
+<path d="M 436 434 L 464 434" class="wire-failure"/>
+<path d="M 456 429 L 464 434 L 456 439 Z" class="head"/>
+<rect x="466" y="416" width="270" height="98" rx="6" class="stop-failure"/>
+<text x="476" y="431" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="447" class="tm" text-anchor="start">intent folders that could not</text>
+<text x="476" y="461" class="tm" text-anchor="start">be read, the others were read:</text>
+<text x="476" y="475" class="tm" text-anchor="start">%{unreadable} fix or remove</text>
+<text x="476" y="489" class="tm" text-anchor="start">each folder named, then run</text>
+<text x="476" y="503" class="tm" text-anchor="start">plastic sync up again</text>
+<path d="M 226 514 L 226 524" class="wire"/>
+<path d="M 221 516 L 226 524 L 231 516 Z" class="head"/>
+<rect x="16" y="524" width="420" height="70" rx="6" class="card"/>
+<text x="26" y="539" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="539" class="tm tag-muted" text-anchor="end">preview.rb:68</text>
+<text x="26" y="556" class="tm" text-anchor="start">passes when as_real?(context, :files_read?)</text>
+<path d="M 436 542 L 464 542" class="wire-failure"/>
+<path d="M 456 537 L 464 542 L 456 547 Z" class="head"/>
+<rect x="466" y="524" width="270" height="70" rx="6" class="stop-failure"/>
+<text x="476" y="539" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="555" class="tm" text-anchor="start">files that cannot be read into</text>
+<text x="476" y="569" class="tm" text-anchor="start">rows, the others were read:</text>
+<text x="476" y="583" class="tm" text-anchor="start">%{unreadable_files}</text>
+<path d="M 226 594 L 226 604" class="wire"/>
+<path d="M 221 596 L 226 604 L 231 596 Z" class="head"/>
+<rect x="16" y="604" width="420" height="70" rx="6" class="card"/>
+<text x="26" y="619" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="619" class="tm tag-muted" text-anchor="end">preview.rb:70</text>
+<text x="26" y="636" class="tm" text-anchor="start">passes when as_real?(context, :rowless_read?)</text>
+<path d="M 436 622 L 464 622" class="wire-failure"/>
+<path d="M 456 617 L 464 622 L 456 627 Z" class="head"/>
+<rect x="466" y="604" width="270" height="70" rx="6" class="stop-failure"/>
+<text x="476" y="619" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="635" class="tm" text-anchor="start">files that cannot be read into</text>
+<text x="476" y="649" class="tm" text-anchor="start">rows, the others were read:</text>
+<text x="476" y="663" class="tm" text-anchor="start">%{unreadable_files}</text>
+<path d="M 226 674 L 226 684" class="wire"/>
+<path d="M 221 676 L 226 684 L 231 676 Z" class="head"/>
+<text x="16" y="696" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="704" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="720" class="tm" text-anchor="start">:done</text>
+<text x="26" y="736" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
+<path d="M 316 720 L 352 720" class="wire"/>
+<path d="M 344 715 L 352 720 L 344 725 Z" class="head"/>
+<rect x="352" y="704" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="721" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="735" class="t" text-anchor="start">next: %{original_command}</text>
+<text x="362" y="749" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
+<text x="362" y="763" class="t" text-anchor="start">copy</text>
+<rect x="16" y="782" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="798" class="tm" text-anchor="start">:continue</text>
+<text x="26" y="814" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 798 L 352 798" class="wire"/>
+<path d="M 344 793 L 352 798 L 344 803 Z" class="head"/>
+<rect x="352" y="782" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="799" class="t" text-anchor="start">next workflow: Up</text>
 </svg>

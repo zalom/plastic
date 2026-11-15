@@ -5,15 +5,24 @@ require_relative "../../../lib/plastic/commands/sync/up"
 require_relative "../../../lib/plastic/commands/sync/down"
 
 class SyncOptionsTest < Plastic::TestCase
-  OPTIONS = [{ name: :overwrite, switch: "--overwrite [PATH]", default: false,
-               text: "settle conflicts on this side: one record by its path, or every record with no path" },
-    { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }].freeze
+  MERGE = { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }.freeze
+  OVERWRITE = {
+    up: "read the file of the path into rows, or every file with no path",
+    down: "print the rows of the path over its file, or every record with no path"
+  }.freeze
 
-  def test_both_directions_take_the_overwrite_and_merge_switches
-    [Plastic::Commands::Sync::Up, Plastic::Commands::Sync::Down].each do |command|
-      assert_equal [OPTIONS, %i[work knowledge references]], [command.options.map(&:to_h).reject { |option| option[:name] == :dry_run }.map { |option| option.slice(*OPTIONS.first.keys) },
-        command.writes]
-    end
+  def options_of(command) = command.options.map(&:to_h).reject { |option| option[:name] == :dry_run }.map { |option| option.slice(:name, :switch, :default, :text) }
+
+  def expected(direction)
+    [{ name: :overwrite, switch: "--overwrite [PATH]", default: false, text: OVERWRITE.fetch(direction) }, MERGE]
+  end
+
+  def test_sync_up_says_that_overwrite_reads_files_into_rows
+    assert_equal [expected(:up), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
+  end
+
+  def test_sync_down_says_that_overwrite_prints_rows_over_files
+    assert_equal [expected(:down), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
   end
 
   def test_each_direction_runs_its_own_workflow

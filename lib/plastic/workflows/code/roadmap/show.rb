@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../code_workflow"
+require_relative "roadmap_workflow"
 require_relative "../../roadmap_print"
 
 module Plastic
@@ -9,10 +9,10 @@ module Plastic
       module Roadmap
         # Prints each batch with its goal and done criteria, then each item with
         # its derived state, from the rows.
-        class Show < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+        class Show < RoadmapWorkflow
+          clear_declarations
 
-          gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+          roadmap_gate
 
           read "print each batch and item" do |context|
             RoadmapPrint.call(context)

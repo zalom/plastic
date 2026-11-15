@@ -13,7 +13,7 @@ module Plastic
         class Context
           # Reads the saved retrieval context of one intent with its evidence freshness.
           class Read < CodeWorkflow
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             sets :problem
 

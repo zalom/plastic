@@ -10,8 +10,6 @@ module Plastic
         # holds no intent or no ruling. A ref with a store prefix, such as
         # `other:5`, names another store and is left alone.
         class Check
-          ALL_SQL = "SELECT * FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind"
-
           def self.summary(count)
             noun = (count == 1) ? "link names" : "links name"
             "#{count} #{noun} an intent or a ruling this store lacks"
@@ -26,7 +24,7 @@ module Plastic
 
           private
 
-          def links = @databases.fetch(:knowledge).rows(ALL_SQL, origin: @retrieval.origin_id).map { |row| Link.from_h(row) }
+          def links = @retrieval.every_link
 
           def resolves?(ref)
             return true if ref.include?(":")

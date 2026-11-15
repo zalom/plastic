@@ -55,7 +55,7 @@ module Plastic
       attr_reader :store
 
       def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :liveness, :last_run, :touched
-      def_delegators :work, :ready_nodes, :node, :rulings, :links
+      def_delegators :work, :ready_nodes, :node, :rulings, :links, :every_link
       def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :backfill, :repair, :search_index_report
       def_delegators "evidence.references", :reference, :search_reference
 

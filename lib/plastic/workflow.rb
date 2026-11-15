@@ -84,6 +84,12 @@ module Plastic
       def problems = []
 
       def call(ctx) = new(ctx).call
+
+      # Empties the lists the class body fills, so a second load of the class replaces the first.
+      def clear_declarations
+        facts.clear
+        outcomes.clear
+      end
     end
 
     def initialize(ctx)

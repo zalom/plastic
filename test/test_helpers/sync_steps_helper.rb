@@ -2,10 +2,10 @@
 
 # What the tests of the sync steps share: a plan as the steps read it, the work graph that serves it, and one run of a sync.
 module SyncStepsHelper
-  DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless printed_over lines].freeze
+  DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless lines].freeze
 
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :printed_over) do
-    def initialize(unreadable_files: {}, rowless_files: [], printed_over: [], **fields) = super
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files) do
+    def initialize(unreadable_files: {}, rowless_files: [], **fields) = super
 
     def merging? = merging
   end

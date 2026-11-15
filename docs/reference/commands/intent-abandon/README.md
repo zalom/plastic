@@ -126,7 +126,7 @@ In the words of workflow engines, the rows are these four parts:
 | the store folder | knowledge_graph.db | `documents`, `links` | reads | [`abandon.rb:13`](../../../../lib/plastic/commands/intent/abandon.rb#L13) |
 | the home folder | local.db | `locks`, `sessions` | reads and writes | found in the code, not declared |
 | the store folder | work_graph.db | `edges`, `intents`, `nodes`, `roadmaps`, `verdicts` | reads and writes | [`abandon.rb:11`](../../../../lib/plastic/commands/intent/abandon.rb#L11) |
-| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
@@ -150,7 +150,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the revert is recorded | 0 | prints no next: line | [`abandon.rb:19`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L19) |
 | the agent stops the processes and agents the intent started | 0 | prints no next: line | [`wind_down_intent.rb:15`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L15) |
 | nothing the intent started is left running | 0 | prints no next: line | [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

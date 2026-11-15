@@ -2,7 +2,7 @@
 
 Each store keeps its content as rows in three SQLite databases, and prints the files of its
 folder from those rows. A file you change by hand reaches its rows through `plastic sync up`. A command that prints files stops
-before it writes a row when a file it would print was changed by hand since the last print. It names the
+before it writes a row when a file it would print changed since its last print on this home, by hand or in a copy from another home. It names the
 file and offers `plastic sync up`; a dry run does not check.
 A row that changed reaches its file through `plastic sync down`.
 
@@ -35,3 +35,9 @@ options settle it:
 | `--overwrite [PATH]` | Settles conflicts on the side the command reads from: `sync up` keeps the file, and `sync down` keeps the rows. With `PATH` it settles that one record, and without it every conflict. |
 | `--merge` | Applies the changes made on one side only, then lists the conflicts and exits 3. |
 | `--dry-run` | Runs the whole sync in a disposable copy and changes nothing. |
+
+## A limit of two homes
+
+An index that another home printed sets the title, the state, the disposition, the reason and the
+closed time of every intent it lists. So with a command on each home before the copy, it takes back
+a change of this home, also on an intent that the other home never changed.

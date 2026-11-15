@@ -7,11 +7,18 @@ module Plastic
     # rest, then refuse on the conflicts left.
     module SyncSteps
       NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
-      PRINTED_AGAIN = "the rows printed each generated file changed outside Plastic again, and hold every other file changed by hand"
-      REFUSED_BEFORE = "changed on both sides since the last print, nothing written: %{conflicts}; " \
-                       "pass --overwrite PATH, --overwrite or --merge"
-      REFUSED_AFTER = "changed on both sides since the last print, left as they are: %{conflicts}; " \
-                      "pass --overwrite PATH or --overwrite"
+      # What each option keeps, in the words of the direction. The paths come last, so the last word of a refusal is a path.
+      OVERWRITE_WORDS = {
+        up: "--overwrite PATH reads that file into rows, --overwrite reads every file",
+        down: "--overwrite PATH prints that record's rows over the file, --overwrite prints every record"
+      }.freeze
+      REFUSED_BEFORE = OVERWRITE_WORDS.transform_values do |words|
+        "changed on both sides since the last print, nothing written. #{words}, " \
+          "--merge applies the one-sided changes and lists the rest. The records: %{conflicts}"
+      end.freeze
+      REFUSED_AFTER = OVERWRITE_WORDS.transform_values do |words|
+        "changed on both sides since the last print, left as they are. #{words}. The records: %{conflicts}"
+      end.freeze
 
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
@@ -27,13 +34,12 @@ module Plastic
       def self.note(context, plan)
         note_refusals(context, plan)
         note_files(context, plan.unreadable_files, plan.rowless_files)
-        context[:printed_over] = plan.printed_over
         context[:lines] = nil
       end
 
       def self.note_refusals(context, plan)
         context[:failure] = plan.failure
-        context[:conflicts] = plan.conflicts.join(", ")
+        context[:conflicts] = plan.conflicts.join(" ")
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
       end
@@ -65,10 +71,7 @@ module Plastic
       # No changed file is left that this home holds no rows for.
       def self.rowless_read?(context) = context.unreadable_rowless.nil?
 
-      def self.say(context) = [*context.lines, *Array(context.printed_over).map { |path| Graph::Prints.printed_over_line(path) }].each { |line| context.print(line) }
-
-      # A sync up that printed a changed context view or roadmap again from its rows.
-      def self.printed_again?(context) = Array(context.printed_over).any?
+      def self.say(context) = Array(context.lines).each { |line| context.print(line) }
 
       def self.runs?(context) = !context.failure
 
@@ -82,8 +85,8 @@ module Plastic
 
       # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
-        [facts, steps, outcomes].each(&:clear)
-        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless, :printed_over, :lines
+        clear_declarations
+        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless, :lines
         plan_steps(direction)
         apply_steps(direction)
         end_steps(direction)
@@ -92,10 +95,7 @@ module Plastic
       private
 
       def end_steps(direction)
-        if direction == :up
-          up_gates
-          outcome :printed_again, if: SyncSteps.check(:printed_again?), offers: "plastic next", because: PRINTED_AGAIN
-        end
+        up_gates if direction == :up
         outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
       end
 
@@ -110,13 +110,13 @@ module Plastic
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
-        gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.check(:writes?)
+        gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
         step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
-        gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.check(:settled?)
+        gate REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
       end
     end
   end

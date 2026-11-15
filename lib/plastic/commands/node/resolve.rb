@@ -1,17 +1,14 @@
 # frozen_string_literal: true
 
-require_relative "../../routine"
+require_relative "move"
 
 module Plastic
   module Commands
     module Node
       # Reopens a needs_info or impeded node with its resolution and resets its
       # retries.
-      class Resolve < Routine
-        node_subject
+      class Resolve < Move
         argument :text, label: "TEXT", text: "the resolution"
-        writes :work
-        prints :intent
 
         workflow :code_resolve_node, next: :noop
       end

@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "backup_store"
-require_relative "streaming_scope"
+require_relative "../cli/backup_store"
+require_relative "../cli/streaming_scope"
 
 module Plastic
   module Commands
     # Copies one registered store's databases into a new backup folder.
     class Backup < Routine
-      include BackupStore
+      include CLI::BackupStore
 
       writes :work
 
@@ -26,7 +26,7 @@ module Plastic
 
       def check_call = database_list
 
-      def scope = @scope ||= StreamingScope.for(environment, slug: parsed[:store], output: (parsed[:live] ? output : nil))
+      def scope = @scope ||= CLI::StreamingScope.for(environment, slug: parsed[:store], output: (parsed[:live] ? output : nil))
     end
   end
 end

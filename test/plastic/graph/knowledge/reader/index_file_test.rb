@@ -17,19 +17,12 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def put_old_cluster = store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
-  def test_a_hand_edit_renames_an_intent_and_replaces_the_clusters
+  def test_a_hand_edit_renames_an_intent_and_leaves_the_clusters_to_their_own_part
     put_old_cluster
     apply(index([entry(title: "Renamed")], [{ "name" => "Core", "intents" => ["1"] }]))
     read = retrieval
 
-    assert_equal ["Renamed", [%w[Core 1]]], [read.intent("1").title, read.clusters.map { |c| [c.name, c.intent_id] }]
-  end
-
-  def test_an_index_with_no_lists_clears_the_clusters
-    put_old_cluster
-    apply("{}")
-
-    assert_equal [[], "Alpha"], [retrieval.clusters, retrieval.intent("1").title]
+    assert_equal ["Renamed", [%w[Old 1]]], [read.intent("1").title, read.clusters.map { |c| [c.name, c.intent_id] }]
   end
 
   def test_an_intent_of_another_origin_is_refused
@@ -46,16 +39,9 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
   end
 
   def test_an_index_that_lists_a_value_that_is_not_a_json_object_is_refused_with_its_reason
-    reasons = [index([5], []), index([], [5])].map { |text| assert_raises(Plastic::Invalid) { apply(text) }.message }
+    error = assert_raises(Plastic::Invalid) { apply(index([5], [])) }
 
-    assert_equal ["store/index.json lists an entry under intents that is not a JSON object",
-      "store/index.json lists an entry under clusters that is not a JSON object"], reasons
-  end
-
-  def test_a_cluster_whose_intents_is_no_list_is_refused_with_its_reason
-    reasons = [[{ "name" => "c" }], [{ "name" => "c", "intents" => "1" }]].map { |clusters| assert_raises(Plastic::Invalid) { apply(index([], clusters)) }.message }
-
-    assert_equal ["store/index.json lists the cluster c with no list of intents"] * 2, reasons
+    assert_equal "store/index.json lists an entry under intents that is not a JSON object", error.message
   end
 
   def test_an_entry_with_no_intent_folder_gets_no_row

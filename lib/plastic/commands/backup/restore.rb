@@ -2,15 +2,15 @@
 
 require_relative "../backup"
 require_relative "../../routine"
-require_relative "../backup_store"
-require_relative "../asking_scope"
+require_relative "../../cli/backup_store"
+require_relative "../../cli/asking_scope"
 
 module Plastic
   module Commands
     class Backup
       # Replaces the databases of one registered store with those of a done backup.
       class Restore < Routine
-        include BackupStore
+        include CLI::BackupStore
 
         writes :work, :knowledge, :references
 
@@ -32,7 +32,7 @@ module Plastic
           database_list
         end
 
-        def scope = @scope ||= AskingScope.for(environment, slug: parsed[:store], output:)
+        def scope = @scope ||= CLI::AskingScope.for(environment, slug: parsed[:store], output:)
       end
     end
   end

@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+require_relative "../config"
+require_relative "../cli/command"
+
+module Plastic
+  module Workflows
+    # What the config workflows share: the settings the --harness option names,
+    # the refusal of a key the settings do not hold, and the harness words a
+    # next step repeats.
+    class ConfigSettings
+      ON_OFF = [true, false].freeze
+
+      def initialize(context)
+        @context = context
+      end
+
+      def entries = config.entries
+
+      def set(key, value) = config.set(key, value)
+
+      def current(key)
+        entries.fetch(key) { raise CLI::Command::Usage, "no setting #{key}; plastic config list names them" }
+      end
+
+      def harness_words = @context.harness.then { |name| name ? " --harness #{name}" : "" }
+
+      private
+
+      def config = (@config ||= Plastic::Config.new(@context.scope.plastic_home, harness: @context.harness))
+    end
+  end
+end

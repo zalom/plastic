@@ -12,7 +12,7 @@ module Plastic
       # each, and names each repair once. It rebuilds the search rows of a store
       # that are out of step, and changes nothing else.
       class Doctor < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :repairs
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require "plastic"
 
 class CLITableTest < Minitest::Test
   FAMILY_ORDER = %w[core intent project sync session config backup document architecture node edge graph roadmap hook].freeze
@@ -28,5 +29,39 @@ class CLITableTest < Minitest::Test
 
   def test_the_table_is_the_families_merged_in_order
     assert_equal Plastic::CLI::FAMILIES.values.flat_map(&:keys), Plastic::CLI::TABLE.keys
+  end
+end
+
+class TableWordsTest < Plastic::TestCase
+  PRINTS_A_FILE = /\bprint\w*\b[^,;:]*\b(files?|folders?)\b/i
+
+  def test_no_help_line_says_print_for_a_file_or_a_folder
+    said = Plastic::CLI::TABLE.filter_map { |words, (_, help)| words if help.match?(PRINTS_A_FILE) }
+
+    assert_empty said
+  end
+
+  def test_the_help_of_intent_spec_names_what_it_prints
+    assert_equal "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md",
+      Plastic::CLI::TABLE.fetch("intent spec").last
+  end
+
+  def test_the_commands_that_write_files_say_write
+    assert_equal "Write the rows that changed into files", Plastic::CLI::TABLE.fetch("sync down").last
+    assert_equal "Open an intent: write its rows and its folder", Plastic::CLI::TABLE.fetch("intent new").last
+  end
+end
+
+class NodeVerbNamesTest < Plastic::TestCase
+  def test_the_command_table_names_ask_impede_and_resolve
+    assert_equal %w[node\ ask node\ impede node\ resolve], %w[node\ ask node\ impede node\ resolve].select { |name| Plastic::CLI::TABLE.key?(name) }
+  end
+
+  def test_the_command_table_has_no_park_answer_or_flag
+    assert_empty ["node park", "node answer", "node flag"].select { |name| Plastic::CLI::TABLE.key?(name) }
+  end
+
+  def test_node_states_hold_needs_info_and_impeded_and_not_parked
+    assert_equal [%w[impeded needs_info], []], [%w[impeded needs_info] & Plastic::Graph::Work::Node::STATES, %w[parked flagged] & Plastic::Graph::Work::Node::STATES]
   end
 end

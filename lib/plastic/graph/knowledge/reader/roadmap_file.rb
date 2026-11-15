@@ -31,12 +31,19 @@ module Plastic
 
           def database = :work
 
+          # The read replaces the rows of this slug that this home's origin wrote, so a line cannot be read twice.
           def apply(batch)
+            remove_rows(batch)
             batch.put(:roadmaps, header)
             { batches: :batches, items: :roadmap_items, edges: :roadmap_edges, log: :roadmap_log }.each { |kind, table| batch.put_all(table, rows(kind)) }
           end
 
           private
+
+          def remove_rows(batch)
+            %i[batches roadmap_items roadmap_edges roadmap_log].each { |table| batch.remove(table, roadmap: @slug) }
+            batch.remove(:roadmaps, slug: @slug)
+          end
 
           def parse(lines)
             @section = :head

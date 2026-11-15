@@ -23,7 +23,7 @@ class VerifyChangeStreamTest < Minitest::Test
   end
 
   def stream(script)
-    VerifyChange.new([], root: @root, out: @out, err: StringIO.new).send(:stream, {}, [RbConfig.ruby, "-e", script])
+    VerifyChange.new([], root: @root, out: @out, err: StringIO.new).stream({}, [RbConfig.ruby, "-e", script])
   end
 
   def test_the_runner_answers_the_exit_code_with_the_text_the_step_printed

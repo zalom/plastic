@@ -9,7 +9,7 @@ module Plastic
         # Rewrites an intent's What and Why; a done or abandoned intent refuses,
         # and a dry run prints the change and writes nothing.
         class Revise < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           CLOSED = %w[done abandoned].freeze
 

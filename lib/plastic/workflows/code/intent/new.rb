@@ -9,7 +9,7 @@ module Plastic
         # Writes a new intent's rows; the command prints its folder and store/index.json.
         class New < CodeWorkflow
           # Declares the whole chain, so a second load of the class replaces the first.
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :intent_id, :linked
 

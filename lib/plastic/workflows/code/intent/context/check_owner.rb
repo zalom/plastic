@@ -11,7 +11,7 @@ module Plastic
         class Context
           # Confirms that a context request names an existing intent in its owning store.
           class CheckOwner < CodeWorkflow
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             sets :intent
 

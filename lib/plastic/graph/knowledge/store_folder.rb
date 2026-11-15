@@ -55,6 +55,9 @@ module Plastic
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
 
+        # Every roadmap file on disk, by path.
+        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).sort
+
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
         def self.context_view?(path) = path.match?(%r{\Astore/[^/]+/context\.json\z})

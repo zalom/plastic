@@ -2,52 +2,22 @@
 # file outside test/, except four: NilCheck and IrresponsibleModule are off,
 # LongParameterList allows 5 parameters and TooManyStatements allows 10
 # statements. The exclude lists below were generated with `reek --todo` over
-# older code, so those smells stay hidden. The lists never gain an entry: a new
-# or changed method that smells is fixed, never listed. lib/plastic/ has no
-# entry and stays clean. The change gate prints the smells of a changed file
-# as a target and fails nothing, unless Reek did not run.
+# older code, so those smells stay hidden, and each entry names a smell that
+# Reek still reports. The lists never gain an entry: a new or changed method
+# that smells is fixed, never listed. The change gate prints the smells of a
+# changed file as a target and fails nothing, unless Reek did not run.
 ---
 exclude_paths:
   - test
   - tmp
   - coverage
 detectors:
-  Attribute:
-    exclude:
-    - Plastic::CLI::Output#project
-  BooleanParameter:
-    exclude:
-    - Doctor#check
-    - Lock#release
-    - Plastic::CLI::Output#flush
-    - Plastic::CLI::Output#initialize
-    - Plastic::CLI::Legacy#initialize
   ControlParameter:
     exclude:
     - ReleaseGuard#self.check
-    - Lock#release
-    - Worktree#paths
-    - Plastic::CLI::Output#flush
-    - Plastic::CLI::Legacy#initialize
-  DataClump:
-    exclude:
-    - Doctor
-    - Rollback
-    - Lock
-    - SkillCensus::Report
   DuplicateMethodCall:
     exclude:
-    - Doctor#cli
-    - Doctor#parse_args
-    - Rollback#flag_value
-    - Update#cli
-    - Doctor#read_json_safe
-    - ReleaseGuard#self.check
-    - Plastic::WorkGraph#self.build
-    - Plastic::WorkGraph#self.intents
     - Plastic::Config::AgentModels#shipped_model_for
-    - Plastic::Backup#self.call
-    - SkillCensus::Tally#build
     - ContextBudget#self.boot
     - ContextBudget#self.build_rows
     - ContextBudget#self.child_env
@@ -57,183 +27,36 @@ detectors:
     - ContextBudget#self.render
     - ContextBudget#self.report_for
     - ContextBudget::Report#byte_spread
-    - Plastic::CLI::Legacy#run
-    - Plastic::CLI::Command#self.call
-    - Plastic::CLI::Commands::Doctor#verdict
-    - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::Project::New#call
-    - Plastic::CLI::Commands::Project::New#projects
-    - Plastic::CLI::Commands::Project::New#register
-    - Plastic::CLI::Commands::Hook#self.call
-    - Plastic::CLI::Commands::Version#read
-    - Plastic::CLI::Commands::Index#call
-    - Plastic::CLI::Commands::Backup#call
   FeatureEnvy:
     exclude:
-    - Doctor#parse_args
-    - Plastic::CLI#match
     - Plastic::VersionNumber#<=>
-    - SkillCensus::Tally#resolve
-    - Plastic::CLI::Commands::Roadmap::Next#entries
-    - Plastic::CLI::Commands::Doctor#verdict
-    - Plastic::CLI::Commands::Project::New#projects
-    - Plastic::CLI::Commands::Sync#refuse
-  InstanceVariableAssumption:
-    exclude:
-    - Plastic::CLI::Scope
-    - Plastic::CLI::Output
-    - Plastic::CLI::Command
-    - Plastic::CLI::Commands::Roadmap::Next
-    - Plastic::CLI::Commands::Doctor
-    - Plastic::CLI::Commands::Next
-    - Plastic::CLI::Commands::Status
-    - Plastic::CLI::Commands::Help
-    - Plastic::CLI::Commands::Intent::End
-    - Plastic::CLI::Commands::Intent::Show
-    - Plastic::CLI::Commands::Intent::Spec
-    - Plastic::CLI::Commands::Project::Links
-    - Plastic::CLI::Commands::Search
-    - Plastic::CLI::Commands::Roadmap::Log
-    - Plastic::CLI::Commands::Project::List
-    - Plastic::CLI::Commands::Project::New
-    - Plastic::CLI::Commands::Version
-    - Plastic::CLI::Commands::Index
-    - Plastic::CLI::Commands::Roadmap::Check
-    - Plastic::CLI::Commands::Sync
-    - Plastic::CLI::Commands::Intent::New
-    - Plastic::CLI::Commands::Roadmap::Show
-    - Plastic::CLI::Commands::Backup
   IrresponsibleModule:
     enabled: false
   LongParameterList:
     max_params: 5
     exclude:
-    - Doctor#check
-    - ReleaseGuard#self.check
-    - Lock#fresh?
-    - Lock#release
-    - Worktree#paths
-    - Plastic::CLI#initialize
-    - StopGate#decide
-    - ContextBudget#self.report_for
     - ContextBudget#self.row
-    - ContextBudget#self.run
-    - ContextBudget#self.write_intent
-    - Plastic::CLI::Command#initialize
   NestedIterators:
     exclude:
     - Plastic::Installations::HookRegistry#claude_launcher_names
     - Plastic::Installations::HookRegistry#claude_settings_hooks
-    - Plastic::Backup#self.call
-    - Plastic::CLI::Output#print_rows
-    - Plastic::CLI::Commands::Intent::New#switches
   NilCheck:
     enabled: false
-  RepeatedConditional:
-    exclude:
-    - Doctor
   TooManyConstants:
     exclude:
-    - Doctor
-    - Lock
-    - Savepoint
     - Plastic::Config::AgentModels
     - Plastic::Installations::HookRegistry
     - ContextBudget
-  TooManyInstanceVariables:
-    exclude:
-    - Plastic::CLI
-    - Plastic::CLI::Scope
-    - Plastic::CLI::Output
-    - Plastic::CLI::Command
   TooManyMethods:
     exclude:
-    - Doctor
-    - Update
     - Plastic::CLI::Scope
-    - Plastic::CLI::Output
   TooManyStatements:
     max_statements: 10
     exclude:
-    - Doctor#cli
-    - Doctor#parse_args
-    - Uninstall#cli
-    - Rollback#cli
-    - Rollback#switch_to
-    - Update#cli
-    - Doctor#read_json_safe
-    - ReleaseGuard#self.check
-    - Lock#read
-    - Lock#release
-    - Lock#write
-    - Worktree#load_projects
-    - Worktree#paths
-    - Plastic::WorkGraph#self.build
-    - Plastic::WorkGraph#self.intents
-    - Plastic::Config::AgentModels#efforts_section
     - Plastic::Config::AgentModels#models_section
-    - Plastic::Installations::HookRegistry#claude_settings_hooks
-    - StopGate#decide
     - Plastic::Installations::EnginePermissions#merge_into
-    - Plastic::Installations::EnginePermissions#remove_from
-    - Plastic::Backup#self.call
-    - SkillCensus::Report#header
-    - SkillCensus::Tally#build
-    - ContextBudget#self.boot
-    - ContextBudget#self.build_fixture
-    - ContextBudget#self.build_rows
-    - ContextBudget#self.install_into
     - ContextBudget#self.render
-    - ContextBudget#self.report_for
-    - ContextBudget#self.write_project_store
-    - Plastic::CLI::Output#print_rows
-    - Plastic::CLI::Command#self.call
-    - Plastic::CLI::Commands::Doctor#call
-    - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::Intent::End#call
-    - Plastic::CLI::Commands::Intent::End#switches
-    - Plastic::CLI::Commands::Search#call
-    - Plastic::CLI::Commands::Search#switches
-    - Plastic::CLI::Commands::Roadmap::Log#call
-    - Plastic::CLI::Commands::Project::New#call
-    - Plastic::CLI::Commands::Project::New#register
-    - Plastic::CLI::Commands::Index#call
-    - Plastic::CLI::Commands::Roadmap::Check#call
-    - Plastic::CLI::Commands::Sync#call
-    - Plastic::CLI::Commands::Roadmap::Show#call
-    - Plastic::CLI::Commands::Backup#call
   UncommunicativeVariableName:
     exclude:
-    - Doctor#cli
-    - Doctor#parse_args
-    - Rollback#flag_value
-    - Lock#fresh?
-    - Lock#read
-    - Lock#release
     - Plastic::Installations::HookRegistry
     - Plastic::Installations::HookRegistry#claude_launcher_names
-    - Plastic::Installations::HookRegistry#claude_settings_hooks
-    - SkillCensus::Tally#build
-    - Plastic::CLI::Command#self.call
-    - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::Intent::End#switches
-    - Plastic::CLI::Commands::Search#call
-    - Plastic::CLI::Commands::Project::New#switches
-    - Plastic::CLI::Commands::Index#call
-    - Plastic::CLI::Commands::Sync#call
-    - Plastic::CLI::Commands::Intent::New#switches
-    - Plastic::CLI::Commands::Backup#call
-  UtilityFunction:
-    exclude:
-    - Doctor#show_help
-    - Rollback#flag_value
-    - Doctor#check
-    - Doctor#read_json_safe
-    - Doctor#safe_version
-    - Doctor#tilde
-    - SkillCensus::Tally#new_row
-    - Plastic::CLI::Scope#section
-    - Plastic::CLI::Commands::Next#listed
-    - Plastic::CLI::Commands::Status#summary
-    - Plastic::CLI::Commands::Version#read
-    - Plastic::CLI::Commands::Sync#apply

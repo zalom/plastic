@@ -8,13 +8,13 @@ require_relative "../knowledge/store_folder"
 module Plastic
   module Graph
     module Prints
-      # The store/index.json print: this installation's intents, the archives now in force and the clusters.
+      # The store/index.json print: this installation's intents, the archives now in force, the clusters and the links.
       module IndexPrint
         module_function
 
         def call(retrieval)
           data = { "store" => retrieval.store, "origin_id" => retrieval.origin_id,
-                   "intents" => retrieval.intents.map(&:index_h), "archives" => archives(retrieval), "clusters" => clusters(retrieval.clusters) }
+                   "intents" => retrieval.intents.map(&:index_h), "archives" => archives(retrieval), "clusters" => clusters(retrieval.clusters), "links" => links(retrieval.every_link) }
           Print.text(Knowledge::StoreFolder::INDEX, :work, "#{JSON.pretty_generate(data)}\n")
         end
 
@@ -32,6 +32,11 @@ module Plastic
 
         def clusters(rows)
           rows.group_by(&:name).map { |name, members| { "name" => name, "intents" => luhmann(members.map(&:intent_id)) } }
+        end
+
+        def links(rows)
+          rows.sort_by { |link| [link.from_ref, link.to_ref, link.kind] }
+            .map { |link| { "from_ref" => link.from_ref, "to_ref" => link.to_ref, "kind" => link.kind, "at" => link.at } }
         end
 
         def luhmann(ids) = ids.sort_by { |id| Knowledge::LuhmannId.segments(id) }

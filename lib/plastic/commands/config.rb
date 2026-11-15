@@ -2,7 +2,7 @@
 
 require_relative "../cli/command"
 require_relative "../cli/screen"
-require_relative "config_scope"
+require_relative "../cli/config_scope"
 
 module Plastic
   module Commands
@@ -10,7 +10,7 @@ module Plastic
     # already picked, and writes each one the person changed. See
     # docs/help/choice-screen.md.
     class Config < CLI::Command
-      include ConfigScope
+      include CLI::ConfigScope
 
       QUESTION = "Which settings are on?"
 

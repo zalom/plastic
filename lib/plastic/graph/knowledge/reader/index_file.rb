@@ -9,14 +9,16 @@ module Plastic
   module Graph
     module Knowledge
       class Reader
-        # A hand edit of store/index.json: the intent rows it lists, and the
-        # clusters, which it replaces whole.
+        # A hand edit of store/index.json: the intent rows it lists. Its clusters are read by ClusterFile.
+        # An index that another home printed gives no row of its own: it replaces the title and the state of the rows of this home.
         class IndexFile
           # `dirs` are the intent folders on disk. An entry with no folder is broken data and gets no row; nil keeps every entry.
-          def initialize(text, origin_id, dirs = nil)
+          # `rows` are the intents of this home by intent id, for an index that another home printed.
+          def initialize(text, origin_id, dirs = nil, rows = {})
             @data = JSON.parse(text.force_encoding(Encoding::UTF_8))
             @origin_id = origin_id
             @dirs = dirs
+            @rows = rows
           end
 
           def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
@@ -26,22 +28,33 @@ module Plastic
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
 
-          def apply_clusters(batch) = batch.put_all(:clusters, members)
-
           def apply(batch)
-            batch.put_all(:intents, intents).remove(:clusters).put_all(:clusters, members)
+            batch.put_all(:intents, intents)
           end
 
           private
 
-          def intents = own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry) }
+          def intents = foreign? ? crossing : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry) }
+
+          def foreign? = !object["origin_id"].nil? && object["origin_id"] != @origin_id
+
+          def crossing = own(housed(listed("intents")), object["origin_id"]).filter_map { |entry| crossed(entry) }
+
+          # The row of this home with the fields that cross taken from the entry; nil when this home holds no row or the fields are level.
+          def crossed(entry)
+            row = @rows[entry["intent_id"]]
+            return unless row&.origin_id == @origin_id
+
+            fields = Intent::CROSSING_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]))
+            row.new_row.merge(fields, updated_at: Plastic.now) unless fields.all? { |field, value| row.public_send(field) == value }
+          end
 
           def housed(entries) = @dirs ? entries.select { |entry| housed?(entry["intent_id"]) } : entries
 
           def housed?(intent_id) = @dirs.any? { |dir| dir.start_with?("store/#{intent_id}--") }
 
-          def own(entries)
-            foreign = entries.find { |entry| entry["origin_id"] != @origin_id }
+          def own(entries, origin_id = @origin_id)
+            foreign = entries.find { |entry| entry["origin_id"] != origin_id }
             return entries unless foreign
 
             raise Invalid, "#{StoreFolder::INDEX} lists #{foreign["intent_id"]} of origin #{foreign["origin_id"]}; " \

@@ -8,7 +8,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
 
   SECTIONS = ["## Components", "## The events of one call", "## What one call reads, writes and prints", "## How a call ends", "## What the page leaves out"].freeze
   SHARED = "../../dsl/README.md#what-every-call-shares"
-  OWN_CALL_PAGES = ["hook end", "hook stop", "hook start", "graph resume", "project links", "project list", "status", "project new", "config", "config list", "config get", "config set"].freeze
+  OWN_CALL_PAGES = ["hook end", "hook stop", "hook start", "project links", "status", "project new", "config"].freeze
 
   def text(words) = CommandReference::Markdown::Page.new(page(words)).to_s
 
@@ -53,7 +53,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
   end
 
   def test_a_page_with_no_workflow_has_no_workflows_figure_and_a_call_box
-    body = text("project list")
+    body = text("project links")
 
     refute_includes body, "workflows.svg"
     assert_includes body, "call.svg"
@@ -105,7 +105,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
 
   def test_an_ending_says_its_kind_in_words_with_the_literal_message
     assert_includes text("backup list"), "Usage error: name the store with --store; --project does not apply"
-    assert_includes text("project list"), "Offers the next command"
+    assert_includes text("status"), "Offers the next command"
   end
 
   def test_the_own_call_section_shows_the_check_call_next_to_the_module_call

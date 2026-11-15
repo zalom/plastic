@@ -63,20 +63,24 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     assert_equal [:none, 0], [action_of(plan), plan.pending]
   end
 
-  def test_a_hand_edited_context_view_or_roadmap_is_planned_for_a_print_up
-    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
+  def test_a_context_view_changed_since_its_print_is_planned_for_a_read_up
+    plan = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "p")
 
-    assert_equal [[:print] * 2, [1] * 2], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
+    assert_equal [:read, 1], [action_of(plan), plan.pending]
   end
 
-  def test_a_hand_edited_context_view_or_roadmap_is_named_as_printed_over_up
-    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
-
-    assert_equal [["store/1--alpha/context.json"], ["roadmaps/r1.md"]], plans.map(&:printed_over)
+  def test_a_context_view_changed_on_both_sides_is_planned_as_a_conflict_up
+    assert_equal :conflict, action_of(generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r"))
   end
 
-  def test_a_hand_edited_index_is_not_named_as_printed_over_up
-    assert_empty generated_plan(:up, "store/index.json", "f", "p", "r").printed_over
+  def test_a_roadmap_changed_since_its_print_is_planned_for_a_read_up
+    plan = generated_plan(:up, "roadmaps/r1.md", "f", "p", "p")
+
+    assert_equal [:read, 1], [action_of(plan), plan.pending]
+  end
+
+  def test_a_roadmap_changed_on_both_sides_is_planned_as_a_conflict_up
+    assert_equal :conflict, action_of(generated_plan(:up, "roadmaps/r1.md", "f", "p", "r"))
   end
 
   def built_up_with_a_hand_edited_roadmap
@@ -86,10 +90,11 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
   end
 
-  def test_build_prints_a_hand_edited_roadmap_again_and_lists_no_file_it_cannot_read
+  def test_build_lists_a_hand_edited_roadmap_it_cannot_read_and_prints_nothing_over_it
     built = built_up_with_a_hand_edited_roadmap
 
-    assert_equal [{}, :print, ["roadmaps/r1.md"]], [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last, built.printed_over]
+    assert_equal [{ "roadmaps/r1.md" => "roadmaps/r1.md is in an older form that this release does not read" }, :none],
+      [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last]
   end
 
   def test_a_generated_file_that_cannot_be_read_and_was_never_printed_here_prints_from_the_rows_up
@@ -103,7 +108,7 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
   end
 
   def test_a_generated_file_with_no_rows_is_left_alone_up
-    assert_equal :none, action_of(generated_plan(:up, "store/1--alpha/context.json", "f", nil, nil))
+    assert_equal :none, action_of(generated_plan(:up, "store/index.json", "f", nil, nil))
   end
 
   def test_a_level_generated_file_is_left_alone_up
@@ -168,7 +173,7 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
     found = Plan.entries(folder, retrieval).to_h { |entry| [entry.path, absent(entry)] }
 
     assert_equal %w[store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/spec.md
-      store/index.json], found.keys
+      store/index.json store/index.json#clusters store/index.json#links], found.keys
     assert_equal [[false, false, false], [false, true, true]], found.values_at("store/index.json", "store/1--alpha/spec.md")
   end
 

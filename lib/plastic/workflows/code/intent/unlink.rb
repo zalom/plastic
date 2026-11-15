@@ -8,7 +8,7 @@ module Plastic
       module Intent
         # Removes one link; fails when no such link exists.
         class Unlink < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :removed
 

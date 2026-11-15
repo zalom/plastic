@@ -96,7 +96,7 @@ An outcome that ends the call also takes `offers:`, the command that `next:` pri
 | --- | --- | --- | --- |
 | `step` | `step "name", done: ->(c) { ... }, say: "... %{fact} ..."` | One thing the agent does. A call prints the `say:` text of each step whose `done:` check fails, with every `%{fact}` filled in. | [`agent_workflow.rb:26`](../../../lib/plastic/agent_workflow.rb#L26) |
 | `outcome :handoff` | `outcome :handoff, offers:, because:` | Ends the call while a step is left: exit 0, or exit 1 with `stops: :failure`. | [`agent_workflow.rb:47`](../../../lib/plastic/agent_workflow.rb#L47) |
-| `outcome :done` | `outcome :done, offers:, because:` | Ends the call once every `done:` check holds. | [`agent_workflow.rb:50`](../../../lib/plastic/agent_workflow.rb#L50) |
+| `outcome :done` | `outcome :done, offers:, because:` | Ends the call once every `done:` check holds. | [`agent_workflow.rb:55`](../../../lib/plastic/agent_workflow.rb#L55) |
 
 An agent workflow always ends the call. The agent reports its work through a plastic command, and the next call checks the steps again.
 
@@ -126,10 +126,10 @@ These endings hold for every command, so a command page lists only its own.
 | a missing store | 1 | the command that creates the store | [`command.rb:93`](../../../lib/plastic/cli/command.rb#L93) |
 | a broken projects file | 1 | prints no next: line | [`command.rb:107`](../../../lib/plastic/cli/command.rb#L107) |
 | a step whose done check still fails | 1 | prints no next: line | [`step.rb:14`](../../../lib/plastic/code_workflow/step.rb#L14) |
-| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:103`](../../../lib/plastic/code_workflow.rb#L103) |
-| a print failure after the workflows | 1 | prints no next: line | [`printing.rb:50`](../../../lib/plastic/routine/printing.rb#L50) |
+| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:108`](../../../lib/plastic/code_workflow.rb#L108) |
+| a print failure after the workflows | 1 | prints no next: line | [`printing.rb:45`](../../../lib/plastic/routine/printing.rb#L45) |
 | a closing line that cannot fill | 1 | prints no next: line | [`finished.rb:29`](../../../lib/plastic/finished.rb#L29) |
-| an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:54`](../../../lib/plastic/agent_workflow.rb#L54) |
+| an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:59`](../../../lib/plastic/agent_workflow.rb#L59) |
 | a dry run that cannot open its database | 1 | prints no next: line | [`preview.rb:38`](../../../lib/plastic/routine/preview.rb#L38) |
 | a dry run that cannot copy the store | 3 | prints no next: line | [`preview.rb:46`](../../../lib/plastic/routine/preview.rb#L46) |
 

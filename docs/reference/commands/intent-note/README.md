@@ -71,11 +71,11 @@ In the words of workflow engines, the rows are these four parts:
 | --- | --- | --- | --- | --- |
 | the store folder | knowledge_graph.db | `document_fts`, `document_heads`, `document_passages`, `document_revisions`, `documents` | reads and writes | [`note.rb:16`](../../../../lib/plastic/commands/intent/note.rb#L16) |
 | the store folder | work_graph.db | `intents` | reads | [`note.rb:15`](../../../../lib/plastic/commands/intent/note.rb#L15) |
-| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
+| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
+| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
+| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
+| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
@@ -93,7 +93,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | intent INTENT_ID is STATUS; a closed intent keeps its outcome | 1 | plastic next | [`note.rb:24`](../../../../lib/plastic/workflows/code/intent/note.rb#L24) |
 | PROBLEM | 1 | prints no next: line | [`note.rb:32`](../../../../lib/plastic/workflows/code/intent/note.rb#L32) |
 | the outcome holds the note | 0 | plastic next | [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 | Usage error: KIND takes KINDS | 2 | prints no next: line | [`note.rb:21`](../../../../lib/plastic/commands/intent/note.rb#L21) |
 
 ## What the page leaves out

@@ -10,7 +10,7 @@ module Plastic
       class Backup
         # Says which folder and databases a backup would write, and writes nothing.
         class Preview < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           read "preview the backup" do |context|
             next unless context.dry_run

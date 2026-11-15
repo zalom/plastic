@@ -9,7 +9,7 @@ module Plastic
       module Intent
         # Takes a done, abandoned or future intent off the checkout, or each one older than a date. Its rows stay.
         class Archive < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           def self.archive_one(context)
             ok, problem, kind = context.work.archive_intent(context.intent_id)

@@ -11,7 +11,7 @@ module Plastic
         # Prints one intent's status, criteria count, open decisions, rulings,
         # nodes and last savepoint lines; refuses an unknown id.
         class Show < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent
 

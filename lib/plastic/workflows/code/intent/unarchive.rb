@@ -8,7 +8,7 @@ module Plastic
       module Intent
         # Restores the archived directory snapshot, including bytes and metadata.
         class Unarchive < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :ok
 

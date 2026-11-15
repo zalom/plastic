@@ -12,6 +12,7 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     nil => %i[system spawn exec fork], :Process => %i[spawn exec fork daemon], :Kernel => %i[system spawn exec fork `],
     :PTY => %i[spawn], :File => %i[popen]
   ).freeze
+  PROCESS_NAMES = /\A(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\z/
 
   # The starts of the launching guard, and the forms the kernel must not use besides:
   # fork, daemon, PTY, File.popen, a piped open or read, a rooted ::Open3, and Open3 mixed in.
@@ -20,8 +21,10 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
 
     def starts?(node)
       name = constant_name(node.receiver)
-      name == :Open3 || KERNEL_STARTERS.fetch(node.receiver && name, []).include?(node.name) || piped?(node, name) || mixes_in_open3?(node)
+      name == :Open3 || KERNEL_STARTERS.fetch(node.receiver && name, []).include?(node.name) || piped?(node, name) || mixes_in_open3?(node) || process_named?(node)
     end
+
+    def process_named?(node) = PROCESS_NAMES.match?(node.name)
 
     def mixes_in_open3?(node)
       %i[include extend].include?(node.name) && node.arguments&.arguments&.any? { |argument| constant_name(argument) == :Open3 }
@@ -80,11 +83,18 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     "File.popen" => [%(File.popen("git")), %(File.read("notes.txt"))],
     "open with a pipe" => [%(open("|git status")), %(open("notes.txt"))],
     "IO.read with a pipe" => [%(IO.read("|git status")), %(IO.read("notes.txt"))],
-    "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture3("git"))],
+    "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture("git"))],
     "include Open3" => [%(include Open3), %(include Comparable)],
     "Kernel backtick" => [%(Kernel.`("git")), %(Kernel.format("%s", name))],
     "backtick" => ["`git status`", %("Run `plastic status` first.")],
-    "%x" => ["%x(git status)", %("%x is text")]
+    "%x" => ["%x(git status)", %("%x is text")],
+    "capture3 on another receiver" => [%(ChildProcess.capture3("git")), %(Cache.capture("git"))],
+    "capture2e on a variable" => [%(runner.capture2e("git")), %(runner.capture("git"))],
+    "capture2 with no receiver" => [%(capture2("git")), %(capture_all("git"))],
+    "popen3 on a variable" => [%(shell.popen3("git")), %(shell.pop("git"))],
+    "pipeline on a variable" => [%(chain.pipeline_r("git")), %(chain.pipe("git"))],
+    "exec on a variable" => [%(db.exec("git")), %(db.execute("git"))],
+    "spawn on a variable" => [%(runner.spawn("git")), %(runner.spawned("git"))]
   }.freeze
 
   LOADING_FORMS = {

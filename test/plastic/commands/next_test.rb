@@ -149,3 +149,104 @@ class NextWithoutGoAheadTest < Plastic::TestCase
     assert_call result, code: 0, out: "1. Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve 1.\nbecause: the owner must give the go-ahead for intent 1\n"
   end
 end
+
+class NoNextNoneTest < Plastic::TestCase
+  def next_lines(result) = result.out.lines(chomp: true).grep(/\Anext: /)
+
+  def leave_as_the_installer_does = Plastic::Graph.create(home: @plastic_home, store: "global")
+
+  def test_nothing_open_sends_the_agent_to_status_and_says_why
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ["next: plastic status"], ""], [result.code, next_lines(result), result.err]
+    assert_includes result.out, "because: nothing is open"
+  end
+
+  def test_a_hand_off_with_no_command_prints_no_next_line_and_says_why
+    intent = open_intent
+    write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [done] ships\n")
+    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, []], [result.code, next_lines(result)]
+    assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
+  end
+
+  def test_json_names_status_as_next_when_nothing_is_open
+    result = plastic("next", "--json", table: Plastic::CLI::TABLE)
+    answer = JSON.parse(result.out)
+
+    assert_equal "plastic status", answer.fetch("next")
+    assert_equal "nothing is open", answer.fetch("because")
+  end
+
+  def test_json_error_with_no_offer_names_a_null_next
+    result = plastic("intent", "show", "99", "--json", table: Plastic::CLI::TABLE)
+    answer = JSON.parse(result.out)
+
+    assert_nil answer.fetch("next")
+    refute_equal "none", answer.fetch("next")
+  end
+
+  def test_a_search_with_no_hit_on_a_fresh_home_prints_no_next_line_and_exits_0
+    leave_as_the_installer_does
+    result = plastic("search", "nothing-matches-this", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, [], ""], [result.code, next_lines(result), result.err]
+  end
+
+  def test_a_document_lookup_that_finds_nothing_prints_no_next_line
+    leave_as_the_installer_does
+    result = plastic("document", "get", "plastic://global/1/spec.md", table: Plastic::CLI::TABLE)
+
+    assert_equal [1, []], [result.code, next_lines(result)]
+    refute_includes result.err, "maintenance is required"
+  end
+
+  def test_no_command_text_output_has_no_closing_next_line
+    output = Plastic::CLI::Result.new.tap { |answer| answer.offer(nil, "a reason") }
+
+    assert_equal ["because: a reason"], output.closing_lines(nil)
+  end
+end
+
+class DeliveryHandoffTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def active_intent
+    intent = specified(records: nil)
+    cli("intent", "approve", "1")
+    cli("auto", "1")
+    intent
+  end
+
+  def test_an_empty_graph_hands_planning_to_the_harness
+    active_intent
+
+    result = cli("intent", "brief", "1")
+
+    assert_includes result.out, "plastic node add"
+    refute_match(/^next: /, result.out)
+  end
+
+  def test_a_done_graph_leads_to_explicit_intent_verification
+    active_intent
+    cli("node", "add", "1", "Ship", "--criterion", KEY)
+    cli("node", "claim", "1", "n1")
+    cli("node", "done", "1", "n1", "Checked")
+
+    result = cli("next")
+
+    assert_includes result.out, "next: plastic intent end 1"
+  end
+
+  def test_the_handoff_texts_name_no_judge_option
+    active_intent
+    cli("node", "add", "1", "Ship", "--criterion", KEY)
+    brief = cli("intent", "brief", "1").out
+    claimed = cli("node", "claim", "1", "n1").out
+
+    [brief, claimed].each { |text| refute_includes text, "--judge" }
+    assert_includes claimed, "plastic node done 1 n1 TEXT"
+  end
+end

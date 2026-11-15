@@ -20,21 +20,25 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-![The call of plastic config list](call.svg)
+The call starts the workflow `Code::Config::List`, in [`list.rb:12`](../../../../lib/plastic/workflows/code/config/list.rb#L12).
 
-The command's `call`, at [`list.rb:15`](../../../../lib/plastic/commands/config/list.rb#L15):
+Lists every setting with its value: the global settings, or those of one harness with --harness. It writes nothing.
 
-```ruby
-def call
-  config.entries.each { |key, value| output.row(key, value.to_s) }
-  output.next_step("plastic config set KEY VALUE#{harness_words}", because: "the settings are listed")
-end
-```
+![How Code::Config::List runs: its steps, where it stops, and its outcomes](code_list_config.svg)
 
-Its steps run in this order:
+Its rows run in this order:
 
-1. `config.entries.each { |key, value| output.row(key, value.to_s) }` [`list.rb:16`](../../../../lib/plastic/commands/config/list.rb#L16)
-2. `output.next_step("plastic config set KEY VALUE#{harness_words}", because: "the settings are listed")` [`list.rb:17`](../../../../lib/plastic/commands/config/list.rb#L17)
+1. Read: print each setting with its value. [`list.rb:17`](../../../../lib/plastic/workflows/code/config/list.rb#L17)
+2. Outcome `:done`, always: finishes with exit 0; next: plastic config set KEY VALUEHARNESS_WORDS. [`list.rb:23`](../../../../lib/plastic/workflows/code/config/list.rb#L23)
+
+It sets `harness_words`.
+
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Config::List`.
+- **Activities**: 1 read.
+- **Transitions**: .
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 
@@ -48,7 +52,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`list.rb:17`](../../../../lib/plastic/commands/config/list.rb#L17) |
+| the settings are listed | 0 | plastic config set KEY VALUEHARNESS_WORDS | [`list.rb:23`](../../../../lib/plastic/workflows/code/config/list.rb#L23) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

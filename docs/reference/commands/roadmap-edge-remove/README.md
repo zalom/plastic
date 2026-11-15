@@ -55,7 +55,7 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`remove.rb:15`](../../../../lib/plastic/commands/roadmap/edge/remove.rb#L15) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:80`](../../../../lib/plastic/graph/prints.rb#L80) |
+| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:78`](../../../../lib/plastic/graph/prints.rb#L78) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
@@ -71,7 +71,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`remove.rb:24`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L24) |
 | edge FROM to TO is gone | 0 | plastic roadmap show SLUG | [`remove.rb:30`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 
