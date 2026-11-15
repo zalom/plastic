@@ -2,6 +2,8 @@
 
 require "tmpdir"
 require_relative "../../../../../test_helper"
+require "plastic"
+require "plastic/graph"
 
 class KnowledgeSyncPreviewChangesTest < Minitest::Test
   Changes = Plastic::Graph::Knowledge::Sync::Preview::Changes
