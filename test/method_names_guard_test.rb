@@ -11,6 +11,9 @@ class MethodNamesGuardTest < Minitest::Test
   DEFINITION = /^\s*def\s+(?:self\.)?([A-Za-z_]\w*[!?=]?)/
   RUN = /\Arun!?\z/
   TAKE = /\A(?:\w*_)?take(?:_\w*)?[!?=]?\z/
+  SCOPE = /^(\s*)(?:class|module)\s/
+  SCOPE_END = /^(\s*)end\s*$/
+  METHOD = /^(\s*)def\s+(self\.)?([A-Za-z_]\w*[!?=]?)/
 
   def sources
     FOLDERS.flat_map { |folder| Dir[File.join(ROOT, folder, "**", "*")] }.select { |path| ruby_file?(path) }
@@ -23,6 +26,34 @@ class MethodNamesGuardTest < Minitest::Test
   def defined_names(text) = text.scan(DEFINITION).flatten.reject { |name| name.start_with?("test_") }
 
   def vague_names(text) = defined_names(text).grep(Regexp.union(RUN, TAKE))
+
+  # Walks the lines with a stack of the bodies that are open; a definition belongs to the
+  # innermost body when it sits one step deeper than that body's own line.
+  def repeated_names(text)
+    bodies = []
+    text.each_line.filter_map { |line| track(bodies, line) }.uniq
+  end
+
+  def track(bodies, line)
+    indent = line[/\A\s*/].size
+    if line.match?(SCOPE)
+      bodies.push({ indent:, seen: [] })
+      nil
+    elsif line.match?(SCOPE_END)
+      bodies.pop if bodies.last && bodies.last[:indent] == indent
+      nil
+    else
+      record(bodies.last, line, indent)
+    end
+  end
+
+  def record(body, line, indent)
+    found = line.match(METHOD)
+    return unless body && found && indent == body[:indent] + 2
+
+    key = "#{found[2]}#{found[3]}"
+    (found[3] if body[:seen].include?(key)).tap { body[:seen] << key }
+  end
 
   def test_the_sources_are_read_from_the_disk
     refute_empty sources
