@@ -78,7 +78,7 @@ module Plastic
             end
 
             def self.review_required?(context)
-              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
+              Plastic::Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
             def self.pull_request_problems(check)
