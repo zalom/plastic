@@ -70,4 +70,24 @@ class DeclarationsTest < Plastic::TestCase
 
     assert_equal %i[id dir], declared.declared_names
   end
+
+  def test_changes_names_each_place_with_its_words
+    declared = tool { changes(local: "The lock is released", work: "The intent is closed") }
+
+    assert_equal({ local: "The lock is released", work: "The intent is closed" }, declared.changes)
+  end
+
+  def test_changes_with_an_empty_hash_declares_that_the_command_changes_nothing
+    assert_equal({}, tool { changes({}) }.changes)
+  end
+
+  def test_a_command_that_declares_no_changes_answers_nil
+    assert_nil tool {}.changes
+  end
+
+  def test_the_config_command_declares_the_setting_it_writes
+    require_relative "../../../lib/plastic/commands/config"
+
+    assert_equal [:home], Plastic::Commands::Config.changes.keys
+  end
 end

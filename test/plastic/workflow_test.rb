@@ -125,4 +125,34 @@ class WorkflowTest < Plastic::TestCase
 
     assert_equal 1, kept.outcomes.size
   end
+
+  def test_a_summary_is_the_one_sentence_of_the_workflow
+    flow = code do
+      summary "Greets the person by name."
+      outcome :done, because: "greeted"
+    end
+
+    assert_equal "Greets the person by name.", flow.summary
+  end
+
+  def test_a_workflow_with_no_summary_answers_nil
+    assert_nil code {}.summary
+  end
+
+  def test_clearing_the_declarations_removes_the_summary
+    flow = code { summary "Greets." }
+    flow.clear_declarations
+
+    assert_nil flow.summary
+  end
+
+  def test_a_summary_adds_no_template_and_changes_no_outcome
+    flow = code do
+      summary "Greets %{name} by name."
+      outcome :done, because: "greeted"
+    end
+
+    assert_equal ["greeted"], flow.templates
+    assert_equal :done, flow.call(context)
+  end
 end

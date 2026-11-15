@@ -65,3 +65,22 @@ class NodeVerbNamesTest < Plastic::TestCase
     assert_equal [%w[impeded needs_info], []], [%w[impeded needs_info] & Plastic::Graph::Work::Node::STATES, %w[parked flagged] & Plastic::Graph::Work::Node::STATES]
   end
 end
+
+class CLITableRoutinesTest < Minitest::Test
+  def routines = Plastic::CLI::TABLE.keys.map { |words| Plastic::CLI.tool(words) }.select { |klass| klass <= Plastic::Routine }
+
+  def problem_of(klass)
+    klass.verify
+    nil
+  rescue Plastic::Invalid => error
+    error.message
+  end
+
+  def test_the_table_holds_routines_to_verify
+    refute_empty routines
+  end
+
+  def test_every_routine_of_the_table_verifies_with_no_problem
+    assert_empty routines.filter_map { |klass| problem_of(klass) }
+  end
+end
