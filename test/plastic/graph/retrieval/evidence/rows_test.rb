@@ -18,16 +18,27 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
     batch = Recording.new([])
     Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write { batch.steps << :between }
 
-    assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", "INSERT OR IGNORE INTO document_passages", :between,
-      :document_heads, "DELETE FROM document_fts", "INSERT INTO document_fts"], batch.steps
+    assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", "INSERT OR IGNORE INTO document_passages", :between, :document_heads], batch.steps
   end
 
-  def test_a_document_without_a_known_head_skips_the_search_row_delete
+  def test_the_passages_are_written_before_the_head
     batch = Recording.new([])
-    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin, heads: Plastic::Graph::Retrieval::Evidence::Heads.new).write { nil }
+    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write { nil }
 
-    assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", "INSERT OR IGNORE INTO document_passages",
-      :document_heads, "INSERT INTO document_fts"], batch.steps
+    assert_operator batch.steps.index("INSERT OR IGNORE INTO document_passages"), :<, batch.steps.index(:document_heads)
+  end
+
+  def test_the_rows_write_no_search_row_themselves
+    batch = Recording.new([])
+    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write { nil }
+
+    assert_empty batch.steps.grep(/document_fts/)
+  end
+
+  def test_one_search_row_for_each_passage_after_a_write
+    knowledge.transaction { |batch| Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write { nil } }
+
+    assert_equal knowledge.rows("SELECT 1 FROM document_passages").size, knowledge.rows("SELECT 1 FROM document_fts").size
   end
 
   def test_the_written_rows_read_back_from_every_evidence_table
