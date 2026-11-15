@@ -5,6 +5,24 @@ require_relative "../../../../lib/plastic/commands/node/remove"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/node/claim"
 
+class NodeRemoveCaseTest < Plastic::TestCase
+  def test_removing_a_node_prints_it_and_offers_the_ready_list
+    alpha_with_node(approved: false)
+
+    assert_case line('node remove 1 n1 --reason "folded into Test"'), code: 0, out: ["node: n1 removed", "next: plastic graph ready 1"]
+  end
+
+  def test_removing_a_node_that_does_not_exist_exits_1_and_names_it
+    alpha_with_node(approved: false)
+
+    assert_case line("node remove 1 n9"), code: 1, out: "", err: ["no node n9 in intent 1"]
+  end
+
+  def test_removing_in_a_missing_intent_exits_1_and_names_it
+    assert_case line("node remove 9 n1"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class NodeRemoveTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 

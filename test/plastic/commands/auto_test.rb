@@ -3,6 +3,15 @@
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/auto"
 
+class AutoGoAheadRefusalTest < Plastic::TestCase
+  def test_a_clear_spec_with_no_go_ahead_exits_3_and_names_the_approve_command
+    alpha_specified(UNKEYED_CRITERION)
+
+    assert_case line("auto 1"), code: 3, out: "",
+      err: ["intent 1 has no go-ahead; the owner approves it with plastic intent approve 1"]
+  end
+end
+
 class AutoTest < Plastic::TestCase
   include RoadmapHelper
   include AutoHelper

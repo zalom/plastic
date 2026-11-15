@@ -3,6 +3,12 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/spec"
 
+class IntentSpecCaseTest < Plastic::TestCase
+  def test_the_spec_of_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent spec 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentSpecTest < Plastic::TestCase
   def call(*args) = plastic("intent", "spec", *args, table: Plastic::CLI::TABLE)
 

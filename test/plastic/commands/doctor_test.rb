@@ -67,6 +67,102 @@ class DoctorCommandTest < Plastic::TestCase
   end
 end
 
+class DoctorDamageCaseTest < Plastic::TestCase
+  include InstallerHelper
+  include WholeHome
+
+  def setup
+    super
+    whole_home
+    @package = fake_package(RUNNING)
+  end
+
+  def doctor(harness = "claude-code") = call("doctor", "--harness", harness, env: { "PLASTIC_PACKAGE_ROOT" => @package })
+
+  def assert_damage(label, repair)
+    result = doctor
+
+    assert_equal 1, result.code
+    assert_match(/^#{Regexp.escape(label)}:\s+(?!ok)\S/, result.out)
+    assert_includes result.out.squeeze(" "), "repair: #{repair}"
+    assert_includes result.err, DoctorCommandTest::GATE
+  end
+
+  def test_a_store_without_the_intents_table_names_the_project_repair
+    drop_table(store_path(:work), "intents")
+
+    assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
+  end
+
+  def test_a_store_without_references_db_names_the_project_repair
+    File.delete(store_path(:references))
+
+    assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
+  end
+
+  def test_a_missing_machine_database_names_the_reinstall
+    File.delete(machine_path)
+
+    assert_damage File.basename(machine_path), "plastic install --reinstall"
+  end
+
+  def test_a_hook_launcher_that_is_not_executable_names_the_reinstall
+    File.chmod(0o644, hook_file)
+
+    assert_damage "hook SessionStart", "plastic install --reinstall"
+  end
+
+  def test_a_global_claude_md_without_the_plastic_block_names_the_reinstall
+    write(File.join(claude_dir, "CLAUDE.md"), "")
+
+    assert_damage "CLAUDE.md", "plastic install --reinstall"
+  end
+
+  def test_a_project_claude_md_without_the_agents_line_names_the_line_to_add
+    write(File.join(project_dir, "CLAUDE.md"), "")
+
+    assert_damage "CLAUDE.md alpha", "add the line @AGENTS.md to #{project_dir}/CLAUDE.md"
+  end
+end
+
+class CodexDoctorDamageCaseTest < Plastic::TestCase
+  include InstallerHelper
+  include CodexHome
+
+  def setup
+    super
+    whole_codex
+    @package = fake_package(RUNNING)
+  end
+
+  def assert_damage(label, repair)
+    result = call("doctor", "--harness", "codex", env: { "PLASTIC_PACKAGE_ROOT" => @package })
+
+    assert_equal 1, result.code
+    assert_match(/^#{Regexp.escape(label)}:\s+(?!ok)\S/, result.out)
+    assert_includes result.out.squeeze(" "), "repair: #{repair}"
+    assert_includes result.err, DoctorCommandTest::GATE
+  end
+
+  def test_a_store_without_references_db_names_the_project_repair
+    File.delete(store_path(:references))
+
+    assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
+  end
+
+  def test_an_empty_codex_agents_md_names_the_reinstall
+    write(File.join(codex_dir, "AGENTS.md"), "")
+
+    assert_damage "Codex AGENTS.md", "plastic install --reinstall"
+  end
+
+  def test_a_missing_codex_record_names_init
+    File.delete(codex_record)
+
+    assert_damage "codex record", "plastic init"
+  end
+end
+
 class DoctorProcessTest < Minitest::Test
   def test_the_repair_the_doctor_names_makes_the_next_doctor_pass_that_check
     Dir.mktmpdir("doctor-process") do |home|

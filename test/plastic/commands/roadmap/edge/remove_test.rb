@@ -5,6 +5,14 @@ require_relative "../../../../../lib/plastic/commands/roadmap/batch"
 require_relative "../../../../../lib/plastic/commands/roadmap/add"
 require_relative "../../../../../lib/plastic/commands/roadmap/edge/remove"
 
+class RoadmapEdgeRemoveCaseTest < Plastic::TestCase
+  def test_removing_an_edge_that_does_not_exist_exits_1_and_names_it
+    shop_guest
+
+    assert_case line("roadmap edge remove shop guest pay"), code: 1, out: "", err: ["no edge guest to pay on roadmap shop"]
+  end
+end
+
 class RoadmapEdgeRemoveTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "edge", "remove", *args, table: Plastic::CLI::TABLE)
 

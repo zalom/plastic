@@ -5,6 +5,12 @@ require_relative "../../../../lib/plastic/commands/roadmap/batch"
 require_relative "../../../../lib/plastic/commands/roadmap/add"
 require_relative "../../../../lib/plastic/commands/roadmap/check"
 
+class RoadmapCheckCaseTest < Plastic::TestCase
+  def test_checking_a_roadmap_that_does_not_exist_exits_1_and_names_it
+    assert_case line("roadmap check shop"), code: 1, out: "", err: ["no roadmap shop"]
+  end
+end
+
 class RoadmapCheckTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "check", *args, table: Plastic::CLI::TABLE)
 

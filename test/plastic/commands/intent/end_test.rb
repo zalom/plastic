@@ -3,6 +3,19 @@
 require_relative "../../../test_helper"
 require "plastic/commands/intent/end"
 
+class IntentEndAcceptedCaseTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def test_an_accepted_close_leaves_the_intent_done_with_one_completion_and_no_next_line
+    accepted_intent
+    review_off
+    result = cli("intent", "end", "1", session: "delivery")
+
+    assert_equal [0, "done", 1], [result.code, retrieval.intent("1").status, work_rows("completions").size]
+    refute_match(/^next:/, result.out)
+  end
+end
+
 class IntentEndTest < Plastic::TestCase
   include LifecycleHelper
 

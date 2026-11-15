@@ -3,6 +3,14 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/done"
 
+class NodeDoneCaseTest < Plastic::TestCase
+  def test_finishing_a_node_nobody_claimed_exits_1_and_names_its_status
+    alpha_with_node(approved: false)
+
+    assert_case line('node done 1 n1 "Example verification"'), code: 1, out: "", err: ["node n1 is open; it cannot move to done"]
+  end
+end
+
 class NodeDoneTest < Plastic::TestCase
   include LifecycleHelper
 

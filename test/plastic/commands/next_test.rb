@@ -9,6 +9,25 @@ require_relative "../../../lib/plastic/commands/node/done"
 require_relative "../../../lib/plastic/commands/node/fail"
 require_relative "../../../lib/plastic/commands/node/ask"
 
+class NextPlanStepCaseTest < Plastic::TestCase
+  PLAN_STEP = "1. Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, " \
+    "or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE " \
+    "--criterion KEY, then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded. " \
+    "Every plan and every planned code change follows the Principle of Least Surprise: a name does what it says, a word means the same " \
+    "thing everywhere, nothing has hidden side effects, and standard conventions come first. The work graph handles every ambiguity, " \
+    "newly found issue and blocker. Resolve an ambiguity by search or research with at least 3 attempts, then ask with plastic node ask " \
+    "ID NODE TEXT, naming the question and what you tried. An impediment such as no access, a missing source or missing resources stops " \
+    "the node at once: plastic node impede ID NODE TEXT. plastic node resolve ID NODE TEXT reopens either. A newly found issue becomes " \
+    "a new node with plastic node add and plastic edge add. plastic node fail ID NODE TEXT is for work that was tried and failed."
+
+  def test_a_locked_intent_with_no_plan_hands_the_agent_the_plan_step
+    alpha_specified(UNKEYED_CRITERION)
+    ran("intent approve 1", "auto 1")
+
+    assert_case line("next"), code: 0, out: [PLAN_STEP]
+  end
+end
+
 class NextTest < Plastic::TestCase
   def call(*args) = plastic("next", *args, table: Plastic::CLI::TABLE)
 

@@ -4,6 +4,22 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/project/new"
 require_relative "../../../../lib/plastic/commands/intent/new"
 
+class ProjectNewCaseTest < Plastic::TestCase
+  def test_registering_a_project_prints_its_home_and_offers_the_first_intent
+    assert_case line("project new blog #{@home}"), code: 0, out: ["project blog: #{@home}", "next: plastic intent new TITLE --project blog"]
+  end
+
+  def test_registering_the_same_project_again_prints_the_same_lines
+    ran("project new blog #{@home}")
+
+    assert_case line("project new blog #{@home}"), code: 0, out: ["project blog: #{@home}", "next: plastic intent new TITLE --project blog"]
+  end
+
+  def test_a_name_with_a_capital_or_an_underscore_exits_2_and_names_the_rule
+    assert_case line("project new Bad_Name #{@home}"), code: 2, out: "", err: ["the name must be lowercase letters, digits and dashes"]
+  end
+end
+
 class ProjectNewTest < Plastic::TestCase
   def make(*argv) = plastic("project", "new", *argv, table: Plastic::CLI::TABLE)
 

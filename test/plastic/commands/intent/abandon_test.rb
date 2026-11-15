@@ -2,6 +2,35 @@
 
 require_relative "../../../test_helper"
 
+class IntentAbandonCaseTest < Plastic::TestCase
+  OUTCOME = "# Outcome\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n"
+
+  def abandoned
+    ran("intent new Alpha")
+    write("store/1--alpha/outcome.md", OUTCOME)
+    sync_up
+  end
+
+  def test_abandoning_prints_the_status_and_the_stop_step_for_the_processes
+    abandoned
+
+    assert_case line("intent abandon 1"), code: 0, out: ["intent: 1 abandoned",
+      "1. Stop the processes and the agents that intent 1 started: servers, watchers, background jobs and subagents. " \
+      "Plastic runs none of them and stops none of them."]
+  end
+
+  def test_abandoning_an_abandoned_intent_exits_1_and_says_it_cannot
+    abandoned
+    ran("intent abandon 1")
+
+    assert_case line("intent abandon 1"), code: 1, out: "", err: ["intent 1 is abandoned; it can no longer be abandoned"]
+  end
+
+  def test_abandoning_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent abandon 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentAbandonTest < Plastic::TestCase
   include LifecycleHelper
 

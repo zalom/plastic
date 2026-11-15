@@ -5,6 +5,12 @@ require_relative "../../../../lib/plastic/commands/graph/check"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/edge/add"
 
+class GraphCheckCaseTest < Plastic::TestCase
+  def test_checking_a_missing_intent_exits_1_and_names_it
+    assert_case line("graph check 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class GraphCheckTest < Plastic::TestCase
   def call(*args) = plastic("graph", "check", *args, table: Plastic::CLI::TABLE)
 

@@ -2,6 +2,23 @@
 
 require_relative "../../../test_helper"
 
+class IntentVerdictCaseTest < Plastic::TestCase
+  def test_an_accept_after_the_work_is_done_prints_round_1_and_offers_the_end
+    alpha_with_node
+    ran("auto 1", "node claim 1 n1", "node done 1 n1 Built")
+
+    assert_case line('intent verdict 1 accept "Every criterion holds"'), code: 0,
+      out: ["verdict: accept round 1", "next: plastic intent end 1"]
+  end
+
+  def test_a_revise_prints_round_1_and_offers_a_new_node
+    ran("intent new Alpha")
+
+    assert_case line('intent verdict 1 revise "One edge fails"'), code: 0,
+      out: ["verdict: revise round 1", "next: plastic node add 1 TITLE --criterion KEY"]
+  end
+end
+
 class IntentVerdictTest < Plastic::TestCase
   include LifecycleHelper
 

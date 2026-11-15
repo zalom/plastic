@@ -3,6 +3,29 @@
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/hooks/stop"
 
+class StopEventCaseTest < Plastic::TestCase
+  def stop(input, session)
+    plastic("hook", "stop", input:, env: { "CLAUDE_CODE_SESSION_ID" => session }, table: Plastic::CLI::TABLE)
+  end
+
+  def row(session) = store_graphs.retrieval.session(session)
+
+  def test_an_empty_event_of_a_session_nobody_started_stamps_a_turn_with_no_harness_and_prints_nothing
+    result = stop("{}", "s-9")
+
+    assert_case result, code: 0, out: "", err: ""
+    assert_equal [nil, true, nil], [row("s-9").harness, !row("s-9").last_turn_at.nil?, row("s-9").ended_at]
+  end
+
+  def test_an_event_that_is_not_json_is_read_as_empty_with_a_message_and_stamps_the_turn
+    plastic("hook", "start", input: JSON.generate(source: "startup"), env: { "CLAUDE_CODE_SESSION_ID" => "s-1" }, table: Plastic::CLI::TABLE)
+    result = stop("not json", "s-1")
+
+    assert_case result, code: 0, out: "", err: ["plastic hook: the event is not a JSON object; read as empty"]
+    assert_equal ["claude-code", true, nil], [row("s-1").harness, !row("s-1").last_turn_at.nil?, row("s-1").ended_at]
+  end
+end
+
 class StopTest < Plastic::TestCase
   fixtures :empty
 

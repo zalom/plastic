@@ -2,6 +2,17 @@
 
 require_relative "../../../test_helper"
 
+class RoadmapShowCaseTest < Plastic::TestCase
+  def test_showing_one_batch_prints_each_item_ready_or_blocked_and_offers_the_next_item
+    shop_guest
+    ran('roadmap add shop 1 pay --title "Charge on confirm" --needs guest')
+
+    assert_case line("roadmap show shop --batch 1"), code: 0, out: ["batch 1: Blockers - guest checkout is safe",
+      "item guest: Lock down guest orders - ready, needs nothing", "item pay: Charge on confirm - blocked, needs guest",
+      "next: plastic roadmap next shop"]
+  end
+end
+
 class RoadmapShowTest < Plastic::TestCase
   def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
 

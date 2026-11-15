@@ -2,6 +2,14 @@
 
 require_relative "../../../test_helper"
 
+class NodeResolveCaseTest < Plastic::TestCase
+  def test_resolving_a_node_that_is_open_exits_1_and_names_its_status
+    alpha_with_node(approved: false)
+
+    assert_case line('node resolve 1 n1 "Claude Code"'), code: 1, out: "", err: ["node n1 is open; it cannot move to open"]
+  end
+end
+
 class NodeResolveTest < Plastic::TestCase
   def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
 

@@ -2,6 +2,25 @@
 
 require_relative "../../../test_helper"
 
+class IntentNoteCaseTest < Plastic::TestCase
+  def test_a_note_prints_the_report_and_offers_next
+    ran("intent new Alpha")
+
+    assert_case line('intent note 1 "all checks pass"'), code: 0, out: ["report: all checks pass", "next: plastic next"]
+  end
+
+  def test_a_note_of_the_commit_kind_prints_the_commit_and_offers_next
+    ran("intent new Alpha")
+
+    assert_case line('intent note 1 "abc123 proves it" --kind Commit'), code: 0,
+      out: ["commit: abc123 proves it", "next: plastic next"]
+  end
+
+  def test_a_note_on_a_missing_intent_exits_1_and_names_it
+    assert_case line('intent note 9 "text"'), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentNoteTest < Plastic::TestCase
   OUTCOME = "# Outcome\n\nDelivered.\n"
   FILE = "outcome.md"

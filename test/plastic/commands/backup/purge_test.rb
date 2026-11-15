@@ -3,6 +3,50 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/backup/purge"
 
+class BackupPurgeLinesTest < Plastic::TestCase
+  include BackupHomes
+
+  def one_backup_home
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    home
+  end
+
+  def test_purging_all_prints_the_purged_folder_and_offers_the_list
+    home = one_backup_home
+    name = folder_names(home).first
+
+    assert_case purge_call(home, "--store", "alpha", "--all"), code: 0,
+      out: ["purged: alpha/#{name}", "next: plastic backup list --store alpha"]
+    assert_empty folder_names(home)
+  end
+
+  def test_purging_all_as_a_preview_names_the_folder_and_keeps_it
+    home = one_backup_home
+    name = folder_names(home).first
+
+    assert_case purge_call(home, "--store", "alpha", "--all", "--dry-run"), code: 0,
+      out: ["preview: purge alpha/#{name}", "preview: the original store was not changed", "next: plastic backup purge --store alpha --all"]
+    assert_equal [name], folder_names(home)
+  end
+
+  def test_purging_older_than_a_past_date_purges_nothing_and_offers_the_list
+    home = one_backup_home
+
+    assert_case purge_call(home, "--store", "alpha", "--older-than", "2000-01-01"), code: 0,
+      out: ["purged: nothing", "next: plastic backup list --store alpha"]
+    assert_equal 1, folder_names(home).size
+  end
+
+  def test_purging_failed_backups_when_none_failed_purges_nothing_and_offers_the_list
+    home = one_backup_home
+
+    assert_case purge_call(home, "--store", "alpha", "--failed"), code: 0,
+      out: ["purged: nothing", "next: plastic backup list --store alpha"]
+    assert_equal 1, folder_names(home).size
+  end
+end
+
 class BackupPurgeTest < Plastic::TestCase
   include BackupHomes
 

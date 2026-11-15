@@ -3,6 +3,16 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/commands/intent/lock/status"
 
+class IntentLockStatusCaseTest < Plastic::TestCase
+  def test_a_lock_taken_by_auto_is_live_for_its_session_and_offers_the_brief
+    alpha_specified(UNKEYED_CRITERION)
+    ran("intent approve 1", "auto 1")
+
+    assert_case line("intent lock status 1"), code: 0,
+      out: /lock: session s-1, mode auto, locked \S+, renewed \S+, live: renewed within 30 minutes\n.*next: plastic intent brief 1/m
+  end
+end
+
 class IntentLockStatusTest < Plastic::TestCase
   include AutoHelper
 

@@ -3,6 +3,15 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/add"
 
+class NodeAddCaseTest < Plastic::TestCase
+  def test_a_node_with_an_input_path_prints_its_id_and_offers_the_edge
+    alpha_specified
+
+    assert_case line("node add 1 Build --criterion tests-pass --input docs/plan.md"), code: 0,
+      out: ["node: n1", "next: plastic edge add 1 FROM TO"]
+  end
+end
+
 class NodeAddTest < Plastic::TestCase
   include LifecycleHelper
 

@@ -3,6 +3,12 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/rule"
 
+class IntentRuleCaseTest < Plastic::TestCase
+  def test_a_ruling_on_a_missing_intent_exits_1_and_names_it
+    assert_case line('intent rule 9 "Direct mode only"'), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentRuleTest < Plastic::TestCase
   def call(*args) = plastic("intent", "rule", *args, table: Plastic::CLI::TABLE)
 

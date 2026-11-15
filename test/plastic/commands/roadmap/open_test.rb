@@ -5,6 +5,21 @@ require_relative "../../../../lib/plastic/commands/roadmap/batch"
 require_relative "../../../../lib/plastic/commands/roadmap/add"
 require_relative "../../../../lib/plastic/commands/roadmap/open"
 
+class RoadmapOpenCaseTest < Plastic::TestCase
+  def test_opening_a_ready_item_of_a_legacy_roadmap_starts_its_intent
+    legacy_roadmap
+    ran("roadmap next make-it-useful --batch 1")
+
+    assert_case line("roadmap open make-it-useful 2"), code: 0, out: ["intent: 2"]
+  end
+
+  def test_opening_an_item_prints_its_intent_and_offers_the_brief
+    shop_guest
+
+    assert_case line("roadmap open shop guest"), code: 0, out: ["intent: 1", "next: plastic intent brief 1"]
+  end
+end
+
 class RoadmapOpenTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "open", *args, table: Plastic::CLI::TABLE)
 
