@@ -11,6 +11,7 @@ module Plastic
           # Previews sync down in a copy before the normal write workflow.
           class Preview < Up::Preview
             clear_declarations
+            summary "Previews the sync of the rows into files in a disposable copy."
 
             # Sync down reads no files by hand, so it has no gates of unreadable files.
             def self.readable_gates = nil

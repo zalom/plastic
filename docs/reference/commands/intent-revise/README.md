@@ -36,11 +36,11 @@ Its rows run in this order:
 3. Gate: passes when `!CLOSED.include?(context.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is STATUS; a closed intent keeps its What and Why. [`revise.rb:25`](../../../../lib/plastic/workflows/code/intent/revise.rb#L25)
 4. Read: check the change. [`revise.rb:29`](../../../../lib/plastic/workflows/code/intent/revise.rb#L29)
 5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`revise.rb:34`](../../../../lib/plastic/workflows/code/intent/revise.rb#L34)
-6. Read: show the change. [`revise.rb:36`](../../../../lib/plastic/workflows/code/intent/revise.rb#L36)
-7. Step: write the revision. Done when `context.dry_run || !context.new_reference.nil?`, so a second call skips it. [`revise.rb:43`](../../../../lib/plastic/workflows/code/intent/revise.rb#L43)
-8. Read: say what was written. [`revise.rb:47`](../../../../lib/plastic/workflows/code/intent/revise.rb#L47)
-9. Outcome `:previewed`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`revise.rb:52`](../../../../lib/plastic/workflows/code/intent/revise.rb#L52)
-10. Outcome `:done`, otherwise: finishes with exit 0; prints no next: line. [`revise.rb:54`](../../../../lib/plastic/workflows/code/intent/revise.rb#L54)
+6. Read: show the change. [`revise.rb:38`](../../../../lib/plastic/workflows/code/intent/revise.rb#L38)
+7. Step: write the revision. Done when `context.dry_run || !context.new_reference.nil?`, so a second call skips it. [`revise.rb:45`](../../../../lib/plastic/workflows/code/intent/revise.rb#L45)
+8. Read: say what was written. [`revise.rb:50`](../../../../lib/plastic/workflows/code/intent/revise.rb#L50)
+9. Outcome `:previewed`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`revise.rb:55`](../../../../lib/plastic/workflows/code/intent/revise.rb#L55)
+10. Outcome `:done`, otherwise: finishes with exit 0; prints no next: line. [`revise.rb:57`](../../../../lib/plastic/workflows/code/intent/revise.rb#L57)
 
 It sets `intent`, `status`, `change`, `problem`, `old_reference`, `new_reference`.
 
@@ -69,7 +69,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| write the revision | `context.dry_run \|\| !context.new_reference.nil?` | skips it | [`revise.rb:43`](../../../../lib/plastic/workflows/code/intent/revise.rb#L43) |
+| write the revision | `context.dry_run \|\| !context.new_reference.nil?` | skips it | [`revise.rb:45`](../../../../lib/plastic/workflows/code/intent/revise.rb#L45) |
 
 ## How a call ends
 
@@ -80,9 +80,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`revise.rb:23`](../../../../lib/plastic/workflows/code/intent/revise.rb#L23) |
 | intent INTENT_ID is STATUS; a closed intent keeps its What and Why | 1 | plastic next | [`revise.rb:25`](../../../../lib/plastic/workflows/code/intent/revise.rb#L25) |
 | PROBLEM | 1 | prints no next: line | [`revise.rb:34`](../../../../lib/plastic/workflows/code/intent/revise.rb#L34) |
-| the dry run wrote nothing | 0 | ORIGINAL_COMMAND | [`revise.rb:52`](../../../../lib/plastic/workflows/code/intent/revise.rb#L52) |
-| the rows and the files hold the new What and Why | 0 | prints no next: line | [`revise.rb:54`](../../../../lib/plastic/workflows/code/intent/revise.rb#L54) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the dry run wrote nothing | 0 | ORIGINAL_COMMAND | [`revise.rb:55`](../../../../lib/plastic/workflows/code/intent/revise.rb#L55) |
+| the rows and the files hold the new What and Why | 0 | prints no next: line | [`revise.rb:57`](../../../../lib/plastic/workflows/code/intent/revise.rb#L57) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

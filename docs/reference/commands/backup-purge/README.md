@@ -46,7 +46,7 @@ def call
 end
 ```
 
-The command's own `check_call`, at [`purge.rb:32`](../../../../lib/plastic/commands/backup/purge.rb#L32), runs inside it:
+The command's own `check_call`, at [`purge.rb:30`](../../../../lib/plastic/commands/backup/purge.rb#L30), runs inside it:
 
 ```ruby
 def check_call
@@ -65,9 +65,9 @@ Lists the backups a purge would delete, and deletes nothing.
 
 Its rows run in this order:
 
-1. Read: preview the purge. [`preview.rb:15`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L15)
-2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L22)
-3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup::Purge](#codebackuppurge). [`preview.rb:24`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L24)
+1. Read: preview the purge. [`preview.rb:16`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L16)
+2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L23)
+3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup::Purge](#codebackuppurge). [`preview.rb:25`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L25)
 
 ### Code::Backup::Purge
 
@@ -79,9 +79,9 @@ Deletes the backup folders of one store with their rows: all of them, or those s
 
 Its rows run in this order:
 
-1. Step: delete the backups. Done when `!context.purged.nil?`, so a second call skips it. [`purge.rb:28`](../../../../lib/plastic/workflows/code/backup/purge.rb#L28)
-2. Read: say what was deleted. [`purge.rb:35`](../../../../lib/plastic/workflows/code/backup/purge.rb#L35)
-3. Outcome `:done`, always: finishes with exit 0; next: plastic backup list --store STORE. [`purge.rb:40`](../../../../lib/plastic/workflows/code/backup/purge.rb#L40)
+1. Step: delete the backups. Done when `!context.purged.nil?`, so a second call skips it. [`purge.rb:29`](../../../../lib/plastic/workflows/code/backup/purge.rb#L29)
+2. Read: say what was deleted. [`purge.rb:37`](../../../../lib/plastic/workflows/code/backup/purge.rb#L37)
+3. Outcome `:done`, always: finishes with exit 0; next: plastic backup list --store STORE. [`purge.rb:42`](../../../../lib/plastic/workflows/code/backup/purge.rb#L42)
 
 It sets `purged`.
 
@@ -99,13 +99,12 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the home folder | local.db | `backups` | reads | found in the code, not declared |
-| the store folder | work_graph.db | not found in the code | writes | [`purge.rb:15`](../../../../lib/plastic/commands/backup/purge.rb#L15) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| delete the backups | `!context.purged.nil?` | skips it | [`purge.rb:28`](../../../../lib/plastic/workflows/code/backup/purge.rb#L28) |
+| delete the backups | `!context.purged.nil?` | skips it | [`purge.rb:29`](../../../../lib/plastic/workflows/code/backup/purge.rb#L29) |
 
 ## How a call ends
 
@@ -113,9 +112,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview deleted nothing | 0 | ORIGINAL_COMMAND | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L22) |
-| the backups named above are gone | 0 | plastic backup list --store STORE | [`purge.rb:40`](../../../../lib/plastic/workflows/code/backup/purge.rb#L40) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the preview deleted nothing | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L23) |
+| the backups named above are gone | 0 | plastic backup list --store STORE | [`purge.rb:42`](../../../../lib/plastic/workflows/code/backup/purge.rb#L42) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
 | Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
 | Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../lib/plastic/cli/backup_store.rb#L40) |
@@ -125,5 +124,3 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 ## What the page leaves out
 
 Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.

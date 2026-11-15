@@ -97,7 +97,7 @@
 <path d="M 221 165 L 226 173 L 231 165 Z" class="head"/>
 <rect x="16" y="173" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="188" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="188" class="tm tag-muted" text-anchor="end">log.rb:21</text>
+<text x="426" y="188" class="tm tag-muted" text-anchor="end">log.rb:22</text>
 <text x="26" y="205" class="t" text-anchor="start">say what was logged</text>
 <path d="M 226 218 L 226 228" class="wire"/>
 <path d="M 221 220 L 226 228 L 231 220 Z" class="head"/>

@@ -14,13 +14,16 @@ module Plastic
 
           read("forget a refusal of an earlier call") { |context| context[:removed] = nil if context.removed == false }
 
-          step "remove the edge", done: ->(context) { !context.removed.nil? } do |context|
+          step "remove the edge", done: ->(context) { !context.removed.nil? },
+            changes: { work: "The edge between two nodes of the intent is removed" } do |context|
             removed = context.work.remove_edge(intent_id: context.intent_id, from: context.from, to: context.to)
             context[:removed] = removed
             context[:problem] = removed ? nil : "no edge #{context.from} to #{context.to} in intent #{context.intent_id}"
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the intent is missing, done or abandoned, or there is no such edge",
+            pass: ->(context) { context.problem.nil? }
 
           read "say what was removed" do |context|
             context.print("edge: #{context.from} to #{context.to} removed")

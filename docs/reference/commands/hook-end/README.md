@@ -18,7 +18,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic hook end](call.svg)
 
-The hook's `respond`, at [`end.rb:10`](../../../../lib/plastic/hooks/end.rb#L10):
+The hook's `respond`, at [`end.rb:12`](../../../../lib/plastic/hooks/end.rb#L12):
 
 ```ruby
 def respond(event)
@@ -31,9 +31,9 @@ end
 
 Its steps run in this order:
 
-1. `return no_session unless session_id` [`end.rb:11`](../../../../lib/plastic/hooks/end.rb#L11)
-2. `Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])` [`end.rb:13`](../../../../lib/plastic/hooks/end.rb#L13)
-3. `nil` [`end.rb:14`](../../../../lib/plastic/hooks/end.rb#L14)
+1. `return no_session unless session_id` [`end.rb:13`](../../../../lib/plastic/hooks/end.rb#L13)
+2. `Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])` [`end.rb:15`](../../../../lib/plastic/hooks/end.rb#L15)
+3. `nil` [`end.rb:16`](../../../../lib/plastic/hooks/end.rb#L16)
 
 ## What one call reads, writes and prints
 
@@ -49,7 +49,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`end.rb:10`](../../../../lib/plastic/hooks/end.rb#L10) |
+| answers the event | 0 | prints no next: line | [`end.rb:12`](../../../../lib/plastic/hooks/end.rb#L12) |
 
 ## What the page leaves out
 

@@ -36,10 +36,10 @@ Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Step: add the item. Done when `!context.item.nil? || !context.problem.nil?`, so a second call skips it. [`add.rb:19`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L19)
-3. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:28`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L28)
-4. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`add.rb:29`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L29)
-5. Read: say what was added. [`add.rb:31`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L31)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`add.rb:35`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L35)
+3. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:29`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L29)
+4. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`add.rb:32`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L32)
+5. Read: say what was added. [`add.rb:36`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L36)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`add.rb:40`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L40)
 
 It sets `problem`, `kind`, `item`.
 
@@ -71,10 +71,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`add.rb:28`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L28) |
-| PROBLEM | 3 | prints no next: line | [`add.rb:29`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L29) |
-| item ITEM_ID is on roadmap SLUG | 0 | plastic roadmap show SLUG | [`add.rb:35`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L35) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`add.rb:29`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L29) |
+| PROBLEM | 3 | prints no next: line | [`add.rb:32`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L32) |
+| item ITEM_ID is on roadmap SLUG | 0 | plastic roadmap show SLUG | [`add.rb:40`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L40) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

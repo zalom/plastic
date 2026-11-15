@@ -30,10 +30,10 @@ Its rows run in this order:
 
 1. Read: check the intent. [`approve.rb:16`](../../../../lib/plastic/workflows/code/intent/approve.rb#L16)
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`approve.rb:20`](../../../../lib/plastic/workflows/code/intent/approve.rb#L20)
-3. Gate: passes when `!Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?`; otherwise the call stops with exit 1 and prints intent INTENT_ID names no done criterion. [`approve.rb:22`](../../../../lib/plastic/workflows/code/intent/approve.rb#L22)
-4. Step: write the go-ahead. Done when `!context.retrieval.approval(context.intent_id).nil?`, so a second call skips it. [`approve.rb:26`](../../../../lib/plastic/workflows/code/intent/approve.rb#L26)
-5. Read: say what was written. [`approve.rb:30`](../../../../lib/plastic/workflows/code/intent/approve.rb#L30)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic auto INTENT_ID. [`approve.rb:34`](../../../../lib/plastic/workflows/code/intent/approve.rb#L34)
+3. Gate: passes when `!Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?`; otherwise the call stops with exit 1 and prints intent INTENT_ID names no done criterion. [`approve.rb:24`](../../../../lib/plastic/workflows/code/intent/approve.rb#L24)
+4. Step: write the go-ahead. Done when `!context.retrieval.approval(context.intent_id).nil?`, so a second call skips it. [`approve.rb:28`](../../../../lib/plastic/workflows/code/intent/approve.rb#L28)
+5. Read: say what was written. [`approve.rb:33`](../../../../lib/plastic/workflows/code/intent/approve.rb#L33)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic auto INTENT_ID. [`approve.rb:37`](../../../../lib/plastic/workflows/code/intent/approve.rb#L37)
 
 It sets `problem`.
 
@@ -62,7 +62,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| write the go-ahead | `!context.retrieval.approval(context.intent_id).nil?` | skips it | [`approve.rb:26`](../../../../lib/plastic/workflows/code/intent/approve.rb#L26) |
+| write the go-ahead | `!context.retrieval.approval(context.intent_id).nil?` | skips it | [`approve.rb:28`](../../../../lib/plastic/workflows/code/intent/approve.rb#L28) |
 
 ## How a call ends
 
@@ -71,9 +71,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`approve.rb:20`](../../../../lib/plastic/workflows/code/intent/approve.rb#L20) |
-| intent INTENT_ID names no done criterion | 1 | plastic intent spec INTENT_ID | [`approve.rb:22`](../../../../lib/plastic/workflows/code/intent/approve.rb#L22) |
-| intent INTENT_ID has the owner's go-ahead | 0 | plastic auto INTENT_ID | [`approve.rb:34`](../../../../lib/plastic/workflows/code/intent/approve.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| intent INTENT_ID names no done criterion | 1 | plastic intent spec INTENT_ID | [`approve.rb:24`](../../../../lib/plastic/workflows/code/intent/approve.rb#L24) |
+| intent INTENT_ID has the owner's go-ahead | 0 | plastic auto INTENT_ID | [`approve.rb:37`](../../../../lib/plastic/workflows/code/intent/approve.rb#L37) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

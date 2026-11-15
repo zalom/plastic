@@ -42,15 +42,15 @@ Records lexical retrieval candidates before an external agent selects them.
 Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: check the intent id. [`discover.rb:24`](../../../../lib/plastic/workflows/code/intent/discover.rb#L24)
-3. Read: find the owning intent. [`discover.rb:28`](../../../../lib/plastic/workflows/code/intent/discover.rb#L28)
-4. Read: find the saved retrieval context. [`discover.rb:32`](../../../../lib/plastic/workflows/code/intent/discover.rb#L32)
-5. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`discover.rb:36`](../../../../lib/plastic/workflows/code/intent/discover.rb#L36)
-6. Read: check the source stores. [`discover.rb:38`](../../../../lib/plastic/workflows/code/intent/discover.rb#L38)
-7. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`discover.rb:42`](../../../../lib/plastic/workflows/code/intent/discover.rb#L42)
-8. Step: record retrieval discovery. Done when `!context.discovery.nil?`, so a second call skips it. [`discover.rb:44`](../../../../lib/plastic/workflows/code/intent/discover.rb#L44)
-9. Read: report the discovery. [`discover.rb:54`](../../../../lib/plastic/workflows/code/intent/discover.rb#L54)
-10. Outcome `:done`, always: starts the workflow [Agent::Intent::Discover](#agentintentdiscover). [`discover.rb:58`](../../../../lib/plastic/workflows/code/intent/discover.rb#L58)
+2. Read: check the intent id. [`discover.rb:25`](../../../../lib/plastic/workflows/code/intent/discover.rb#L25)
+3. Read: find the owning intent. [`discover.rb:29`](../../../../lib/plastic/workflows/code/intent/discover.rb#L29)
+4. Read: find the saved retrieval context. [`discover.rb:33`](../../../../lib/plastic/workflows/code/intent/discover.rb#L33)
+5. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`discover.rb:37`](../../../../lib/plastic/workflows/code/intent/discover.rb#L37)
+6. Read: check the source stores. [`discover.rb:39`](../../../../lib/plastic/workflows/code/intent/discover.rb#L39)
+7. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`discover.rb:43`](../../../../lib/plastic/workflows/code/intent/discover.rb#L43)
+8. Step: record retrieval discovery. Done when `!context.discovery.nil?`, so a second call skips it. [`discover.rb:47`](../../../../lib/plastic/workflows/code/intent/discover.rb#L47)
+9. Read: report the discovery. [`discover.rb:58`](../../../../lib/plastic/workflows/code/intent/discover.rb#L58)
+10. Outcome `:done`, always: starts the workflow [Agent::Intent::Discover](#agentintentdiscover). [`discover.rb:62`](../../../../lib/plastic/workflows/code/intent/discover.rb#L62)
 
 It sets `intent`, `source_scope`, `discovery`, `handoff_text`, `context_command`, `context_complete`, `problem`.
 
@@ -64,9 +64,9 @@ Gives an external agent deterministic retrieval commands without selecting evide
 
 Its rows run in this order:
 
-1. Agent step: select retrieved evidence. Done when `context.context_complete`; while it fails, the call prints its `say:` text. [`discover.rb:16`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L16)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: CONTEXT_COMMAND. [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18)
+1. Agent step: select retrieved evidence. Done when `context.context_complete`; while it fails, the call prints its `say:` text. [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: CONTEXT_COMMAND. [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`discover.rb:19`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L19)
 
 The agent step "select retrieved evidence" prints:
 
@@ -101,8 +101,8 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| record retrieval discovery | `!context.discovery.nil?` | skips it | [`discover.rb:44`](../../../../lib/plastic/workflows/code/intent/discover.rb#L44) |
-| select retrieved evidence | `context.context_complete` | skips it | [`discover.rb:16`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L16) |
+| record retrieval discovery | `!context.discovery.nil?` | skips it | [`discover.rb:47`](../../../../lib/plastic/workflows/code/intent/discover.rb#L47) |
+| select retrieved evidence | `context.context_complete` | skips it | [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17) |
 
 ## How a call ends
 
@@ -110,11 +110,11 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in owning store | 1 | prints no next: line | [`discover.rb:36`](../../../../lib/plastic/workflows/code/intent/discover.rb#L36) |
-| PROBLEM | 1 | prints no next: line | [`discover.rb:42`](../../../../lib/plastic/workflows/code/intent/discover.rb#L42) |
-| an external agent must select the evidence | 0 | CONTEXT_COMMAND | [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17) |
-| the retrieval context was submitted | 0 | prints no next: line | [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no intent INTENT_ID in owning store | 1 | prints no next: line | [`discover.rb:37`](../../../../lib/plastic/workflows/code/intent/discover.rb#L37) |
+| PROBLEM | 1 | prints no next: line | [`discover.rb:43`](../../../../lib/plastic/workflows/code/intent/discover.rb#L43) |
+| an external agent must select the evidence | 0 | CONTEXT_COMMAND | [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18) |
+| the retrieval context was submitted | 0 | prints no next: line | [`discover.rb:19`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L19) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

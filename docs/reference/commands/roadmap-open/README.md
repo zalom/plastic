@@ -31,10 +31,10 @@ Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Step: open the item's intent. Done when `!context.intent_id.nil? || !context.problem.nil?`, so a second call skips it. [`open.rb:18`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L18)
-3. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`open.rb:25`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L25)
-4. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`open.rb:26`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L26)
-5. Read: say what was opened. [`open.rb:28`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L28)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`open.rb:32`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L32)
+3. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`open.rb:26`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L26)
+4. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`open.rb:29`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L29)
+5. Read: say what was opened. [`open.rb:33`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L33)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`open.rb:37`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L37)
 
 It sets `problem`, `kind`, `intent_id`.
 
@@ -73,10 +73,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`open.rb:25`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L25) |
-| PROBLEM | 3 | prints no next: line | [`open.rb:26`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L26) |
-| item ITEM_ID opened as intent INTENT_ID | 0 | plastic intent brief INTENT_ID | [`open.rb:32`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`open.rb:26`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L26) |
+| PROBLEM | 3 | prints no next: line | [`open.rb:29`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L29) |
+| item ITEM_ID opened as intent INTENT_ID | 0 | plastic intent brief INTENT_ID | [`open.rb:37`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L37) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

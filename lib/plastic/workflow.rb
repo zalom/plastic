@@ -53,6 +53,8 @@ module Plastic
 
       def facts = (@facts ||= [])
 
+      def summary(text = nil) = text ? (@summary = text) : @summary
+
       # One way the workflow ends. `offers:` is the command next: prints and
       # `because:` the line that says why; both matter only when the outcome
       # ends the chain. Each lane adds its own rules.
@@ -89,6 +91,7 @@ module Plastic
       def clear_declarations
         facts.clear
         outcomes.clear
+        @summary = nil
       end
     end
 

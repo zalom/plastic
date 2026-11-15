@@ -14,6 +14,7 @@ module Plastic
         argument :intent_id, label: "ID", text: "the intent to archive", optional: true
         option :older_than, switch: "--older-than DATE", text: "archive every intent older than this date or time instead of one"
         writes :work, :knowledge, :references
+        changes(knowledge: "The hash of each file printed is recorded in the knowledge database")
         prints :index
         previews
 

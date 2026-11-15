@@ -46,7 +46,7 @@ class CodeWorkflowTest < Plastic::TestCase
   def test_a_done_step_is_skipped
     ran = []
     flow = code do
-      step("once", done: ->(_c) { true }) { |_c| ran << :body }
+      step("once", done: ->(_c) { true }, changes: {}) { |_c| ran << :body }
     end
 
     assert_equal :done, flow.call(context)

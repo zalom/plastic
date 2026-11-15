@@ -17,15 +17,20 @@ module Plastic
             context[:problem] = context.work.link_target_problem(context.intent_id, context.target)
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "an end of the link is missing",
+            pass: ->(context) { context.problem.nil? }
 
           read "check for a self link or a repeat" do |context|
             context[:refusal] = context.work.link_refusal(context.intent_id, context.target, context.kind)
           end
 
-          gate "%{refusal}", stops: :refusal, pass: ->(context) { context.refusal.nil? }
+          gate "%{refusal}", stops: :refusal,
+            stops_when: "the link joins an intent to itself or is already there",
+            pass: ->(context) { context.refusal.nil? }
 
-          step "add the link", done: ->(context) { !context.added.nil? } do |context|
+          step "add the link", done: ->(context) { !context.added.nil? },
+            changes: { knowledge: "A link from the intent to its target is added" } do |context|
             context[:added] = context.work.add_link(from_ref: context.intent_id, to_ref: context.target, kind: context.kind)
           end
 

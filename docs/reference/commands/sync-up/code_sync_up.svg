@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">up.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">sync_steps.rb:111</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">sync_steps.rb:116</text>
 <text x="26" y="66" class="t" text-anchor="start">plan the sync</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">sync_steps.rb:112</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">sync_steps.rb:117</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -89,7 +89,7 @@
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="140" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">sync_steps.rb:103</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">sync_steps.rb:108</text>
 <text x="26" y="176" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 162 L 464 162" class="wire-refusal"/>
 <path d="M 456 157 L 464 162 L 456 167 Z" class="head"/>
@@ -107,7 +107,7 @@
 <path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
 <rect x="16" y="294" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="309" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="309" class="tm tag-muted" text-anchor="end">sync_steps.rb:117</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">sync_steps.rb:124</text>
 <text x="26" y="326" class="t" text-anchor="start">apply the changes</text>
 <text x="26" y="341" class="tm" text-anchor="start">done when plan(context, direction).pending.zero?</text>
 <path d="M 436 312 L 464 312" class="wire-failure"/>
@@ -120,13 +120,13 @@
 <path d="M 221 355 L 226 363 L 231 355 Z" class="head"/>
 <rect x="16" y="363" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="378" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="378" class="tm tag-muted" text-anchor="end">sync_steps.rb:118</text>
+<text x="426" y="378" class="tm tag-muted" text-anchor="end">sync_steps.rb:125</text>
 <text x="26" y="395" class="t" text-anchor="start">say what changed</text>
 <path d="M 226 408 L 226 418" class="wire"/>
 <path d="M 221 410 L 226 418 L 231 410 Z" class="head"/>
 <rect x="16" y="418" width="420" height="112" rx="6" class="card"/>
 <text x="26" y="433" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="433" class="tm tag-muted" text-anchor="end">sync_steps.rb:103</text>
+<text x="426" y="433" class="tm tag-muted" text-anchor="end">sync_steps.rb:108</text>
 <text x="26" y="450" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 436 L 464 436" class="wire-refusal"/>
 <path d="M 456 431 L 464 436 L 456 441 Z" class="head"/>
@@ -142,7 +142,7 @@
 <path d="M 221 532 L 226 540 L 231 532 Z" class="head"/>
 <rect x="16" y="540" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="555" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="555" class="tm tag-muted" text-anchor="end">sync_steps.rb:103</text>
+<text x="426" y="555" class="tm tag-muted" text-anchor="end">sync_steps.rb:108</text>
 <text x="26" y="572" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 558 L 464 558" class="wire-failure"/>
 <path d="M 456 553 L 464 558 L 456 563 Z" class="head"/>
@@ -157,7 +157,7 @@
 <path d="M 221 640 L 226 648 L 231 640 Z" class="head"/>
 <rect x="16" y="648" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="663" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="663" class="tm tag-muted" text-anchor="end">sync_steps.rb:104</text>
+<text x="426" y="663" class="tm tag-muted" text-anchor="end">sync_steps.rb:109</text>
 <text x="26" y="680" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 666 L 464 666" class="wire-failure"/>
 <path d="M 456 661 L 464 666 L 456 671 Z" class="head"/>
@@ -170,7 +170,7 @@
 <path d="M 221 720 L 226 728 L 231 720 Z" class="head"/>
 <rect x="16" y="728" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="743" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="743" class="tm tag-muted" text-anchor="end">sync_steps.rb:104</text>
+<text x="426" y="743" class="tm tag-muted" text-anchor="end">sync_steps.rb:109</text>
 <text x="26" y="760" class="tm" text-anchor="start">passes when public_send(name, context)</text>
 <path d="M 436 746 L 464 746" class="wire-failure"/>
 <path d="M 456 741 L 464 746 L 456 751 Z" class="head"/>

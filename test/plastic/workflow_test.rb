@@ -73,7 +73,7 @@ class WorkflowTest < Plastic::TestCase
   end
 
   def test_a_step_needs_a_block
-    error = assert_raises(Plastic::Invalid) { code { step "empty", done: ->(_c) { true } } }
+    error = assert_raises(Plastic::Invalid) { code { step "empty", done: ->(_c) { true }, changes: {} } }
 
     assert_includes error.message, "step \"empty\" needs a block"
   end

@@ -14,6 +14,7 @@ module Plastic
       # worktree to create when its folder is missing.
       class Auto < CodeWorkflow
         clear_declarations
+        summary "Arms delivery on the intent: it goes in progress and takes the lock."
 
         sets :problem, :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing
 
@@ -68,12 +69,16 @@ module Plastic
 
         gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
         gate "auto names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
-        gate "%{session_problem}", stops: :failure, pass: ->(context) { context.session_problem.nil? }
+        gate "%{session_problem}", stops: :failure,
+          stops_when: "the session of the call has ended",
+          pass: ->(context) { context.session_problem.nil? }
         gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot be armed; pick other work",
           pass: ->(context) { context.closed_problem.nil? }
         gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
           because: "the spec needs a done criterion", pass: ->(context) { context.spec_problem.nil? }
-        gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+        gate "%{problem}", stops: :refusal,
+          stops_when: "a decision of the spec is open, another live session holds the lock of the intent, or the intent has no go-ahead",
+          pass: ->(context) { context.problem.nil? }
 
         def self.delivery_started?(context)
           retrieval = context.retrieval
@@ -83,7 +88,8 @@ module Plastic
             lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
         end
 
-        step "lock the intent and go in progress", done: method(:delivery_started?) do |context|
+        step "lock the intent and go in progress", done: method(:delivery_started?),
+          changes: { work: "The intent goes in progress", local: "The intent is locked to this session" } do |context|
           context.work.activate_intent(context.intent_id)
           context.work.lock_intent(context.intent_id, session_id: context.session, mode: "auto")
         end

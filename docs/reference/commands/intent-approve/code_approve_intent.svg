@@ -89,7 +89,7 @@
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="75" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">approve.rb:22</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">approve.rb:24</text>
 <text x="26" y="176" class="tm" text-anchor="start">passes when</text>
 <text x="26" y="191" class="tm" text-anchor="start">!Plastic::Graph::Knowledge::Spec.new(context.retrieval,</text>
 <text x="26" y="206" class="tm" text-anchor="start">context.intent_id).done_criteria.empty?</text>
@@ -103,7 +103,7 @@
 <path d="M 221 221 L 226 229 L 231 221 Z" class="head"/>
 <rect x="16" y="229" width="420" height="73" rx="6" class="card"/>
 <text x="26" y="244" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="244" class="tm tag-muted" text-anchor="end">approve.rb:26</text>
+<text x="426" y="244" class="tm tag-muted" text-anchor="end">approve.rb:28</text>
 <text x="26" y="261" class="t" text-anchor="start">write the go-ahead</text>
 <text x="26" y="276" class="tm" text-anchor="start">done when</text>
 <text x="26" y="290" class="tm" text-anchor="start">!context.retrieval.approval(context.intent_id).nil?</text>
@@ -117,7 +117,7 @@
 <path d="M 221 304 L 226 312 L 231 304 Z" class="head"/>
 <rect x="16" y="312" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="327" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="327" class="tm tag-muted" text-anchor="end">approve.rb:30</text>
+<text x="426" y="327" class="tm tag-muted" text-anchor="end">approve.rb:33</text>
 <text x="26" y="344" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 357 L 226 367" class="wire"/>
 <path d="M 221 359 L 226 367 L 231 359 Z" class="head"/>

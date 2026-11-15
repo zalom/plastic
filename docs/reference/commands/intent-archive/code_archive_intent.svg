@@ -91,7 +91,7 @@
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>
 <rect x="16" y="158" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="173" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="173" class="tm tag-muted" text-anchor="end">archive.rb:35</text>
+<text x="426" y="173" class="tm tag-muted" text-anchor="end">archive.rb:36</text>
 <text x="26" y="190" class="tm" text-anchor="start">passes when context.kind != :unfinished</text>
 <path d="M 436 176 L 464 176" class="wire-failure"/>
 <path d="M 456 171 L 464 176 L 456 181 Z" class="head"/>
@@ -102,7 +102,7 @@
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">archive.rb:38</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">archive.rb:39</text>
 <text x="26" y="245" class="tm" text-anchor="start">passes when context.kind != :failure</text>
 <path d="M 436 231 L 464 231" class="wire-failure"/>
 <path d="M 456 226 L 464 231 L 456 236 Z" class="head"/>
@@ -113,7 +113,7 @@
 <path d="M 221 260 L 226 268 L 231 260 Z" class="head"/>
 <rect x="16" y="268" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="283" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="283" class="tm tag-muted" text-anchor="end">archive.rb:39</text>
+<text x="426" y="283" class="tm tag-muted" text-anchor="end">archive.rb:42</text>
 <text x="26" y="300" class="tm" text-anchor="start">passes when context.kind != :refusal</text>
 <path d="M 436 286 L 464 286" class="wire-refusal"/>
 <path d="M 456 281 L 464 286 L 456 291 Z" class="head"/>
@@ -124,7 +124,7 @@
 <path d="M 221 315 L 226 323 L 231 315 Z" class="head"/>
 <rect x="16" y="323" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="338" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="338" class="tm tag-muted" text-anchor="end">archive.rb:41</text>
+<text x="426" y="338" class="tm tag-muted" text-anchor="end">archive.rb:46</text>
 <text x="26" y="355" class="t" text-anchor="start">say what was archived</text>
 <path d="M 226 368 L 226 378" class="wire"/>
 <path d="M 221 370 L 226 378 L 231 370 Z" class="head"/>

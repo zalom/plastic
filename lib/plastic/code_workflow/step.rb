@@ -7,7 +7,7 @@ module Plastic
   class CodeWorkflow < Workflow
     # A step that changes state. Its done: lambda says whether the change is
     # in place, before the body and again after it.
-    Step = Data.define(:name, :done, :body) do
+    Step = Data.define(:name, :done, :changes, :body) do
       def done?(ctx) = done.call(ctx)
 
       # Nil when the change is in place; a Failed when the body ran and the

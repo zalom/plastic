@@ -72,7 +72,7 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">discover.rb:11</text>
 <rect x="16" y="34" width="420" height="59" rx="6" class="lane-agent"/>
 <text x="26" y="49" class="tag tag-agent" text-anchor="start">AGENT STEP</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">discover.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">discover.rb:17</text>
 <text x="26" y="66" class="t" text-anchor="start">select retrieved evidence</text>
 <text x="26" y="81" class="tm" text-anchor="start">done when context.context_complete</text>
 <path d="M 226 93 L 226 103" class="wire"/>

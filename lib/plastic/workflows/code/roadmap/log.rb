@@ -14,7 +14,8 @@ module Plastic
 
           sets :line
 
-          step "write the log line", done: ->(context) { !context.line.nil? } do |context|
+          step "write the log line", done: ->(context) { !context.line.nil? },
+            changes: { work: "A line is added to the log of the roadmap" } do |context|
             context[:line] = context.work.add_log(context.slug, context.text)
           end
 

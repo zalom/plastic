@@ -11,6 +11,7 @@ module Plastic
           # Lists the backups a purge would delete, and deletes nothing.
           class Preview < CodeWorkflow
             clear_declarations
+            summary "Previews which backup folders a purge would delete."
 
             read "preview the purge" do |context|
               next unless context.dry_run

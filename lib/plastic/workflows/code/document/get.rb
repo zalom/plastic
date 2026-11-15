@@ -22,7 +22,9 @@ module Plastic
             context[:problem] = RetrievalRepair.new(context.scope, error).problem
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the retrieval index needs repair",
+            pass: ->(context) { context.problem.nil? }
 
           outcome :done, offers: nil, because: "the document was read"
         end

@@ -19,15 +19,19 @@ module Plastic
               after_problem(context)
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the parent, the reference, the status or the source of the new intent is not valid",
+            pass: ->(context) { context.problem.nil? }
 
-          step "write the intent", done: ->(context) { !context.intent_id.nil? } do |context|
+          step "write the intent", done: ->(context) { !context.intent_id.nil? },
+            changes: { work: "The intent is written with its first savepoint", knowledge: "The spec document of the intent is created" } do |context|
             intent = context.work.write_intent(title: context.title, parent_id: context.parent_id, ref: context.ref, kind: context.kind,
               status: context.status, reason: context.reason)
             context[:intent_id] = intent.intent_id
           end
 
-          step "link to what it grows out of", done: ->(context) { context.after.nil? || !context.linked.nil? } do |context|
+          step "link to what it grows out of", done: ->(context) { context.after.nil? || !context.linked.nil? },
+            changes: { knowledge: "A source link from the new intent to the intent it grows out of is added" } do |context|
             context.work.add_link(from_ref: context.intent_id, to_ref: context.after, kind: "source")
             context[:linked] = true
           end

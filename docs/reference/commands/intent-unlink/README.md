@@ -35,9 +35,9 @@ Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Step: remove the link. Done when `!context.removed.nil?`, so a second call skips it. [`unlink.rb:17`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L17)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`unlink.rb:23`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L23)
-4. Read: say what was removed. [`unlink.rb:25`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L25)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic sync down. [`unlink.rb:29`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L29)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`unlink.rb:24`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L24)
+4. Read: say what was removed. [`unlink.rb:28`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L28)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic sync down. [`unlink.rb:32`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L32)
 
 It sets `problem`, `removed`.
 
@@ -73,9 +73,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`unlink.rb:23`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L23) |
-| the link is gone | 0 | plastic sync down | [`unlink.rb:29`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`unlink.rb:24`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L24) |
+| the link is gone | 0 | plastic sync down | [`unlink.rb:32`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L32) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

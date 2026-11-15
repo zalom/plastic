@@ -12,6 +12,7 @@ module Plastic
           extend SyncSteps
 
           sync :up
+          summary "Reads the files people changed into rows."
         end
       end
     end

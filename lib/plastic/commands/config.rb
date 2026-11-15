@@ -16,7 +16,9 @@ module Plastic
 
       argument :answer, label: "ANSWER", text: "the person's answer to the numbered list", optional: true
 
-      def self.changes(toggles, picked)
+      changes(home: "Each setting the person switched is written to config.yml in the Plastic home")
+
+      def self.toggled(toggles, picked)
         toggles.to_h { |key, _on| [key, picked.include?(key)] }.reject { |key, on| toggles[key] == on }
       end
 
@@ -40,7 +42,7 @@ module Plastic
       end
 
       def save(picked)
-        changed = self.class.changes(toggles, picked)
+        changed = self.class.toggled(toggles, picked)
         changed.each { |key, on| write(key, on) }
         output.next_step("plastic config list#{harness_words}", because: changed.empty? ? "nothing changed" : "the changed settings are written")
       end

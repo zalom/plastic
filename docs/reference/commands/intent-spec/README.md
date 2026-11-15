@@ -39,15 +39,15 @@ Prints the grilling method, how done criteria are written, and the open question
 
 Its rows run in this order:
 
-1. Read: find the intent. [`spec.rb:23`](../../../../lib/plastic/workflows/code/intent/spec.rb#L23)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`spec.rb:27`](../../../../lib/plastic/workflows/code/intent/spec.rb#L27)
-3. Read: print the grilling method. [`spec.rb:29`](../../../../lib/plastic/workflows/code/intent/spec.rb#L29)
-4. Read: read the open decisions. [`spec.rb:34`](../../../../lib/plastic/workflows/code/intent/spec.rb#L34)
+1. Read: find the intent. [`spec.rb:24`](../../../../lib/plastic/workflows/code/intent/spec.rb#L24)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`spec.rb:28`](../../../../lib/plastic/workflows/code/intent/spec.rb#L28)
+3. Read: print the grilling method. [`spec.rb:30`](../../../../lib/plastic/workflows/code/intent/spec.rb#L30)
+4. Read: read the open decisions. [`spec.rb:35`](../../../../lib/plastic/workflows/code/intent/spec.rb#L35)
 5. Read: read the go-ahead. [`go_ahead.rb:16`](../../../../lib/plastic/workflows/go_ahead.rb#L16)
-6. Outcome `:open`, when `context.decisions.any?`: finishes with exit 0; next: plastic intent rule INTENT_ID TEXT. [`spec.rb:43`](../../../../lib/plastic/workflows/code/intent/spec.rb#L43)
-7. Outcome `:no_criterion`, when `context.criteria.empty?`: finishes with exit 0; next: plastic sync up. [`spec.rb:45`](../../../../lib/plastic/workflows/code/intent/spec.rb#L45)
-8. Outcome `:agent_needed`, when `!context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`spec.rb:47`](../../../../lib/plastic/workflows/code/intent/spec.rb#L47)
-9. Outcome `:done`, otherwise: finishes with exit 0; next: plastic auto INTENT_ID. [`spec.rb:48`](../../../../lib/plastic/workflows/code/intent/spec.rb#L48)
+6. Outcome `:open`, when `context.decisions.any?`: finishes with exit 0; next: plastic intent rule INTENT_ID TEXT. [`spec.rb:44`](../../../../lib/plastic/workflows/code/intent/spec.rb#L44)
+7. Outcome `:no_criterion`, when `context.criteria.empty?`: finishes with exit 0; next: plastic sync up. [`spec.rb:46`](../../../../lib/plastic/workflows/code/intent/spec.rb#L46)
+8. Outcome `:agent_needed`, when `!context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`spec.rb:48`](../../../../lib/plastic/workflows/code/intent/spec.rb#L48)
+9. Outcome `:done`, otherwise: finishes with exit 0; next: plastic auto INTENT_ID. [`spec.rb:49`](../../../../lib/plastic/workflows/code/intent/spec.rb#L49)
 
 It sets `intent`, `decisions`, `criteria`, `why`, `handoff_text`.
 
@@ -61,9 +61,9 @@ The harness performs judgment and records the result through commands.
 
 Its rows run in this order:
 
-1. Agent step: advance the delivery. Done when `context.handoff_text.nil?`; while it fails, the call prints its `say:` text. [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13)
+1. Agent step: advance the delivery. Done when `context.handoff_text.nil?`; while it fails, the call prints its `say:` text. [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`advance_delivery.rb:14`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L14)
 
 The agent step "advance the delivery" prints:
 
@@ -91,7 +91,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| advance the delivery | `context.handoff_text.nil?` | skips it | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11) |
+| advance the delivery | `context.handoff_text.nil?` | skips it | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
 
 ## How a call ends
 
@@ -99,13 +99,13 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`spec.rb:27`](../../../../lib/plastic/workflows/code/intent/spec.rb#L27) |
-| an open decision is still unrecorded | 0 | plastic intent rule INTENT_ID TEXT | [`spec.rb:43`](../../../../lib/plastic/workflows/code/intent/spec.rb#L43) |
-| the spec names no done criterion; write them in spec.md first | 0 | plastic sync up | [`spec.rb:45`](../../../../lib/plastic/workflows/code/intent/spec.rb#L45) |
-| the spec carries no open decision | 0 | plastic auto INTENT_ID | [`spec.rb:48`](../../../../lib/plastic/workflows/code/intent/spec.rb#L48) |
-| WHY | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
-| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`spec.rb:28`](../../../../lib/plastic/workflows/code/intent/spec.rb#L28) |
+| an open decision is still unrecorded | 0 | plastic intent rule INTENT_ID TEXT | [`spec.rb:44`](../../../../lib/plastic/workflows/code/intent/spec.rb#L44) |
+| the spec names no done criterion; write them in spec.md first | 0 | plastic sync up | [`spec.rb:46`](../../../../lib/plastic/workflows/code/intent/spec.rb#L46) |
+| the spec carries no open decision | 0 | plastic auto INTENT_ID | [`spec.rb:49`](../../../../lib/plastic/workflows/code/intent/spec.rb#L49) |
+| WHY | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
+| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:14`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L14) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

@@ -20,7 +20,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic hook start](call.svg)
 
-The hook's `respond`, at [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25):
+The hook's `respond`, at [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27):
 
 ```ruby
 def respond(event)
@@ -31,8 +31,8 @@ end
 
 Its steps run in this order:
 
-1. `doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)` [`start.rb:26`](../../../../lib/plastic/hooks/start.rb#L26)
-2. `[*recap(event), doctor.line(event[:source])].compact.join("\n")` [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27)
+1. `doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)` [`start.rb:28`](../../../../lib/plastic/hooks/start.rb#L28)
+2. `[*recap(event), doctor.line(event[:source])].compact.join("\n")` [`start.rb:29`](../../../../lib/plastic/hooks/start.rb#L29)
 
 ## What one call reads, writes and prints
 
@@ -49,7 +49,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25) |
+| answers the event | 0 | prints no next: line | [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27) |
 
 ## What the page leaves out
 

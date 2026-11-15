@@ -15,6 +15,7 @@ module Plastic
         # and the home it keeps.
         class Preview < CodeWorkflow
           clear_declarations
+          summary "Shows what an uninstall would remove before anything is removed."
 
           read "list what the uninstall would remove or change" do |context|
             if context.dry_run

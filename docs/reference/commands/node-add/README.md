@@ -33,9 +33,9 @@ Its rows run in this order:
 
 1. Read: check the intent. [`add.rb:17`](../../../../lib/plastic/workflows/code/node/add.rb#L17)
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21)
-3. Step: add the node. Done when `!context.id.nil?`, so a second call skips it. [`add.rb:23`](../../../../lib/plastic/workflows/code/node/add.rb#L23)
-4. Read: say what was added. [`add.rb:29`](../../../../lib/plastic/workflows/code/node/add.rb#L29)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic edge add INTENT_ID FROM TO. [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45)
+3. Step: add the node. Done when `!context.id.nil?`, so a second call skips it. [`add.rb:25`](../../../../lib/plastic/workflows/code/node/add.rb#L25)
+4. Read: say what was added. [`add.rb:32`](../../../../lib/plastic/workflows/code/node/add.rb#L32)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic edge add INTENT_ID FROM TO. [`add.rb:48`](../../../../lib/plastic/workflows/code/node/add.rb#L48)
 
 It sets `problem`, `id`.
 
@@ -64,7 +64,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| add the node | `!context.id.nil?` | skips it | [`add.rb:23`](../../../../lib/plastic/workflows/code/node/add.rb#L23) |
+| add the node | `!context.id.nil?` | skips it | [`add.rb:25`](../../../../lib/plastic/workflows/code/node/add.rb#L25) |
 
 ## How a call ends
 
@@ -73,8 +73,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
-| node ID is open; add the edges of the plan, then run plastic graph ready INTENT_ID | 0 | plastic edge add INTENT_ID FROM TO | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| node ID is open; add the edges of the plan, then run plastic graph ready INTENT_ID | 0 | plastic edge add INTENT_ID FROM TO | [`add.rb:48`](../../../../lib/plastic/workflows/code/node/add.rb#L48) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

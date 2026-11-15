@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">install.rb:12</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">install.rb:17</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">install.rb:18</text>
 <text x="26" y="66" class="t" text-anchor="start">check the harness settings files</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">install.rb:23</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">install.rb:24</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.broken.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -91,7 +91,7 @@
 <path d="M 221 161 L 226 169 L 231 161 Z" class="head"/>
 <rect x="16" y="169" width="420" height="84" rx="6" class="card"/>
 <text x="26" y="184" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="184" class="tm tag-muted" text-anchor="end">install.rb:25</text>
+<text x="426" y="184" class="tm tag-muted" text-anchor="end">install.rb:26</text>
 <text x="26" y="201" class="tm" text-anchor="start">passes when context.reinstall || !context.present</text>
 <path d="M 436 187 L 464 187" class="wire-refusal"/>
 <path d="M 456 182 L 464 187 L 456 192 Z" class="head"/>
@@ -105,7 +105,7 @@
 <path d="M 221 255 L 226 263 L 231 255 Z" class="head"/>
 <rect x="16" y="263" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="278" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="278" class="tm tag-muted" text-anchor="end">install.rb:28</text>
+<text x="426" y="278" class="tm tag-muted" text-anchor="end">install.rb:29</text>
 <text x="26" y="295" class="t" text-anchor="start">install the core files</text>
 <text x="26" y="310" class="tm" text-anchor="start">done when !context.installed.nil?</text>
 <path d="M 436 281 L 464 281" class="wire-failure"/>

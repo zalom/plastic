@@ -12,6 +12,7 @@ module Plastic
           extend SyncSteps
 
           sync :down
+          summary "Writes the rows that changed into files."
         end
       end
     end

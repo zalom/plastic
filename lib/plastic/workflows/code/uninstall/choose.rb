@@ -13,6 +13,7 @@ module Plastic
         # into or found in.
         class Choose < CodeWorkflow
           clear_declarations
+          summary "Chooses which installations to remove."
 
           sets :found, :picked, :harnesses
 

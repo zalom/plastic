@@ -60,7 +60,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`ready.rb:19`](../../../../lib/plastic/workflows/code/graph/ready.rb#L19) |
 | no node is ready to claim | 0 | prints no next: line | [`ready.rb:27`](../../../../lib/plastic/workflows/code/graph/ready.rb#L27) |
 | node FIRST is ready | 0 | plastic node claim INTENT_ID FIRST | [`ready.rb:28`](../../../../lib/plastic/workflows/code/graph/ready.rb#L28) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

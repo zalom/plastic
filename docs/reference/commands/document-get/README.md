@@ -34,7 +34,7 @@ Its rows run in this order:
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Read: fetch the document. [`get.rb:19`](../../../../lib/plastic/workflows/code/document/get.rb#L19)
 3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`get.rb:25`](../../../../lib/plastic/workflows/code/document/get.rb#L25)
-4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`get.rb:27`](../../../../lib/plastic/workflows/code/document/get.rb#L27)
+4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`get.rb:29`](../../../../lib/plastic/workflows/code/document/get.rb#L29)
 
 It sets `problem`.
 
@@ -60,8 +60,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`get.rb:25`](../../../../lib/plastic/workflows/code/document/get.rb#L25) |
-| the document was read | 0 | prints no next: line | [`get.rb:27`](../../../../lib/plastic/workflows/code/document/get.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the document was read | 0 | prints no next: line | [`get.rb:29`](../../../../lib/plastic/workflows/code/document/get.rb#L29) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

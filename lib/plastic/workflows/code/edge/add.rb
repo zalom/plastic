@@ -21,13 +21,16 @@ module Plastic
 
           read("forget a refusal of an earlier call") { |context| context[:added] = nil if context.added == false }
 
-          step "add the edge", done: ->(context) { !context.added.nil? } do |context|
+          step "add the edge", done: ->(context) { !context.added.nil? },
+            changes: { work: "An edge between two nodes of the intent is added" } do |context|
             added = context.work.add_edge(intent_id: context.intent_id, from: context.from, to: context.to)
             context[:added] = added
             context[:problem] = added ? nil : "edge #{context.from} to #{context.to} would loop or names a missing node"
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the intent is missing, done or abandoned, the edge would make a loop, or an end of the edge is not a node",
+            pass: ->(context) { context.problem.nil? }
 
           read "say what was added" do |context|
             context.print("edge: #{context.from} to #{context.to}")

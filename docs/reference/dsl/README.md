@@ -44,7 +44,7 @@ Each `workflow` line draws a box, and each `on` line draws a wire between two bo
 | `workflow :key do` then `end` | Runs `:key`. The `on` lines inside say where each outcome goes. | [`routine.rb:39`](../../../lib/plastic/routine.rb#L39) |
 | `on :outcome, next: :key` | That outcome runs `:key` next. | [`branches.rb:13`](../../../lib/plastic/routine/branches.rb#L13) |
 | `workflow :key, next: :other` | Every outcome of `:key` runs `:other` next. | [`chain.rb:25`](../../../lib/plastic/routine/chain.rb#L25) |
-| `next: :noop` | The call ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:73`](../../../lib/plastic/workflow.rb#L73) |
+| `next: :noop` | The call ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:75`](../../../lib/plastic/workflow.rb#L75) |
 
 The first `workflow` line is the entry. An `on` line wins over a plain `next:`.
 
@@ -77,8 +77,8 @@ Before the first call, `verify` checks the wiring and raises every fault at once
 | `gate` | `gate "reason", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | [`code_workflow.rb:35`](../../../lib/plastic/code_workflow.rb#L35) |
 | `step` | `step "name", done: ->(c) { ... } do` then `end` | while `done:` is false, and `done:` must hold after it | when it raises: exit 1 | [`code_workflow.rb:65`](../../../lib/plastic/code_workflow.rb#L65) |
 | `forget_stop` | `forget_stop :problem` | on every call | never | [`code_workflow.rb:54`](../../../lib/plastic/code_workflow.rb#L54) |
-| `outcome` | `outcome :name, if: ->(c) { ... }` | after the steps: the first whose `if:` holds wins | never | [`code_workflow.rb:74`](../../../lib/plastic/code_workflow.rb#L74) |
-| `outcome` | `outcome :name` | the fallback, with no `if:`; it comes last | never | [`code_workflow.rb:89`](../../../lib/plastic/code_workflow.rb#L89) |
+| `outcome` | `outcome :name, if: ->(c) { ... }` | after the steps: the first whose `if:` holds wins | never | [`code_workflow.rb:75`](../../../lib/plastic/code_workflow.rb#L75) |
+| `outcome` | `outcome :name` | the fallback, with no `if:`; it comes last | never | [`code_workflow.rb:90`](../../../lib/plastic/code_workflow.rb#L90) |
 
 A block does the work. A keyword lambda, `done:`, `pass:` or `if:`, answers a question and changes nothing.
 
@@ -126,7 +126,7 @@ These endings hold for every command, so a command page lists only its own.
 | a missing store | 1 | the command that creates the store | [`command.rb:93`](../../../lib/plastic/cli/command.rb#L93) |
 | a broken projects file | 1 | prints no next: line | [`command.rb:107`](../../../lib/plastic/cli/command.rb#L107) |
 | a step whose done check still fails | 1 | prints no next: line | [`step.rb:14`](../../../lib/plastic/code_workflow/step.rb#L14) |
-| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:108`](../../../lib/plastic/code_workflow.rb#L108) |
+| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:109`](../../../lib/plastic/code_workflow.rb#L109) |
 | a print failure after the workflows | 1 | prints no next: line | [`printing.rb:45`](../../../lib/plastic/routine/printing.rb#L45) |
 | a closing line that cannot fill | 1 | prints no next: line | [`finished.rb:29`](../../../lib/plastic/finished.rb#L29) |
 | an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:59`](../../../lib/plastic/agent_workflow.rb#L59) |

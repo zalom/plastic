@@ -27,13 +27,16 @@ module Plastic
             context[:approval_problem] = Auto.approval_problem(context.intent_id, context)
           end
 
-          gate "%{approval_problem}", stops: :refusal, pass: ->(context) { context.approval_problem.nil? }
+          gate "%{approval_problem}", stops: :refusal,
+            stops_when: "the intent has no go-ahead",
+            pass: ->(context) { context.approval_problem.nil? }
 
           read "forget a refusal of an earlier call" do |context|
             context[:result] = nil if STOPPED.include?(context.result.to_s)
           end
 
-          step "claim the node", done: ->(context) { !context.result.nil? } do |context|
+          step "claim the node", done: ->(context) { !context.result.nil? },
+            changes: { work: "The node is claimed by this session" } do |context|
             result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session)
             context[:result] = result
             context[:node] = node
@@ -49,8 +52,12 @@ module Plastic
             end
           end
 
-          gate "%{problem}", stops: :refusal, pass: ->(context) { context.result.to_s != "capped" }
-          gate "%{problem}", stops: :failure, pass: ->(context) { !STOPPED.include?(context.result.to_s) }
+          gate "%{problem}", stops: :refusal,
+            stops_when: "the claim is capped by the limit of nodes in progress",
+            pass: ->(context) { context.result.to_s != "capped" }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the node is blocked or refused",
+            pass: ->(context) { !STOPPED.include?(context.result.to_s) }
 
           read "print the brief" do |context|
             node = context.node

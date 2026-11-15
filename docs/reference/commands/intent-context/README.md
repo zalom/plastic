@@ -41,10 +41,10 @@ Confirms that a context request names an existing intent in its owning store.
 
 Its rows run in this order:
 
-1. Read: find the owning intent. [`check_owner.rb:18`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L18)
-2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`check_owner.rb:23`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L23)
-3. Outcome `:submit`, when `context.from`: starts the workflow [Code::Intent::Context](#codeintentcontext). [`check_owner.rb:25`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L25)
-4. Outcome `:read`, otherwise: starts the workflow [Code::Intent::Context::Read](#codeintentcontextread). [`check_owner.rb:26`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L26)
+1. Read: find the owning intent. [`check_owner.rb:19`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L19)
+2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`check_owner.rb:24`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L24)
+3. Outcome `:submit`, when `context.from`: starts the workflow [Code::Intent::Context](#codeintentcontext). [`check_owner.rb:26`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L26)
+4. Outcome `:read`, otherwise: starts the workflow [Code::Intent::Context::Read](#codeintentcontextread). [`check_owner.rb:27`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L27)
 
 It sets `intent`.
 
@@ -59,9 +59,9 @@ Reads the saved retrieval context of one intent with its evidence freshness.
 Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: read the saved context. [`read.rb:22`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L22)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`read.rb:30`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L30)
-4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`read.rb:32`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L32)
+2. Read: read the saved context. [`read.rb:23`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L23)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`read.rb:31`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L31)
+4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`read.rb:35`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L35)
 
 It sets `problem`.
 
@@ -76,11 +76,11 @@ Validates a submitted evidence selection and persists it in the owning store.
 Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: validate the submitted context. [`context.rb:24`](../../../../lib/plastic/workflows/code/intent/context.rb#L24)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`context.rb:34`](../../../../lib/plastic/workflows/code/intent/context.rb#L34)
-4. Step: save the submitted context. Done when `ContextPersistence.new(context).saved?(context.submission)`, so a second call skips it. [`context.rb:36`](../../../../lib/plastic/workflows/code/intent/context.rb#L36)
-5. Read: print the saved context. [`context.rb:40`](../../../../lib/plastic/workflows/code/intent/context.rb#L40)
-6. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`context.rb:42`](../../../../lib/plastic/workflows/code/intent/context.rb#L42)
+2. Read: validate the submitted context. [`context.rb:25`](../../../../lib/plastic/workflows/code/intent/context.rb#L25)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35)
+4. Step: save the submitted context. Done when `ContextPersistence.new(context).saved?(context.submission)`, so a second call skips it. [`context.rb:39`](../../../../lib/plastic/workflows/code/intent/context.rb#L39)
+5. Read: print the saved context. [`context.rb:44`](../../../../lib/plastic/workflows/code/intent/context.rb#L44)
+6. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`context.rb:46`](../../../../lib/plastic/workflows/code/intent/context.rb#L46)
 
 It sets `problem`, `submission`.
 
@@ -109,7 +109,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| save the submitted context | `ContextPersistence.new(context).saved?(context.submission)` | skips it | [`context.rb:36`](../../../../lib/plastic/workflows/code/intent/context.rb#L36) |
+| save the submitted context | `ContextPersistence.new(context).saved?(context.submission)` | skips it | [`context.rb:39`](../../../../lib/plastic/workflows/code/intent/context.rb#L39) |
 
 ## How a call ends
 
@@ -117,12 +117,12 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in owning store | 1 | prints no next: line | [`check_owner.rb:23`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L23) |
-| PROBLEM | 1 | prints no next: line | [`read.rb:30`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L30) |
-| the retrieval context was read | 0 | prints no next: line | [`read.rb:32`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L32) |
-| PROBLEM | 1 | prints no next: line | [`context.rb:34`](../../../../lib/plastic/workflows/code/intent/context.rb#L34) |
-| the retrieval context was read | 0 | prints no next: line | [`context.rb:42`](../../../../lib/plastic/workflows/code/intent/context.rb#L42) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no intent INTENT_ID in owning store | 1 | prints no next: line | [`check_owner.rb:24`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L24) |
+| PROBLEM | 1 | prints no next: line | [`read.rb:31`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L31) |
+| the retrieval context was read | 0 | prints no next: line | [`read.rb:35`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L35) |
+| PROBLEM | 1 | prints no next: line | [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35) |
+| the retrieval context was read | 0 | prints no next: line | [`context.rb:46`](../../../../lib/plastic/workflows/code/intent/context.rb#L46) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

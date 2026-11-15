@@ -19,7 +19,7 @@ module Fixtures
     class Stamp < Plastic::CodeWorkflow
       sets :stamp
 
-      step "stamp the call", done: ->(c) { !c.stamp.nil? } do |c|
+      step "stamp the call", done: ->(c) { !c.stamp.nil? }, changes: {} do |c|
         c[:stamp] = SecureRandom.hex(4)
       end
     end
@@ -76,7 +76,7 @@ module Fixtures
     end
 
     class Break < Plastic::CodeWorkflow
-      step "explode", done: ->(_c) { false } do |_c|
+      step "explode", done: ->(_c) { false }, changes: {} do |_c|
         raise "boom"
       end
 
@@ -84,7 +84,7 @@ module Fixtures
     end
 
     class Stuck < Plastic::CodeWorkflow
-      step "never lands", done: ->(_c) { false } do |_c|
+      step "never lands", done: ->(_c) { false }, changes: {} do |_c|
         nil
       end
 

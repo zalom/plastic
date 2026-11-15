@@ -14,6 +14,7 @@ module Plastic
         # names both and what the update would do.
         class Preview < CodeWorkflow
           clear_declarations
+          summary "Shows what an update would do before anything is changed."
 
           sets :from, :to
 

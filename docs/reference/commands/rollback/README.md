@@ -38,13 +38,13 @@ Reads the activated releases and picks the one to switch to: the named version, 
 
 Its rows run in this order:
 
-1. Read: read the activated releases. [`preview.rb:18`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L18)
-2. Gate: passes when `context.active`; otherwise the call stops with exit 3 and prints no release is installed under this home; install one with install.sh first. [`preview.rb:25`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L25)
-3. Gate: passes when `context.target.nil? || context.releases.include?(context.target)`; otherwise the call stops with exit 3 and prints TARGET is not installed. [`preview.rb:27`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L27)
-4. Gate: passes when `context.to`; otherwise the call stops with exit 3 and prints no previous release to go back to. [`preview.rb:29`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L29)
-5. Read: say what the rollback would do. [`preview.rb:31`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L31)
-6. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:39`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L39)
-7. Outcome `:continue`, otherwise: starts the workflow [Code::Rollback](#coderollback). [`preview.rb:40`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L40)
+1. Read: read the activated releases. [`preview.rb:19`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L19)
+2. Gate: passes when `context.active`; otherwise the call stops with exit 3 and prints no release is installed under this home; install one with install.sh first. [`preview.rb:26`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L26)
+3. Gate: passes when `context.target.nil? || context.releases.include?(context.target)`; otherwise the call stops with exit 3 and prints TARGET is not installed. [`preview.rb:28`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L28)
+4. Gate: passes when `context.to`; otherwise the call stops with exit 3 and prints no previous release to go back to. [`preview.rb:30`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L30)
+5. Read: say what the rollback would do. [`preview.rb:32`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L32)
+6. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:40`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L40)
+7. Outcome `:continue`, otherwise: starts the workflow [Code::Rollback](#coderollback). [`preview.rb:41`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L41)
 
 It sets `active`, `to`, `releases`.
 
@@ -58,9 +58,9 @@ Names the command that switches to the named release or the previous one. It cha
 
 Its rows run in this order:
 
-1. Read: name the switch command. [`rollback.rb:17`](../../../../lib/plastic/workflows/code/rollback.rb#L17)
-2. Read: say what a rollback means for the stored data. [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22)
-3. Outcome `:done`, always: finishes with exit 0; next: COMMAND. [`rollback.rb:26`](../../../../lib/plastic/workflows/code/rollback.rb#L26)
+1. Read: name the switch command. [`rollback.rb:18`](../../../../lib/plastic/workflows/code/rollback.rb#L18)
+2. Read: say what a rollback means for the stored data. [`rollback.rb:23`](../../../../lib/plastic/workflows/code/rollback.rb#L23)
+3. Outcome `:done`, always: finishes with exit 0; next: COMMAND. [`rollback.rb:27`](../../../../lib/plastic/workflows/code/rollback.rb#L27)
 
 It sets `command`.
 
@@ -83,12 +83,12 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no release is installed under this home; install one with install.sh first | 3 | prints no next: line | [`preview.rb:25`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L25) |
-| TARGET is not installed | 3 | prints no next: line | [`preview.rb:27`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L27) |
-| no previous release to go back to | 3 | prints no next: line | [`preview.rb:29`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L29) |
-| the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:39`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L39) |
-| this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:26`](../../../../lib/plastic/workflows/code/rollback.rb#L26) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no release is installed under this home; install one with install.sh first | 3 | prints no next: line | [`preview.rb:26`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L26) |
+| TARGET is not installed | 3 | prints no next: line | [`preview.rb:28`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L28) |
+| no previous release to go back to | 3 | prints no next: line | [`preview.rb:30`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L30) |
+| the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:40`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L40) |
+| this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:27`](../../../../lib/plastic/workflows/code/rollback.rb#L27) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

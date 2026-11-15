@@ -8,6 +8,7 @@ module Plastic
       module Intent
         # The harness writes the records the close needs and has the work judged.
         class End < AgentWorkflow
+          summary "Has the agent write the records the close needs and have the work judged."
           step "finish the required records", done: ->(context) { context.requirements.empty? },
             say: "Complete these recorded prerequisites: %{requirements}"
           step "have the delivery judged", done: ->(context) { context.judged },

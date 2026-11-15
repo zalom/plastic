@@ -12,6 +12,7 @@ module Plastic
       # into each picked harness.
       class Init < CodeWorkflow
         clear_declarations
+        summary "Installs Plastic into each chosen harness."
 
         sets :broken, :installed, :checked
 
@@ -22,7 +23,8 @@ module Plastic
         gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,
           pass: ->(context) { context.broken.nil? }
 
-        step "install Plastic into the picked harnesses", done: ->(context) { !context.installed.nil? } do |context|
+        step "install Plastic into the picked harnesses", done: ->(context) { !context.installed.nil? },
+          changes: { home: "Plastic is installed into the Plastic home", harness: "The instructions and hooks of each picked harness are written" } do |context|
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }

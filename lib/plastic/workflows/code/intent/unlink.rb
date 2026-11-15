@@ -14,13 +14,16 @@ module Plastic
 
           forget_stop :problem, :removed
 
-          step "remove the link", done: ->(context) { !context.removed.nil? } do |context|
+          step "remove the link", done: ->(context) { !context.removed.nil? },
+            changes: { knowledge: "The link between the intent and its target is removed" } do |context|
             removed = context.work.remove_link(from_ref: context.intent_id, to_ref: context.target, kind: context.kind)
             context[:removed] = removed
             context[:problem] = removed ? nil : "no #{context.kind} link from #{context.intent_id} to #{context.target}"
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "there is no such link",
+            pass: ->(context) { context.problem.nil? }
 
           read "say what was removed" do |context|
             context.print("link: #{context.intent_id} #{context.kind} #{context.target} removed")

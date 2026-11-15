@@ -35,7 +35,7 @@ Its rows run in this order:
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Read: search the indexed passages. [`search.rb:21`](../../../../lib/plastic/workflows/code/search.rb#L21)
 3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`search.rb:27`](../../../../lib/plastic/workflows/code/search.rb#L27)
-4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`search.rb:29`](../../../../lib/plastic/workflows/code/search.rb#L29)
+4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`search.rb:31`](../../../../lib/plastic/workflows/code/search.rb#L31)
 
 It sets `problem`.
 
@@ -61,8 +61,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`search.rb:27`](../../../../lib/plastic/workflows/code/search.rb#L27) |
-| the indexed passages were read | 0 | prints no next: line | [`search.rb:29`](../../../../lib/plastic/workflows/code/search.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the indexed passages were read | 0 | prints no next: line | [`search.rb:31`](../../../../lib/plastic/workflows/code/search.rb#L31) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

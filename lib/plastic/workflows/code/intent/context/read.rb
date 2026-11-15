@@ -14,6 +14,7 @@ module Plastic
           # Reads the saved retrieval context of one intent with its evidence freshness.
           class Read < CodeWorkflow
             clear_declarations
+            summary "Prints the saved retrieval context of the intent."
 
             sets :problem
 
@@ -27,7 +28,9 @@ module Plastic
               context[:problem] = RetrievalRepair.new(context.scope, error).problem
             end
 
-            gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+            gate "%{problem}", stops: :failure,
+              stops_when: "no retrieval context is saved, or a store needs repair",
+              pass: ->(context) { context.problem.nil? }
 
             outcome :done, offers: nil, because: "the retrieval context was read"
           end

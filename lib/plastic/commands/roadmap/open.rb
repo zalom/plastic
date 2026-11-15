@@ -11,6 +11,7 @@ module Plastic
         argument :slug, label: "SLUG", text: "the roadmap"
         argument :item_id, label: "ITEM", text: "the item to open"
         writes :work, :knowledge, :references
+        changes(knowledge: "The hash of each file printed is recorded in the knowledge database", references: "The hash of each file printed is recorded in the references database")
         prints :roadmap, :intent
 
         workflow :code_open_roadmap_item, next: :noop

@@ -31,9 +31,9 @@ Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Step: restore the intent. Done when `!context.ok.nil? || !context.problem.nil?`, so a second call skips it. [`unarchive.rb:17`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L17)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`unarchive.rb:23`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L23)
-4. Read: say it was restored. [`unarchive.rb:25`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L25)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic intent show INTENT_ID. [`unarchive.rb:29`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L29)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`unarchive.rb:24`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L24)
+4. Read: say it was restored. [`unarchive.rb:28`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L28)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic intent show INTENT_ID. [`unarchive.rb:32`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L32)
 
 It sets `problem`, `ok`.
 
@@ -67,9 +67,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`unarchive.rb:23`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L23) |
-| intent INTENT_ID is back on the checkout | 0 | plastic intent show INTENT_ID | [`unarchive.rb:29`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`unarchive.rb:24`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L24) |
+| intent INTENT_ID is back on the checkout | 0 | plastic intent show INTENT_ID | [`unarchive.rb:32`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L32) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

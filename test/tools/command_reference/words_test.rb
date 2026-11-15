@@ -2,6 +2,7 @@
 
 require_relative "../../command_reference_helper"
 require_relative "../../fixtures/wordless"
+require_relative "../../fixtures/worded"
 
 class CommandReferenceWordsTest < Minitest::Test
   def test_no_words_wrap_to_one_empty_line
@@ -75,17 +76,27 @@ class CommandReferenceMissingWordsTest < Minitest::Test
   end
 end
 
+class CommandReferenceCompleteWordsTest < Minitest::Test
+  include CommandReferenceHelper
+
+  def test_a_page_with_every_word_is_named_nowhere
+    model = CommandReference::Model.new(CommandReferenceHelper::ROOT, table: Fixtures::Worded::TABLE)
+
+    assert_empty CommandReference::Words.missing(Fixtures::Worded::TABLE.keys.map { |words| model.page(words) })
+  end
+end
+
 class CommandReferenceRealWordsTest < Minitest::Test
   include CommandReferenceHelper
 
   def missing(words) = CommandReference::Words.missing([page(words)])
 
-  def test_intent_context_names_the_change_it_makes_in_the_knowledge_graph
-    refute_empty missing("intent context").select { |line| line.include?("knowledge") }
+  def test_intent_context_words_the_change_it_makes_in_the_knowledge_graph
+    assert_empty missing("intent context")
   end
 
-  def test_config_set_names_the_change_it_makes_in_the_settings
-    refute_empty missing("config set").select { |line| line.include?("home") }
+  def test_config_set_words_the_change_it_makes_in_the_settings
+    assert_empty missing("config set")
   end
 end
 
@@ -103,7 +114,7 @@ class CommandReferencePlacesTest < Minitest::Test
   end
 
   def test_a_change_at_an_unknown_place_is_named_by_the_check
-    flow = Struct.new(:rows).new([])
+    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary).new([], nil), [], [])
     page = Struct.new(:words, :flows, :klass).new("odd", [flow], Struct.new(:writes, :changes).new([], { weather: "The weather changes" }))
 
     assert(CommandReference::Words.missing([page]).any? { |line| line.include?("weather") && line.include?("place") })

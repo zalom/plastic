@@ -34,8 +34,8 @@ Its rows run in this order:
 2. Read: find the item. [`drop.rb:18`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L18)
 3. Gate: passes when `!context.item.nil?`; otherwise the call stops with exit 1 and prints no item ITEM_ID on roadmap SLUG. [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22)
 4. Step: drop the item. Done when `context.dropped`, so a second call skips it. [`drop.rb:24`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L24)
-5. Read: say what was dropped. [`drop.rb:28`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L28)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap next SLUG. [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32)
+5. Read: say what was dropped. [`drop.rb:29`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L29)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap next SLUG. [`drop.rb:33`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L33)
 
 It sets `item`, `dropped`.
 
@@ -69,8 +69,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no roadmap SLUG | 1 | prints no next: line | [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14) |
 | no item ITEM_ID on roadmap SLUG | 1 | prints no next: line | [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22) |
-| item ITEM_ID no longer blocks its successors | 0 | plastic roadmap next SLUG | [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| item ITEM_ID no longer blocks its successors | 0 | plastic roadmap next SLUG | [`drop.rb:33`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L33) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

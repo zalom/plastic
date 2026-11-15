@@ -25,7 +25,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic config](call.svg)
 
-The command's `call`, at [`config.rb:23`](../../../../lib/plastic/commands/config.rb#L23):
+The command's `call`, at [`config.rb:25`](../../../../lib/plastic/commands/config.rb#L25):
 
 ```ruby
 def call
@@ -37,9 +37,9 @@ end
 
 Its steps run in this order:
 
-1. `result = pick(choices)` [`config.rb:24`](../../../../lib/plastic/commands/config.rb#L24)
-2. `save(result.labels) if result.is_a?(CLI::Screen::Chosen)` [`config.rb:25`](../../../../lib/plastic/commands/config.rb#L25)
-3. `output.next_step("plastic config list#{harness_words}", because: "the person left with no change") if result.is_a?(CLI::Screen::Left)` [`config.rb:26`](../../../../lib/plastic/commands/config.rb#L26)
+1. `result = pick(choices)` [`config.rb:26`](../../../../lib/plastic/commands/config.rb#L26)
+2. `save(result.labels) if result.is_a?(CLI::Screen::Chosen)` [`config.rb:27`](../../../../lib/plastic/commands/config.rb#L27)
+3. `output.next_step("plastic config list#{harness_words}", because: "the person left with no change") if result.is_a?(CLI::Screen::Left)` [`config.rb:28`](../../../../lib/plastic/commands/config.rb#L28)
 
 ## What one call reads, writes and prints
 
@@ -53,8 +53,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:26`](../../../../lib/plastic/commands/config.rb#L26) |
-| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:45`](../../../../lib/plastic/commands/config.rb#L45) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:28`](../../../../lib/plastic/commands/config.rb#L28) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:47`](../../../../lib/plastic/commands/config.rb#L47) |
 
 ## What the page leaves out
 

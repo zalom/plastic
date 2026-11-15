@@ -17,7 +17,8 @@ module Plastic
 
           sets :batch
 
-          step "write the batch", done: ->(context) { !context.batch.nil? } do |context|
+          step "write the batch", done: ->(context) { !context.batch.nil? },
+            changes: { work: "The batch of the roadmap is written" } do |context|
             fields = Plastic::Graph::Knowledge::Roadmap::Writer::Fields.new(title: context.title, goal: context.goal, done: context.done)
             context[:batch] = context.work.write_batch(context.slug, context.position.to_i, fields:)
           end

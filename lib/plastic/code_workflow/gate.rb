@@ -8,7 +8,9 @@ module Plastic
   class CodeWorkflow < Workflow
     # A check that stops the call unless its pass: lambda holds. It prints
     # its reason as a refusal, exit 3, or as a failure, exit 1.
-    Gate = Data.define(:reason, :stops, :pass, :offers, :because) do
+    Gate = Data.define(:reason, :stops, :pass, :offers, :because, :stops_when) do
+      def initialize(stops_when: nil, **rest) = super
+
       def name = "gate"
 
       def templates = [reason, offers, because].compact

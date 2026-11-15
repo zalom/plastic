@@ -41,9 +41,9 @@ On a dry run, lists each core file the install would add or replace.
 
 Its rows run in this order:
 
-1. Read: list the core files the install would write. [`preview.rb:15`](../../../../lib/plastic/workflows/code/install/preview.rb#L15)
-2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23)
-3. Outcome `:continue`, otherwise: starts the workflow [Code::Install](#codeinstall). [`preview.rb:25`](../../../../lib/plastic/workflows/code/install/preview.rb#L25)
+1. Read: list the core files the install would write. [`preview.rb:16`](../../../../lib/plastic/workflows/code/install/preview.rb#L16)
+2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:24`](../../../../lib/plastic/workflows/code/install/preview.rb#L24)
+3. Outcome `:continue`, otherwise: starts the workflow [Code::Install](#codeinstall). [`preview.rb:26`](../../../../lib/plastic/workflows/code/install/preview.rb#L26)
 
 ### Code::Install
 
@@ -55,11 +55,11 @@ Copies the core files into the home. A reinstall also syncs the harnesses Plasti
 
 Its rows run in this order:
 
-1. Read: check the harness settings files. [`install.rb:17`](../../../../lib/plastic/workflows/code/install.rb#L17)
-2. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`install.rb:23`](../../../../lib/plastic/workflows/code/install.rb#L23)
-3. Gate: passes when `context.reinstall || !context.present`; otherwise the call stops with exit 3 and prints Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again. [`install.rb:25`](../../../../lib/plastic/workflows/code/install.rb#L25)
-4. Step: install the core files. Done when `!context.installed.nil?`, so a second call skips it. [`install.rb:28`](../../../../lib/plastic/workflows/code/install.rb#L28)
-5. Outcome `:done`, always: starts the workflow [Agent::Install](#agentinstall). [`install.rb:36`](../../../../lib/plastic/workflows/code/install.rb#L36)
+1. Read: check the harness settings files. [`install.rb:18`](../../../../lib/plastic/workflows/code/install.rb#L18)
+2. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`install.rb:24`](../../../../lib/plastic/workflows/code/install.rb#L24)
+3. Gate: passes when `context.reinstall || !context.present`; otherwise the call stops with exit 3 and prints Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again. [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26)
+4. Step: install the core files. Done when `!context.installed.nil?`, so a second call skips it. [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29)
+5. Outcome `:done`, always: starts the workflow [Agent::Install](#agentinstall). [`install.rb:38`](../../../../lib/plastic/workflows/code/install.rb#L38)
 
 It sets `broken`, `present`, `installed`.
 
@@ -73,9 +73,9 @@ After a first install, the agent may offer Enola to the person. Plastic runs no 
 
 Its rows run in this order:
 
-1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:13`](../../../../lib/plastic/workflows/agent/install.rb#L13)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:18`](../../../../lib/plastic/workflows/agent/install.rb#L18)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19)
+1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:14`](../../../../lib/plastic/workflows/agent/install.rb#L14)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:20`](../../../../lib/plastic/workflows/agent/install.rb#L20)
 
 The agent step "offer Enola" prints:
 
@@ -100,8 +100,8 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| install the core files | `!context.installed.nil?` | skips it | [`install.rb:28`](../../../../lib/plastic/workflows/code/install.rb#L28) |
-| offer Enola | `context.reinstall` | skips it | [`install.rb:13`](../../../../lib/plastic/workflows/agent/install.rb#L13) |
+| install the core files | `!context.installed.nil?` | skips it | [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29) |
+| offer Enola | `context.reinstall` | skips it | [`install.rb:14`](../../../../lib/plastic/workflows/agent/install.rb#L14) |
 
 ## How a call ends
 
@@ -109,12 +109,12 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23) |
-| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install.rb:23`](../../../../lib/plastic/workflows/code/install.rb#L23) |
-| Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | 3 | prints no next: line | [`install.rb:25`](../../../../lib/plastic/workflows/code/install.rb#L25) |
-| Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:18`](../../../../lib/plastic/workflows/agent/install.rb#L18) |
-| a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:24`](../../../../lib/plastic/workflows/code/install/preview.rb#L24) |
+| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install.rb:24`](../../../../lib/plastic/workflows/code/install.rb#L24) |
+| Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | 3 | prints no next: line | [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26) |
+| Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19) |
+| a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:20`](../../../../lib/plastic/workflows/agent/install.rb#L20) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

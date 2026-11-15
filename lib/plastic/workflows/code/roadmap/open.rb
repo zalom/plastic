@@ -15,15 +15,20 @@ module Plastic
 
           forget_stop :problem, :kind
 
-          step "open the item's intent", done: ->(context) { !context.intent_id.nil? || !context.problem.nil? } do |context|
+          step "open the item's intent", done: ->(context) { !context.intent_id.nil? || !context.problem.nil? },
+            changes: { work: "The item's intent is opened and the item points to it" } do |context|
             intent_id, problem, kind = context.work.open_roadmap_item(context.slug, context.item_id)
             context[:intent_id] = intent_id
             context[:problem] = problem
             context[:kind] = kind
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
-          gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the item cannot be opened and the call failed",
+            pass: ->(context) { context.kind != :failure }
+          gate "%{problem}", stops: :refusal,
+            stops_when: "the item is refused",
+            pass: ->(context) { context.kind != :refusal }
 
           read "say what was opened" do |context|
             context.print("intent: #{context.intent_id}")

@@ -12,6 +12,7 @@ module Plastic
         class Abandon
           # Reads the intent and its lock: a missing or closed intent fails, a foreign live lock refuses, and an outcome without a Reverted line hands over the revert steps.
           class Prepare < CodeWorkflow
+            summary "Reads the intent and its lock and checks that it can be abandoned."
             sets :intent, :status, :problem, :intent_folder, :reverted
 
             read "read the intent" do |context|
@@ -29,10 +30,12 @@ module Plastic
               context[:reverted] = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id).verification.reverted?
             end
 
-            gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+            gate "%{problem}", stops: :refusal,
+              stops_when: "another session holds the delivery of the intent, or the intent is missing or closed",
+              pass: ->(context) { context.problem.nil? }
 
-            outcome :reverting, if: ->(context) { !context.reverted }
-            outcome :abandoning
+            outcome :reverting, if: ->(context) { !context.reverted }, because: "the work of the intent is not reverted yet"
+            outcome :abandoning, because: "the work is reverted, so the intent can be marked abandoned"
           end
         end
       end

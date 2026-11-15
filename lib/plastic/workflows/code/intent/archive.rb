@@ -23,7 +23,8 @@ module Plastic
 
           forget_stop :problem, :kind, :ok, :lines
 
-          step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
+          step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? },
+            changes: { work: "The intent is marked archived", references: "The files of the intent are kept in the references database" } do |context|
             if context.older_than
               context[:lines] = ArchiveBefore.new(context).lines
               context[:ok] = true
@@ -35,8 +36,12 @@ module Plastic
           gate "%{problem}", stops: :failure, offers: "plastic intent end %{intent_id}",
             because: "only a done, abandoned or future intent archives; end it first",
             pass: ->(context) { context.kind != :unfinished }
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
-          gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the intent cannot be archived and the call failed",
+            pass: ->(context) { context.kind != :failure }
+          gate "%{problem}", stops: :refusal,
+            stops_when: "the archive is refused",
+            pass: ->(context) { context.kind != :refusal }
 
           read "say what was archived" do |context|
             context.lines.each { |line| context.print(line) }

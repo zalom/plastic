@@ -10,10 +10,12 @@ module Plastic
       # the row that names it.
       class Backup < CodeWorkflow
         clear_declarations
+        summary "Copies the databases of one store into a new backup folder and writes the row that names it."
 
         sets :name, :files, :bytes
 
-        step "write the backup folder", done: ->(context) { !context.name.nil? } do |context|
+        step "write the backup folder", done: ->(context) { !context.name.nil? },
+          changes: { backups: "A backup folder with a copy of each chosen database is written" } do |context|
           row = context.work.backups.write(databases: Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases), live: context.scope.live)
           context[:name] = row.fetch(:name)
           context[:files] = row.fetch(:files)

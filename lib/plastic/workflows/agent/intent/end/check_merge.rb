@@ -12,6 +12,7 @@ module Plastic
           # then records both under Verification in outcome.md. Plastic runs no version
           # control command and records what the agent writes.
           class CheckMerge < AgentWorkflow
+            summary "Has the agent check that the work of the intent is merged."
             step "merge the code", done: ->(context) { context.merge_recorded },
               say: "%{merge_found}Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
                 "merge the pull request of intent %{intent_id} into the intent's base, " \

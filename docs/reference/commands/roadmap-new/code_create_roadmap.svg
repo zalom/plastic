@@ -125,7 +125,7 @@
 <path d="M 221 338 L 226 346 L 231 338 Z" class="head"/>
 <rect x="16" y="346" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="361" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="361" class="tm tag-muted" text-anchor="end">new.rb:31</text>
+<text x="426" y="361" class="tm tag-muted" text-anchor="end">new.rb:32</text>
 <text x="26" y="378" class="t" text-anchor="start">say what was created</text>
 <path d="M 226 391 L 226 401" class="wire"/>
 <path d="M 221 393 L 226 401 L 231 393 Z" class="head"/>

@@ -11,6 +11,7 @@ module Plastic
         option :from, switch: "--from FILE", text: "JSON file holding the arrays evidence, facts, interpretations, gaps and rulings"
         reads :knowledge
         writes :knowledge, :work
+        changes(work: "The hash of each file printed is recorded in the work database")
         prints :intent
 
         workflow :code_check_context_owner do

@@ -34,8 +34,8 @@ Its rows run in this order:
 
 1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`batch.rb:14`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L14)
 2. Step: write the batch. Done when `!context.batch.nil?`, so a second call skips it. [`batch.rb:20`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L20)
-3. Read: say what was written. [`batch.rb:25`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L25)
-4. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`batch.rb:29`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L29)
+3. Read: say what was written. [`batch.rb:26`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L26)
+4. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`batch.rb:30`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L30)
 
 It sets `batch`.
 
@@ -68,8 +68,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no roadmap SLUG | 1 | plastic roadmap new SLUG | [`batch.rb:14`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L14) |
-| batch POSITION of SLUG is written | 0 | plastic roadmap show SLUG | [`batch.rb:29`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| batch POSITION of SLUG is written | 0 | plastic roadmap show SLUG | [`batch.rb:30`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L30) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

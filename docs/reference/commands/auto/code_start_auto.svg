@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">auto.rb:15</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">auto.rb:20</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">auto.rb:21</text>
 <text x="26" y="66" class="t" text-anchor="start">read the intent and its spec</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">auto.rb:69</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">auto.rb:70</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">auto.rb:70</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">auto.rb:71</text>
 <text x="26" y="187" class="tm" text-anchor="start">passes when !context.session.nil?</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
 <path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
@@ -102,7 +102,7 @@
 <path d="M 221 213 L 226 221 L 231 213 Z" class="head"/>
 <rect x="16" y="221" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="236" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="236" class="tm tag-muted" text-anchor="end">auto.rb:71</text>
+<text x="426" y="236" class="tm tag-muted" text-anchor="end">auto.rb:72</text>
 <text x="26" y="253" class="tm" text-anchor="start">passes when context.session_problem.nil?</text>
 <path d="M 436 239 L 464 239" class="wire-failure"/>
 <path d="M 456 234 L 464 239 L 456 244 Z" class="head"/>
@@ -113,7 +113,7 @@
 <path d="M 221 268 L 226 276 L 231 268 Z" class="head"/>
 <rect x="16" y="276" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="291" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="291" class="tm tag-muted" text-anchor="end">auto.rb:72</text>
+<text x="426" y="291" class="tm tag-muted" text-anchor="end">auto.rb:75</text>
 <text x="26" y="308" class="tm" text-anchor="start">passes when context.closed_problem.nil?</text>
 <path d="M 436 294 L 464 294" class="wire-failure"/>
 <path d="M 456 289 L 464 294 L 456 299 Z" class="head"/>
@@ -124,7 +124,7 @@
 <path d="M 221 323 L 226 331 L 231 323 Z" class="head"/>
 <rect x="16" y="331" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="346" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="346" class="tm tag-muted" text-anchor="end">auto.rb:74</text>
+<text x="426" y="346" class="tm tag-muted" text-anchor="end">auto.rb:77</text>
 <text x="26" y="363" class="tm" text-anchor="start">passes when context.spec_problem.nil?</text>
 <path d="M 436 349 L 464 349" class="wire-failure"/>
 <path d="M 456 344 L 464 349 L 456 354 Z" class="head"/>
@@ -135,7 +135,7 @@
 <path d="M 221 378 L 226 386 L 231 378 Z" class="head"/>
 <rect x="16" y="386" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="401" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="401" class="tm tag-muted" text-anchor="end">auto.rb:76</text>
+<text x="426" y="401" class="tm tag-muted" text-anchor="end">auto.rb:79</text>
 <text x="26" y="418" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 404 L 464 404" class="wire-refusal"/>
 <path d="M 456 399 L 464 404 L 456 409 Z" class="head"/>
@@ -146,7 +146,7 @@
 <path d="M 221 433 L 226 441 L 231 433 Z" class="head"/>
 <rect x="16" y="441" width="420" height="129" rx="6" class="card"/>
 <text x="26" y="456" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="456" class="tm tag-muted" text-anchor="end">auto.rb:86</text>
+<text x="426" y="456" class="tm tag-muted" text-anchor="end">auto.rb:91</text>
 <text x="26" y="473" class="t" text-anchor="start">lock the intent and go in progress</text>
 <text x="26" y="488" class="tm" text-anchor="start">done when def self.delivery_started?(context)</text>
 <text x="26" y="502" class="tm" text-anchor="start">retrieval = context.retrieval intent_id =</text>
@@ -164,7 +164,7 @@
 <path d="M 221 572 L 226 580 L 231 572 Z" class="head"/>
 <rect x="16" y="580" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="595" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="595" class="tm tag-muted" text-anchor="end">auto.rb:91</text>
+<text x="426" y="595" class="tm tag-muted" text-anchor="end">auto.rb:97</text>
 <text x="26" y="612" class="t" text-anchor="start">name the code worktree</text>
 <path d="M 226 625 L 226 635" class="wire"/>
 <path d="M 221 627 L 226 635 L 231 627 Z" class="head"/>

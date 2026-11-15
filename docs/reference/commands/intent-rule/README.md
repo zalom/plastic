@@ -35,9 +35,9 @@ Its rows run in this order:
 1. Read: find the intent. [`rule.rb:16`](../../../../lib/plastic/workflows/code/intent/rule.rb#L16)
 2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`rule.rb:20`](../../../../lib/plastic/workflows/code/intent/rule.rb#L20)
 3. Step: write the ruling. Done when `!context.problem.nil? || !context.id.nil?`, so a second call skips it. [`rule.rb:22`](../../../../lib/plastic/workflows/code/intent/rule.rb#L22)
-4. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`rule.rb:28`](../../../../lib/plastic/workflows/code/intent/rule.rb#L28)
-5. Read: say what was written. [`rule.rb:30`](../../../../lib/plastic/workflows/code/intent/rule.rb#L30)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`rule.rb:34`](../../../../lib/plastic/workflows/code/intent/rule.rb#L34)
+4. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`rule.rb:29`](../../../../lib/plastic/workflows/code/intent/rule.rb#L29)
+5. Read: say what was written. [`rule.rb:33`](../../../../lib/plastic/workflows/code/intent/rule.rb#L33)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`rule.rb:37`](../../../../lib/plastic/workflows/code/intent/rule.rb#L37)
 
 It sets `intent`, `problem`, `id`.
 
@@ -75,9 +75,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`rule.rb:20`](../../../../lib/plastic/workflows/code/intent/rule.rb#L20) |
-| PROBLEM | 1 | prints no next: line | [`rule.rb:28`](../../../../lib/plastic/workflows/code/intent/rule.rb#L28) |
-| ruling ID is on record | 0 | plastic intent brief INTENT_ID | [`rule.rb:34`](../../../../lib/plastic/workflows/code/intent/rule.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`rule.rb:29`](../../../../lib/plastic/workflows/code/intent/rule.rb#L29) |
+| ruling ID is on record | 0 | plastic intent brief INTENT_ID | [`rule.rb:37`](../../../../lib/plastic/workflows/code/intent/rule.rb#L37) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

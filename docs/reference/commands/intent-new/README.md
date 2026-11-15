@@ -38,10 +38,10 @@ Its rows run in this order:
 
 1. Read: check the call. [`new.rb:16`](../../../../lib/plastic/workflows/code/intent/new.rb#L16)
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`new.rb:22`](../../../../lib/plastic/workflows/code/intent/new.rb#L22)
-3. Step: write the intent. Done when `!context.intent_id.nil?`, so a second call skips it. [`new.rb:24`](../../../../lib/plastic/workflows/code/intent/new.rb#L24)
-4. Step: link to what it grows out of. Done when `context.after.nil? || !context.linked.nil?`, so a second call skips it. [`new.rb:30`](../../../../lib/plastic/workflows/code/intent/new.rb#L30)
-5. Read: say what was written. [`new.rb:35`](../../../../lib/plastic/workflows/code/intent/new.rb#L35)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`new.rb:41`](../../../../lib/plastic/workflows/code/intent/new.rb#L41)
+3. Step: write the intent. Done when `!context.intent_id.nil?`, so a second call skips it. [`new.rb:26`](../../../../lib/plastic/workflows/code/intent/new.rb#L26)
+4. Step: link to what it grows out of. Done when `context.after.nil? || !context.linked.nil?`, so a second call skips it. [`new.rb:33`](../../../../lib/plastic/workflows/code/intent/new.rb#L33)
+5. Read: say what was written. [`new.rb:39`](../../../../lib/plastic/workflows/code/intent/new.rb#L39)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`new.rb:45`](../../../../lib/plastic/workflows/code/intent/new.rb#L45)
 
 It sets `problem`, `intent_id`, `linked`.
 
@@ -71,8 +71,8 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| write the intent | `!context.intent_id.nil?` | skips it | [`new.rb:24`](../../../../lib/plastic/workflows/code/intent/new.rb#L24) |
-| link to what it grows out of | `context.after.nil? \|\| !context.linked.nil?` | skips it | [`new.rb:30`](../../../../lib/plastic/workflows/code/intent/new.rb#L30) |
+| write the intent | `!context.intent_id.nil?` | skips it | [`new.rb:26`](../../../../lib/plastic/workflows/code/intent/new.rb#L26) |
+| link to what it grows out of | `context.after.nil? \|\| !context.linked.nil?` | skips it | [`new.rb:33`](../../../../lib/plastic/workflows/code/intent/new.rb#L33) |
 
 ## How a call ends
 
@@ -81,8 +81,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`new.rb:22`](../../../../lib/plastic/workflows/code/intent/new.rb#L22) |
-| intent INTENT_ID has its rows and its files | 0 | plastic next | [`new.rb:41`](../../../../lib/plastic/workflows/code/intent/new.rb#L41) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| intent INTENT_ID has its rows and its files | 0 | plastic next | [`new.rb:45`](../../../../lib/plastic/workflows/code/intent/new.rb#L45) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

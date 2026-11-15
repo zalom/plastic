@@ -18,7 +18,8 @@ module Plastic
             context[:session_id] = context.session
           end
 
-          step "write the note", done: ->(context) { context.written } do |context|
+          step "write the note", done: ->(context) { context.written },
+            changes: { local: "The note is added to the session" } do |context|
             context.work.write_note(context.session_id, context.text)
             context[:written] = true
           end

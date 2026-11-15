@@ -16,6 +16,7 @@ module Plastic
         # Validates a submitted evidence selection and persists it in the owning store.
         class Context < CodeWorkflow
           clear_declarations
+          summary "Validates the submitted evidence selection and saves it in the owning store."
 
           sets :problem, :submission
 
@@ -31,9 +32,12 @@ module Plastic
             context[:problem] = RetrievalRepair.new(context.scope, error).problem
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the submission is not valid, or a store needs repair",
+            pass: ->(context) { context.problem.nil? }
 
-          step "save the submitted context", done: ->(context) { ContextPersistence.new(context).saved?(context.submission) } do |context|
+          step "save the submitted context", done: ->(context) { ContextPersistence.new(context).saved?(context.submission) },
+            changes: { knowledge: "The submitted context is saved as a document of the intent" } do |context|
             ContextPersistence.new(context).persist(context.submission)
           end
 

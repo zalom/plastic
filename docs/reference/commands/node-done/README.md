@@ -30,13 +30,13 @@ Moves a claimed node to done, with its findings. A done node takes new findings 
 
 Its rows run in this order:
 
-1. Read: find the intent. [`move_node.rb:39`](../../../../lib/plastic/workflows/move_node.rb#L39)
-2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40)
-3. Read: forget a refusal of an earlier call. [`move_node.rb:44`](../../../../lib/plastic/workflows/move_node.rb#L44)
-4. Step: finish the node. Done when `[true, false].include?(context.moved)`, so a second call skips it. [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45)
-5. Gate: passes when `context.moved == true`; otherwise the call stops with exit 1 and prints PROBLEM. [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46)
-6. Read: say what was done. [`move_node.rb:59`](../../../../lib/plastic/workflows/move_node.rb#L59)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic graph ready INTENT_ID. [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60)
+1. Read: find the intent. [`move_node.rb:49`](../../../../lib/plastic/workflows/move_node.rb#L49)
+2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`move_node.rb:50`](../../../../lib/plastic/workflows/move_node.rb#L50)
+3. Read: forget a refusal of an earlier call. [`move_node.rb:54`](../../../../lib/plastic/workflows/move_node.rb#L54)
+4. Step: finish the node. Done when `[true, false].include?(context.moved)`, so a second call skips it. [`move_node.rb:55`](../../../../lib/plastic/workflows/move_node.rb#L55)
+5. Gate: passes when `context.moved == true`; otherwise the call stops with exit 1 and prints PROBLEM. [`move_node.rb:56`](../../../../lib/plastic/workflows/move_node.rb#L56)
+6. Read: say what was done. [`move_node.rb:71`](../../../../lib/plastic/workflows/move_node.rb#L71)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic graph ready INTENT_ID. [`move_node.rb:72`](../../../../lib/plastic/workflows/move_node.rb#L72)
 
 It sets `intent`, `problem`, `moved`.
 
@@ -64,7 +64,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| finish the node | `[true, false].include?(context.moved)` | skips it | [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45) |
+| finish the node | `[true, false].include?(context.moved)` | skips it | [`move_node.rb:55`](../../../../lib/plastic/workflows/move_node.rb#L55) |
 
 ## How a call ends
 
@@ -72,10 +72,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
-| PROBLEM | 1 | prints no next: line | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
-| node ID is done | 0 | plastic graph ready INTENT_ID | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`move_node.rb:50`](../../../../lib/plastic/workflows/move_node.rb#L50) |
+| PROBLEM | 1 | prints no next: line | [`move_node.rb:56`](../../../../lib/plastic/workflows/move_node.rb#L56) |
+| node ID is done | 0 | plastic graph ready INTENT_ID | [`move_node.rb:72`](../../../../lib/plastic/workflows/move_node.rb#L72) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

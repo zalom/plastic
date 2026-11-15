@@ -18,7 +18,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic project links](call.svg)
 
-The command's `call`, at [`links.rb:16`](../../../../lib/plastic/commands/project/links.rb#L16):
+The command's `call`, at [`links.rb:17`](../../../../lib/plastic/commands/project/links.rb#L17):
 
 ```ruby
 def call
@@ -31,10 +31,10 @@ end
 
 Its steps run in this order:
 
-1. `broken = broken_links` [`links.rb:17`](../../../../lib/plastic/commands/project/links.rb#L17)
-2. `broken.each { |link| output.raw("#{link.from_ref} #{link.kind} #{link.to_ref}") }` [`links.rb:18`](../../../../lib/plastic/commands/project/links.rb#L18)
-3. `output.raw(Plastic::Graph::Knowledge::Link::Check.summary(broken.size)) if broken.any?` [`links.rb:19`](../../../../lib/plastic/commands/project/links.rb#L19)
-4. `output.next_step("plastic status", because: "every link names an intent or a ruling this store holds")` [`links.rb:20`](../../../../lib/plastic/commands/project/links.rb#L20)
+1. `broken = broken_links` [`links.rb:18`](../../../../lib/plastic/commands/project/links.rb#L18)
+2. `broken.each { |link| output.raw("#{link.from_ref} #{link.kind} #{link.to_ref}") }` [`links.rb:19`](../../../../lib/plastic/commands/project/links.rb#L19)
+3. `output.raw(Plastic::Graph::Knowledge::Link::Check.summary(broken.size)) if broken.any?` [`links.rb:20`](../../../../lib/plastic/commands/project/links.rb#L20)
+4. `output.next_step("plastic status", because: "every link names an intent or a ruling this store holds")` [`links.rb:21`](../../../../lib/plastic/commands/project/links.rb#L21)
 
 ## What one call reads, writes and prints
 
@@ -51,7 +51,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic status | [`links.rb:20`](../../../../lib/plastic/commands/project/links.rb#L20) |
+| Offers the next command | 0 | plastic status | [`links.rb:21`](../../../../lib/plastic/commands/project/links.rb#L21) |
 
 ## What the page leaves out
 

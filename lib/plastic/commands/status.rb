@@ -13,6 +13,7 @@ module Plastic
     # their node counts by state.
     class Status < CLI::Command
       reads :work
+      changes({})
 
       def call
         projects = scope.projects

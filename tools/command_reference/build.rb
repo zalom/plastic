@@ -8,16 +8,24 @@ module CommandReference
 
     def self.stale(built, disk) = (built.keys | disk.keys).sort.reject { |path| built[path] == disk[path] }
 
-    def initialize(root)
+    def initialize(root, table: Plastic::CLI::TABLE)
       @root = root
-      @model = Model.new(root)
+      @table = table
+      @model = Model.new(root, table:)
     end
 
-    def files = [*pages.flat_map { |page| PageFiles.new(page, File.join(COMMANDS, page.slug)).to_a }, index, *dsl_files].sort.to_h
+    def files
+      lines = Words.missing(pages)
+      raise MissingWords, lines if lines.any?
+
+      built
+    end
 
     private
 
-    def pages = @pages ||= Plastic::CLI::TABLE.keys.map { |words| @model.page(words) }
+    def built = [*pages.flat_map { |page| PageFiles.new(page, File.join(COMMANDS, page.slug)).to_a }, index, *dsl_files].sort.to_h
+
+    def pages = @pages ||= @table.keys.map { |words| @model.page(words) }
 
     def index = [File.join(COMMANDS, "README.md"), Markdown::Index.new(pages).to_s]
 

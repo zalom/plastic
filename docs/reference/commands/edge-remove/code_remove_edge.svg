@@ -91,7 +91,7 @@
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>
 <rect x="16" y="158" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="173" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="173" class="tm tag-muted" text-anchor="end">remove.rb:23</text>
+<text x="426" y="173" class="tm tag-muted" text-anchor="end">remove.rb:24</text>
 <text x="26" y="190" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 176 L 464 176" class="wire-failure"/>
 <path d="M 456 171 L 464 176 L 456 181 Z" class="head"/>
@@ -102,7 +102,7 @@
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">remove.rb:25</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">remove.rb:28</text>
 <text x="26" y="245" class="t" text-anchor="start">say what was removed</text>
 <path d="M 226 258 L 226 268" class="wire"/>
 <path d="M 221 260 L 226 268 L 231 260 Z" class="head"/>

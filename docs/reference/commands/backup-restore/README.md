@@ -44,7 +44,7 @@ def call
 end
 ```
 
-The command's own `check_call`, at [`restore.rb:30`](../../../../lib/plastic/commands/backup/restore.rb#L30), runs inside it:
+The command's own `check_call`, at [`restore.rb:31`](../../../../lib/plastic/commands/backup/restore.rb#L31), runs inside it:
 
 ```ruby
 def check_call
@@ -63,9 +63,9 @@ Lists the databases a restore would replace, and changes nothing.
 
 Its rows run in this order:
 
-1. Read: preview the restore. [`preview.rb:15`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L15)
-2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L23)
-3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup::Restore](#codebackuprestore). [`preview.rb:25`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L25)
+1. Read: preview the restore. [`preview.rb:16`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L16)
+2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:24`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L24)
+3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup::Restore](#codebackuprestore). [`preview.rb:26`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L26)
 
 ### Code::Backup::Restore
 
@@ -77,11 +77,11 @@ Replaces the databases of one store with those of a done backup, after a safety 
 
 Its rows run in this order:
 
-1. Read: choose the backup. [`restore.rb:41`](../../../../lib/plastic/workflows/code/backup/restore.rb#L41)
-2. Gate: passes when `context.refusal.nil?`; otherwise the call stops with exit 3 and prints REFUSAL. [`restore.rb:47`](../../../../lib/plastic/workflows/code/backup/restore.rb#L47)
-3. Step: replace the databases. Done when `!context.safety.nil?`, so a second call skips it. [`restore.rb:49`](../../../../lib/plastic/workflows/code/backup/restore.rb#L49)
-4. Read: say what was replaced. [`restore.rb:55`](../../../../lib/plastic/workflows/code/backup/restore.rb#L55)
-5. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`restore.rb:60`](../../../../lib/plastic/workflows/code/backup/restore.rb#L60)
+1. Read: choose the backup. [`restore.rb:42`](../../../../lib/plastic/workflows/code/backup/restore.rb#L42)
+2. Gate: passes when `context.refusal.nil?`; otherwise the call stops with exit 3 and prints REFUSAL. [`restore.rb:48`](../../../../lib/plastic/workflows/code/backup/restore.rb#L48)
+3. Step: replace the databases. Done when `!context.safety.nil?`, so a second call skips it. [`restore.rb:52`](../../../../lib/plastic/workflows/code/backup/restore.rb#L52)
+4. Read: say what was replaced. [`restore.rb:59`](../../../../lib/plastic/workflows/code/backup/restore.rb#L59)
+5. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`restore.rb:64`](../../../../lib/plastic/workflows/code/backup/restore.rb#L64)
 
 It sets `folder`, `refusal`, `safety`, `restored`.
 
@@ -107,7 +107,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| replace the databases | `!context.safety.nil?` | skips it | [`restore.rb:49`](../../../../lib/plastic/workflows/code/backup/restore.rb#L49) |
+| replace the databases | `!context.safety.nil?` | skips it | [`restore.rb:52`](../../../../lib/plastic/workflows/code/backup/restore.rb#L52) |
 
 ## How a call ends
 
@@ -115,10 +115,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview replaced nothing | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L23) |
-| REFUSAL | 3 | prints no next: line | [`restore.rb:47`](../../../../lib/plastic/workflows/code/backup/restore.rb#L47) |
-| the rows are restored and the files are not; ask the person whether to run plastic sync down, which writes the files from the rows, or plastic sync up, which reads the files into the rows | 0 | prints no next: line | [`restore.rb:60`](../../../../lib/plastic/workflows/code/backup/restore.rb#L60) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the preview replaced nothing | 0 | ORIGINAL_COMMAND | [`preview.rb:24`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L24) |
+| REFUSAL | 3 | prints no next: line | [`restore.rb:48`](../../../../lib/plastic/workflows/code/backup/restore.rb#L48) |
+| the rows are restored and the files are not; ask the person whether to run plastic sync down, which writes the files from the rows, or plastic sync up, which reads the files into the rows | 0 | prints no next: line | [`restore.rb:64`](../../../../lib/plastic/workflows/code/backup/restore.rb#L64) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
 | Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
 | Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../lib/plastic/cli/backup_store.rb#L40) |

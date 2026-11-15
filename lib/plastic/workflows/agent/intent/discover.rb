@@ -10,6 +10,7 @@ module Plastic
         # Gives an external agent deterministic retrieval commands without selecting evidence.
         class Discover < ::Plastic::AgentWorkflow
           clear_declarations
+          summary "Gives an outside agent the retrieval commands without selecting evidence."
 
           sets :handoff_text, :context_command, :context_complete
 

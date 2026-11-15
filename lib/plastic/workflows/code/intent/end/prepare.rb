@@ -15,6 +15,7 @@ module Plastic
         class End
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
+            summary "Reads what closing the intent needs: the rows, the verdict, outcome.md and the review."
             sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :missing
 
             read "read the intent" do |context|
@@ -30,7 +31,9 @@ module Plastic
               context[:problem] = DeliveryOwnership.problem(context)
             end
 
-            gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+            gate "%{problem}", stops: :refusal,
+              stops_when: "another session holds the delivery of the intent, or the intent is missing or closed",
+              pass: ->(context) { context.problem.nil? }
 
             read "check the completion records" do |context|
               context[:intent_folder] = context.intent.dir
@@ -96,9 +99,9 @@ module Plastic
 
             outcome :closed, if: ->(context) { context.closed },
               offers: "plastic next", because: "intent %{intent_id} is already done"
-            outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }
-            outcome :unverified, if: ->(context) { !verified?(context) }
-            outcome :ready
+            outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }, because: "the intent still needs records or a verdict before it can end"
+            outcome :unverified, if: ->(context) { !verified?(context) }, because: "the merge of the work is not verified yet"
+            outcome :ready, because: "the records, the verdict and the merge are in place"
           end
         end
       end

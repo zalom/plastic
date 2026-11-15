@@ -33,12 +33,12 @@ Its rows run in this order:
 2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24)
 3. Read: check the go-ahead. [`claim.rb:26`](../../../../lib/plastic/workflows/code/node/claim.rb#L26)
 4. Gate: passes when `context.approval_problem.nil?`; otherwise the call stops with exit 3 and prints APPROVAL_PROBLEM. [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30)
-5. Read: forget a refusal of an earlier call. [`claim.rb:32`](../../../../lib/plastic/workflows/code/node/claim.rb#L32)
-6. Step: claim the node. Done when `!context.result.nil?`, so a second call skips it. [`claim.rb:36`](../../../../lib/plastic/workflows/code/node/claim.rb#L36)
-7. Gate: passes when `context.result.to_s != "capped"`; otherwise the call stops with exit 3 and prints PROBLEM. [`claim.rb:52`](../../../../lib/plastic/workflows/code/node/claim.rb#L52)
-8. Gate: passes when `!STOPPED.include?(context.result.to_s)`; otherwise the call stops with exit 1 and prints PROBLEM. [`claim.rb:53`](../../../../lib/plastic/workflows/code/node/claim.rb#L53)
-9. Read: print the brief. [`claim.rb:55`](../../../../lib/plastic/workflows/code/node/claim.rb#L55)
-10. Outcome `:done`, always: finishes with exit 0; next: plastic node done INTENT_ID ID TEXT. [`claim.rb:63`](../../../../lib/plastic/workflows/code/node/claim.rb#L63)
+5. Read: forget a refusal of an earlier call. [`claim.rb:34`](../../../../lib/plastic/workflows/code/node/claim.rb#L34)
+6. Step: claim the node. Done when `!context.result.nil?`, so a second call skips it. [`claim.rb:38`](../../../../lib/plastic/workflows/code/node/claim.rb#L38)
+7. Gate: passes when `context.result.to_s != "capped"`; otherwise the call stops with exit 3 and prints PROBLEM. [`claim.rb:55`](../../../../lib/plastic/workflows/code/node/claim.rb#L55)
+8. Gate: passes when `!STOPPED.include?(context.result.to_s)`; otherwise the call stops with exit 1 and prints PROBLEM. [`claim.rb:58`](../../../../lib/plastic/workflows/code/node/claim.rb#L58)
+9. Read: print the brief. [`claim.rb:62`](../../../../lib/plastic/workflows/code/node/claim.rb#L62)
+10. Outcome `:done`, always: finishes with exit 0; next: plastic node done INTENT_ID ID TEXT. [`claim.rb:70`](../../../../lib/plastic/workflows/code/node/claim.rb#L70)
 
 It sets `intent`, `result`, `node`, `problem`, `approval_problem`.
 
@@ -66,7 +66,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| claim the node | `!context.result.nil?` | skips it | [`claim.rb:36`](../../../../lib/plastic/workflows/code/node/claim.rb#L36) |
+| claim the node | `!context.result.nil?` | skips it | [`claim.rb:38`](../../../../lib/plastic/workflows/code/node/claim.rb#L38) |
 
 ## How a call ends
 
@@ -76,10 +76,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24) |
 | APPROVAL_PROBLEM | 3 | prints no next: line | [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30) |
-| PROBLEM | 3 | prints no next: line | [`claim.rb:52`](../../../../lib/plastic/workflows/code/node/claim.rb#L52) |
-| PROBLEM | 1 | prints no next: line | [`claim.rb:53`](../../../../lib/plastic/workflows/code/node/claim.rb#L53) |
-| node ID is claimed | 0 | plastic node done INTENT_ID ID TEXT | [`claim.rb:63`](../../../../lib/plastic/workflows/code/node/claim.rb#L63) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 3 | prints no next: line | [`claim.rb:55`](../../../../lib/plastic/workflows/code/node/claim.rb#L55) |
+| PROBLEM | 1 | prints no next: line | [`claim.rb:58`](../../../../lib/plastic/workflows/code/node/claim.rb#L58) |
+| node ID is claimed | 0 | plastic node done INTENT_ID ID TEXT | [`claim.rb:70`](../../../../lib/plastic/workflows/code/node/claim.rb#L70) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

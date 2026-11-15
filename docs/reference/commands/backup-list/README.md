@@ -73,7 +73,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | a backup is missing or changed; see above | 1 | prints no next: line | [`list.rb:32`](../../../../lib/plastic/workflows/code/backup/list.rb#L32) |
 | every backup with a row is on disk and unchanged | 0 | plastic backup --store STORE | [`list.rb:34`](../../../../lib/plastic/workflows/code/backup/list.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
 | Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
 

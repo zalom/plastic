@@ -58,7 +58,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | a check found a problem; run the repairs named above, then run plastic doctor again | 1 | prints no next: line | [`doctor.rb:35`](../../../../lib/plastic/workflows/code/doctor.rb#L35) |
 | every check passed, so read the work next | 0 | plastic status | [`doctor.rb:38`](../../../../lib/plastic/workflows/code/doctor.rb#L38) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

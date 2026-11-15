@@ -33,10 +33,10 @@ Picks the intent this session is working on and offers its next command: the spe
 
 Its rows run in this order:
 
-1. Read: pick the intent and its next command. [`next.rb:18`](../../../../lib/plastic/workflows/code/next.rb#L18)
-2. Outcome `:agent_needed`, when `!context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`next.rb:23`](../../../../lib/plastic/workflows/code/next.rb#L23)
-3. Outcome `:nothing`, when `context.next_command.nil?`: finishes with exit 0; next: plastic status. [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24)
-4. Outcome `:done`, otherwise: finishes with exit 0; next: NEXT_COMMAND. [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25)
+1. Read: pick the intent and its next command. [`next.rb:19`](../../../../lib/plastic/workflows/code/next.rb#L19)
+2. Outcome `:agent_needed`, when `!context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24)
+3. Outcome `:nothing`, when `context.next_command.nil?`: finishes with exit 0; next: plastic status. [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25)
+4. Outcome `:done`, otherwise: finishes with exit 0; next: NEXT_COMMAND. [`next.rb:26`](../../../../lib/plastic/workflows/code/next.rb#L26)
 
 It sets `next_command`, `why`, `handoff_text`.
 
@@ -50,9 +50,9 @@ The harness performs judgment and records the result through commands.
 
 Its rows run in this order:
 
-1. Agent step: advance the delivery. Done when `context.handoff_text.nil?`; while it fails, the call prints its `say:` text. [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13)
+1. Agent step: advance the delivery. Done when `context.handoff_text.nil?`; while it fails, the call prints its `say:` text. [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`advance_delivery.rb:14`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L14)
 
 The agent step "advance the delivery" prints:
 
@@ -81,7 +81,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| advance the delivery | `context.handoff_text.nil?` | skips it | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11) |
+| advance the delivery | `context.handoff_text.nil?` | skips it | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
 
 ## How a call ends
 
@@ -89,11 +89,11 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| WHY | 0 | plastic status | [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24) |
-| WHY | 0 | NEXT_COMMAND | [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25) |
-| WHY | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
-| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| WHY | 0 | plastic status | [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25) |
+| WHY | 0 | NEXT_COMMAND | [`next.rb:26`](../../../../lib/plastic/workflows/code/next.rb#L26) |
+| WHY | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
+| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:14`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L14) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

@@ -15,6 +15,7 @@ module Plastic
           extend GoAhead
 
           clear_declarations
+          summary "Prints the open questions and decisions of the spec and how done criteria are written."
 
           GRILLING = File.expand_path("../../../../../docs/grilling.md", __dir__)
 
@@ -44,7 +45,7 @@ module Plastic
             because: "an open decision is still unrecorded"
           outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
             because: "the spec names no done criterion; write them in spec.md first"
-          outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }
+          outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the agent takes the next step of the spec"
           outcome :done, offers: "plastic auto %{intent_id}", because: "the spec carries no open decision"
         end
       end

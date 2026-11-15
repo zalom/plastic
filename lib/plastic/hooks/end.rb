@@ -7,6 +7,8 @@ module Plastic
   module Hooks
     # SessionEnd: sets the session's end time and the reason the event names.
     class End < Hook
+      changes(local: "The end time and the reason are written to the session row")
+
       def respond(event)
         return no_session unless session_id
 

@@ -41,12 +41,12 @@ Previews sync down in a copy before the normal write workflow.
 
 Its rows run in this order:
 
-1. Read: preview the sync in an isolated copy. [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43)
-2. Gate: passes when `as_real?(context, :runs?)`; otherwise the call stops with exit 1 and prints FAILURE. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
-3. Gate: passes when `as_real?(context, :writes?)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS. [`preview.rb:61`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L61)
-4. Gate: passes when `as_real?(context, :settled?)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS. [`preview.rb:62`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L62)
-5. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49)
-6. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Down](#codesyncdown). [`preview.rb:50`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L50)
+1. Read: preview the sync in an isolated copy. [`preview.rb:44`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L44)
+2. Gate: passes when `as_real?(context, :runs?)`; otherwise the call stops with exit 1 and prints FAILURE. [`preview.rb:55`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L55)
+3. Gate: passes when `as_real?(context, :writes?)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS. [`preview.rb:64`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L64)
+4. Gate: passes when `as_real?(context, :settled?)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS. [`preview.rb:65`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L65)
+5. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:50`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L50)
+6. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Down](#codesyncdown). [`preview.rb:51`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L51)
 
 It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`, `unreadable_rowless`.
 
@@ -60,13 +60,13 @@ Sync down: plans, applies, and refuses on the conflicts left.
 
 Its rows run in this order:
 
-1. Read: plan the sync. [`sync_steps.rb:111`](../../../../lib/plastic/workflows/sync_steps.rb#L111)
-2. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`sync_steps.rb:112`](../../../../lib/plastic/workflows/sync_steps.rb#L112)
-3. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS. [`sync_steps.rb:103`](../../../../lib/plastic/workflows/sync_steps.rb#L103)
-4. Step: apply the changes. Done when `plan(context, direction).pending.zero?`, so a second call skips it. [`sync_steps.rb:117`](../../../../lib/plastic/workflows/sync_steps.rb#L117)
-5. Read: say what changed. [`sync_steps.rb:118`](../../../../lib/plastic/workflows/sync_steps.rb#L118)
-6. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS. [`sync_steps.rb:103`](../../../../lib/plastic/workflows/sync_steps.rb#L103)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`sync_steps.rb:99`](../../../../lib/plastic/workflows/sync_steps.rb#L99)
+1. Read: plan the sync. [`sync_steps.rb:116`](../../../../lib/plastic/workflows/sync_steps.rb#L116)
+2. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`sync_steps.rb:117`](../../../../lib/plastic/workflows/sync_steps.rb#L117)
+3. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS. [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108)
+4. Step: apply the changes. Done when `plan(context, direction).pending.zero?`, so a second call skips it. [`sync_steps.rb:124`](../../../../lib/plastic/workflows/sync_steps.rb#L124)
+5. Read: say what changed. [`sync_steps.rb:125`](../../../../lib/plastic/workflows/sync_steps.rb#L125)
+6. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS. [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104)
 
 It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`, `unreadable_rowless`, `lines`.
 
@@ -91,7 +91,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| apply the changes | `plan(context, direction).pending.zero?` | skips it | [`sync_steps.rb:117`](../../../../lib/plastic/workflows/sync_steps.rb#L117) |
+| apply the changes | `plan(context, direction).pending.zero?` | skips it | [`sync_steps.rb:124`](../../../../lib/plastic/workflows/sync_steps.rb#L124) |
 
 ## How a call ends
 
@@ -99,15 +99,15 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| FAILURE | 1 | prints no next: line | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
-| changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS | 3 | prints no next: line | [`preview.rb:61`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L61) |
-| changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS | 3 | prints no next: line | [`preview.rb:62`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L62) |
-| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49) |
-| FAILURE | 1 | prints no next: line | [`sync_steps.rb:112`](../../../../lib/plastic/workflows/sync_steps.rb#L112) |
-| changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS | 3 | prints no next: line | [`sync_steps.rb:103`](../../../../lib/plastic/workflows/sync_steps.rb#L103) |
-| changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS | 3 | prints no next: line | [`sync_steps.rb:103`](../../../../lib/plastic/workflows/sync_steps.rb#L103) |
-| the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:99`](../../../../lib/plastic/workflows/sync_steps.rb#L99) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| FAILURE | 1 | prints no next: line | [`preview.rb:55`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L55) |
+| changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS | 3 | prints no next: line | [`preview.rb:64`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L64) |
+| changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS | 3 | prints no next: line | [`preview.rb:65`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L65) |
+| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:50`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L50) |
+| FAILURE | 1 | prints no next: line | [`sync_steps.rb:117`](../../../../lib/plastic/workflows/sync_steps.rb#L117) |
+| changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, --overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: CONFLICTS | 3 | prints no next: line | [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108) |
+| changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, --overwrite prints every record. The records: CONFLICTS | 3 | prints no next: line | [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108) |
+| the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

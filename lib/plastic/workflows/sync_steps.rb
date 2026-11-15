@@ -20,6 +20,11 @@ module Plastic
         "changed on both sides since the last print, left as they are. #{words}. The records: %{conflicts}"
       end.freeze
 
+      CHANGES = {
+        up: { work: "The records of the intents whose files changed by hand are rewritten from the files", knowledge: "The documents of those intents are rewritten from the files" },
+        down: { store: "The files of the intents whose records changed are rewritten in the store folder" }
+      }.freeze
+
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
 
@@ -109,12 +114,14 @@ module Plastic
 
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
-        gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
+        gate "%{failure}", stops: :failure,
+          stops_when: "the sync cannot run",
+          pass: SyncSteps.check(:runs?)
         gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
-        step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
+        step("apply the changes", done: SyncSteps.applied(direction), changes: CHANGES.fetch(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
         gate REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
       end

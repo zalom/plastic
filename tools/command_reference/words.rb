@@ -25,6 +25,8 @@ module CommandReference
       one.include?("`") ? "`` #{one} ``" : "`#{one}`"
     end
 
+    def self.missing(pages) = pages.flat_map { |page| PageWords.new(page).lines }
+
     def self.short(klass) = klass.name.split("::").last
 
     # A workflow by the path that names it under Workflows: Code::Intent::End::Prepare.

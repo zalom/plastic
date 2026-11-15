@@ -12,6 +12,7 @@ module Plastic
           # Previews the same sync in a copy before the normal write workflow, and refuses what the real run refuses.
           class Preview < CodeWorkflow
             clear_declarations
+            summary "Previews the sync of the store folder into rows in a disposable copy."
 
             DRY_RUN = ->(context) { context.dry_run }
 
@@ -51,7 +52,9 @@ module Plastic
             end
 
             def self.real_gates(direction)
-              gate "%{failure}", stops: :failure, pass: ->(context) { as_real?(context, :runs?) }
+              gate "%{failure}", stops: :failure,
+                stops_when: "the sync cannot run",
+                pass: ->(context) { as_real?(context, :runs?) }
               conflict_gates(direction)
               readable_gates
             end

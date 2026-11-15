@@ -31,8 +31,8 @@ Its rows run in this order:
 1. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints the call names no session; set PLASTIC_SESSION. [`note.rb:15`](../../../../lib/plastic/workflows/code/session/note.rb#L15)
 2. Read: name the session. [`note.rb:17`](../../../../lib/plastic/workflows/code/session/note.rb#L17)
 3. Step: write the note. Done when `context.written`, so a second call skips it. [`note.rb:21`](../../../../lib/plastic/workflows/code/session/note.rb#L21)
-4. Read: say what was written. [`note.rb:26`](../../../../lib/plastic/workflows/code/session/note.rb#L26)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`note.rb:30`](../../../../lib/plastic/workflows/code/session/note.rb#L30)
+4. Read: say what was written. [`note.rb:27`](../../../../lib/plastic/workflows/code/session/note.rb#L27)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`note.rb:31`](../../../../lib/plastic/workflows/code/session/note.rb#L31)
 
 It sets `session_id`, `written`.
 
@@ -50,7 +50,6 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the home folder | local.db | `sessions` | writes | found in the code, not declared |
-| the store folder | work_graph.db | not found in the code | writes | [`note.rb:11`](../../../../lib/plastic/commands/session/note.rb#L11) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
@@ -65,12 +64,11 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | the call names no session; set PLASTIC_SESSION | 1 | prints no next: line | [`note.rb:15`](../../../../lib/plastic/workflows/code/session/note.rb#L15) |
-| session SESSION_ID has its note | 0 | plastic next | [`note.rb:30`](../../../../lib/plastic/workflows/code/session/note.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| session SESSION_ID has its note | 0 | plastic next | [`note.rb:31`](../../../../lib/plastic/workflows/code/session/note.rb#L31) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 
 Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
 
 - No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.

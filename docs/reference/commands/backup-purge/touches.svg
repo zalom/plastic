@@ -76,11 +76,6 @@
 <text x="28" y="68" class="tm" text-anchor="start">backups</text>
 <path d="M 238 49 L 288 49" class="wire-read"/>
 <path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
-<rect x="564" y="34" width="220" height="45" rx="14" class="db"/>
-<text x="576" y="52" class="tb" text-anchor="start">work_graph.db</text>
-<text x="576" y="68" class="tm" text-anchor="start">tables not found</text>
-<path d="M 512 49 L 562 49" class="wire"/>
-<path d="M 554 44 L 562 49 L 554 54 Z" class="head"/>
 <rect x="290" y="34" width="220" height="45" rx="6" class="lane-code"/>
 <text x="300" y="58" class="tm" text-anchor="start">plastic backup purge</text>
 <text x="16" y="104" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>

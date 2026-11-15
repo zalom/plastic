@@ -115,7 +115,7 @@
 <path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
 <rect x="16" y="294" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="309" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="309" class="tm tag-muted" text-anchor="end">drop.rb:28</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">drop.rb:29</text>
 <text x="26" y="326" class="t" text-anchor="start">say what was dropped</text>
 <path d="M 226 339 L 226 349" class="wire"/>
 <path d="M 221 341 L 226 349 L 231 341 Z" class="head"/>

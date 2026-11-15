@@ -29,9 +29,12 @@ module Plastic
             context[:problem] = context.work.note_problem(context.text)
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the intent is missing, done or abandoned, or the note is empty or not valid",
+            pass: ->(context) { context.problem.nil? }
 
-          step "write the note", done: ->(context) { !context.reference.nil? } do |context|
+          step "write the note", done: ->(context) { !context.reference.nil? },
+            changes: { knowledge: "The note is added to the notes of the intent" } do |context|
             context[:reference] = context.work.note_intent(context.intent, context.kind, context.text)
           end
 

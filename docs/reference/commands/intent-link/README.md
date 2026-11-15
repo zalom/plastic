@@ -48,11 +48,11 @@ Its rows run in this order:
 
 1. Read: check the ends. [`link.rb:16`](../../../../lib/plastic/workflows/code/intent/link.rb#L16)
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`link.rb:20`](../../../../lib/plastic/workflows/code/intent/link.rb#L20)
-3. Read: check for a self link or a repeat. [`link.rb:22`](../../../../lib/plastic/workflows/code/intent/link.rb#L22)
-4. Gate: passes when `context.refusal.nil?`; otherwise the call stops with exit 3 and prints REFUSAL. [`link.rb:26`](../../../../lib/plastic/workflows/code/intent/link.rb#L26)
-5. Step: add the link. Done when `!context.added.nil?`, so a second call skips it. [`link.rb:28`](../../../../lib/plastic/workflows/code/intent/link.rb#L28)
-6. Read: say what was written. [`link.rb:32`](../../../../lib/plastic/workflows/code/intent/link.rb#L32)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic sync down. [`link.rb:36`](../../../../lib/plastic/workflows/code/intent/link.rb#L36)
+3. Read: check for a self link or a repeat. [`link.rb:24`](../../../../lib/plastic/workflows/code/intent/link.rb#L24)
+4. Gate: passes when `context.refusal.nil?`; otherwise the call stops with exit 3 and prints REFUSAL. [`link.rb:28`](../../../../lib/plastic/workflows/code/intent/link.rb#L28)
+5. Step: add the link. Done when `!context.added.nil?`, so a second call skips it. [`link.rb:32`](../../../../lib/plastic/workflows/code/intent/link.rb#L32)
+6. Read: say what was written. [`link.rb:37`](../../../../lib/plastic/workflows/code/intent/link.rb#L37)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic sync down. [`link.rb:41`](../../../../lib/plastic/workflows/code/intent/link.rb#L41)
 
 It sets `problem`, `refusal`, `added`.
 
@@ -81,7 +81,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| add the link | `!context.added.nil?` | skips it | [`link.rb:28`](../../../../lib/plastic/workflows/code/intent/link.rb#L28) |
+| add the link | `!context.added.nil?` | skips it | [`link.rb:32`](../../../../lib/plastic/workflows/code/intent/link.rb#L32) |
 
 ## How a call ends
 
@@ -90,9 +90,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`link.rb:20`](../../../../lib/plastic/workflows/code/intent/link.rb#L20) |
-| REFUSAL | 3 | prints no next: line | [`link.rb:26`](../../../../lib/plastic/workflows/code/intent/link.rb#L26) |
-| the link is on record | 0 | plastic sync down | [`link.rb:36`](../../../../lib/plastic/workflows/code/intent/link.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| REFUSAL | 3 | prints no next: line | [`link.rb:28`](../../../../lib/plastic/workflows/code/intent/link.rb#L28) |
+| the link is on record | 0 | plastic sync down | [`link.rb:41`](../../../../lib/plastic/workflows/code/intent/link.rb#L41) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 | Usage error: KIND takes LASTIC | 2 | prints no next: line | [`link.rb:21`](../../../../lib/plastic/commands/intent/link.rb#L21) |
 
 ## What the page leaves out

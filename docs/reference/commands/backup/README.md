@@ -59,9 +59,9 @@ Says which folder and databases a backup would write, and writes nothing.
 
 Its rows run in this order:
 
-1. Read: preview the backup. [`preview.rb:15`](../../../../lib/plastic/workflows/code/backup/preview.rb#L15)
-2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/preview.rb#L22)
-3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup](#codebackup). [`preview.rb:24`](../../../../lib/plastic/workflows/code/backup/preview.rb#L24)
+1. Read: preview the backup. [`preview.rb:16`](../../../../lib/plastic/workflows/code/backup/preview.rb#L16)
+2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/preview.rb#L23)
+3. Outcome `:continue`, otherwise: starts the workflow [Code::Backup](#codebackup). [`preview.rb:25`](../../../../lib/plastic/workflows/code/backup/preview.rb#L25)
 
 ### Code::Backup
 
@@ -73,9 +73,9 @@ Copies the databases of one store into a new backup folder, and writes the row t
 
 Its rows run in this order:
 
-1. Step: write the backup folder. Done when `!context.name.nil?`, so a second call skips it. [`backup.rb:16`](../../../../lib/plastic/workflows/code/backup.rb#L16)
-2. Read: say what was copied. [`backup.rb:23`](../../../../lib/plastic/workflows/code/backup.rb#L23)
-3. Outcome `:done`, always: finishes with exit 0; next: plastic backup list --store STORE. [`backup.rb:28`](../../../../lib/plastic/workflows/code/backup.rb#L28)
+1. Step: write the backup folder. Done when `!context.name.nil?`, so a second call skips it. [`backup.rb:17`](../../../../lib/plastic/workflows/code/backup.rb#L17)
+2. Read: say what was copied. [`backup.rb:25`](../../../../lib/plastic/workflows/code/backup.rb#L25)
+3. Outcome `:done`, always: finishes with exit 0; next: plastic backup list --store STORE. [`backup.rb:30`](../../../../lib/plastic/workflows/code/backup.rb#L30)
 
 It sets `name`, `files`, `bytes`.
 
@@ -93,13 +93,12 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the home folder | local.db | `backups` | writes | found in the code, not declared |
-| the store folder | work_graph.db | not found in the code | writes | [`backup.rb:13`](../../../../lib/plastic/commands/backup.rb#L13) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| write the backup folder | `!context.name.nil?` | skips it | [`backup.rb:16`](../../../../lib/plastic/workflows/code/backup.rb#L16) |
+| write the backup folder | `!context.name.nil?` | skips it | [`backup.rb:17`](../../../../lib/plastic/workflows/code/backup.rb#L17) |
 
 ## How a call ends
 
@@ -107,9 +106,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview wrote no folder or row | 0 | ORIGINAL_COMMAND | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/preview.rb#L22) |
-| backup NAME is on disk | 0 | plastic backup list --store STORE | [`backup.rb:28`](../../../../lib/plastic/workflows/code/backup.rb#L28) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the preview wrote no folder or row | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/preview.rb#L23) |
+| backup NAME is on disk | 0 | plastic backup list --store STORE | [`backup.rb:30`](../../../../lib/plastic/workflows/code/backup.rb#L30) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
 | Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
 | Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/cli/backup_store.rb#L47) |
@@ -117,5 +116,3 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 ## What the page leaves out
 
 Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.

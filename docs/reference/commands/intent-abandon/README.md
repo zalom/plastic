@@ -39,13 +39,13 @@ Reads the intent and its lock: a missing or closed intent fails, a foreign live 
 
 Its rows run in this order:
 
-1. Read: read the intent. [`prepare.rb:17`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L17)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`prepare.rb:22`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L22)
-3. Gate: passes when `!%w[done abandoned].include?(context.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is STATUS; it can no longer be abandoned. [`prepare.rb:23`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L23)
-4. Read: check delivery ownership. [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L26)
-5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`prepare.rb:32`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L32)
-6. Outcome `:reverting`, when `!context.reverted`: starts the workflow [Agent::Intent::Abandon](#agentintentabandon). [`prepare.rb:34`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L34)
-7. Outcome `:abandoning`, otherwise: starts the workflow [Code::Intent::Abandon](#codeintentabandon). [`prepare.rb:35`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L35)
+1. Read: read the intent. [`prepare.rb:18`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L18)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`prepare.rb:23`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L23)
+3. Gate: passes when `!%w[done abandoned].include?(context.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is STATUS; it can no longer be abandoned. [`prepare.rb:24`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L24)
+4. Read: check delivery ownership. [`prepare.rb:27`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L27)
+5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L33)
+6. Outcome `:reverting`, when `!context.reverted`: starts the workflow [Agent::Intent::Abandon](#agentintentabandon). [`prepare.rb:37`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L37)
+7. Outcome `:abandoning`, otherwise: starts the workflow [Code::Intent::Abandon](#codeintentabandon). [`prepare.rb:38`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L38)
 
 It sets `intent`, `status`, `problem`, `intent_folder`, `reverted`.
 
@@ -59,10 +59,10 @@ The agent undoes what the intent changed and records that in outcome.md. Plastic
 
 Its rows run in this order:
 
-1. Agent step: revert what intent INTENT_ID changed. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:11`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L11)
-2. Agent step: record the revert. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:16`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L16)
-3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`abandon.rb:20`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L20)
-4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`abandon.rb:21`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L21)
+1. Agent step: revert what intent INTENT_ID changed. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:12`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L12)
+2. Agent step: record the revert. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:17`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L17)
+3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`abandon.rb:21`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L21)
+4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`abandon.rb:22`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L22)
 
 The agent step "revert what intent INTENT_ID changed" prints:
 
@@ -84,9 +84,9 @@ The abandoned close can be retried after the status write but before lock cleanu
 
 Its rows run in this order:
 
-1. Read: check cleanup again. [`abandon.rb:13`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L13)
-2. Step: abandon the intent and finish cleanup. Done when `context.abandon_ended == true`, so a second call skips it. [`abandon.rb:15`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L15)
-3. Outcome `:done`, always: starts the workflow [Agent::Shared::WindDownIntent](#agentsharedwinddownintent). [`abandon.rb:21`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L21)
+1. Read: check cleanup again. [`abandon.rb:14`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L14)
+2. Step: abandon the intent and finish cleanup. Done when `context.abandon_ended == true`, so a second call skips it. [`abandon.rb:16`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L16)
+3. Outcome `:done`, always: starts the workflow [Agent::Shared::WindDownIntent](#agentsharedwinddownintent). [`abandon.rb:23`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L23)
 
 It sets `abandon_ended`.
 
@@ -100,9 +100,9 @@ The agent stops what the intent started. Plastic runs and stops nothing.
 
 Its rows run in this order:
 
-1. Agent step: stop what intent INTENT_ID started. Runs on every call; its done check is `false`. The call prints its `say:` text. [`wind_down_intent.rb:11`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L11)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`wind_down_intent.rb:15`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L15)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16)
+1. Agent step: stop what intent INTENT_ID started. Runs on every call; its done check is `false`. The call prints its `say:` text. [`wind_down_intent.rb:12`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L12)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`wind_down_intent.rb:17`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L17)
 
 The agent step "stop what intent INTENT_ID started" prints:
 
@@ -132,10 +132,10 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| revert what intent INTENT_ID changed | `context.reverted` | skips it | [`abandon.rb:11`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L11) |
-| record the revert | `context.reverted` | skips it | [`abandon.rb:16`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L16) |
-| abandon the intent and finish cleanup | `context.abandon_ended == true` | skips it | [`abandon.rb:15`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L15) |
-| stop what intent INTENT_ID started | `false` | runs it again | [`wind_down_intent.rb:11`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L11) |
+| revert what intent INTENT_ID changed | `context.reverted` | skips it | [`abandon.rb:12`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L12) |
+| record the revert | `context.reverted` | skips it | [`abandon.rb:17`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L17) |
+| abandon the intent and finish cleanup | `context.abandon_ended == true` | skips it | [`abandon.rb:16`](../../../../lib/plastic/workflows/code/intent/abandon.rb#L16) |
+| stop what intent INTENT_ID started | `false` | runs it again | [`wind_down_intent.rb:12`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L12) |
 
 ## How a call ends
 
@@ -143,14 +143,14 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`prepare.rb:22`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L22) |
-| intent INTENT_ID is STATUS; it can no longer be abandoned | 1 | prints no next: line | [`prepare.rb:23`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L23) |
-| PROBLEM | 3 | prints no next: line | [`prepare.rb:32`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L32) |
-| the agent reverts the intent's changes and records it in outcome.md | 0 | prints no next: line | [`abandon.rb:20`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L20) |
-| the revert is recorded | 0 | prints no next: line | [`abandon.rb:21`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L21) |
-| the agent stops the processes and agents the intent started | 0 | prints no next: line | [`wind_down_intent.rb:15`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L15) |
-| nothing the intent started is left running | 0 | prints no next: line | [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`prepare.rb:23`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L23) |
+| intent INTENT_ID is STATUS; it can no longer be abandoned | 1 | prints no next: line | [`prepare.rb:24`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L24) |
+| PROBLEM | 3 | prints no next: line | [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/abandon/prepare.rb#L33) |
+| the agent reverts the intent's changes and records it in outcome.md | 0 | prints no next: line | [`abandon.rb:21`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L21) |
+| the revert is recorded | 0 | prints no next: line | [`abandon.rb:22`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L22) |
+| the agent stops the processes and agents the intent started | 0 | prints no next: line | [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16) |
+| nothing the intent started is left running | 0 | prints no next: line | [`wind_down_intent.rb:17`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L17) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

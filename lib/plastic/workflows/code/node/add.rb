@@ -18,9 +18,12 @@ module Plastic
             context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || criterion_problem(context)
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            stops_when: "the intent is missing, done or abandoned, or the criterion key is not one of the spec",
+            pass: ->(context) { context.problem.nil? }
 
-          step "add the node", done: ->(context) { !context.id.nil? } do |context|
+          step "add the node", done: ->(context) { !context.id.nil? },
+            changes: { work: "The node is added to the work graph of the intent" } do |context|
             node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
               input: context.input)
             context[:id] = node.id

@@ -15,6 +15,7 @@ module Plastic
       # names install.sh.
       class Update < CodeWorkflow
         clear_declarations
+        summary "Downloads and checks the newest release and names the command that installs it."
 
         sets :newer, :synced, :active, :release, :downloaded, :command
 
@@ -23,7 +24,8 @@ module Plastic
           context[:newer] = installation.installed? && installation.newer?
         end
 
-        step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced } do |context|
+        step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced },
+          changes: { home: "The newer package is synced into the Plastic home", harness: "The installed agents are refreshed" } do |context|
           installation = Installation.of(context)
           agents = installation.installed_agents
           lines = Installation.capture { installation.install(agents) }
@@ -35,7 +37,8 @@ module Plastic
           newest_release(context) unless context.newer
         end
 
-        step "download the newer release", done: ->(context) { context.release.nil? || context.downloaded } do |context|
+        step "download the newer release", done: ->(context) { context.release.nil? || context.downloaded },
+          changes: { home: "The newer release is downloaded and made the active release" } do |context|
           ReleaseUpdate.of(context).download(context.release)
           context[:command] = ReleaseCommand.of(context.scope).install(context.active, context.release)
           context[:downloaded] = true

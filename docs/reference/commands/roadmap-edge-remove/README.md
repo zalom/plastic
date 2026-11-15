@@ -35,9 +35,9 @@ Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
 2. Step: remove the edge. Done when `!context.removed.nil?`, so a second call skips it. [`remove.rb:18`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L18)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`remove.rb:24`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L24)
-4. Read: say what was removed. [`remove.rb:26`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L26)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`remove.rb:30`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L30)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`remove.rb:25`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L25)
+4. Read: say what was removed. [`remove.rb:29`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L29)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`remove.rb:33`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L33)
 
 It sets `problem`, `removed`.
 
@@ -69,9 +69,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`remove.rb:24`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L24) |
-| edge FROM to TO is gone | 0 | plastic roadmap show SLUG | [`remove.rb:30`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`remove.rb:25`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L25) |
+| edge FROM to TO is gone | 0 | plastic roadmap show SLUG | [`remove.rb:33`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L33) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

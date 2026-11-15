@@ -13,12 +13,14 @@ module Plastic
       # with its stores stays.
       class Uninstall < CodeWorkflow
         clear_declarations
+        summary "Removes what the record of each chosen harness lists."
 
         UNRECORDED = "%s: no record lists what Plastic wrote; run plastic install --reinstall to write it, then run this again"
 
         sets :removed, :releases_removed, :unrecorded, :released
 
-        step "remove what each record lists", done: ->(context) { context.removed } do |context|
+        step "remove what each record lists", done: ->(context) { context.removed },
+          changes: { harness: "What each record lists is removed from the picked harnesses", home: "The records of the removed installations are deleted" } do |context|
           plastic_home = context.scope.plastic_home
           unrecorded = context.picked.reject do |name|
             removed = Installations.remove(plastic_home, name)
@@ -29,7 +31,8 @@ module Plastic
           context[:removed] = true
         end
 
-        step "remove the releases and the launcher", done: ->(context) { context.releases_removed } do |context|
+        step "remove the releases and the launcher", done: ->(context) { context.releases_removed },
+          changes: { home: "The release folders and the launcher are removed from the Plastic home" } do |context|
           rows = Installation.of(context).kept([]).empty? ? ReleaseRemoval.of(context).call.to_a : []
           rows.each { |label, value| context.row(label, value) }
           context[:released] = rows.any?

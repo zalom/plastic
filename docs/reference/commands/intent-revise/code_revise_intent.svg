@@ -120,13 +120,13 @@
 <path d="M 221 337 L 226 345 L 231 337 Z" class="head"/>
 <rect x="16" y="345" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="360" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="360" class="tm tag-muted" text-anchor="end">revise.rb:36</text>
+<text x="426" y="360" class="tm tag-muted" text-anchor="end">revise.rb:38</text>
 <text x="26" y="377" class="t" text-anchor="start">show the change</text>
 <path d="M 226 390 L 226 400" class="wire"/>
 <path d="M 221 392 L 226 400 L 231 392 Z" class="head"/>
 <rect x="16" y="400" width="420" height="73" rx="6" class="card"/>
 <text x="26" y="415" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="415" class="tm tag-muted" text-anchor="end">revise.rb:43</text>
+<text x="426" y="415" class="tm tag-muted" text-anchor="end">revise.rb:45</text>
 <text x="26" y="432" class="t" text-anchor="start">write the revision</text>
 <text x="26" y="447" class="tm" text-anchor="start">done when context.dry_run ||</text>
 <text x="26" y="461" class="tm" text-anchor="start">!context.new_reference.nil?</text>
@@ -140,7 +140,7 @@
 <path d="M 221 475 L 226 483 L 231 475 Z" class="head"/>
 <rect x="16" y="483" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="498" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="498" class="tm tag-muted" text-anchor="end">revise.rb:47</text>
+<text x="426" y="498" class="tm tag-muted" text-anchor="end">revise.rb:50</text>
 <text x="26" y="515" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 528 L 226 538" class="wire"/>
 <path d="M 221 530 L 226 538 L 231 530 Z" class="head"/>

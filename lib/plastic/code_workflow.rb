@@ -21,7 +21,7 @@ module Plastic
   class CodeWorkflow < Workflow
     # How a gate stops the call: exit 3 or exit 1.
     STOPS = %i[refusal failure].freeze
-    GATE_OPTIONS = %i[stops pass offers because].freeze
+    GATE_OPTIONS = %i[stops pass offers because stops_when].freeze
 
     class << self
       def lane = "code"
@@ -39,7 +39,7 @@ module Plastic
         stops = rule.fetch(:stops)
         raise Invalid, "#{name}: a gate stops as :refusal or :failure" unless STOPS.include?(stops)
 
-        steps << Gate.new(reason, stops, rule.fetch(:pass), *rule.values_at(:offers, :because))
+        steps << Gate.new(reason, stops, rule.fetch(:pass), *rule.values_at(:offers, :because, :stops_when))
       end
 
       # A step that changes nothing on disk. It runs on every call, rerun
@@ -62,10 +62,11 @@ module Plastic
       # A step that changes state. It runs only while its done: check is
       # false, and the check must hold after the body. So a rerun after a
       # failure or a handoff never repeats the change.
-      def step(step_name, done:, &body)
+      def step(step_name, done:, changes: nil, &body)
         raise Invalid, "#{name}: step #{step_name.inspect} needs a block" unless body
+        raise Invalid, "#{name}: step #{step_name.inspect} needs changes:, a hash of place to words, or {} when it changes nothing" unless changes
 
-        steps << Step.new(step_name, done, body)
+        steps << Step.new(step_name, done, changes, body)
       end
 
       # The first outcome whose if: holds is returned. A line with no if: is

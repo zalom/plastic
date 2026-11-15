@@ -36,9 +36,9 @@ Its rows run in this order:
 2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`add.rb:20`](../../../../lib/plastic/workflows/code/edge/add.rb#L20)
 3. Read: forget a refusal of an earlier call. [`add.rb:22`](../../../../lib/plastic/workflows/code/edge/add.rb#L22)
 4. Step: add the edge. Done when `!context.added.nil?`, so a second call skips it. [`add.rb:24`](../../../../lib/plastic/workflows/code/edge/add.rb#L24)
-5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:30`](../../../../lib/plastic/workflows/code/edge/add.rb#L30)
-6. Read: say what was added. [`add.rb:32`](../../../../lib/plastic/workflows/code/edge/add.rb#L32)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic graph show INTENT_ID. [`add.rb:36`](../../../../lib/plastic/workflows/code/edge/add.rb#L36)
+5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:31`](../../../../lib/plastic/workflows/code/edge/add.rb#L31)
+6. Read: say what was added. [`add.rb:35`](../../../../lib/plastic/workflows/code/edge/add.rb#L35)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic graph show INTENT_ID. [`add.rb:39`](../../../../lib/plastic/workflows/code/edge/add.rb#L39)
 
 It sets `intent`, `problem`, `added`.
 
@@ -75,9 +75,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`add.rb:20`](../../../../lib/plastic/workflows/code/edge/add.rb#L20) |
-| PROBLEM | 1 | prints no next: line | [`add.rb:30`](../../../../lib/plastic/workflows/code/edge/add.rb#L30) |
-| edge FROM to TO is written | 0 | plastic graph show INTENT_ID | [`add.rb:36`](../../../../lib/plastic/workflows/code/edge/add.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| PROBLEM | 1 | prints no next: line | [`add.rb:31`](../../../../lib/plastic/workflows/code/edge/add.rb#L31) |
+| edge FROM to TO is written | 0 | plastic graph show INTENT_ID | [`add.rb:39`](../../../../lib/plastic/workflows/code/edge/add.rb#L39) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

@@ -31,7 +31,7 @@ Writes one setting to config.yml: under `global`, or under the harness's section
 Its rows run in this order:
 
 1. Step: write the setting. Done when `context.saved`, so a second call skips it. [`set.rb:18`](../../../../lib/plastic/workflows/code/config/set.rb#L18)
-2. Outcome `:done`, always: finishes with exit 0; next: plastic config get KEYHARNESS_WORDS. [`set.rb:27`](../../../../lib/plastic/workflows/code/config/set.rb#L27)
+2. Outcome `:done`, always: finishes with exit 0; next: plastic config get KEYHARNESS_WORDS. [`set.rb:28`](../../../../lib/plastic/workflows/code/config/set.rb#L28)
 
 It sets `harness_words`, `saved`.
 
@@ -60,8 +60,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the setting is written | 0 | plastic config get KEYHARNESS_WORDS | [`set.rb:27`](../../../../lib/plastic/workflows/code/config/set.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
+| the setting is written | 0 | plastic config get KEYHARNESS_WORDS | [`set.rb:28`](../../../../lib/plastic/workflows/code/config/set.rb#L28) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
 
 ## What the page leaves out
 

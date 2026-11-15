@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">update.rb:16</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">update.rb:21</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">update.rb:22</text>
 <text x="26" y="66" class="t" text-anchor="start">check whether the running package is newer</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">update.rb:26</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">update.rb:27</text>
 <text x="26" y="121" class="t" text-anchor="start">sync the newer package into the home</text>
 <text x="26" y="136" class="tm" text-anchor="start">done when !context.newer || context.synced</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
@@ -91,13 +91,13 @@
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>
 <rect x="16" y="158" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="173" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="173" class="tm tag-muted" text-anchor="end">update.rb:34</text>
+<text x="426" y="173" class="tm tag-muted" text-anchor="end">update.rb:36</text>
 <text x="26" y="190" class="t" text-anchor="start">find a newer release on the chosen channel</text>
 <path d="M 226 203 L 226 213" class="wire"/>
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">update.rb:38</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">update.rb:40</text>
 <text x="26" y="245" class="t" text-anchor="start">download the newer release</text>
 <text x="26" y="260" class="tm" text-anchor="start">done when context.release.nil? || context.downloaded</text>
 <path d="M 436 231 L 464 231" class="wire-failure"/>

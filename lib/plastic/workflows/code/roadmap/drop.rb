@@ -21,7 +21,8 @@ module Plastic
 
           gate "no item %{item_id} on roadmap %{slug}", stops: :failure, pass: ->(context) { !context.item.nil? }
 
-          step "drop the item", done: ->(context) { context.dropped } do |context|
+          step "drop the item", done: ->(context) { context.dropped },
+            changes: { work: "The item is removed from the roadmap" } do |context|
             context[:dropped] = context.work.drop_item(context.slug, context.item_id)
           end
 

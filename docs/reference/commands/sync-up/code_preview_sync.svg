@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">preview.rb:13</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:43</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:44</text>
 <text x="26" y="66" class="t" text-anchor="start">preview the sync in an isolated copy</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:54</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:55</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when as_real?(context, :runs?)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -89,7 +89,7 @@
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="140" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">preview.rb:61</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">preview.rb:64</text>
 <text x="26" y="176" class="tm" text-anchor="start">passes when as_real?(context, :writes?)</text>
 <path d="M 436 162 L 464 162" class="wire-refusal"/>
 <path d="M 456 157 L 464 162 L 456 167 Z" class="head"/>
@@ -107,7 +107,7 @@
 <path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
 <rect x="16" y="294" width="420" height="112" rx="6" class="card"/>
 <text x="26" y="309" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="309" class="tm tag-muted" text-anchor="end">preview.rb:62</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">preview.rb:65</text>
 <text x="26" y="326" class="tm" text-anchor="start">passes when as_real?(context, :settled?)</text>
 <path d="M 436 312 L 464 312" class="wire-refusal"/>
 <path d="M 456 307 L 464 312 L 456 317 Z" class="head"/>
@@ -123,7 +123,7 @@
 <path d="M 221 408 L 226 416 L 231 408 Z" class="head"/>
 <rect x="16" y="416" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="431" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="431" class="tm tag-muted" text-anchor="end">preview.rb:67</text>
+<text x="426" y="431" class="tm tag-muted" text-anchor="end">preview.rb:70</text>
 <text x="26" y="448" class="tm" text-anchor="start">passes when as_real?(context, :readable?)</text>
 <path d="M 436 434 L 464 434" class="wire-failure"/>
 <path d="M 456 429 L 464 434 L 456 439 Z" class="head"/>
@@ -138,7 +138,7 @@
 <path d="M 221 516 L 226 524 L 231 516 Z" class="head"/>
 <rect x="16" y="524" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="539" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="539" class="tm tag-muted" text-anchor="end">preview.rb:68</text>
+<text x="426" y="539" class="tm tag-muted" text-anchor="end">preview.rb:71</text>
 <text x="26" y="556" class="tm" text-anchor="start">passes when as_real?(context, :files_read?)</text>
 <path d="M 436 542 L 464 542" class="wire-failure"/>
 <path d="M 456 537 L 464 542 L 456 547 Z" class="head"/>
@@ -151,7 +151,7 @@
 <path d="M 221 596 L 226 604 L 231 596 Z" class="head"/>
 <rect x="16" y="604" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="619" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="619" class="tm tag-muted" text-anchor="end">preview.rb:70</text>
+<text x="426" y="619" class="tm tag-muted" text-anchor="end">preview.rb:73</text>
 <text x="26" y="636" class="tm" text-anchor="start">passes when as_real?(context, :rowless_read?)</text>
 <path d="M 436 622 L 464 622" class="wire-failure"/>
 <path d="M 456 617 L 464 622 L 456 627 Z" class="head"/>

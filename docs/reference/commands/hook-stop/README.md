@@ -18,7 +18,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic hook stop](call.svg)
 
-The hook's `respond`, at [`stop.rb:15`](../../../../lib/plastic/hooks/stop.rb#L15):
+The hook's `respond`, at [`stop.rb:17`](../../../../lib/plastic/hooks/stop.rb#L17):
 
 ```ruby
 def respond(event)
@@ -30,8 +30,8 @@ end
 
 Its steps run in this order:
 
-1. `return no_session unless session_id` [`stop.rb:16`](../../../../lib/plastic/hooks/stop.rb#L16)
-2. `stop(event)` [`stop.rb:18`](../../../../lib/plastic/hooks/stop.rb#L18)
+1. `return no_session unless session_id` [`stop.rb:18`](../../../../lib/plastic/hooks/stop.rb#L18)
+2. `stop(event)` [`stop.rb:20`](../../../../lib/plastic/hooks/stop.rb#L20)
 
 ## What one call reads, writes and prints
 
@@ -48,7 +48,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`stop.rb:15`](../../../../lib/plastic/hooks/stop.rb#L15) |
+| answers the event | 0 | prints no next: line | [`stop.rb:17`](../../../../lib/plastic/hooks/stop.rb#L17) |
 | blocks the stop | 0 | prints no next: line | [`stop_gate.rb:24`](../../../../lib/plastic/hooks/stop_gate.rb#L24) |
 
 ## What the page leaves out

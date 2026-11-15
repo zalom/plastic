@@ -16,6 +16,7 @@ module Plastic
         argument :slug, label: "SLUG", text: "the project's name: lowercase letters, digits and dashes"
         argument :path, label: "PATH", text: "the project's repository folder"
         writes :work, :knowledge, :references
+        changes(work: "The work database of the store is created if it is missing", knowledge: "The knowledge database of the store is created if it is missing", references: "The references database of the store is created if it is missing", home: "The project is registered in projects.yml in the Plastic home")
 
         def call
           slug = checked_slug

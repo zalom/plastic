@@ -12,13 +12,16 @@ module Plastic
         class Verdict
           # Reads the intent and its judge rounds before a verdict is written: a missing or closed intent fails, an accept with no done criterion, no node or a live node that is not done fails, both rounds used is the owner's step.
           class Prepare < CodeWorkflow
+            summary "Checks the verdict, and for an accept the delivery behind it."
             sets :problem, :criterion_problem, :node_problem, :open_nodes
 
             read "check the intent" do |context|
               context[:problem] = context.work.open_intent_problem(context.intent_id, "verdict")
             end
 
-            gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+            gate "%{problem}", stops: :failure,
+              stops_when: "the intent is missing, done or abandoned",
+              pass: ->(context) { context.problem.nil? }
 
             read "check the delivery behind an accept" do |context|
               delivery_problems(context).each { |key, value| context[key] = value }
@@ -47,7 +50,7 @@ module Plastic
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { context.work.rounds_left?(context.intent_id) }
 
-            outcome :recording
+            outcome :recording, because: "the intent can take the verdict"
           end
         end
       end

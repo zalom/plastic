@@ -25,6 +25,7 @@ module Plastic
         # and edge commands.
         class Brief < CodeWorkflow
           clear_declarations
+          summary "Prints the goal, the done criteria, the rulings and the ready nodes of the intent."
 
           sets :intent
 

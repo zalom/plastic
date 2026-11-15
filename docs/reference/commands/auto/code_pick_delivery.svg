@@ -72,13 +72,13 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">pick.rb:17</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">pick.rb:22</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">pick.rb:23</text>
 <text x="26" y="66" class="t" text-anchor="start">forget what an earlier call picked</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">pick.rb:28</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">pick.rb:29</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when intent_word?(context) ||</text>
 <text x="26" y="136" class="tm" text-anchor="start">!context.retrieval.roadmap(context.id).nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
@@ -90,7 +90,7 @@
 <path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
 <rect x="16" y="159" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="174" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="174" class="tm tag-muted" text-anchor="end">pick.rb:31</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">pick.rb:32</text>
 <text x="26" y="191" class="t" text-anchor="start">pick the intent to deliver</text>
 <path d="M 226 204 L 226 214" class="wire"/>
 <path d="M 221 206 L 226 214 L 231 206 Z" class="head"/>
