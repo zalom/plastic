@@ -21,16 +21,16 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
 
   def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(local_db, root, Plastic::Graph.open(home: @restore_home, store: "alpha").retrieval, now:)
 
-  def take_lock(renewed_at)
+  def lock_intent(renewed_at)
     local_db.transaction do |batch|
-      batch.put(:locks, { store: "alpha", intent_id: 1, session_id: "s-1", mode: "auto", taken_at: renewed_at, renewed_at: }, statement: :insert)
+      batch.put(:locks, { store: "alpha", intent_id: 1, session_id: "s-1", mode: "auto", locked_at: renewed_at, renewed_at: }, statement: :insert)
     end
   end
 
   def bytes(name) = File.binread(store_file(@restore_home, name))
 
   def test_a_fresh_delivery_lock_refuses_the_restore
-    take_lock(at(2026, 6, 1, 11, 50, 0).iso8601)
+    lock_intent(at(2026, 6, 1, 11, 50, 0).iso8601)
     before = bytes("work_graph")
 
     assert_raises(Restorer::Locked) { restorer.call(STAMP) }
@@ -38,14 +38,14 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
   end
 
   def test_a_lapsed_delivery_lock_does_not_refuse_the_restore
-    take_lock(at(2026, 6, 1, 9, 0, 0).iso8601)
+    lock_intent(at(2026, 6, 1, 9, 0, 0).iso8601)
     restorer.call(STAMP)
 
     assert_equal 1, intent_count(@restore_home)
   end
 
   def test_a_lapsed_delivery_lock_held_by_an_open_node_refuses_the_restore
-    take_lock(at(2026, 6, 1, 9, 0, 0).iso8601)
+    lock_intent(at(2026, 6, 1, 9, 0, 0).iso8601)
     Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:work).transaction do |batch|
       batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-1", updated_at: at(2026, 6, 1, 11, 0, 0).iso8601 })
     end

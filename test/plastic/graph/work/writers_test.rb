@@ -23,7 +23,7 @@ class WorkWritersTest < Plastic::TestCase
   end
 
   def test_the_session_writer_writes_under_the_store_name
-    writers.sessions.take_lock("1", session_id: "s-1", mode: "auto")
+    writers.sessions.lock_intent("1", session_id: "s-1", mode: "auto")
 
     assert_equal "global", retrieval.lock("1").store
   end

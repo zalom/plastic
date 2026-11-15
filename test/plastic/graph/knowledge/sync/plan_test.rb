@@ -21,12 +21,12 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
   def test_each_entry_takes_the_action_of_its_direction
     assert_equal({ "c.md" => :conflict, "h.md" => :read, "r.md" => :none, "l.md" => :record },
       plan.actions.transform_keys(&:path))
-    assert_equal [%w[r.md], %w[l.md], :down], [paths(plan(:down).taking(:print)), paths(plan(:down).taking(:record)), plan(:down).direction]
+    assert_equal [%w[r.md], %w[l.md], :down], [paths(plan(:down).entries_for(:print)), paths(plan(:down).entries_for(:record)), plan(:down).direction]
   end
 
   def test_conflicts_list_their_paths_until_an_overwrite_names_them
     assert_equal [%w[c.md], [], %w[c.md]], [plan.conflicts, plan(overwrite: nil).conflicts, plan(overwrite: "/root/h.md").conflicts]
-    assert_equal [%w[c.md h.md], %w[c.md]], [paths(plan(overwrite: "/root/c.md").taking(:read)), paths(plan(:down, overwrite: "c.md").taking(:print)) - %w[r.md]]
+    assert_equal [%w[c.md h.md], %w[c.md]], [paths(plan(overwrite: "/root/c.md").entries_for(:read)), paths(plan(:down, overwrite: "c.md").entries_for(:print)) - %w[r.md]]
   end
 
   def test_pending_counts_the_writes_and_a_legacy_import

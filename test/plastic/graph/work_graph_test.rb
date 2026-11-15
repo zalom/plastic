@@ -28,7 +28,7 @@ class WorkGraphTest < Plastic::TestCase
   end
 
   def test_the_backups_refuse_a_restore_while_a_live_lock_holds_an_intent
-    work.take_lock("1", session_id: "s-2", mode: "auto")
+    work.lock_intent("1", session_id: "s-2", mode: "auto")
 
     assert_predicate work.backups.restorer, :locked?
   end

@@ -44,7 +44,7 @@ class WorkflowStartAutoTest < Plastic::TestCase
 
   def test_another_live_session_lock_is_refused_and_kept
     specified_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
 
     assert_equal "intent 1 is locked by session s-2", start.message
     assert_equal "s-2", retrieval.lock("1").session_id

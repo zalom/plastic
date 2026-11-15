@@ -44,7 +44,7 @@ class WorkReaderTest < Plastic::TestCase
     plan(*(1..10).map { |number| "Step #{number}" })
     %w[n10 n2].each { |id| @work.claim_node(intent_id: "1", id:, by: "a") }
     claims = Plastic::Graph::Work::Session::Claims.new(store_graphs.databases, store: "global")
-    lock = Plastic::Graph::Lock.new(store: "global", intent_id: "1", session_id: "a", mode: "auto", taken_at: nil, renewed_at: nil)
+    lock = Plastic::Graph::Lock.new(store: "global", intent_id: "1", session_id: "a", mode: "auto", locked_at: nil, renewed_at: nil)
 
     assert_equal %w[n2 n10], claims.call(lock).map(&:id)
   end

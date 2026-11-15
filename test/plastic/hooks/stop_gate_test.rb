@@ -12,9 +12,9 @@ class StopGateTest < Plastic::TestCase
     put(:work, :nodes, { intent_id:, id: "a", state: "open" })
   end
 
-  def take_lock(intent_id, mode: "auto", live: true)
+  def lock_intent(intent_id, mode: "auto", live: true)
     at = live ? STAMP : "2026-10-05T09:00:00+02:00"
-    put(:local, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, taken_at: at, renewed_at: at })
+    put(:local, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, locked_at: at, renewed_at: at })
   end
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
@@ -22,7 +22,7 @@ class StopGateTest < Plastic::TestCase
   def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1", now: Time.iso8601(STAMP) + 60)
 
   def test_blocks_when_every_condition_holds
-    take_lock("1")
+    lock_intent("1")
     make_ready_node("1")
 
     decision = gate.decision
@@ -32,14 +32,14 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_permits_once_the_harness_reports_the_stop_hook_active
-    take_lock("1")
+    lock_intent("1")
     make_ready_node("1")
 
     assert_nil gate(event: { stop_hook_active: true }).decision
   end
 
   def test_permits_when_the_config_flag_is_off
-    take_lock("1")
+    lock_intent("1")
     make_ready_node("1")
 
     assert_nil gate(stop_hook: false).decision
@@ -52,20 +52,20 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_permits_when_the_locked_intent_has_no_ready_node
-    take_lock("1")
+    lock_intent("1")
 
     assert_nil gate.decision
   end
 
   def test_a_lapsed_lock_does_not_block
-    take_lock("1", live: false)
+    lock_intent("1", live: false)
     make_ready_node("1")
 
     assert_nil gate.decision
   end
 
   def test_a_lapsed_lock_held_by_an_open_node_still_blocks
-    take_lock("1", live: false)
+    lock_intent("1", live: false)
     make_ready_node("1")
     put(:work, :nodes, { intent_id: "1", id: "b", state: "claimed", by: "s-1", updated_at: STAMP })
 
@@ -73,7 +73,7 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_a_lock_of_an_ended_session_does_not_block
-    take_lock("1")
+    lock_intent("1")
     make_ready_node("1")
     put(:local, :sessions, { session_id: "s-1", store: "global", ended_at: STAMP })
 

@@ -82,7 +82,7 @@ class LockTest < Plastic::TestCase
   end
 
   def test_a_lock_reads_from_its_home_row
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
+    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
 
     assert_equal lock(STAMP), retrieval.lock("1")
   end

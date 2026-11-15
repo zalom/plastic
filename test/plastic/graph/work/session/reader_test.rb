@@ -50,14 +50,14 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_locks_of_lists_the_session_locks_in_every_store
-    graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
-    graphs(store: "other").work.take_lock("2", session_id: "s-1", mode: "auto")
+    graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
+    graphs(store: "other").work.lock_intent("2", session_id: "s-1", mode: "auto")
 
     assert_equal [%w[plastic 1], %w[other 2]].sort, reader.locks_of("s-1").map { |lock| [lock.store, lock.intent_id] }.sort
   end
 
   def test_the_lock_of_an_intent_in_another_store_is_not_this_store_lock
-    graphs(store: "other").work.take_lock("1", session_id: "s-1", mode: "auto")
+    graphs(store: "other").work.lock_intent("1", session_id: "s-1", mode: "auto")
 
     assert_nil reader.lock("1")
   end

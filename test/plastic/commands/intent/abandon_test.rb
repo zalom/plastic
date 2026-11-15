@@ -88,7 +88,7 @@ class IntentAbandonTest < Plastic::TestCase
 
   def test_a_live_foreign_lock_refuses_with_exit_3
     droppable
-    store_graphs.work.take_lock("1", session_id: "someone-else", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
 
     assert_equal [3, "open"], [abandon.code, retrieval.intent("1").status]
   end

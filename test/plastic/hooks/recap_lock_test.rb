@@ -15,7 +15,7 @@ class RecapLockTest < Plastic::TestCase
 
   def lock_intent
     intent_id = printed_intent
-    opened.work.take_lock(intent_id, session_id: "s-1", mode: "auto")
+    opened.work.lock_intent(intent_id, session_id: "s-1", mode: "auto")
     [intent_id, opened.retrieval.lock(intent_id)]
   end
 
@@ -41,7 +41,7 @@ class RecapLockTest < Plastic::TestCase
 
   def test_a_lock_of_another_session_prints_no_expired_line
     intent_id = printed_intent
-    opened.work.take_lock(intent_id, session_id: "s-2", mode: "auto")
+    opened.work.lock_intent(intent_id, session_id: "s-2", mode: "auto")
     later = Time.parse(opened.retrieval.lock(intent_id).renewed_at) + Plastic::Graph::Lock::TTL + 1
 
     assert_empty expired_lines(later)
@@ -77,7 +77,7 @@ class RecapLockTest < Plastic::TestCase
   def test_a_lock_of_another_store_prints_no_expired_line
     stamp = "2026-01-01T00:00:00Z"
     opened.databases.fetch(:local).transaction do |batch|
-      batch.put(:locks, { store: "other", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: stamp, renewed_at: stamp }, statement: :insert)
+      batch.put(:locks, { store: "other", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: stamp, renewed_at: stamp }, statement: :insert)
     end
 
     assert_empty expired_lines(Time.iso8601(stamp) + Plastic::Graph::Lock::TTL + 1)

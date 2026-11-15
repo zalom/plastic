@@ -55,16 +55,16 @@ class WorkSessionWriterTest < Plastic::TestCase
   end
 
   def test_take_lock_writes_the_lock_of_this_store_taken_and_renewed_together
-    work.take_lock("1", session_id: "s-1", mode: "auto")
+    work.lock_intent("1", session_id: "s-1", mode: "auto")
     lock = reader.lock("1")
 
-    assert_equal ["plastic", "s-1", "auto", lock.taken_at], [lock.store, lock.session_id, lock.mode, lock.renewed_at]
+    assert_equal ["plastic", "s-1", "auto", lock.locked_at], [lock.store, lock.session_id, lock.mode, lock.renewed_at]
   end
 
   def test_renew_locks_counts_every_lock_the_session_names_in_any_store
-    work.take_lock("1", session_id: "s-1", mode: "auto")
-    Plastic::Graph.create(home: @plastic_home, store: "other").work.take_lock("2", session_id: "s-1", mode: "auto")
-    work.take_lock("3", session_id: "s-2", mode: "auto")
+    work.lock_intent("1", session_id: "s-1", mode: "auto")
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.lock_intent("2", session_id: "s-1", mode: "auto")
+    work.lock_intent("3", session_id: "s-2", mode: "auto")
 
     assert_equal 2, work.renew_locks("s-1")
   end

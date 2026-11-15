@@ -9,7 +9,7 @@ class WorkflowDeliveryOwnershipTest < Plastic::TestCase
   def problem(session: "s-1") = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session))
 
   def lock(session_id, renewed_at: Time.now.utc.iso8601)
-    row = { store: retrieval.store, intent_id: "1", session_id:, mode: "auto", taken_at: renewed_at, renewed_at: }
+    row = { store: retrieval.store, intent_id: "1", session_id:, mode: "auto", locked_at: renewed_at, renewed_at: }
     store_graphs.databases[:local].transaction { |batch| batch.put(:locks, row) }
   end
 

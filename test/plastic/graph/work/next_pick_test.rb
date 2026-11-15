@@ -25,7 +25,7 @@ end
 class WorkClosedIntentPickTest < Plastic::TestCase
   def test_a_closed_intent_is_not_selected_through_a_leftover_lock
     intent = open_intent(status: "done")
-    store_graphs.work.take_lock(intent.intent_id, session_id: "s-1", mode: "auto")
+    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-1", mode: "auto")
 
     assert_nil Plastic::Graph::Work::NextPick.new(retrieval, "s-1").intent
   end

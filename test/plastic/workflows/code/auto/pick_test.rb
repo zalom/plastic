@@ -55,7 +55,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
   def test_an_item_held_by_another_live_session_is_skipped
     roadmap
     item("a")
-    store_graphs.work.take_lock(started("a"), session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent(started("a"), session_id: "s-2", mode: "auto")
 
     outcome, = pick("r1")
 
@@ -66,7 +66,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     roadmap
     item("a")
     intent_id = started("a")
-    store_graphs.work.take_lock(intent_id, session_id: "s-1", mode: "auto")
+    store_graphs.work.lock_intent(intent_id, session_id: "s-1", mode: "auto")
 
     outcome, context = pick("r1")
 
@@ -86,7 +86,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     roadmap
     item("a")
     item("b", needs: ["a"])
-    store_graphs.work.take_lock(started("a"), session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent(started("a"), session_id: "s-2", mode: "auto")
 
     outcome, = pick("r1")
 
