@@ -7,7 +7,6 @@ require "stringio"
 # One disposable home that runs the command line in the test's own process. The tests of two homes
 # build one for each machine. Its rows are read back through the sqlite3 gem, on their own connection.
 class HomeCommand
-  Pool = Plastic::Graph::Database::ConnectionPool
   Call = Data.define(:code, :out, :err) do
     # The files the call printed, from the files: row.
     def files
@@ -74,7 +73,7 @@ class HomeCommand
   end
 
   # Closes the connections the commands of this home left open.
-  def release = Pool.release(home)
+  def release = Plastic::Graph::Database::ConnectionPool.release(home)
 
   private
 
