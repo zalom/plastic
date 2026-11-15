@@ -2,7 +2,7 @@
 
 module CommandReference
   # The tools a command reading needs, built once.
-  Kit = Data.define(:source, :root, :table, :schema, :scan, :endings, :prints)
+  Kit = Data.define(:source, :root, :table, :endings)
 
   # A command's class name from the table, loaded on demand.
   CommandName = Data.define(:full) do
@@ -39,7 +39,7 @@ module CommandReference
     private
 
     def found(reach)
-      { kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, touches: touches(reach), endings: @kit.endings.call(reach),
+      { kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, endings: @kit.endings.call(reach),
         changes: Changes.new(@klass, reach.flows).rows }
     end
 
@@ -65,13 +65,6 @@ module CommandReference
     def edges
       Array(chain&.edges).group_by { |edge| [edge.from, edge.to] }.reject { |(_from, to), _| to == :noop }
         .map { |(from, to), group| Edge.new(from, to, group.map(&:on)) }
-    end
-
-    def touches(reach)
-      found = @kit.scan.call(reach.scanned_files)
-      printed = @kit.prints.located(@klass.prints)
-      Touches.new(entries: found.entries, components: found.components, printed: printed, schema: @kit.schema, declared: { read: @klass.reads, write: @klass.writes })
-        .declared_at(Declarations.new(@kit.source, @klass).to_h)
     end
 
     def end_files

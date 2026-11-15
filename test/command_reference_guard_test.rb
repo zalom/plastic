@@ -8,18 +8,16 @@ class CommandReferenceGuardTest < Minitest::Test
 
   INTENT_ID = DocsStaleWordsGuardTest::INTENT_ID
   DATE = DocsStaleWordsGuardTest::DATE
-  FOLDERS = %w[docs/reference/commands docs/reference/dsl].freeze
-
   def disk = CommandReference::Disk.new(CommandReferenceHelper::ROOT).files
 
   def stale = CommandReference::Build.stale(CommandReferenceHelper.files, disk)
 
-  def test_the_build_holds_every_command_page_the_index_and_the_dsl_page
+  def test_the_build_holds_every_command_page_and_the_index
     paths = CommandReferenceHelper.files.keys
 
     assert_equal 76, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
     assert_includes paths, "docs/reference/commands/README.md"
-    assert_includes paths, "docs/reference/dsl/README.md"
+    assert_empty paths.grep(%r{\Adocs/reference/dsl/})
   end
 
   def test_every_page_on_disk_matches_what_the_code_builds
@@ -77,6 +75,7 @@ class CommandReferenceGuardTest < Minitest::Test
   def test_the_pages_are_listed_in_the_reference_index
     index = File.read(File.join(CommandReferenceHelper::ROOT, "docs/reference/index.md"))
 
-    ["commands/README.md", "dsl/README.md"].each { |page| assert_includes index, page }
+    assert_includes index, "commands/README.md"
+    refute_includes index, "dsl/"
   end
 end

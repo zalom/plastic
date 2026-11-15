@@ -13,8 +13,7 @@ module CommandReference
       end
 
       INTRO = "Each page explains one plastic command in six parts: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. " \
-        "A script writes every page from the command classes, so a page always matches the code it links to. " \
-        "Every command is declared in the same small DSL, shown in [the command DSL](../dsl/README.md)."
+        "A script writes every page from the command classes, so a page always matches the code it links to."
 
       def self.group(words)
         family = Plastic::CLI.family_of(words)

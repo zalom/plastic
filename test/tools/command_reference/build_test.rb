@@ -16,12 +16,11 @@ class CommandReferenceBuildTest < Minitest::Test
     end
   end
 
-  def test_the_build_holds_a_page_per_command_the_index_and_the_dsl_page
+  def test_the_build_holds_a_page_per_command_and_the_index
     paths = CommandReferenceHelper.files.keys
 
     assert_equal Plastic::CLI::TABLE.size, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
     assert_includes paths, "docs/reference/commands/README.md"
-    assert_includes paths, "docs/reference/dsl/README.md"
   end
 
   def test_every_command_page_holds_the_new_parts_and_none_of_the_old_sections
@@ -36,8 +35,8 @@ class CommandReferenceBuildTest < Minitest::Test
     assert_includes CommandReferenceHelper.files.fetch("docs/reference/commands/README.md"), "six parts"
   end
 
-  def test_every_built_path_is_under_the_two_reference_folders
-    assert(CommandReferenceHelper.files.keys.all? { |path| path.start_with?("docs/reference/commands/", "docs/reference/dsl/") })
+  def test_every_built_path_is_under_the_commands_folder
+    assert(CommandReferenceHelper.files.keys.all? { |path| path.start_with?("docs/reference/commands/") })
   end
 
   def test_every_markdown_image_is_a_built_file

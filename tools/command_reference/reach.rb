@@ -19,7 +19,5 @@ module CommandReference
     def file_endings(scans) = hook? ? [] : scans.flat_map(&:call)
 
     def hook_endings(scans) = hook? ? [own_call.responds, *scans.flat_map(&:decisions)] : []
-
-    def scanned_files = [*files, *flows.flat_map(&:files)].uniq
   end
 end
