@@ -14,15 +14,18 @@ class DatabaseErrorLineTest < Minitest::Test
     Dir.mktmpdir do |home|
       kernel = KernelCommand.new(home)
       kernel.command!("intent", "new", "Alpha")
-      rival = SQLite3::Database.new(File.join(kernel.plastic_home, "local.db"))
-      rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at")
-      rival.execute("BEGIN IMMEDIATE")
-      begin
-        yield kernel
-      ensure
-        rival.close
-      end
+      hold(File.join(kernel.plastic_home, "local.db")) { yield kernel }
     end
+  end
+
+  # The older column name sends the next command through the migration, which needs the write lock the rival holds.
+  def hold(path)
+    rival = SQLite3::Database.new(path)
+    rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at")
+    rival.execute("BEGIN IMMEDIATE")
+    yield
+  ensure
+    rival&.close
   end
 
   def test_intent_lock_status_names_the_held_file_with_no_class_name
