@@ -23,7 +23,7 @@ class CLIListingTest < Plastic::TestCase
   def test_help_prints_every_command_once
     out = help.out
 
-    Plastic::CLI::TABLE.each_key { |words| assert_equal 1, out.lines.count { |line| line.strip.start_with?("#{words} ") }, words }
+    Plastic::CLI::TABLE.each_key { |words| assert_equal 1, out.lines.count { |line| line.strip.split(/\s{2,}/).first == words }, words }
   end
 
   def test_help_json_is_a_list_of_families_each_with_its_commands

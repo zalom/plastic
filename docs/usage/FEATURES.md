@@ -144,7 +144,10 @@ records. When nothing names a harness, the doctor exits 2 and lists the harnesse
 
 ## Help that costs nothing
 
-`plastic help` reads one table and loads no command file. `plastic <command> --help` prints
+`plastic help` reads one table and loads no command file. It prints the core commands first,
+then one heading for each family: intent, project, sync, session, config, backup, document,
+architecture, node, edge, graph, roadmap and hook. `plastic help FAMILY` lists one family, and
+`plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.
 
 ## Exit codes

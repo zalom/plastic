@@ -26,7 +26,7 @@ class BinCallTest < Plastic::TestCase
     call = plastic_bin(table: Plastic::CLI::TABLE)
 
     assert_equal 0, call.code
-    assert_equal Plastic::CLI::TABLE.keys.size, Plastic::CLI::TABLE.keys.count { |words| call.out.lines.any? { |line| line.strip.start_with?("#{words} ") } }
+    assert_equal Plastic::CLI::TABLE.keys.size, Plastic::CLI::TABLE.keys.count { |words| call.out.lines.any? { |line| line.strip.split(/\s{2,}/).first == words } }
     assert_equal "", call.err
   end
 

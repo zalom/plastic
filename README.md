@@ -267,7 +267,8 @@ plastic doctor                        # The installation, the databases and the 
 
 ### Help
 ```bash
-plastic help                          # All commands and help topics
+plastic help                          # All commands, grouped in families
+plastic help intent                   # The commands of one family
 plastic help intent end               # The usage line of one command
 plastic help roadmaps                 # One help topic
 ```
