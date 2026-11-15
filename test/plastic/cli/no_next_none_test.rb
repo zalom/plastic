@@ -7,10 +7,10 @@ class NoNextNoneTest < Plastic::TestCase
 
   def leave_as_the_installer_does = Plastic::Graph.create(home: @plastic_home, store: "global")
 
-  def test_nothing_open_prints_no_next_line_and_says_why
+  def test_nothing_open_sends_the_agent_to_status_and_says_why
     result = plastic("next", table: Plastic::CLI::TABLE)
 
-    assert_equal [0, [], ""], [result.code, next_lines(result), result.err]
+    assert_equal [0, ["next: plastic status"], ""], [result.code, next_lines(result), result.err]
     assert_includes result.out, "because: nothing is open"
   end
 
@@ -24,11 +24,11 @@ class NoNextNoneTest < Plastic::TestCase
     assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
   end
 
-  def test_json_names_a_null_next_when_nothing_is_open
+  def test_json_names_status_as_next_when_nothing_is_open
     result = plastic("next", "--json", table: Plastic::CLI::TABLE)
     answer = JSON.parse(result.out)
 
-    assert_nil answer.fetch("next")
+    assert_equal "plastic status", answer.fetch("next")
     assert_equal "nothing is open", answer.fetch("because")
   end
 

@@ -28,6 +28,14 @@ class RollbackReleaseTest < Plastic::TestCase
     assert_match(/--switch 2\.0\.1 /, context.command)
   end
 
+  def test_the_stored_data_line_is_printed_before_the_hand_off
+    activated("2.0.2", "2.0.3")
+
+    _, context = roll
+
+    assert_equal ["a release older than this one cannot run on a home that a newer release opened"], context.printed
+  end
+
   def test_the_workflow_changes_no_active_release
     activated("2.0.2", "2.0.3")
 

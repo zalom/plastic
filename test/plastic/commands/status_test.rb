@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/status"
 require_relative "../../../lib/plastic/commands/node/add"
@@ -77,6 +78,28 @@ class StatusTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "next: plastic next"
+  end
+
+  def test_nothing_open_in_any_store_ends_by_telling_the_agent_to_ask_the_person_and_offers_no_command
+    store_graphs.work.write_intent(title: "Shipped", status: "done")
+
+    lines = call.out.lines(chomp: true)
+
+    assert_equal [[], "because: nothing is open; ask the person what to work on"], [lines.grep(/\Anext: /), lines.last]
+  end
+
+  def test_nothing_open_names_a_null_next_in_json
+    store_graphs.work.write_intent(title: "Shipped", status: "done")
+    answer = JSON.parse(call("--json").out)
+
+    assert_equal [nil, "nothing is open; ask the person what to work on"], [answer.fetch("next"), answer.fetch("because")]
+  end
+
+  def test_an_open_intent_in_another_store_still_names_plastic_next
+    store_graphs.work.write_intent(title: "Shipped", status: "done")
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Waiting")
+
+    assert_includes call.out.lines(chomp: true), "next: plastic next"
   end
 
   def test_an_intent_without_nodes_says_so
