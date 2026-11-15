@@ -21,7 +21,7 @@ module Plastic
         end
 
         outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }
-        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: nil, because: "%{why}"
+        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: "plastic status", because: "%{why}"
         outcome :done, offers: "%{next_command}", because: "%{why}"
       end
     end

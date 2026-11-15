@@ -145,6 +145,6 @@
 <path d="M 344 500 L 352 505 L 344 510 Z" class="head"/>
 <rect x="352" y="489" width="392" height="56" rx="6" class="end"/>
 <text x="362" y="506" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="520" class="t" text-anchor="start">prints no next: line</text>
+<text x="362" y="520" class="t" text-anchor="start">next: plastic next</text>
 <text x="362" y="534" class="t" text-anchor="start">because: the outcome holds the note</text>
 </svg>

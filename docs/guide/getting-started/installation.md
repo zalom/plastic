@@ -16,11 +16,7 @@ when QMD is on the machine. QMD is an optional local search tool for Markdown fi
 
 ## Channels
 
-`install.sh` reads the stable channel unless `PLASTIC_CHANNEL` names `beta` or `alpha`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
-```
+`install.sh` installs the stable release only. It reads no channel variable.
 
 `plastic update` stays on the channel of the active release. To move to another channel, run
 `plastic update --channel stable`, `plastic update --channel beta` or `plastic update --channel alpha`.

@@ -14,7 +14,12 @@ module Plastic
         def ended? = !ended_at.to_s.empty?
 
         # The session in one phrase: when it ended and why, else its last turn.
-        def summary = ended? ? "session #{session_id} ended #{ended_at} (#{end_reason})" : "session #{session_id} last turn #{last_turn_at}"
+        def summary
+          return "session #{session_id} ended #{ended_at} (#{end_reason})" if ended?
+          return "session #{session_id} started #{started_at}, no turn recorded" if last_turn_at.to_s.empty?
+
+          "session #{session_id} last turn #{last_turn_at}"
+        end
       end
     end
   end

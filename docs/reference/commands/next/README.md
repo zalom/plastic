@@ -35,7 +35,7 @@ Its rows run in this order:
 
 1. Read: pick the intent and its next command. [`next.rb:18`](../../../../lib/plastic/workflows/code/next.rb#L18)
 2. Outcome `:agent_needed`, when `!context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`next.rb:23`](../../../../lib/plastic/workflows/code/next.rb#L23)
-3. Outcome `:nothing`, when `context.next_command.nil?`: finishes with exit 0; prints no next: line. [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24)
+3. Outcome `:nothing`, when `context.next_command.nil?`: finishes with exit 0; next: plastic status. [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24)
 4. Outcome `:done`, otherwise: finishes with exit 0; next: NEXT_COMMAND. [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25)
 
 It sets `next_command`, `why`, `handoff_text`.
@@ -89,7 +89,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| WHY | 0 | prints no next: line | [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24) |
+| WHY | 0 | plastic status | [`next.rb:24`](../../../../lib/plastic/workflows/code/next.rb#L24) |
 | WHY | 0 | NEXT_COMMAND | [`next.rb:25`](../../../../lib/plastic/workflows/code/next.rb#L25) |
 | WHY | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
 | the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |

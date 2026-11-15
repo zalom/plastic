@@ -34,10 +34,13 @@ module Plastic
 
           read "say what was written" do |context|
             context.print("intent: #{context.intent_id}")
+            context.print(store_line(context.retrieval.store))
             context.print(context.work.ref_line(context.ref)) if context.ref
           end
 
           outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its files"
+
+          def self.store_line(store) = (store == "global") ? "store: global, because no project names this folder" : "store: #{store}"
 
           def self.after_problem(context)
             after = context.after

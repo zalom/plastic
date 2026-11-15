@@ -52,7 +52,7 @@ Its rows run in this order:
 5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`note.rb:32`](../../../../lib/plastic/workflows/code/intent/note.rb#L32)
 6. Step: write the note. Done when `!context.reference.nil?`, so a second call skips it. [`note.rb:34`](../../../../lib/plastic/workflows/code/intent/note.rb#L34)
 7. Read: say what was written. [`note.rb:38`](../../../../lib/plastic/workflows/code/intent/note.rb#L38)
-8. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42)
+8. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42)
 
 It sets `intent`, `status`, `problem`, `reference`.
 
@@ -92,7 +92,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`note.rb:22`](../../../../lib/plastic/workflows/code/intent/note.rb#L22) |
 | intent INTENT_ID is STATUS; a closed intent keeps its outcome | 1 | plastic next | [`note.rb:24`](../../../../lib/plastic/workflows/code/intent/note.rb#L24) |
 | PROBLEM | 1 | prints no next: line | [`note.rb:32`](../../../../lib/plastic/workflows/code/intent/note.rb#L32) |
-| the outcome holds the note | 0 | prints no next: line | [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42) |
+| the outcome holds the note | 0 | plastic next | [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: KIND takes KINDS | 2 | prints no next: line | [`note.rb:21`](../../../../lib/plastic/commands/intent/note.rb#L21) |
 

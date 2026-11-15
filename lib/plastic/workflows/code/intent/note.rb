@@ -39,7 +39,7 @@ module Plastic
             context.print("#{context.kind.downcase}: #{context.text}")
           end
 
-          outcome :done, offers: nil, because: "the outcome holds the note"
+          outcome :done, offers: "plastic next", because: "the outcome holds the note"
         end
       end
     end

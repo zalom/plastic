@@ -249,7 +249,7 @@ plastic backup --store alpha --live   # The same, printing each line of backup.l
 plastic backup list --store alpha     # Folder, start time, status and goal of each backup
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
 plastic backup purge --store alpha --failed   # Delete the backups that failed
-plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends with the sync down line
+plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
 ```
 
 ### Product

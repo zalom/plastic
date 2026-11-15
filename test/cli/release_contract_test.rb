@@ -39,7 +39,7 @@ class CliReleaseContractTest < Minitest::Test
   end
 
   def test_the_real_process_writes_the_intent_and_prints_its_folder
-    assert_equal ["intent: 1"], @result.dig("result", "output")
+    assert_equal ["intent: 1", "store: global, because no project names this folder"], @result.dig("result", "output")
     assert_path_exists File.join(@dir, ".plastic", "stores", "global", "store", "1--a-sample-delivery", "graph.json")
   end
 
