@@ -11,15 +11,14 @@ commits and releases. This page points to the rest.
 
 ## Test a change
 
-Every test in this repository follows one of five patterns. Choose the pattern by what the code
+Every test in this repository follows one of four patterns. Choose the pattern by what the code
 under test touches, open the example and keep its shape.
 
 | The code under test | Pattern | Built on | Example |
 | --- | --- | --- | --- |
 | A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent/new_test.rb` |
-| What a person gets from a command: the exit code and both output streams | Child process test | `Minitest::Test` with `KernelCommand` | `test/plastic/hooks/broken_store_test.rb` |
 | `install.sh` or an installer script | Installer test | `Minitest::Test` with `InstallShHelper` | `test/install_sh_dependency_test.rb` |
-| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-start.md` |
+| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/status.md` |
 | A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
 
 A test file has the path of its source file: `lib/plastic/commands/intent/new.rb` is
@@ -32,7 +31,12 @@ tested by `test/plastic/commands/intent/new_test.rb`.
    process gets `HOME` and `PLASTIC_HOME` in the hash passed to it. No test reads or writes the
    real `~/.plastic` or `~/.claude`.
 1. Pass the environment as a value. A test never assigns to `ENV`.
-1. Start a child process through `ChildProcess` (`test/support/child_process.rb`), which takes
+1. Outside the core acceptance documents, no test starts a child process for a command. A command
+   runs through the `plastic` helper, in the test's own process. The exceptions are the tests of
+   the launcher, of the release package, of the shipped bundle, and of how a fresh process loads a
+   command. A guard test refuses every other test.
+1. Start every child process a test needs through `ChildProcess` (`test/support/child_process.rb`),
+   which serves the acceptance documents, the installer tests and those exceptions. It takes
    the same arguments as `Open3` and `system`. The child gets only the values the test passes, a
    fixed `PATH` and `LANG`, and an empty throwaway `HOME` when the test passes none. Nothing of the
    session that runs the suite reaches it. A guard test refuses every other way to start a process.

@@ -108,8 +108,9 @@ tracked database and its rollback journal are left to the transaction rollback i
 file comparison. Teardown also closes any database the test opened. The tests run the real
 `Graph::Database` through the `sqlite3` gem, so each one reads and writes the state the
 commands would.
-- **Acceptance documents** under `varar/` run each command of the storage kernel in a child
-  Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
+- **Acceptance documents** under `varar/` are the 9 core documents: `status`, `sync-up`,
+  `sync-down`, `sync-import`, `sync-second-home`, `backup`, `backup-list`, `backup-restore` and
+  `legacy-import`. Each runs its command in a child Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
   directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
@@ -165,6 +166,6 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 | `tools/command_reference*` | The plain Ruby that reads the kernel and writes the command pages. |
 | `tools/command-reference` | Rebuilds the pages: `ruby tools/command-reference`. |
 | `docs/reference/commands/` | The generated command pages, six parts each: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. |
-| `varar/` | The acceptance documents. |
-| `test/varar/` | The step files for the acceptance documents. |
-| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the storage documents. |
+| `varar/` | The 9 core acceptance documents. |
+| `test/varar/` | The step files for the core acceptance documents. |
+| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the core documents. |
