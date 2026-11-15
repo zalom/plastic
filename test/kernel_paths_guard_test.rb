@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
+require_relative "test_helper"
 require "yaml"
-require_relative "../../support/child_process"
-require_relative "../../support/repository_files"
+require_relative "support/child_process"
+require_relative "support/repository_files"
 
 # The names that left the kernel: a tracked file naming one is a stale reference.
 module RetiredNames
@@ -48,8 +48,8 @@ module RetiredNames
 end
 
 class KernelPathsTest < Minitest::Test
-  ROOT = File.expand_path("../../..", __dir__)
-  SELF = "test/plastic/layout/kernel_paths_test.rb"
+  ROOT = File.expand_path("..", __dir__)
+  SELF = "test/kernel_paths_guard_test.rb"
   OLD_KERNEL = File.join("scripts", "lib", "plastic")
   MOVED_TOOLS = %w[scripts/build-release scripts/release-check scripts/lib/release_archive scripts/lib/release_build
     scripts/lib/release_guard].freeze

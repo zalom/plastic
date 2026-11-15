@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
+require_relative "test_helper"
 require "plastic"
-require_relative "../../support/child_process"
+require_relative "support/child_process"
 
 class CommandNamesTest < Minitest::Test
-  ROOT = File.expand_path("../../..", __dir__)
+  ROOT = File.expand_path("..", __dir__)
   COMMANDS = File.join(ROOT, "lib", "plastic", "commands")
   FRESH_PROCESS_ENTRIES = ["backup list", "backup purge", "backup restore", "config get", "config list", "config set"].freeze
 

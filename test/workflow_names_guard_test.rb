@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
+require_relative "test_helper"
 require "json"
 require "plastic"
 require "plastic/workflow"
-require_relative "../../support/child_process"
+require_relative "support/child_process"
 
 module WorkflowNameTable
   # Every key with the class under Workflows that runs it. A key is stored in
@@ -116,7 +116,7 @@ module WorkflowNameTable
 end
 
 class WorkflowNamesTest < Minitest::Test
-  ROOT = File.expand_path("../../..", __dir__)
+  ROOT = File.expand_path("..", __dir__)
   WORKFLOWS = File.join(ROOT, "lib", "plastic", "workflows")
   POOL = 6
 
