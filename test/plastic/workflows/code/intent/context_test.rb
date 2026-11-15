@@ -28,6 +28,42 @@ class SubmitContextTest < Plastic::TestCase
     assert_equal [:done, [@reference]], [outcome, printed_row(context, "context").fetch("evidence")]
   end
 
+  def stored(column) = store_graphs.databases.fetch(:knowledge).row("SELECT #{column} FROM retrieval_contexts WHERE intent_id = '1'")&.fetch(column)
+
+  def test_the_saved_context_is_read_back_from_the_knowledge_database
+    discovered
+
+    _, context = submit(EMPTY.merge("evidence" => [@reference]))
+
+    assert_equal printed_row(context, "context"), JSON.parse(stored("data"))
+  end
+
+  def test_the_same_submission_saved_again_leaves_the_stored_row_as_it_is
+    discovered
+    submit(EMPTY.merge("evidence" => [@reference]))
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = 'kept' WHERE intent_id = '1'") }
+
+    submit(EMPTY.merge("evidence" => [@reference]))
+
+    assert_equal "kept", stored("updated_at")
+  end
+
+  def test_a_submission_that_stops_at_a_gate_saves_nothing
+    discovered
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+
+    submit(EMPTY.merge("evidence" => [@reference]))
+
+    assert_nil stored("data")
+  end
+
+  def test_the_save_is_a_step_and_no_read_of_the_workflow_saves
+    steps = Plastic::Workflows::Code::Intent::Context.steps
+
+    assert_equal ["save the submitted context"], steps.grep(Plastic::CodeWorkflow::Step).map(&:name)
+    refute(steps.grep(Plastic::CodeWorkflow::Read).any? { |read| read.name.include?("persist") })
+  end
+
   def test_a_submission_that_is_not_json_is_a_usage_error
     discovered
 
