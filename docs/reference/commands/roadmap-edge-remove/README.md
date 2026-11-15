@@ -2,8 +2,6 @@
 
 Remove one needs edge from a roadmap.
 
-Removes one needs edge. Fails when no such edge exists.
-
 ```sh
 plastic roadmap edge remove SLUG FROM TO [--dry-run]
 ```

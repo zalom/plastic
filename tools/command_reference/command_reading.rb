@@ -44,7 +44,7 @@ module CommandReference
     end
 
     def identity
-      { words: @words, klass: @klass, file:, line:, summary: @kit.table.dig(@words, 1), comment: @kit.source.class_comment(@klass),
+      { words: @words, klass: @klass, file:, line:, summary: @kit.table.dig(@words, 1),
         usage: @klass.usage_line(@words), arguments: @klass.arguments, options: @klass.options, entry: chain&.entry }
     end
 

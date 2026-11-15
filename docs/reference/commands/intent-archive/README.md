@@ -2,8 +2,6 @@
 
 Archive an intent directory.
 
-Takes a done, abandoned or future intent off the checkout, or each one older than a date; its rows stay.
-
 ```sh
 plastic intent archive (ID | --older-than DATE) [--dry-run]
 ```

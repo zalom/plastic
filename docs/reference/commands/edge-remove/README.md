@@ -2,8 +2,6 @@
 
 Remove an edge.
 
-Removes one edge. Fails when no such edge exists.
-
 ```sh
 plastic edge remove ID FROM TO [--dry-run]
 ```

@@ -22,12 +22,7 @@ module CommandReference
       private
 
       def head
-        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *comment, "```sh", @page.usage, "```", ""]
-      end
-
-      def comment
-        text = @page.comment
-        Prose.repeats?(@page.summary, text) ? [] : Prose.lines(text)
+        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", "```sh", @page.usage, "```", ""]
       end
 
       def inputs

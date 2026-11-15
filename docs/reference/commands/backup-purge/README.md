@@ -2,8 +2,6 @@
 
 Delete one store's backups; give one of --all, --failed or --older-than.
 
-Deletes backups of one registered store: all of them, those before a date, or those that failed.
-
 ```sh
 plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]
 ```

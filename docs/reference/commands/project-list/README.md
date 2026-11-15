@@ -2,8 +2,6 @@
 
 List the registered projects with their paths.
 
-Lists the projects of projects.yml, each with its path, and marks the ones whose store folder is missing. It writes nothing.
-
 ```sh
 plastic project list
 ```

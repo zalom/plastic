@@ -2,8 +2,6 @@
 
 Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md.
 
-Prints the grilling method, then one intent's open decisions.
-
 ```sh
 plastic intent spec ID
 ```

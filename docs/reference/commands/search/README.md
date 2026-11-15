@@ -2,8 +2,6 @@
 
 Search literal indexed passages across selected stores.
 
-Searches literal indexed passages in the selected local stores.
-
 ```sh
 plastic search TERMS... [--source-project SLUG] [--limit N]
 ```

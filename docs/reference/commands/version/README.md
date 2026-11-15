@@ -2,8 +2,6 @@
 
 Print the installed Plastic version and release channel.
 
-The version of the package this command came from, its channel and the file it was read from.
-
 ```sh
 plastic version
 ```

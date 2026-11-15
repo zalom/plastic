@@ -2,8 +2,6 @@
 
 Print a roadmap's batches and items.
 
-Prints a roadmap's batches and items from the rows. It reads and writes nothing.
-
 ```sh
 plastic roadmap show SLUG [--batch N]
 ```

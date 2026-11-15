@@ -2,8 +2,6 @@
 
 Remove a link.
 
-Removes one `links` row from ID to TARGET of the given kind.
-
 ```sh
 plastic intent unlink ID KIND TARGET [--dry-run]
 ```

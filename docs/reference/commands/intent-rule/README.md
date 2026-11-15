@@ -2,8 +2,6 @@
 
 Write an owner ruling, with --supersedes to replace an older one.
 
-Writes one owner ruling against an intent, numbered in order, one after the last. --supersedes names an older ruling and links the two.
-
 ```sh
 plastic intent rule ID TEXT [--supersedes RULING_ID]
 ```

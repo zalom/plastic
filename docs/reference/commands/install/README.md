@@ -2,8 +2,6 @@
 
 Install the core files and make the global store.
 
-Copies the core files of the running package into the home and makes the global store. `plastic init` installs Plastic into the harnesses.
-
 ```sh
 plastic install [--reinstall] [--dry-run]
 ```

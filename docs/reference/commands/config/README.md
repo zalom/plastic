@@ -2,8 +2,6 @@
 
 Pick which on/off settings are on, on the choice screen.
 
-Shows the on/off settings on the choice screen, the ones that are on already picked, and writes each one the person changed. See docs/help/choice-screen.md.
-
 ```sh
 plastic config [ANSWER] [--harness NAME]
 ```

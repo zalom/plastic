@@ -2,8 +2,6 @@
 
 Find a done node with no findings, an isolated node, a retry cap or no done criterion.
 
-Runs the five findings of one intent's work graph and its spec.
-
 ```sh
 plastic graph check ID
 ```

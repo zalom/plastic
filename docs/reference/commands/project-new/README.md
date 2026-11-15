@@ -2,8 +2,6 @@
 
 Register a project and leave its store ready for intent new.
 
-Registers a project in projects.yml and leaves its store ready, so an intent can be opened at once. The other lines of the file stay as they are. The same name at the same path again changes nothing.
-
 ```sh
 plastic project new SLUG PATH
 ```

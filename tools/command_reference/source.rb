@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module CommandReference
-  # Text taken from the kernel's own files: comments and lambda bodies.
+  # Text taken from the kernel's own files: lambda bodies and method bodies.
   class Source
     attr_reader :root
 
@@ -13,13 +13,6 @@ module CommandReference
     def lines(file) = (@files[file] ||= File.readlines(absolute(file), chomp: true))
 
     def relative(file) = file.delete_prefix("#{@root}/")
-
-    def class_comment(klass)
-      file, line = Object.const_source_location(klass.name)
-      comment_above(relative(file), line)
-    end
-
-    def comment_above(file, line) = Snippet.comment(lines(file).first(line - 1))
 
     def lambda_code(callable)
       return unless callable

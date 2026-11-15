@@ -2,8 +2,6 @@
 
 Print every node and edge of an intent.
 
-Prints one intent's nodes and edges from the rows. It reads and writes nothing.
-
 ```sh
 plastic graph show ID
 ```

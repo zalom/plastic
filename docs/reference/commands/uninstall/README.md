@@ -2,8 +2,6 @@
 
 Remove Plastic from agents and keep the home.
 
-Shows the harnesses Plastic is installed into or found in, with every recorded one picked, and removes what the record of each picked one lists. The home and its stores stay. See docs/help/choice-screen.md.
-
 ```sh
 plastic uninstall [ANSWER] [--dry-run]
 ```

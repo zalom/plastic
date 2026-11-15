@@ -2,8 +2,6 @@
 
 Remove a node; its edges stay as rows.
 
-Moves a node from open to removed. Its edges stay, but a removed node never counts as ready or isolated.
-
 ```sh
 plastic node remove ID NODE [--reason TEXT] [--dry-run]
 ```

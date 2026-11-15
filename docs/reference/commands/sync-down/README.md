@@ -2,8 +2,6 @@
 
 Write the rows that changed into files.
 
-Writes the rows that changed into files. A record changed on both sides stops the call, exit 3, and every conflict is listed.
-
 ```sh
 plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]
 ```

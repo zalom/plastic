@@ -2,8 +2,6 @@
 
 Open an intent: write its rows and its folder.
 
-Opens an intent: writes its row and its first rows, and prints its folder and store/index.json in the same call.
-
 ```sh
 plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS] [--reason TEXT]
 ```

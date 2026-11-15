@@ -2,8 +2,6 @@
 
 Fetch one current or revision-qualified document.
 
-Fetches one current or immutable document by its qualified reference.
-
 ```sh
 plastic document get REF [--passage N]
 ```

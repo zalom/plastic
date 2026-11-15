@@ -32,11 +32,11 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     refute_includes text("project links"), "workflows.svg"
   end
 
-def test_every_page_holds_one_description_and_then_its_call
-  readmes.each do |path, body|
-    lines = body.lines(chomp: true)
+  def test_every_page_holds_one_description_and_then_its_call
+    readmes.each do |path, body|
+      lines = body.lines(chomp: true)
 
-    assert_equal ["", "```sh"], [lines[3], lines[4]], path
+      assert_equal ["", "```sh"], [lines[3], lines[4]], path
+    end
   end
-end
 end

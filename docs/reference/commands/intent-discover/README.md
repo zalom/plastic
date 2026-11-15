@@ -2,8 +2,6 @@
 
 Record deterministic retrieval candidates for an intent.
 
-Builds the retrieval handoff manifest; the harness chooses its evidence.
-
 ```sh
 plastic intent discover ID TERMS... [--source-project SLUG]
 ```

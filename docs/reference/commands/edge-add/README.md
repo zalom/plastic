@@ -2,8 +2,6 @@
 
 Add a needs edge between two nodes.
 
-Adds a needs edge between two nodes of the same intent, guarded against a self edge, a missing or removed node, and a loop.
-
 ```sh
 plastic edge add ID FROM TO
 ```

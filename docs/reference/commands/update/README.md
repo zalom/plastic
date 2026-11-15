@@ -2,8 +2,6 @@
 
 Sync a newer package into the home or name the installer command.
 
-Syncs a newer running package into the home, or activates the newest release of the chosen channel, by default the active release's own.
-
 ```sh
 plastic update [--channel NAME] [--dry-run]
 ```

@@ -2,8 +2,6 @@
 
 Write a typed link from an intent to a ref.
 
-Writes one `links` row from ID to TARGET: an intent id, a ruling ref such as `1/D1`, or a ref with a store prefix such as `global:25`.
-
 ```sh
 plastic intent link ID KIND TARGET
 ```

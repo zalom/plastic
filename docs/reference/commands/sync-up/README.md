@@ -2,8 +2,6 @@
 
 Read the files changed by hand into rows.
 
-Reads the files people changed into rows. A record changed on both sides stops the call, exit 3, and every conflict is listed. With one home after the other and a copy of the files between, no change is lost; with a command on each home before the copy, the file that arrives takes the place of the change of the second home. An index that another home printed sets the title, the state, the disposition, the reason and the closed time of every intent it lists. So with a command on each home before the copy, it takes back a change of this home, also on an intent that the other home never changed. A file deleted on one home is printed again from rows on the other.
-
 ```sh
 plastic sync up [--overwrite [PATH]] [--merge] [--dry-run]
 ```

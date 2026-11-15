@@ -2,8 +2,6 @@
 
 Find the installed harnesses and install Plastic into the ones the person picks.
 
-Finds the installed harnesses, shows them on the choice screen with every found one picked, and installs Plastic into each one the person picks. See docs/help/choice-screen.md.
-
 ```sh
 plastic init [ANSWER]
 ```

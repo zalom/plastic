@@ -2,8 +2,6 @@
 
 SessionStart: name the harness, open the session row, print the state the rows carry.
 
-SessionStart: names the harness, opens the session row with it, then prints the Recap the rows alone carry, and, on a session that starts fresh, one line naming plastic doctor when a doctor check fails or when the harness it recorded is not registered. Nothing here is call memory: a hook keeps no routine run.
-
 ```sh
 plastic hook start
 ```

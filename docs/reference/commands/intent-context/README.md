@@ -2,8 +2,6 @@
 
 Read or submit selected retrieval context for an intent.
 
-Persists the agent's selected evidence without judging its relevance.
-
 ```sh
 plastic intent context ID [--from FILE]
 ```

@@ -2,7 +2,7 @@
 
 module CommandReference
   # One workflow of a command's chain.
-  Flow = Data.define(:key, :klass, :lane, :file, :line, :comment, :facts, :rows, :outcomes) do
+  Flow = Data.define(:key, :klass, :lane, :file, :line, :facts, :rows, :outcomes) do
     def agent? = lane == "agent"
 
     def short = Words.short(klass)
