@@ -165,6 +165,14 @@ class CommandReferencePlacesTest < Minitest::Test
     assert(%i[store backups local home harness].all? { |place| CommandReference::Places.known?(place) })
   end
 
+  def test_a_store_the_command_writes_is_not_named_when_a_step_of_its_workflow_has_a_change_in_words
+    step = Plastic::CodeWorkflow::Step.new("write", nil, { backups: "A folder is written" }, nil)
+    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary, :outcomes).new([step], nil, []), [], [])
+    page = Struct.new(:words, :flows, :klass).new("odd", [flow], Struct.new(:writes, :changes).new(%i[work], nil))
+
+    assert_empty(CommandReference::Words.missing([page]).select { |line| line.include?("writes") })
+  end
+
   def test_a_word_that_is_no_place_is_unknown
     refute CommandReference::Places.known?(:weather)
   end

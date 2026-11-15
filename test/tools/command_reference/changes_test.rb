@@ -23,8 +23,13 @@ class CommandReferenceChangesTest < Minitest::Test
     assert_equal "goes with the store", reach_of(:store, [])
   end
 
-  def test_a_row_of_the_backups_folder_goes_with_the_store
-    assert_equal "goes with the store", reach_of(:backups, [])
+  def test_a_row_of_the_backups_folder_stays_on_this_machine_because_the_store_does_not_version_database_files
+    assert_equal "stays on this machine", reach_of(:backups, [])
+    assert_equal "stays on this machine", reach_of(:backups, [:intent])
+  end
+
+  def test_a_row_of_the_database_files_of_the_store_stays_on_this_machine
+    assert_equal "stays on this machine", reach_of(:databases, [:intent])
   end
 
   def test_a_row_of_the_search_index_the_local_database_the_home_and_the_harness_stays_on_this_machine
@@ -52,8 +57,11 @@ class CommandReferenceChangesTest < Minitest::Test
     assert_empty rows({})
   end
 
-  def test_the_same_change_declared_twice_is_one_row
-    assert_equal 1, rows({ work: "A thing changes" }, []).size
+  def test_the_same_change_declared_by_the_command_and_by_a_step_is_one_row
+    step = Plastic::CodeWorkflow::Step.new("write", nil, { work: "A thing changes" }, nil)
+    flow = Struct.new(:klass).new(Struct.new(:steps).new([step]))
+
+    assert_equal ["A thing changes"], rows({ work: "A thing changes" }, [], [flow]).map(&:text)
   end
 
   def test_the_rows_of_intent_end_hold_the_change_the_lock_and_the_files
