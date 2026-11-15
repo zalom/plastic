@@ -28,15 +28,15 @@ module Plastic
 
           def prints_of(printed_paths) = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }.merge(roadmap_prints(printed_paths))
 
-          # The roadmaps this home printed that still have rows, so a sync can print them again.
+          # The roadmaps this home printed or holds a file for that still have rows, so a sync can compare them.
           def roadmap_prints(paths)
-            slugs = paths.filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.select { |slug| @retrieval.roadmap(slug) }
+            slugs = [*paths, *@folder.roadmap_files].filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.uniq.select { |slug| @retrieval.roadmap(slug) }
             slugs.map { |slug| Prints.roadmap(@retrieval, slug) }.to_h { |print| [print.path, print] }
           end
 
           def on_disk
             files = @folders ? @folders.readable_files : @folder.intent_files
-            [*(StoreFolder::INDEX if @folder.exist?(StoreFolder::INDEX)), *files]
+            [*(StoreFolder::INDEX if @folder.exist?(StoreFolder::INDEX)), *@folder.roadmap_files, *files]
           end
         end
       end

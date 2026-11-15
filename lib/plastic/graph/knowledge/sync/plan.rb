@@ -55,7 +55,7 @@ module Plastic
             path = entry.path
             return path == StoreFolder::INDEX && entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
 
-            %i[read conflict].include?(entry.action(:up)) && rowed.any? { |dir| path.start_with?("#{dir}/") }
+            %i[read conflict].include?(entry.action(:up)) && (StoreFolder.roadmap?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") })
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -82,7 +82,10 @@ module Plastic
           def printed_over = entries_for(:print).select { |entry| Entry.view?(entry.path) && entry.hand_edited? }.map(&:path)
 
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home.size
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra
+
+          # The reads of a second home that no entry already counts.
+          def second_home_extra = second_home.size - (second_home.paths & entries_for(:read).map(&:path)).size
 
           def merging? = resolution.merging?
 

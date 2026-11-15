@@ -75,10 +75,11 @@ class SyncUpGeneratedTest < Plastic::TestCase
     assert_equal [1, true, "{\"hand\":true}\n", 1], [dry.code, dry.err.include?("sync down --overwrite #{path}"), kept, real.code], dry.out + dry.err
   end
 
-  def test_a_preview_of_sync_up_names_a_changed_roadmap_it_would_print_again_and_exits_as_the_real_run_does
-    dry, kept, real = preview_then_apply("roadmaps/r1.md", "# by hand\n") { |home| call_in(home, "roadmap", "new", "r1") }
+  def test_a_preview_of_sync_up_names_a_changed_roadmap_it_cannot_read_and_exits_as_the_real_run_does
+    path = "roadmaps/r1.md"
+    dry, kept, real = preview_then_apply(path, "# by hand\n") { |home| call_in(home, "roadmap", "new", "r1") }
 
-    assert_equal [0, true, "# by hand\n", 0], [dry.code, dry.out.include?("preview: printed again from rows: roadmaps/r1.md"), kept, real.code], dry.out + dry.err
+    assert_equal [1, true, "# by hand\n", 1], [dry.code, dry.err.include?("sync down --overwrite #{path}"), kept, real.code], dry.out + dry.err
   end
 
   def conflicting_spec(home)
