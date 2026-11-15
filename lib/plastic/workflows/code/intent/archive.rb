@@ -1,24 +1,35 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "archive_before"
 
 module Plastic
   module Workflows
     module Code
       module Intent
-        # Takes a done, abandoned or future intent off the checkout. Its rows stay.
+        # Takes a done, abandoned or future intent off the checkout, or each one older than a date. Its rows stay.
         class Archive < CodeWorkflow
           [facts, steps, outcomes].each(&:clear)
 
-          sets :problem, :kind, :ok
-
-          forget_stop :problem, :kind, :ok
-
-          step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
+          def self.archive_one(context)
             ok, problem, kind = context.work.archive_intent(context.intent_id)
             context[:ok] = ok
             context[:problem] = problem
             context[:kind] = kind
+            context[:lines] = ["intent: #{context.intent_id} archived"]
+          end
+
+          sets :problem, :kind, :ok, :lines
+
+          forget_stop :problem, :kind, :ok, :lines
+
+          step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
+            if context.older_than
+              context[:lines] = ArchiveBefore.new(context).lines
+              context[:ok] = true
+            else
+              archive_one(context)
+            end
           end
 
           gate "%{problem}", stops: :failure, offers: "plastic intent end %{intent_id}",
@@ -27,11 +38,11 @@ module Plastic
           gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
           gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
 
-          read "say it was archived" do |context|
-            context.print("intent: #{context.intent_id} archived")
+          read "say what was archived" do |context|
+            context.lines.each { |line| context.print(line) }
           end
 
-          outcome :done, offers: "plastic status", because: "intent %{intent_id} is off the checkout"
+          outcome :done, offers: "plastic status", because: "the intents named above are off the checkout"
         end
       end
     end

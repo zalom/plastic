@@ -79,7 +79,7 @@ could not hold it safely.
 | `plastic edge remove ID FROM TO --dry-run` | The work graph rows the removed edge would change. |
 | `plastic node remove ID NODE --dry-run` | The node and edge rows the removal would delete. |
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
-| `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
+| `plastic intent archive (ID \| --older-than DATE) --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
@@ -137,7 +137,9 @@ installer location. Hook trust prints an unverified reminder to review `/hooks`;
 that reminder does not change the exit code. A row reads `ok` or names the finding.
 The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
-so it changes nothing. `--harness NAME` checks a named harness instead of the one the session row
+except for one repair: it rebuilds the search rows of a store that are out of step with the
+passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
+the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the harnesses that have checks.
 
 ## Help that costs nothing

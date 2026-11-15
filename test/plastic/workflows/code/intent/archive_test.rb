@@ -4,7 +4,7 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/intent/archive"
 
 class ArchiveIntentTest < Plastic::TestCase
-  def archive(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id:)
+  def archive(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id:, older_than: nil)
 
   def test_a_done_intent_is_archived_and_its_rows_stay
     open_intent(status: "done")
@@ -25,7 +25,7 @@ class ArchiveIntentTest < Plastic::TestCase
     refute retrieval.archived?("1")
   end
 
-  def before_date(older_than = "2026-02-01") = run_workflow(Plastic::Workflows::Code::Intent::Archive, older_than:)
+  def before_date(older_than = "2026-02-01") = run_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id: nil, older_than:)
 
   def dated(title, status:, opened: "2026-01-01T00:00:00Z", closed: nil)
     intent = open_intent(title:, status: "future")

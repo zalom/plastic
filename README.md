@@ -105,7 +105,7 @@ plastic doctor      # The installation, the databases and the hooks of this agen
 ```
 
 `plastic version` prints the version, the release channel and the file the version came from.
-It changes nothing and checks nothing else.
+It rebuilds a search index that is out of step and changes nothing else.
 
 `plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3
 bundle, where the hooks point and the installer lock. It also opens each database and reads the hooks and instruction files of the
@@ -190,6 +190,7 @@ plastic session note "TEXT"           # Write the one prose line of this session
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
+plastic intent archive --older-than 2026-01-01   # Archive each intent older than the date
 plastic intent unarchive 12             # Restore an archived intent
 plastic intent end 12                   # Close as delivered, after the merge
 plastic intent abandon 12               # Close as abandoned
