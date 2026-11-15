@@ -407,3 +407,56 @@ class DatabaseWriteLogTest < Plastic::TestCase
     assert_equal 8000, database.row("SELECT count(*) AS n FROM notes")["n"]
   end
 end
+
+class WrittenPhraseTest < Plastic::TestCase
+  def test_nothing_written_has_no_phrase
+    assert_nil database.written_phrase
+  end
+
+  def test_one_table_written_is_one_phrase
+    insert("a", table: :tallies)
+    insert("b", table: :tallies)
+
+    assert_equal "2 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_two_tables_join_with_and
+    insert("t", table: :tallies)
+    insert("n", table: :notes)
+
+    assert_equal "1 tallies and 1 notes in work_graph.db", database.written_phrase
+  end
+
+  def test_the_routine_run_row_is_left_out_of_the_phrase
+    insert("a")
+    insert("t", table: :tallies)
+
+    assert_equal "1 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_only_the_routine_run_row_written_has_no_phrase
+    insert("a")
+
+    assert_nil database.written_phrase
+  end
+
+  def test_three_tables_join_with_commas
+    insert("a", table: :tallies)
+    insert("t", table: :notes)
+    insert("n", table: :stored)
+
+    assert_equal "1 tallies, 1 notes, and 1 stored in work_graph.db", database.written_phrase
+  end
+
+  def test_an_uncounted_write_is_kept_off_the_phrase
+    database.transaction { |batch| batch.add("INSERT INTO notes VALUES ('x')") }
+
+    assert_nil database.written_phrase
+  end
+
+  def test_a_write_that_changes_nothing_counts_nothing
+    database.transaction { |batch| batch.write(:notes, "DELETE FROM notes") }
+
+    assert_nil database.written_phrase
+  end
+end
