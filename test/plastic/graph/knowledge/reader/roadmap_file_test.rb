@@ -92,6 +92,19 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_equal [origin, true], [retrieval.roadmap("plan").origin_id, !retrieval.roadmap("plan").updated_at.nil?]
   end
 
+  def test_an_item_and_a_batch_with_no_done_lines_read_back_with_an_empty_done_as_the_writer_stores_them
+    seed
+    work.transaction do |batch|
+      batch.write(:roadmap_items, "UPDATE roadmap_items SET done = '' WHERE roadmap = 'plan'")
+      batch.write(:batches, "UPDATE batches SET done = '' WHERE roadmap = 'plan'")
+    end
+    text = printed
+    clear
+    read(text)
+
+    assert_equal [[""], [""]], [retrieval.roadmap_items("plan").map(&:done).uniq, retrieval.batches("plan").map(&:done).uniq]
+  end
+
   def test_a_file_in_another_form_is_refused_as_an_older_form
     error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "# Plan\n\n## Goal\n\nShip\n") }
 
