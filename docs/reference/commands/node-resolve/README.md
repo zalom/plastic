@@ -53,7 +53,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `intents`, `nodes` | reads and writes | [`resolve.rb:13`](../../../../lib/plastic/commands/node/resolve.rb#L13) |
+| the store folder | work_graph.db | `intents`, `nodes` | reads and writes | [`move.rb:16`](../../../../lib/plastic/commands/node/move.rb#L16) |
 | the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 | the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
 | the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
