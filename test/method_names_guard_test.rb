@@ -40,6 +40,24 @@ class MethodNamesGuardTest < Minitest::Test
     assert_empty vague_names(sample)
   end
 
+  def test_the_detector_catches_a_name_defined_twice_in_one_body
+    sample = "class A\n  def read\n    1\n  end\n\n  def self.read\n  end\n\n  def read = 2\nend\n"
+
+    assert_equal %w[read], repeated_names(sample)
+  end
+
+  def test_the_detector_leaves_the_same_name_in_two_bodies_alone
+    sample = "module M\n  class A\n    def read = 1\n  end\n\n  class B\n    def read\n      2\n    end\n  end\n\n  def read = 3\nend\n"
+
+    assert_empty repeated_names(sample)
+  end
+
+  def test_no_class_or_module_body_defines_one_name_twice
+    offenders = sources.to_h { |path| [path.delete_prefix("#{ROOT}/"), repeated_names(File.read(path))] }.reject { |_, names| names.empty? }
+
+    assert_empty offenders
+  end
+
   def test_no_method_is_named_run_or_take
     offenders = sources.to_h { |path| [path.delete_prefix("#{ROOT}/"), vague_names(File.read(path))] }.reject { |_, names| names.empty? }
 
