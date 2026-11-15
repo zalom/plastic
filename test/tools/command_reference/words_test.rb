@@ -73,6 +73,18 @@ class CommandReferenceMissingWordsTest < Minitest::Test
     assert(missing("wordless lone").any? { |line| line.start_with?("wordless lone") && line.include?("work") && line.include?("changes") })
   end
 
+  def test_an_agent_step_whose_text_is_only_a_placeholder_is_named
+    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("step relay the text") && line.include?("gets") })
+  end
+
+  def test_an_outcome_whose_because_is_only_a_placeholder_is_named
+    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("outcome handoff") && line.include?("ends_when") })
+  end
+
+  def test_an_outcome_with_a_full_because_is_not_named_for_ends_when
+    refute(missing("wordless relaying").any? { |line| line.include?("outcome done") && line.include?("ends_when") })
+  end
+
   def test_the_words_of_every_page_are_collected_in_one_list
     pages = ["wordless chained", "wordless branching"].map { |words| model.page(words) }
 
@@ -95,6 +107,26 @@ class CommandReferenceCompleteWordsTest < Minitest::Test
     model = CommandReference::Model.new(CommandReferenceHelper::ROOT, table: Fixtures::Worded::TABLE)
 
     assert_empty CommandReference::Words.missing(Fixtures::Worded::TABLE.keys.map { |words| model.page(words) })
+  end
+end
+
+class CommandReferenceDeclaredTextsTest < Minitest::Test
+  include CommandReferenceHelper
+
+  def worded = CommandReference::Model.new(CommandReferenceHelper::ROOT, table: Fixtures::Worded::TABLE).page("worded complete").flows.last
+
+  def test_a_text_that_is_only_a_placeholder_gets_declared_words_on_the_pages_of_the_repository
+    lines = CommandReferenceHelper.pages.values.flat_map { |page| CommandReference::Words.missing([page]) }.grep(/gets|ends_when/)
+
+    assert_empty lines
+  end
+
+  def test_a_declared_agent_step_shows_its_words_and_not_the_placeholder
+    assert_equal "The text of the next step of the delivery", worded.rows.first.say
+  end
+
+  def test_a_declared_outcome_shows_its_words_and_not_the_placeholder
+    assert_equal "the next step is handed to the agent", worded.outcomes.find { |each| each.name == :handoff }.because
   end
 end
 
