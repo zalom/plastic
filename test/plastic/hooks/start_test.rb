@@ -36,14 +36,37 @@ class StartTest < Plastic::TestCase
     assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
-  def test_a_cleared_second_session_names_the_context_clear_and_the_open_intent_with_exit_0
-    intent_id = printed_intent
-    result = call(source: "clear", env: { "PLASTIC_SESSION" => "s-2" })
-    lines = result.out.lines(chomp: true)
+  def claude(session) = { "CLAUDE_CODE_SESSION_ID" => session }
+
+  def run_first_session
+    first = claude("s-1")
+    plastic("hook", "start", input: JSON.generate(source: "startup"), env: first, table: Plastic::CLI::TABLE)
+    %w[Alpha Beta].each { |title| plastic("intent", "new", title, env: first, table: Plastic::CLI::TABLE) }
+    plastic("session", "note", "stopped", "after", "Beta", env: first, table: Plastic::CLI::TABLE)
+  end
+
+  def reply_names(out) = ["Alpha", "Beta", "intent new", "stopped after Beta"].select { |name| out.include?(name) }
+
+  def test_a_cleared_session_names_both_intents_the_savepoint_and_the_note_for_the_claude_code_row
+    run_first_session
+    result = call(source: "clear", env: claude("s-1"))
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", lines.first
-    assert_includes lines, "active: #{intent_id} Alpha (open)"
+    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", result.out.lines(chomp: true).first
+    assert_equal ["Alpha", "Beta", "intent new", "stopped after Beta"], reply_names(result.out)
+    assert_equal "claude-code", store_graphs.retrieval.session("s-1").harness
+  end
+
+  def test_a_cleared_second_session_names_both_intents_the_savepoint_and_the_note_after_the_first_ends
+    run_first_session
+    plastic("hook", "end", input: JSON.generate(reason: "clear"), env: claude("s-1"), table: Plastic::CLI::TABLE)
+    @session = "s-2"
+    result = call(source: "clear", env: claude("s-2"))
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", result.out.lines(chomp: true).first
+    assert_equal ["Alpha", "Beta", "intent new", "stopped after Beta"], reply_names(result.out)
+    assert_equal ["claude-code", "clear"], [harness, store_graphs.retrieval.session("s-1").end_reason]
   end
 
   def test_a_compacted_session_names_the_compaction_the_savepoint_and_the_note_with_exit_0

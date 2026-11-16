@@ -35,11 +35,21 @@ class StopTest < Plastic::TestCase
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
+  CLAUDE = { "CLAUDE_CODE_SESSION_ID" => "s-1" }.freeze
+
+  def start_claude_session = plastic("hook", "start", input: JSON.generate(source: "startup"), env: CLAUDE, table: Plastic::CLI::TABLE)
+
+  def session_row
+    session = store_graphs.retrieval.session("s-1")
+    [session.harness, !session.last_turn_at.nil?, session.ended_at.nil?]
+  end
+
   def test_stop_stamps_the_last_turn_at
-    result = call
+    start_claude_session
+    result = call(env: CLAUDE)
 
     assert_call result, code: 0, out: "", err: ""
-    assert_equal [true, nil], [!store_graphs.retrieval.session("s-1").last_turn_at.nil?, store_graphs.retrieval.session("s-1").ended_at]
+    assert_equal ["claude-code", true, true], session_row
   end
 
   def test_stop_renews_only_this_sessions_locks
@@ -123,12 +133,17 @@ class StopTest < Plastic::TestCase
   end
 
   def test_stop_takes_no_harness_option
-    assert_call call("--harness", "codex"), code: 0, err: "plastic: invalid option: --harness\nplastic hook stop\n"
+    start_claude_session
+
+    assert_call call("--harness", "codex", env: CLAUDE), code: 0, err: "plastic: invalid option: --harness\nplastic hook stop\n"
+    assert_equal ["claude-code", false, true], session_row
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
+    start_claude_session
     result = call(env: {})
 
     assert_call result, code: 0, err: "plastic hook: the event names no session; nothing recorded\n"
+    assert_equal ["claude-code", false, true], session_row
   end
 end

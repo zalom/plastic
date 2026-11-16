@@ -10,14 +10,21 @@ class EndTest < Plastic::TestCase
     plastic("hook", "end", *args, input:, env:, table: Plastic::CLI::TABLE)
   end
 
-  def test_end_sets_the_reason_and_not_the_turn
-    result = call(input: JSON.generate(reason: "clear"))
+  CLAUDE = { "CLAUDE_CODE_SESSION_ID" => "s-1" }.freeze
 
+  def start_claude_session = plastic("hook", "start", input: JSON.generate(source: "startup"), env: CLAUDE, table: Plastic::CLI::TABLE)
+
+  def session_row
     session = store_graphs.retrieval.session("s-1")
+    [session.harness, !session.last_turn_at.nil?, session.end_reason]
+  end
+
+  def test_end_sets_the_reason_and_not_the_turn
+    start_claude_session
+    result = call(input: JSON.generate(reason: "clear"), env: CLAUDE)
 
     assert_call result, code: 0, out: "", err: ""
-    assert_equal "clear", session.end_reason
-    assert_nil session.last_turn_at
+    assert_equal ["claude-code", false, "clear"], session_row
   end
 
   def test_end_sets_the_end_time
@@ -34,11 +41,17 @@ class EndTest < Plastic::TestCase
   end
 
   def test_end_takes_no_harness_option
-    assert_call call("--harness", "codex"), code: 0, err: "plastic: invalid option: --harness\nplastic hook end\n"
+    start_claude_session
+
+    assert_call call("--harness", "codex", env: CLAUDE, input: JSON.generate(reason: "logout")), code: 0, err: "plastic: invalid option: --harness\nplastic hook end\n"
+    assert_equal ["claude-code", false, nil], session_row
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
+    start_claude_session
+
     assert_call call(env: {}), code: 0, err: "plastic hook: the event names no session; nothing recorded\n"
+    assert_equal ["claude-code", false, nil], session_row
   end
 
   def test_help_prints_the_usage
