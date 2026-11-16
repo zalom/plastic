@@ -43,7 +43,7 @@ module Plastic
           read "choose the backup" do |context|
             context[:folder] = choose(context)
             held(context, context.folder)
-            context[:refusal] = context.work.backups.restorer.refusal(context.folder)
+            context[:refusal] = context.work.backups.restorer.refusal(context.folder, databases: Plastic::Graph::Backup::Databases.parse(context.databases))
           end
 
           gate "%{refusal}", stops: :refusal,

@@ -19,7 +19,7 @@ class GraphBackupRestorerTest < Plastic::TestCase
 
   def local_db = Plastic::Graph.create(home: @restore_home, store: "alpha").databases.fetch(:local)
 
-  def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(local_db, root, Plastic::Graph.open(home: @restore_home, store: "alpha").retrieval, now:)
+  def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(Plastic::Graph::Backup::Target.new(local_db, root, "alpha", nil), Plastic::Graph.open(home: @restore_home, store: "alpha").retrieval, now:)
 
   def lock_intent(renewed_at)
     local_db.transaction do |batch|
@@ -159,9 +159,11 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   def root = File.join(@home, "stores", "alpha")
 
-  def restorer = Restorer.new(local_db, root, Plastic::Graph.open(home: @home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0), sequences: @sequences)
-
-  def local_db = Plastic::Graph.create(home: @home, store: "alpha").databases.fetch(:local)
+  # The store databases stand at version 2, which the gate of this code refuses, so the restorer gets the local database and a retrieval that only names the store.
+  def restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph::Database.open_local(@home).fetch(:local), root, "alpha", nil)
+    Restorer.new(target, Struct.new(:store).new("alpha"), now: at(2026, 6, 1, 12, 0, 0), sequences: @sequences)
+  end
 
   def store_paths = Dir.glob(File.join(root, "*.db")).sort
 

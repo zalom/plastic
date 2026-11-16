@@ -44,7 +44,7 @@ module Plastic
 
         def purger = Purger.new(@target.local_db, @target.root, @target.slug)
 
-        def restorer = Restorer.new(@target.local_db, @target.root, @retrieval, now: @clock.now, session: @target.session)
+        def restorer = Restorer.new(@target, @retrieval, now: @clock.now)
 
         # The newest folder marked done, or nil.
         def latest_done = folders.names.reverse.find { |name| folders.status(name) == "done" }
