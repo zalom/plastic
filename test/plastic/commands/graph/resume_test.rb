@@ -222,6 +222,18 @@ class GraphResumeStoresTest < Plastic::TestCase
       lines(result).grep(/\A(in play|then|next): /).reject { |line| line == "in play: none" }
   end
 
+  def test_a_store_whose_intent_has_no_done_criteria_names_the_spec_command_as_its_then_line
+    register("b")
+    store_intent("b", "Alpha")
+
+    result = call("--stores", "global,b")
+    shown = lines(result).map { |line| line.sub(/\A(savepoint: )\S+/, '\1TIME') }
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal ["store: global", "in play: none", "then: nothing is open", "store: b", "in play: 1 Alpha (open)", "savepoint: TIME Opened: Alpha",
+      "then: plastic intent spec 1 (because intent 1 has no done criteria)", "", "next: plastic intent spec 1 --project b"], shown.reject { |line| line.start_with?("because:") }
+  end
+
   def test_a_name_that_is_no_project_exits_2_and_lists_the_projects
     register("b")
 
