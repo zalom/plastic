@@ -15,7 +15,7 @@ module Plastic
         # gets each log line as it is written.
         class Copy
           # Where one backup goes: the store root, the folders of the store and the new folder's name, and its log once the copy starts.
-          Slot = Struct.new(:root, :folders, :folder, :log) do
+          Slot = Struct.new(:root, :folders, :folder, :log, :extra) do
             def path = folders.path(folder)
 
             def source(name) = File.join(root, "#{name}.db")
@@ -25,7 +25,7 @@ module Plastic
             # Copies each named database and logs its line; gives the bytes copied.
             def copy_all(names, copier) = names.sum { |name| copy(name, copier).tap { |size| log.database(name, size) } }
 
-            def write_status(status, goal) = folders.write_report(folder, status:, goal:)
+            def write_status(status, goal) = folders.write_report(folder, status:, goal:, **(extra || {}))
 
             # Copies one database with the step passed in, and gives the size of the copy.
             def copy(name, copier)

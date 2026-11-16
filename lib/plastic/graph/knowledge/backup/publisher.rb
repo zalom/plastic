@@ -10,14 +10,15 @@ module Plastic
       class Backup
         # Writes a complete backup folder with its row, or neither.
         class Publisher
-          def initialize(target, now:, databases: nil, live: ->(_line) {})
+          def initialize(target, now:, databases: nil, live: ->(_line) {}, automatic: false, reason: nil)
             @target = target
-            @writer = Writer.new(target.root, target.slug, now:, copy: Copy.new(now:, databases:, live:))
+            @writer = Writer.new(target.root, target.slug, now:, copy: Copy.new(now:, databases:, live:), automatic:, reason:)
           end
 
+          # The row written, or nil when an automatic backup had nothing to do.
           def call
             row = @writer.call
-            insert(row)
+            row && insert(row)
           rescue
             FileUtils.rm_rf(@target.folders.path(row.fetch(:name).split("/").last)) if row
             raise

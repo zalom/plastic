@@ -12,6 +12,8 @@ module Plastic
         # Deletes backups of one store. The folders on disk decide what
         # exists; a folder goes with its row, a row with no folder goes alone.
         class Purger
+          RETENTION = 3 * 24 * 60 * 60
+
           def initialize(local_db, store_root, slug)
             @local_db = local_db
             @slug = slug
@@ -21,6 +23,12 @@ module Plastic
           # The folder names, all of them or those strictly before a time.
           def names(older_than: nil)
             @folders.names.select { |name| FolderName.before?(name, older_than) }
+          end
+
+          # The folders older than three days, except the newest backup the runner took before a migration.
+          def expired(now:)
+            kept = @folders.names.reverse.find { |name| @folders.report(name)["reason"] == "migration" }
+            names(older_than: now - RETENTION).reject { |name| name == kept }
           end
 
           # The names of the folders whose backup failed.

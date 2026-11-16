@@ -38,7 +38,7 @@ module Plastic
             File.file?(file) ? (YAML.safe_load_file(file) || {}) : {}
           end
 
-          def write_report(name, status:, goal:) = File.write(File.join(path(name), "status.yml"), { "status" => status, "goal" => goal }.to_yaml)
+          def write_report(name, status:, goal:, **extra) = File.write(File.join(path(name), "status.yml"), { "status" => status, "goal" => goal }.merge(extra.transform_keys(&:to_s)).to_yaml)
 
           def files(name) = Dir.children(path(name)).grep(/\.db\z/).sort
 
