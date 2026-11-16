@@ -21,6 +21,9 @@ module Plastic
       def check
         newest = @folders.latest
         label = "backups #{@slug}:"
+        failed = failed_check
+        return Check.finding(label, failed, "plastic backup --store #{@slug}") if failed
+
         return Check.ok(label, "no backup yet") unless newest
 
         status = @folders.status(newest)
@@ -31,9 +34,19 @@ module Plastic
 
       private
 
+      def failed_check
+        last = @folders.last_check
+        "the live check of #{last["file"]} failed at #{last["at"]}: #{last["reason"]}" if last["verdict"] == "failed"
+      end
+
+      def live_check
+        last = @folders.last_check
+        ", live check #{last["at"]} #{last["verdict"]}" if last["verdict"]
+      end
+
       def described(name)
         taken = Graph::Backup::FolderName.time(name)
-        "newest #{taken.utc.iso8601}, #{((@now - taken) / 3600).floor} hours old, integrity passed"
+        "newest #{taken.utc.iso8601}, #{((@now - taken) / 3600).floor} hours old, integrity passed#{live_check}"
       end
     end
   end

@@ -39,7 +39,7 @@ module BackupHomes
   def backups_dir(home, slug = "alpha") = File.join(home, "stores", slug, "backups")
 
   def folder_names(home, slug = "alpha")
-    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).sort : []
+    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).grep(Plastic::Graph::Backup::FolderName::PATTERN).sort : []
   end
 
   def row_names(home, slug = "alpha")

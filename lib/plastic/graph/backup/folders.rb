@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "digest"
+require "fileutils"
 require "yaml"
 require_relative "folder_name"
 
@@ -38,6 +39,17 @@ module Plastic
         end
 
         def write_report(name, status:, goal:, **extra) = File.write(File.join(path(name), "status.yml"), { "status" => status, "goal" => goal }.merge(extra.transform_keys(&:to_s)).to_yaml)
+
+        # The verdict of the newest check of the live files: time, verdict, and for a failure the file and the reason.
+        def last_check
+          file = File.join(dir, "last-check.yml")
+          File.file?(file) ? (YAML.safe_load_file(file) || {}) : {}
+        end
+
+        def write_check(**check)
+          FileUtils.mkdir_p(dir)
+          File.write(File.join(dir, "last-check.yml"), check.compact.transform_keys(&:to_s).to_yaml)
+        end
 
         def files(name) = Dir.children(path(name)).grep(/\.db\z/).sort
 

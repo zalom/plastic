@@ -12,7 +12,14 @@ module Plastic
       # time of each file, so an unchanged store can be told apart.
       class SourceCheck
         # A live database failed its quick check.
-        class Failed < StandardError; end
+        class Failed < StandardError
+          attr_reader :path
+
+          def initialize(message, path)
+            super(message)
+            @path = path
+          end
+        end
 
         def initialize(paths)
           @paths = paths
@@ -32,11 +39,11 @@ module Plastic
 
         def inspect_file(path)
           SQLite3::Database.open(path, readonly: true) do |database|
-            (database.get_first_value("PRAGMA quick_check") == "ok") || raise(Failed, "#{path} fails the quick check")
+            (database.get_first_value("PRAGMA quick_check") == "ok") || raise(Failed.new("#{path} fails the quick check", path))
             database.get_first_value("PRAGMA user_version")
           end
         rescue SQLite3::Exception => error
-          raise Failed, "#{path} cannot be read: #{error.message}"
+          raise Failed.new("#{path} cannot be read: #{error.message}", path)
         end
       end
     end

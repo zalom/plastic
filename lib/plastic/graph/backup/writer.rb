@@ -39,7 +39,7 @@ module Plastic
         # The backup row, or nil when an automatic backup had nothing to do.
         def call
           check = source_check
-          version = check.version
+          version = verified(check)
           return if @automatic && unchanged?(check)
 
           folder = claim
@@ -51,6 +51,14 @@ module Plastic
         private
 
         def folders = (@folders ||= Folders.new(@root))
+
+        # The lowest version of the live files; each check is recorded for the doctor.
+        def verified(check)
+          check.version.tap { folders.write_check(at: Plastic.now(@now), verdict: "passed") }
+        rescue SourceCheck::Failed => error
+          folders.write_check(at: Plastic.now(@now), verdict: "failed", file: File.basename(error.path), reason: error.message)
+          raise
+        end
 
         def source_check
           names = @copy.sources(@root)

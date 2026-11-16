@@ -13,7 +13,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     home = stale_home
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal ["backups alpha:", "ok, newest 2026-01-01T10:00:00Z, 13 hours old, integrity passed", nil], found.to_a
+    assert_equal ["backups alpha:", "ok, newest 2026-01-01T10:00:00Z, 13 hours old, integrity passed, live check 2026-01-01T10:00:00Z passed", nil], found.to_a
   end
 
   def test_a_store_with_no_backup_says_so_and_is_no_finding
@@ -31,13 +31,17 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic backup --store alpha"], found.to_a
   end
 
-  def damage_leaf(home)
-    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
-    db = SQLite3::Database.new(store_file(home, "knowledge_graph"))
+  def fill(path)
+    db = SQLite3::Database.new(path)
     db.execute("CREATE TABLE filler (id INTEGER PRIMARY KEY, body TEXT)")
     db.transaction { 2000.times { |index| db.execute("INSERT INTO filler (body) VALUES (?)", ["row #{index} " * 40]) } }
     db.close
+  end
+
+  def damage_leaf(home)
+    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
     path = store_file(home, "knowledge_graph")
+    fill(path)
     File.binwrite(path, File.binread(path).tap { |bytes| bytes[bytes.bytesize - (4096 * 20) + 8, 40] = ("\xFF" * 40).b })
   end
 
@@ -58,6 +62,13 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     found = check(home, THIRTEEN_HOURS_LATER)
 
     assert_equal "ok, newest 2026-01-01T23:00:00Z, 0 hours old, integrity passed, live check 2026-01-01T23:00:00Z passed", found.to_a[1]
+  end
+
+  def test_a_store_whose_live_check_was_never_recorded_prints_the_age_alone
+    home = stale_home
+    File.delete(File.join(backups_dir(home), "last-check.yml"))
+
+    assert_equal "ok, newest 2026-01-01T10:00:00Z, 13 hours old, integrity passed", check(home, THIRTEEN_HOURS_LATER).value
   end
 
   def test_the_core_checks_carry_one_backups_check_for_each_store
