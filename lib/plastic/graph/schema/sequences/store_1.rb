@@ -35,7 +35,7 @@ module Plastic
         rebuild_intents(connection)
       end
 
-      def table_sql(connection, name) = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '#{name}'")
+      def table_sql(connection, name) = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [name])
 
       def rebuild_revisions(connection)
         return unless table_sql(connection, "document_revisions")&.include?(REVISION_MEMBERSHIP)
