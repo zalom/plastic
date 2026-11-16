@@ -31,6 +31,35 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic backup --store alpha"], found.to_a
   end
 
+  def damage_leaf(home)
+    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
+    db = SQLite3::Database.new(store_file(home, "knowledge_graph"))
+    db.execute("CREATE TABLE filler (id INTEGER PRIMARY KEY, body TEXT)")
+    db.transaction { 2000.times { |index| db.execute("INSERT INTO filler (body) VALUES (?)", ["row #{index} " * 40]) } }
+    db.close
+    path = store_file(home, "knowledge_graph")
+    File.binwrite(path, File.binread(path).tap { |bytes| bytes[bytes.bytesize - (4096 * 20) + 8, 40] = ("\xFF" * 40).b })
+  end
+
+  def test_a_failed_live_check_is_a_finding_that_names_the_file_and_the_backup_command
+    home = stale_home
+    damage_leaf(home)
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    found = check(home, THIRTEEN_HOURS_LATER)
+
+    assert_equal ["backups alpha:", "plastic backup --store alpha"], [found.label, found.repair]
+    assert_match(/knowledge_graph\.db fails the quick check/, found.value)
+  end
+
+  def test_a_passed_live_check_is_printed_beside_the_age
+    home = stale_home
+    add_intent(home)
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    found = check(home, THIRTEEN_HOURS_LATER)
+
+    assert_equal "ok, newest 2026-01-01T23:00:00Z, 0 hours old, integrity passed, live check 2026-01-01T23:00:00Z passed", found.to_a[1]
+  end
+
   def test_the_core_checks_carry_one_backups_check_for_each_store
     home = stale_home
     scope = Plastic::CLI::Scope.new(env: env_for(home), home: @home, slug: "alpha", directory: @home)
