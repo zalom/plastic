@@ -53,7 +53,7 @@ module Plastic
         return help if @argv.intersect?(%w[--help -h])
 
         answer
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure, Graph::MissingStore, Graph::Behind => error
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure, Graph::MissingStore, Graph::OutOfStep => error
         settle(error)
       end
 
@@ -91,7 +91,7 @@ module Plastic
         message = error.message
         case error
         when Refusal, Failure then stop(error)
-        when Graph::Behind
+        when Graph::OutOfStep
           stop(Refusal.new(message, next_command: error.next_command))
         when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command(scope.projects[error.store])))
         else
