@@ -5,7 +5,12 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.2
+
 - A sync of the stores deletes no file that was on the disk before it ran. A failed import of an older store removes only the databases it made, and a sync up no longer reads the event log beside a roadmap as a roadmap. An install over an earlier release relinks the `plastic` launcher that still points to the earlier release.
+
+## 3.0.0-beta.1
+
 - `plastic auto ID` is the only auto command. It takes one intent id or one roadmap slug, takes the delivery lock, and prints the code worktree with the `git worktree add` command that creates it. A roadmap slug arms the first item in flight, or names `plastic roadmap start` for the first ready item. `plastic intent lock status ID` reads the lock row back from `local.db`. `plastic auto start` is removed.
 - The one database each machine keeps is renamed from `home.db` to `local.db`, ready for local and remote stores. A machine that still has `home.db` gets it renamed on first use, rows and all, and the call that renamed it says so once.
 - The block that Plastic installs into `~/.claude/CLAUDE.md` holds only the import of `PLASTIC.md`. The compaction thresholds are gone from the block, and the `context_offer_tokens` and `context_insist_tokens` config keys are removed. An install or an update replaces the older block.
