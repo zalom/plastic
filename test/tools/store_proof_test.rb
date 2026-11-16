@@ -44,10 +44,9 @@ class StoreProofTest < Minitest::Test
     seen = nil
     code, = run_cli(*proof_args("plastic", "status"), runner: ->(env, command) { seen = [env, command] })
 
-    assert_equal 0, code
+    assert_equal [0, %w[plastic status]], [code, seen.last]
     assert_equal %w[HOME PLASTIC_BIN PLASTIC_HOME PLASTIC_SHARE], seen.first.keys.sort
     assert(seen.first.values.all? { |path| path.start_with?(@job + File::SEPARATOR) })
-    assert_equal %w[plastic status], seen.last
   end
 
   def test_a_path_outside_the_job_tmp_aborts_with_no_copy_and_no_command_run
@@ -59,6 +58,11 @@ class StoreProofTest < Minitest::Test
 
     assert_equal [3, false], [code, ran]
     assert_includes err, "outside the job tmp"
+  end
+
+  def test_a_refused_path_leaves_no_copy_in_the_job_tmp
+    run_cli("--job-tmp", @job, "--real-home", @real, "--plastic-home", File.join(@root, "elsewhere"), "--", "plastic")
+
     refute_path_exists File.join(@job, "plastic_home")
   end
 
