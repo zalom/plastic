@@ -4,25 +4,42 @@ require_relative "../init"
 require_relative "../../../code_workflow"
 require_relative "../../../cli/screen"
 require_relative "../../../harnesses"
+require_relative "../../../config"
 
 module Plastic
   module Workflows
     module Code
       class Init
-        # Reads the person's answer against the installed harnesses, every one
-        # of them picked at the start.
+        # Reads the person's answer against the installed harnesses and the
+        # sync of images and videos, every one of them picked at the start.
         class Choose < CodeWorkflow
           clear_declarations
-          summary "Finds the harnesses on this machine and chooses which ones to set up."
+          summary "Finds the harnesses on this machine and chooses which ones to set up, and whether a sync keeps images and videos."
 
-          sets :found, :picked, :harnesses
+          MEDIA = "sync images and videos"
+
+          sets :found, :picked, :harnesses, :media
+
+          # The found harnesses, all picked, then the sync of images and videos,
+          # picked unless the home turned it off; none when no harness is found.
+          def self.choices(scope)
+            names = Harnesses.found_in(scope).map(&:name)
+            return [] if names.empty?
+
+            [*names.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }, CLI::Screen::Choice.new(label: MEDIA, chosen: media?(scope))]
+          end
+
+          # Picked until the home's config.yml turns the sync of images and videos off.
+          def self.media?(scope) = !Plastic::Config::FALSE_VALUES.include?(Plastic::Config.new(scope.plastic_home).overrides.dig("sync", "media"))
 
           read "find the installed harnesses and read the person's answer" do |context|
-            found = Harnesses.found_in(context.scope).map(&:name)
-            choices = found.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }
+            choices = Choose.choices(context.scope)
+            found = choices.map(&:label) - [MEDIA]
             result = CLI::Screen::Answer.new(choices).call(context.answer) if found.any?
+            labels = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
             context[:found] = found
-            context[:picked] = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
+            context[:picked] = labels - [MEDIA]
+            context[:media] = labels.include?(MEDIA)
             context[:harnesses] = context.picked.join(", ")
           end
 

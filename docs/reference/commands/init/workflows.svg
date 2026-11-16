@@ -83,11 +83,12 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="24" y="34" class="tb" text-anchor="start">One call of plastic init: its workflows and its endings</text>
-<rect x="290" y="56" width="254" height="83" rx="6" class="lane-code"/>
+<rect x="290" y="56" width="254" height="100" rx="6" class="lane-code"/>
 <text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="302" y="96" class="t" text-anchor="start">Finds the harnesses on this</text>
 <text x="302" y="113" class="t" text-anchor="start">machine and chooses which ones</text>
-<text x="302" y="130" class="t" text-anchor="start">to set up.</text>
+<text x="302" y="130" class="t" text-anchor="start">to set up, and whether a sync</text>
+<text x="302" y="147" class="t" text-anchor="start">keeps images and videos.</text>
 <rect x="24" y="56" width="222" height="134" rx="6" class="stop-end"/>
 <text x="36" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="36" y="96" class="t" text-anchor="start">No registered harness was</text>
@@ -101,13 +102,13 @@
 <text x="36" y="238" class="t" text-anchor="start">The person left with no</text>
 <text x="36" y="255" class="t" text-anchor="start">change.</text>
 <text x="36" y="272" class="t" text-anchor="start">next: plastic init</text>
-<path d="M 290 97 L 268 97" class="wire-end"/>
-<path d="M 268 97 L 268 239" class="wire-end"/>
+<path d="M 290 106 L 268 106" class="wire-end"/>
+<path d="M 268 106 L 268 239" class="wire-end"/>
 <path d="M 268 123 L 246 123" class="wire-end"/>
 <path d="M 254 118 L 246 123 L 254 128 Z" class="head"/>
 <path d="M 268 239 L 246 239" class="wire-end"/>
 <path d="M 254 234 L 246 239 L 254 244 Z" class="head"/>
-<path d="M 417 139 L 417 311 L 417 311 L 417 319" class="wire"/>
+<path d="M 417 156 L 417 311 L 417 311 L 417 319" class="wire"/>
 <text x="417" y="333" class="k" text-anchor="middle">install Plastic into &lt;harnesses&gt;</text>
 <path d="M 417 343 L 417 357" class="wire"/>
 <path d="M 412 349 L 417 357 L 422 349 Z" class="head"/>

@@ -282,6 +282,52 @@ class SyncUpGeneratedTest < Plastic::TestCase
   end
 end
 
+# Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
+class SyncUpSelectionTest < Plastic::TestCase
+  def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
+
+  def setup
+    super
+    page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{STAMP.to_json}\n---\n\n# 2 - Beta\n"
+    { "2--beta.md" => page, "spec.md" => "# Spec\n", "resources/shot.png" => "\x89PNG\x00".b,
+      "resources/page.html" => "<p>page</p>\n", "references/notes.md" => "# Notes\n" }
+      .each { |rel, bytes| write("store/2--beta/#{rel}", bytes) }
+  end
+
+  def kept = store_graphs.databases[:references].rows("SELECT name FROM sqlar ORDER BY name").map { |row| row["name"] }
+
+  def documents = store_graphs.databases[:knowledge].rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
+
+  def test_a_sync_with_no_setting_reads_the_notes_and_leaves_the_other_files_on_disk
+    result = sync
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal [%w[2--beta.md spec.md], []], [documents, kept]
+    assert_path_exists folder.path("store/2--beta/references/notes.md")
+  end
+
+  def test_a_sync_with_the_media_setting_on_keeps_the_image_and_no_other_file
+    File.write(File.join(@plastic_home, "config.yml"), "global:\n  sync:\n    media: true\n")
+
+    assert_equal 0, sync.code
+    assert_equal [%w[2--beta.md spec.md], %w[store/2--beta/resources/shot.png]], [documents, kept]
+  end
+
+  def media(value) = File.write(File.join(@plastic_home, "config.yml"), "global:\n  sync:\n    media: #{value}\n")
+
+  def kept_sizes = store_graphs.databases[:references].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
+
+  def test_a_kept_image_is_not_read_again_once_the_media_setting_is_off
+    media(true)
+    sync
+    media(false)
+    write("store/2--beta/resources/shot.png", "\x89PNG\x00 changed".b)
+    result = sync
+
+    assert_equal [0, "", [5]], [result.code, result.err, kept_sizes]
+  end
+end
+
 class SyncUpGraphArchiveKeptTest < Minitest::Test
   include DeliveredHomes
 

@@ -84,9 +84,9 @@ class InitCommandTest < Plastic::TestCase
 
   def test_an_answer_with_no_such_number_is_a_usage_error_that_writes_nothing
     before = tree_snapshot(@home)
-    result = call("init", "3")
+    result = call("init", "4")
 
-    assert_equal [2, true], [result.code, result.err.include?("no choice 3")]
+    assert_equal [2, true], [result.code, result.err.include?("no choice 4")]
     assert_equal before, tree_snapshot(@home)
   end
 
@@ -179,4 +179,45 @@ class InitHomeFilesTest < Plastic::TestCase
   def settings = JSON.parse(File.read(File.join(@home, ".claude", "settings.json")))
 
   def hook_file(name) = File.join(@home, ".claude", "hooks", name)
+end
+
+class InitMediaSyncTest < Plastic::TestCase
+  include InstallerHelper
+
+  def setup
+    super
+    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
+  end
+
+  def media_setting = Plastic::Config.new(@plastic_home).flag(%w[sync media], default: nil)
+
+  def test_with_no_terminal_the_sync_of_images_and_videos_is_listed_picked_after_the_harnesses
+    assert_match(/3  \[x\] sync images and videos/, call("init").out)
+  end
+
+  def test_once_the_sync_of_images_and_videos_is_off_it_is_listed_not_picked
+    Plastic::Config.new(@plastic_home).set("sync.media", false)
+
+    assert_match(/3  \[ \] sync images and videos/, call("init").out)
+  end
+
+  def test_answering_every_choice_turns_the_sync_of_images_and_videos_on
+    result = call("init", "a")
+
+    assert_equal [0, true], [result.code, media_setting]
+  end
+
+  def test_answering_a_harness_alone_turns_the_sync_of_images_and_videos_off
+    result = call("init", "1")
+
+    assert_equal [0, false], [result.code, media_setting]
+  end
+
+  def test_answering_the_images_and_videos_row_alone_installs_nothing
+    before = tree_snapshot(@home)
+    result = call("init", "3")
+
+    assert_equal [0, true], [result.code, result.out.include?("the person left with no change")]
+    assert_equal before, tree_snapshot(@home)
+  end
 end

@@ -14,6 +14,7 @@ module Plastic
         "review" => { "pull_request" => "off" },
         "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false },
+        "sync" => { "media" => false, "documents" => false, "references" => false },
         "advisor" => { "enabled" => true }
       }.freeze
 

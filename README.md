@@ -370,6 +370,11 @@ harnesses:
         plastic-executor: gpt-5.5    # One agent's model under Codex
 ```
 
+A sync always reads the Markdown notes and the graph of each intent. Images and videos are
+read when `sync.media` is on, other documents when `sync.documents` is on, and the
+`references/` folder when `sync.references` is on. `plastic init` offers images and videos
+picked.
+
 ```bash
 plastic config list                         # Every key with its value
 plastic config set runner.stop_hook true    # Write a global key

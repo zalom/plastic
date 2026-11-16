@@ -4,6 +4,7 @@ require_relative "../../code_workflow"
 require_relative "../../harnesses"
 require_relative "../installation"
 require_relative "../installation_hooks"
+require_relative "../../config"
 
 module Plastic
   module Workflows
@@ -24,10 +25,12 @@ module Plastic
           pass: ->(context) { context.broken.nil? }
 
         step "install Plastic into the picked harnesses", done: ->(context) { !context.installed.nil? },
-          changes: { home: "Plastic is installed into the Plastic home", harness: "The instructions and hooks of each picked harness are written" } do |context|
+          changes: { home: ["Plastic is installed into the Plastic home", "Whether a sync keeps images and videos is written to config.yml"],
+                     harness: "The instructions and hooks of each picked harness are written" } do |context|
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }
+          Plastic::Config.new(context.scope.plastic_home).set("sync.media", context.media)
           context[:installed] = installation.version
           context[:checked] = context.picked.first
         end

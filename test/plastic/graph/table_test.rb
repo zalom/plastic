@@ -42,8 +42,7 @@ class TableTest < Plastic::TestCase
     assert_equal({ name: "C", intent_id: "1", origin_id: nil }, table(:clusters).key_of({ name: "C", intent_id: "1", x: 2 }))
   end
 
-  def test_a_json_row_reads_bytes_as_hex
-    assert_includes table(:sqlar).json_row, %('data', hex("data"), 'intent_id', "intent_id")
+  def test_a_json_key_names_the_key_columns
     assert_equal %(json_object('path', "path")), table(:printed).json_key
   end
 
@@ -66,10 +65,10 @@ class TableTest < Plastic::TestCase
     assert_match(/\A\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d\z/, change_of("remove").values.fetch(:c_at))
   end
 
-  def test_a_change_row_logs_a_put_with_the_row
+  def test_a_change_row_logs_a_put_with_its_key_and_no_row
     put = change_of("put")
 
-    assert_includes put.sql, %(:c_operation, json_object('path', "path", 'sha256', "sha256", 'at', "at", 'origin_id', "origin_id"), )
+    assert_includes put.sql, %(SELECT :c_table, json_object('path', "path"), :c_operation, NULL, )
     assert_equal "put", put.values.fetch(:c_operation)
   end
 end

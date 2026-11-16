@@ -24,9 +24,10 @@ picks, never the agent, and no option lets an agent pick for the person. `plasti
 The call prints the question, the numbered list and the answer rule, then stops:
 
 ```
-question:  Which harnesses should Plastic be installed into?
+question:  Which harnesses should Plastic be installed into, and should a sync keep images and videos?
 choices:   1  [x] claude-code
            2  [x] codex
+           3  [x] sync images and videos
 answer:    answer with numbers separated by commas (1,2), a for all, or q to leave with no change
 
 next: plastic init <answer>
@@ -41,6 +42,10 @@ command again with the person's answer in place of `<answer>`:
 | `1,2` | Pick items 1 and 2 |
 | `a` | Pick every item |
 | `q` | Leave with no change |
+
+On `plastic init`, the last item is not a harness. It starts picked unless `sync.media` is off
+in the home's `config.yml`. Picked, it turns on `sync.media`, so a sync keeps the images and
+videos of each intent. An answer that picks no harness leaves with no change.
 
 An answer with a number that is not on the list, or any other word, is a usage error (exit 2)
 that names the valid numbers or the answer rule. With `--json` the same rows come back as one

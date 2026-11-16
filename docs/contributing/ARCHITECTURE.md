@@ -278,6 +278,22 @@ A plain sync with a conflict writes nothing, exits 3 and lists every conflict. W
 file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
 `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
 
+A sync reads only the kinds of file that `Graph::Knowledge::SyncSelection` selects. Other
+files stay on disk and get no rows.
+
+| Kind | Files of an intent folder | Read |
+| ---- | ------------------------- | ---- |
+| Notes | Every Markdown file outside `references/`, `graph.json`, `context.json` and the legacy plan, checklist and `actions/` files | Always |
+| Images and videos | Image and video files outside `references/` | When `sync.media` is on. `plastic init` offers it picked. |
+| Documents | Every other file outside `references/` | When `sync.documents` is on |
+| References | Every file under `references/` | When `sync.references` is on |
+
+A file of a kind the settings leave out is not read, even when an earlier sync put it in rows.
+Its rows stay, and nothing on disk is removed.
+
+A change row in `changes` holds the table, the key, the operation, the time and the origin of a
+write, never a copy of the row.
+
 `plastic sync up` reads every intent folder of a store. A folder with no row gives a row built
 from its intent file. A folder that cannot give a row is named with its reason, and the call
 exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
