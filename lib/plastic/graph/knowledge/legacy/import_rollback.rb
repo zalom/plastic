@@ -46,10 +46,11 @@ module Plastic
           def put_back
             set_aside
             @files.rename(original, @root)
-            remove_databases
+            remove_created_databases
           end
 
-          def remove_databases = Dir.glob(File.join(@root, "*.db{,-wal,-shm,-journal}")).each { |path| File.delete(path) }
+          # A database this process made goes with the failed import; a database the store held before stays.
+          def remove_created_databases = Database::ConnectionPool.remove_created(File.join(File.expand_path(@root), ""))
 
           def set_aside
             disconnect

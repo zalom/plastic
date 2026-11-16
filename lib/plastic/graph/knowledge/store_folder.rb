@@ -21,6 +21,11 @@ module Plastic
 
         attr_reader :root
 
+        # The event log an older release kept beside the roadmap at this path.
+        def self.roadmap_log(path) = path.sub(/\.md\z/, ".savepoint.md")
+
+        def self.roadmap_log?(path) = path.end_with?(".savepoint.md")
+
         def initialize(root)
           @root = root
         end
@@ -55,8 +60,8 @@ module Plastic
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
 
-        # Every roadmap file on disk, by path.
-        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).sort
+        # Every roadmap file on disk, by path. The event log an older release kept beside a roadmap is not one.
+        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| self.class.roadmap_log?(path) }.sort
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 

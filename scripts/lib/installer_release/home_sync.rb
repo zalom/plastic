@@ -34,7 +34,7 @@ module InstallerRelease
       link_launcher
       return unless File.file?(File.join(plastic_home, "VERSION"))
 
-      HookStrip.new(files: hook_files, launchers: [target, File.join(plastic_home, "bin", "plastic"), File.join(plastic_home, "exe", "plastic")]).call
+      HookStrip.new(files: hook_files, launchers: [target, *retired_launchers]).call
       reinstall
     end
 
@@ -50,7 +50,9 @@ module InstallerRelease
 
     def target = File.join(share, "active", "bin", "plastic")
 
-    def launcher_ours? = LauncherLink.new(launcher, share).ours?
+    def retired_launchers = %w[bin exe].map { |dir| File.join(plastic_home, dir, "plastic") }
+
+    def launcher_ours? = LauncherLink.new(launcher, share, retired: retired_launchers).ours?
 
     def hook_files = [File.join(user_home, ".claude", "settings.json"), File.join(user_home, ".codex", "hooks.json")]
 

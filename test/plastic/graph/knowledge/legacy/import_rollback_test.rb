@@ -41,6 +41,28 @@ class KnowledgeLegacyImportRollbackTest < Plastic::TestCase
     assert_equal "original", folder.read("INDEX.md")
   end
 
+  def test_a_failed_import_keeps_the_databases_the_store_held_before
+    Dir.mktmpdir do |dir|
+      store = Plastic::Graph::Knowledge::StoreFolder.new(File.join(dir, "older"))
+      store.write("work_graph.db", "rows from before")
+
+      assert_raises(RuntimeError) { ImportRollback.new(store.root).call { store.write("knowledge_graph.db", "half") && raise("import failed") } }
+
+      assert_equal "rows from before", store.read("work_graph.db")
+    end
+  end
+
+  def test_a_failed_import_removes_a_database_it_made_and_no_longer_counts_it_as_made
+    Dir.mktmpdir do |dir|
+      root = File.join(dir, "older")
+      FileUtils.mkdir_p(root)
+      made = File.join(root, "knowledge_graph.db")
+      assert_raises(RuntimeError) { ImportRollback.new(root).call { make_and_fail(made) } }
+
+      assert_equal [false, false], [File.exist?(made), Plastic::Graph::Database::ConnectionPool.created.include?(made)]
+    end
+  end
+
   def test_a_recovered_import_leaves_no_saved_copy_behind
     assert_raises(RuntimeError) { ImportRollback.new(folder.root).call { damage } }
 
@@ -77,6 +99,11 @@ class KnowledgeLegacyImportRollbackTest < Plastic::TestCase
 
   def damage
     folder.write("INDEX.md", "changed by failed import")
+    raise "import failed"
+  end
+
+  def make_and_fail(database)
+    Plastic::Graph::Database::ConnectionPool.for(database)
     raise "import failed"
   end
 

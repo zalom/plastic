@@ -4,8 +4,27 @@ require "json"
 require "stringio"
 require_relative "release_helper"
 
+# The paths of one throwaway home and the home sync that works on it.
+module HomeSyncPaths
+  private
+
+  def user_home = File.join(@root, "home")
+
+  def plastic_home = File.join(user_home, ".plastic")
+
+  def share = File.join(user_home, ".local", "share", "plastic")
+
+  def launcher = File.join(user_home, ".local", "bin", "plastic")
+
+  def sync(run: ->(_env, _command) { ["", true] }, out: (@out = StringIO.new))
+    home = InstallerRelease::ManagedHome.new(plastic_home: plastic_home, user_home: user_home, launcher: launcher)
+    InstallerRelease::HomeSync.new(share: share, home: home, run: run, out: out)
+  end
+end
+
 class InstallerReleaseHomeSyncTest < Minitest::Test
   include ReleaseHelper
+  include HomeSyncPaths
 
   def test_links_the_launcher_to_the_active_release
     sync.call
@@ -19,6 +38,14 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     sync.call
 
     assert_equal File.join(share, "active", "bin", "plastic"), File.readlink(launcher)
+  end
+
+  def test_relinks_a_launcher_that_points_to_the_launcher_of_an_earlier_release
+    FileUtils.mkdir_p(File.dirname(launcher))
+    File.symlink(File.join(plastic_home, "bin", "plastic"), launcher)
+    sync.call
+
+    assert_equal [File.join(share, "active", "bin", "plastic"), ""], [File.readlink(launcher), @out.string]
   end
 
   def test_leaves_a_launcher_the_user_wrote_alone
@@ -99,22 +126,9 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   private
 
-  def user_home = File.join(@root, "home")
-
-  def plastic_home = File.join(user_home, ".plastic")
-
   def check_update = File.join(user_home, ".claude", "hooks", "plastic-check-update")
 
   def in_plastic_home(*names) = names.map { |name| File.join(plastic_home, name) }
-
-  def share = File.join(user_home, ".local", "share", "plastic")
-
-  def launcher = File.join(user_home, ".local", "bin", "plastic")
-
-  def sync(run: ->(_env, _command) { ["", true] }, out: (@out = StringIO.new))
-    home = InstallerRelease::ManagedHome.new(plastic_home: plastic_home, user_home: user_home, launcher: launcher)
-    InstallerRelease::HomeSync.new(share: share, home: home, run: run, out: out)
-  end
 
   def home_with_stores
     installed_home

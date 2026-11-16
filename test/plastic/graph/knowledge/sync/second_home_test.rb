@@ -160,6 +160,15 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
     assert_equal ["# Old\n\n## Goal\n\nShip\n", nil], [folder.read("roadmaps/old.md"), retrieval.roadmap("old")]
   end
 
+  def test_the_log_file_beside_a_roadmap_is_not_a_roadmap_and_stays_as_it_is
+    write("roadmaps/old.savepoint.md", "2026-09-05T08:06:00Z  created  Roadmap created\n")
+
+    refute_includes plan.unreadable_files.keys, "roadmaps/old.savepoint.md"
+    run_up
+
+    assert_equal "2026-09-05T08:06:00Z  created  Roadmap created\n", folder.read("roadmaps/old.savepoint.md")
+  end
+
   def test_a_roadmap_file_with_an_unknown_form_line_is_named_as_an_older_form
     write("roadmaps/odd.md", "<!-- plastic roadmap form 9 -->\n")
 
