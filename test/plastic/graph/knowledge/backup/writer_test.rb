@@ -22,9 +22,18 @@ class KnowledgeBackupWriterTest < Plastic::TestCase
 
   def test_a_failed_copy_marks_the_folder_failed
     home = fresh_home
+    now = at(2026, 1, 1, 10, 0, 0)
+    copy = Backup::Copy.new(now:, copier: ->(_source, _target) { raise StandardError, "disk is full" })
+
+    assert_raises(StandardError) { Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now:, copy:).call }
+    assert_equal "failed", Backup::Folders.new(File.join(home, "stores", "alpha")).status("20260101100000")
+  end
+
+  def test_a_damaged_database_leaves_no_folder
+    home = fresh_home
     failing_backup(home)
 
-    assert_equal "failed", Backup::Folders.new(File.join(home, "stores", "alpha")).status("20260101100000")
+    assert_empty folder_names(home)
   end
 
   def test_a_finished_backup_is_marked_done_with_its_goal
