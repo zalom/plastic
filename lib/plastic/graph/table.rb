@@ -25,10 +25,6 @@ module Plastic
 
       def key_of(row) = key.to_h { |column| [column, row[column]] }
 
-      # The whole row as a JSON object, with bytes as hex, so a change row
-      # holds the row after the write.
-      def json_row = json_object(columns.keys)
-
       def json_key = json_object(key)
 
       # The printed table is what this machine printed, so it is never logged.
@@ -40,13 +36,13 @@ module Plastic
       # The name the report counts the writes under, or nil when the report leaves them out.
       def counted_as = counted? ? name.to_s : nil
 
-      # The `changes` row of a put or a remove of the rows `match` names.
+      # The `changes` row of a put or a remove of the rows `match` names: the
+      # key of each row, never a copy of the row.
       def change(operation, match, origin_id)
-        row = { "put" => json_row }.fetch(operation, "NULL")
         where = SQL.where(match, "m")
         logged = { c_table: name.to_s, c_operation: operation, c_at: Plastic.now, c_origin: origin_id }
         sql = "INSERT INTO changes(\"table\", \"key\", operation, \"row\", at, origin_id) " \
-          "SELECT :c_table, #{json_key}, :c_operation, #{row}, :c_at, :c_origin " \
+          "SELECT :c_table, #{json_key}, :c_operation, NULL, :c_at, :c_origin " \
           "FROM #{SQL.name(name)} WHERE #{where.sql}"
         SQL::Bound.new(sql, logged.merge(where.values))
       end

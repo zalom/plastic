@@ -35,7 +35,8 @@ module Plastic
       origin = Origin.new(home)
       databases = Database.open_local(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
-      Graphs.new(work: WorkGraph.new(databases, folder: Knowledge::StoreFolder.new(root), retrieval:, session:), retrieval:, databases:)
+      folder = Knowledge::StoreFolder.new(root, selection: Knowledge::SyncSelection.of(home))
+      Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:), retrieval:, databases:)
     end
 
     # Makes the store folder and its databases, then opens it. The one way
