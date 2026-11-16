@@ -321,18 +321,28 @@ is never stored: it is derived on each read as done, dropped, in flight, blocked
 A restore never syncs by itself, because a sync can undo it. It ends with
 `next: plastic sync down --project STORE`, which writes the files from the restored rows.
 A backup copies only databases that pass the quick check, goes into the git-ignored
-`backups/`, records the schema version in `status.yml`, skips an unchanged store and keeps
-three days. A backup runs by itself when the newest is older than 12 hours: at session start
-for the current and the global store, before `intent archive`, `sync up`, `sync down` and
-`backup restore`, and at `intent end`. `plastic doctor` prints each store's backup age and
-integrity.
+`backups/`, records the schema version in `status.yml`, and skips an unchanged store. It claims its
+folder before the live check, so a second session that finds a claim younger than five
+minutes takes none. A backup runs by itself when the newest is older than 12 hours: at
+session start for the current and the global store, before `intent archive`, `sync up`,
+`sync down` and `backup restore`, and at `intent end`. Each automatic backup that was taken
+is followed by the purge of the folders older than three days; the purge keeps the newest
+done backup and the newest backup the runner took before a migration. The writer records the
+verdict of each live check in `backups/last-check.yml`, and `plastic doctor` prints it beside
+each store's backup age; a failed check is a finding that names `plastic backup --store SLUG`.
+A backup is checked against the tables of the version it records. A restore of one database
+across a version boundary is refused and names the restore of the whole store.
 
 The schema runner brings the home and each store to the newest version from the install
-workflow and `plastic update` only, after a backup. A database behind its sequence makes a
+workflow, `plastic update` and `plastic backup restore`, after a backup: a store is backed up
+with the writer, and the home database is copied with `VACUUM INTO` to
+`backups/local-<UTC time>.db` and checked first. Each migration and its version stamp commit
+in one transaction. A database behind its sequence makes a
 command exit 3 with `plastic update` as the next step, and a hook print one line and exit 0.
 
-`tools/store-proof` runs a command against copies of the real stores under a job tmp folder
-and checks that the real files keep their version and `VERSION` stays unchanged.
+`tools/store-proof` runs a command against copies of every real store under a job tmp folder,
+skips a missing database by name, copies the other files of the home, and checks that the real
+files keep their version and `VERSION` stays unchanged.
 
 Backups recover one store on the same installation. They are not a way to hand work to a
 colleague.

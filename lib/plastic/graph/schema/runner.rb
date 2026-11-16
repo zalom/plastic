@@ -13,7 +13,7 @@ module Plastic
     # its newest backup; when that backup fails, the store stays behind and
     # the run goes on with the other stores.
     class SchemaRunner
-      # `failed` names the stores that stayed behind, `migrated` the ones that moved.
+      # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason.
       Report = Data.define(:migrated, :failed)
 
       # `only` names one store to migrate; the home database is checked either way.
@@ -27,32 +27,37 @@ module Plastic
       def call
         results = store_slugs.to_h { |slug| [slug, migrate_store(slug)] }
         results["home"] = migrate_home
-        Report.new(migrated: named(results, :migrated), failed: named(results, :failed))
+        Report.new(migrated: named(results, :migrated), failed: reasons(results))
       end
 
       private
 
       def named(results, result) = results.select { |_slug, outcome| outcome == result }.keys
 
+      def reasons(results) = results.select { |_slug, outcome| outcome.is_a?(String) }
+
       def migrate_home
         return :current unless %w[local.db home.db].any? { |name| File.exist?(File.join(@home, name)) }
 
         local = Database.open_local(@home).fetch(:local)
         return :current if local.version >= SchemaSequences.newest(:home)
-        return :failed unless copied?(local)
+        reason = copy_failure(local)
+        return "the copy of its database failed (#{reason})" if reason
 
         local.migrate(@sequences)
         :migrated
-      rescue SQLite3::Exception, Database::Error
-        :failed
+      rescue SQLite3::Exception, Database::Error => error
+        "it could not be migrated (#{first_line(error)})"
       end
 
-      def copied?(local)
+      def copy_failure(local)
         HomeCopy.new(local.path, File.join(@home, "backups"), @now).call
-        true
-      rescue SQLite3::Exception, SystemCallError
-        false
+        nil
+      rescue SQLite3::Exception, SystemCallError => error
+        first_line(error)
       end
+
+      def first_line(error) = error.message.lines.first.to_s.strip
 
       def store_slugs
         folder = File.join(@home, "stores")
@@ -67,19 +72,20 @@ module Plastic
       def migrate_store(slug)
         files = databases(slug)
         return :current if files.all? { |database| database.version >= SchemaSequences.newest(:store) }
-        return :failed unless backed_up?(slug)
+        reason = backup_failure(slug)
+        return "its backup failed (#{reason})" if reason
 
         files.each { |database| database.migrate(@sequences) }
         :migrated
-      rescue SQLite3::Exception, Database::Error
-        :failed
+      rescue SQLite3::Exception, Database::Error => error
+        "it could not be migrated (#{first_line(error)})"
       end
 
-      def backed_up?(slug)
+      def backup_failure(slug)
         Backup::Writer.new(File.join(@home, "stores", slug), slug, now: @now, reason: "migration").call
-        true
-      rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError
-        false
+        nil
+      rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError => error
+        first_line(error)
       end
     end
   end

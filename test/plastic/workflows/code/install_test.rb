@@ -31,7 +31,7 @@ class InstallPlasticTest < Plastic::TestCase
     outcome, context = run_workflow(Plastic::Workflows::Code::Install, reinstall: true, force: false, harness: scoped_harness(env: env_for(home)))
 
     assert_equal [:done, Plastic::Graph::SchemaSequences.newest(:store), 0], [outcome, *versions_of(home)]
-    assert_match(/\A   migrate: alpha stays behind because its backup failed \(.*work_graph\.db.*\); fix the cause and run plastic update\z/, context.printed.grep(/migrate:/).first)
+    assert_match(/\A   migrate: alpha stays behind because it could not be migrated \(.*work_graph\.db.*\); fix the cause and run plastic update\z/, context.printed.grep(/migrate:/).first)
   end
 
   def versions_of(home) = [store_file(home, "work_graph", "beta"), store_file(home, "knowledge_graph")].map { |path| user_versions(home).fetch(path) }

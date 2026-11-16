@@ -10,9 +10,12 @@ module Plastic
     module SchemaMigration
       def self.bring_current(context, slug: nil)
         report = Graph::SchemaRunner.new(home: context.scope.plastic_home, only: slug).call
-        report.failed.each { |store| context.print("migrate: #{store} stays behind because its backup failed; fix the cause and run plastic update") }
+        report.failed.each { |store, reason| context.print(line(store, reason)) }
         report
       end
+
+      # The line that says a store stayed behind, for every caller of the runner.
+      def self.line(store, reason) = "migrate: #{store} stays behind because #{reason}; fix the cause and run plastic update"
     end
   end
 end

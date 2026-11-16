@@ -80,7 +80,7 @@ class SchemaRunnerTest < Plastic::TestCase
     report = run_runner(home)
 
     assert_equal [["alpha"], before], [report.failed.keys, bytes_in(home, "/alpha/")]
-    assert_match(/\Aits backup failed \(.*work_graph\.db.*\)\z/, report.failed.fetch("alpha"))
+    assert_match(/\Ait could not be migrated \(.*work_graph\.db.*\)\z/, report.failed.fetch("alpha"))
     assert_equal Sequences.newest(:store), user_versions(home).fetch(store_file(home, "work_graph", "beta"))
   end
 
@@ -91,6 +91,7 @@ class SchemaRunnerTest < Plastic::TestCase
     report = run_runner(home)
 
     assert_equal [["alpha"], [0]], [report.failed.keys, versions_in(home, "/alpha/")]
+    assert_match(/\Aits backup failed \(.+\)\z/, report.failed.fetch("alpha"))
   end
 
   def test_a_run_that_is_killed_inside_a_migration_leaves_every_byte_of_the_file_as_it_was

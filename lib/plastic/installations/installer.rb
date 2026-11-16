@@ -81,8 +81,8 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home).call.failed.each do |slug|
-          puts "   migrate: #{slug} stays behind because its backup failed; fix the cause and run plastic update"
+        Graph::SchemaRunner.new(home: plastic_home).call.failed.each do |slug, reason|
+          puts "   #{Workflows::SchemaMigration.line(slug, reason)}"
         end
       end
 
