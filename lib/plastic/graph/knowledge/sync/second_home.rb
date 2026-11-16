@@ -36,7 +36,7 @@ module Plastic
 
           private
 
-          def roadmap_files = Dir.glob("roadmaps/*.md", base: @folder.root).sort.reject { |path| @retrieval.roadmap(File.basename(path, ".md")) }
+          def roadmap_files = @folder.roadmap_files.reject { |path| @retrieval.roadmap(File.basename(path, ".md")) }
 
           def roadmaps = roadmap_files.select { |path| roadmap_problem(path).nil? }
 

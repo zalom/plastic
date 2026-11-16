@@ -63,7 +63,16 @@ module Plastic
       # a Rails process keeps one connection per database. A connection opens
       # on first use and closes at exit. A forked child starts with none.
       module ConnectionPool
-        def self.for(path) = connections[path] ||= Connection.open(path)
+        def self.for(path) = connections[path] ||= open(path)
+
+        # The database files this process made, by path; a file that was on the disk before is not one.
+        def self.created = (@created ||= [])
+
+        def self.open(path)
+          created << path unless File.exist?(path)
+          Connection.open(path)
+        end
+        private_class_method :open
 
         # Closes every connection except those of the `keep` paths.
         def self.disconnect(keep: [])

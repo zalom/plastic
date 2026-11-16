@@ -16,6 +16,7 @@ module Plastic
         LEGACY_INDEX = "INDEX.md"
         IGNORE_FILE = ".gitignore"
         IGNORED = %w[*.db *.db-journal].freeze
+        ROADMAP_LOG = ".savepoint.md"
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
@@ -55,8 +56,8 @@ module Plastic
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
 
-        # Every roadmap file on disk, by path.
-        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).sort
+        # Every roadmap file on disk, by path. The event log an older release kept beside a roadmap is not one.
+        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| path.end_with?(ROADMAP_LOG) }.sort
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
