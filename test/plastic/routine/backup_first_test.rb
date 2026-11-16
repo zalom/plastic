@@ -44,6 +44,16 @@ class RoutineBackupFirstTest < Plastic::TestCase
     assert_equal [nil], backup_reasons(home)
   end
 
+  def test_a_backup_that_fails_is_said_and_the_call_goes_on
+    home = stale_home
+    add_intent(home)
+    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
+    File.write(store_file(home, "work_graph"), "not a database")
+    result = clocked_call(home, "sync", "up", "--project", "alpha")
+
+    assert_match(/^backup: alpha was not backed up \(.*work_graph\.db.*\); the call goes on$/, result.out + result.err)
+  end
+
   def test_a_dry_run_takes_no_backup
     home = stale_home
     add_intent(home)
