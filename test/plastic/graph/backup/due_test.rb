@@ -54,6 +54,15 @@ class GraphBackupDueTest < Plastic::TestCase
     assert_equal [:failed, [nil]], [result.status, backup_reasons(home)]
   end
 
+  def test_a_store_folder_with_no_database_takes_none_and_reports_no_failure
+    home = fresh_home
+    FileUtils.mkdir_p(File.join(home, "stores", "empty"))
+
+    result = due(home, SEEDED, slug: "empty").call("sync down")
+
+    assert_equal [:missing, false], [result.status, File.directory?(File.join(home, "stores", "empty", "backups"))]
+  end
+
   def test_a_store_that_does_not_exist_takes_none
     home = fresh_home
 
