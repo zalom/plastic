@@ -16,27 +16,27 @@ class GraphBackupStoreBackupsTest < Plastic::TestCase
     assert_match(/\A\d{14}\z/, plan.fetch(:folder))
   end
 
-def test_a_folder_whose_status_file_holds_no_digest_is_listed_as_unverified
-  home = fresh_home
-  FileUtils.mkdir_p(File.join(backups_dir(home), "20260101100000"))
+  def test_a_folder_whose_status_file_holds_no_digest_is_listed_as_unverified
+    home = fresh_home
+    FileUtils.mkdir_p(File.join(backups_dir(home), "20260101100000"))
 
-  assert_equal ["unverified"], backups(home).entries.map(&:flag)
-end
+    assert_equal ["unverified"], backups(home).entries.map(&:flag)
+  end
 
-def test_the_digest_of_a_written_backup_is_in_its_status_file
-  home = fresh_home
-  backup_at(home, FIRST)
-  folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
+  def test_the_digest_of_a_written_backup_is_in_its_status_file
+    home = fresh_home
+    backup_at(home, FIRST)
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
 
-  assert_equal folders.digest("20260101100000"), folders.report("20260101100000").fetch("digest")
-end
+    assert_equal folders.digest("20260101100000"), folders.report("20260101100000").fetch("digest")
+  end
 
-def test_a_written_backup_leaves_no_row_in_the_machine_database
-  home = fresh_home
-  backup_at(home, FIRST)
+  def test_a_written_backup_leaves_no_row_in_the_machine_database
+    home = fresh_home
+    backup_at(home, FIRST)
 
-  assert_equal [], SQLite3::Database.new(File.join(home, "plastic.db"), readonly: true).execute("SELECT name FROM sqlite_master WHERE name = 'backups'")
-end
+    assert_equal [], SQLite3::Database.new(File.join(home, "plastic.db"), readonly: true).execute("SELECT name FROM sqlite_master WHERE name = 'backups'")
+  end
 
   def test_a_written_backup_is_listed_with_no_flag_and_found_as_the_latest_done
     home = fresh_home

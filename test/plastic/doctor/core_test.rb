@@ -114,6 +114,19 @@ class DoctorCoreTest < Plastic::TestCase
 
     assert_equal before, Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).sort
   end
+end
+
+class DoctorHomeFilesTest < Plastic::TestCase
+  include WholeHome
+
+  def setup
+    super
+    whole_home
+  end
+
+  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }).checks
+
+  def check(label) = checks.find { |item| item.label == label }
 
   def gitignore = File.join(@plastic_home, ".gitignore")
 

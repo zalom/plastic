@@ -10,5 +10,4 @@ class RetrievalStoreReadsTest < Plastic::TestCase
 
     assert_equal({ "store/index.json" => "a" }, retrieval.printed)
   end
-
 end

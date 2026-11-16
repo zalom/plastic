@@ -23,7 +23,7 @@ module Plastic
       def add
         return false if lines.include?(LINE)
 
-        File.write(@file, "#{File.exist?(@file) ? ensure_newline : ""}#{LINE}\n")
+        File.write(@file, "#{ensure_newline if File.exist?(@file)}#{LINE}\n")
         true
       end
 
@@ -31,7 +31,7 @@ module Plastic
 
       def ensure_newline
         text = File.read(@file)
-        text.empty? || text.end_with?("\n") ? text : "#{text}\n"
+        (text.empty? || text.end_with?("\n")) ? text : "#{text}\n"
       end
     end
   end

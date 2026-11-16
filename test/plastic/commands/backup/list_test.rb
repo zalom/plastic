@@ -72,7 +72,7 @@ class BackupListTest < Plastic::TestCase
     assert_includes result.out, "(changed)"
   end
 
-def test_a_backup_whose_status_file_holds_no_digest_is_listed_unverified_and_does_not_fail
+  def test_a_backup_whose_status_file_holds_no_digest_is_listed_unverified_and_does_not_fail
     home = fresh_home
     backup_at(home, at(*FIRST))
     folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))

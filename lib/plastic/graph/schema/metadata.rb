@@ -13,6 +13,7 @@ module Plastic
         "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions], "locks" => %w[lock locks],
+        "settings" => %w[setting settings], "printed_files" => ["file hash", "file hashes"],
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
         "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],

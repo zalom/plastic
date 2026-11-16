@@ -55,7 +55,6 @@ class SchemaRunnerHomeTest < Plastic::TestCase
   end
 
   def test_a_home_that_is_current_leaves_no_copy
-
     home = fresh_home
     Runner.new(home:, now: NOW).call
 

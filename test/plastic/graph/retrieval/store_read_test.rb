@@ -21,5 +21,4 @@ class RetrievalStoreReadTest < Plastic::TestCase
 
     assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, store_read.printed)
   end
-
 end

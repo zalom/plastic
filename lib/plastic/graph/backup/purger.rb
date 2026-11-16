@@ -47,7 +47,6 @@ module Plastic
 
           File.join(@folders.dir, ".#{name}.purging").tap { |aside| File.rename(@folders.path(name), aside) }
         end
-
       end
     end
   end

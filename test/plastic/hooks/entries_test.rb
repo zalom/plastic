@@ -15,12 +15,7 @@ class EntriesTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"
   LAUNCHERS = { statusline: "/opt/plastic/bin/statusline", screens: "/opt/plastic/bin/screens" }.freeze
 
-  def config(text = "")
-    Dir.mktmpdir do |dir|
-      seed_config(dir, text)
-      yield Plastic::Config.new(dir)
-    end
-  end
+  def config(text = "") = Dir.mktmpdir { |dir| seed_config(dir, text).then { yield Plastic::Config.new(dir) } }
 
   def entries(text = "") = config(text) { |cfg| yield Plastic::Hooks::Entries.new(command: COMMAND, config: cfg, launchers: LAUNCHERS) }
 
