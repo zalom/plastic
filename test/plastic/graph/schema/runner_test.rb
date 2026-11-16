@@ -92,13 +92,15 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_equal [["alpha"], [0]], [report.failed, versions_in(home, "/alpha/")]
   end
 
-  def test_a_run_that_is_killed_inside_a_migration_leaves_the_version_and_runs_again_clean
+  def test_a_run_that_is_killed_inside_a_migration_leaves_every_byte_of_the_file_as_it_was
     home = old_home
-    killed = Sequences::Migration.new(1, ->(connection, key) { Sequences::CURRENT_LAYOUT.call(connection, key).then { raise "killed" } })
-    sequences = { home: Sequences::SEQUENCES.fetch(:home), store: [killed] }
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    before = bytes_in(home, "/stores/")
 
-    assert_raises(RuntimeError) { run_runner(home, sequences:) }
-    assert_equal [0], versions_in(home, "/stores/")
+    assert_raises(RuntimeError) { run_runner(home, sequences: killed_store_sequences) }
+    Plastic::Graph::Database::ConnectionPool.release(home)
+
+    assert_equal before, bytes_in(home, "/stores/")
     run_runner(home)
 
     assert_equal layouts(fresh_home), layouts(home)
@@ -123,6 +125,11 @@ class SchemaRunnerTest < Plastic::TestCase
 
     assert_equal [Sequences.newest(:store)], versions_in(home, "/alpha/")
     assert_equal migrated, store_digests(home)
+  end
+
+  def killed_store_sequences
+    killed = Sequences::Migration.new(1, ->(connection, key) { Sequences::CURRENT_LAYOUT.call(connection, key).then { raise "killed" } }, {})
+    { home: Sequences::SEQUENCES.fetch(:home), store: [killed] }
   end
 
   def bytes_in(home, part) = file_bytes(home).select { |path, _| path.include?(part) }

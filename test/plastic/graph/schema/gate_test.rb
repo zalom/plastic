@@ -20,6 +20,12 @@ class SchemaGateTest < Plastic::TestCase
     assert_equal Sequences.newest(:store), SQLite3::Database.new(File.join(root, "work_graph.db")).get_first_value("PRAGMA user_version")
   end
 
+  def test_the_layouts_of_an_old_home_differ_from_those_of_a_new_one
+    layouts = ->(home) { database_files(home).map { |path| layout_of(path) } }
+
+    refute_equal layouts.call(fresh_home), layouts.call(old_layout(fresh_home))
+  end
+
   def test_a_database_behind_its_sequence_is_refused_and_no_byte_changes
     home = old_layout(fresh_home)
     before = file_bytes(home)

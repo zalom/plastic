@@ -4,14 +4,14 @@ require_relative "table"
 require_relative "knowledge/intent"
 require_relative "knowledge/roadmap"
 require_relative "schema/metadata"
-require_relative "schema/migrations"
+require_relative "schema/triggers"
 require_relative "schema/catalog"
 
 module Plastic
   module Graph
     # Builds database DDL and exposes the tables that Plastic's graph uses.
     module Schema
-      extend SchemaMigrations
+      extend SchemaTriggers
 
       def self.file(key) = databases.fetch(key).first
 
@@ -20,13 +20,7 @@ module Plastic
         [*names.map { |name| ddl(name) }, migrations[key], *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
       end
 
-      def self.prepare(connection, schema)
-        connection.execute_batch(schema)
-        migrate_revision_membership(connection)
-        migrate_passage_identity(connection)
-        migrate_intent_states(connection)
-        migrate_lock_column(connection)
-      end
+      def self.prepare(connection, schema) = connection.execute_batch(schema)
 
       def self.table_named(name) = tables.fetch(name.to_sym)
 
