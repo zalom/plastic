@@ -23,6 +23,7 @@ module Plastic
         class Error < StandardError; end
 
         MODE_KEYS = %i[automatic reason].freeze
+        CLAIM_WINDOW = 5 * 60
 
         def initialize(store_root, slug, now:, copy: Copy.new(now:), **mode)
           @root = store_root
@@ -39,16 +40,31 @@ module Plastic
         # The backup row, or nil when an automatic backup had nothing to do.
         def call
           check = source_check
-          version = verified(check)
-          return if @automatic && unchanged?(check)
+          return if @automatic && claimed_lately?
 
           folder = claim
-          folder && write(folder, extra(check, version))
-        rescue SourceCheck::Failed => error
-          raise Error, error.message
+          folder && checked_write(folder, check)
         end
 
         private
+
+        # The claim comes before the check, so a second session finds it; it goes when the check fails or the store is unchanged.
+        def checked_write(folder, check)
+          version = verified(check)
+          return release(folder) if @automatic && unchanged?(check, folder)
+
+          write(folder, extra(check, version))
+        rescue SourceCheck::Failed => error
+          release(folder)
+          raise Error, error.message
+        end
+
+        def release(folder) = Dir.rmdir(folders.path(folder)) && nil
+
+        def claimed_lately?
+          newest = folders.latest
+          !newest.nil? && folders.status(newest) != "done" && (@now - FolderName.time(newest)).between?(0, CLAIM_WINDOW)
+        end
 
         def folders = (@folders ||= Folders.new(@root))
 
@@ -67,8 +83,8 @@ module Plastic
           SourceCheck.new(names.map { |name| File.join(@root, "#{name}.db") })
         end
 
-        def unchanged?(check)
-          newest = folders.latest
+        def unchanged?(check, own)
+          newest = folders.names.reject { |name| name == own }.last
           !newest.nil? && folders.report(newest)["fingerprint"] == check.fingerprint
         end
 
