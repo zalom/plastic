@@ -20,8 +20,8 @@ module Plastic
       class Due
         WINDOW = 12 * 3600
 
-        # :taken, :unchanged, :fresh, :missing or :failed, and the backup row when one was written.
-        Result = Data.define(:status, :row)
+        # :taken, :unchanged, :fresh, :missing or :failed, the backup row when one was written, and the reason when it failed.
+        Result = Data.define(:status, :row, :reason)
 
         def initialize(home:, slug:, now:)
           @home = home
@@ -31,14 +31,14 @@ module Plastic
         end
 
         def call(reason)
-          return Result.new(:missing, nil) unless File.directory?(@root)
-          return Result.new(:fresh, nil) unless stale?
+          return Result.new(:missing, nil, nil) unless File.directory?(@root)
+          return Result.new(:fresh, nil, nil) unless stale?
 
           row = Writer.new(@root, @slug, now: @now, automatic: true, reason:).call
           purge if row
-          Result.new(row ? :taken : :unchanged, row)
-        rescue => _error
-          Result.new(:failed, nil)
+          Result.new(row ? :taken : :unchanged, row, nil)
+        rescue => error
+          Result.new(:failed, nil, error.message.lines.first.to_s.strip)
         end
 
         private
