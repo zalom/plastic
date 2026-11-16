@@ -3,6 +3,7 @@
 require_relative "../database"
 require_relative "../origin"
 require_relative "../backup/writer"
+require_relative "home_copy"
 
 module Plastic
   module Graph
@@ -24,8 +25,8 @@ module Plastic
       end
 
       def call
-        migrate_home
         results = store_slugs.to_h { |slug| [slug, migrate_store(slug)] }
+        results["home"] = migrate_home
         Report.new(migrated: named(results, :migrated), failed: named(results, :failed))
       end
 
@@ -34,9 +35,23 @@ module Plastic
       def named(results, result) = results.select { |_slug, outcome| outcome == result }.keys
 
       def migrate_home
-        return unless %w[local.db home.db].any? { |name| File.exist?(File.join(@home, name)) }
+        return :current unless %w[local.db home.db].any? { |name| File.exist?(File.join(@home, name)) }
 
-        Database.open_local(@home).fetch(:local).migrate(@sequences)
+        local = Database.open_local(@home).fetch(:local)
+        return :current if local.version >= SchemaSequences.newest(:home)
+        return :failed unless copied?(local)
+
+        local.migrate(@sequences)
+        :migrated
+      rescue SQLite3::Exception, Database::Error
+        :failed
+      end
+
+      def copied?(local)
+        HomeCopy.new(local.path, File.join(@home, "backups"), @now).call
+        true
+      rescue SQLite3::Exception, SystemCallError
+        false
       end
 
       def store_slugs
