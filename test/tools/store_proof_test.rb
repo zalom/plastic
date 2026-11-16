@@ -168,13 +168,54 @@ class StoreProofChecksTest < Minitest::Test
     assert_equal %w[plastic status], seen
   end
 
-  def test_the_default_runner_starts_the_command_with_only_the_given_variables
+  def test_the_runner_hands_the_spawner_only_the_given_variables_and_the_path
+    seen = nil
+    spawner = ->(env, *command, **options) { seen = [env, command, options] }
     env = StoreProof::Environment.new(@job).to_h
-    marker = File.join(@job, "ran")
+    StoreProof::CLI::Runner.new(spawner:, path: "/usr/bin").call(env, %w[plastic status])
 
-    assert StoreProof::CLI::Runner.call(env, ["ruby", "-e", "File.write(ARGV[0], ENV.fetch('PLASTIC_HOME'))", marker])
-    assert_equal env.fetch("PLASTIC_HOME"), File.read(marker)
-    refute StoreProof::CLI::Runner.call(env, ["ruby", "-e", "exit 1"])
+    assert_equal [env.merge("PATH" => "/usr/bin"), %w[plastic status], { unsetenv_others: true }], seen
+  end
+
+  def test_the_runner_answers_what_the_spawner_answers
+    refute StoreProof::CLI::Runner.new(spawner: ->(*, **) { false }, path: "").call({}, ["plastic"])
+  end
+
+  def test_every_store_under_the_stores_folder_is_copied
+    make_database(File.join(@real, "stores", "other", "work_graph.db"))
+    run_cli(*proof_args("plastic"))
+
+    assert_equal %w[other plastic], Dir.children(File.join(@job, "plastic_home", "stores")).sort
+    assert_equal [["kept"]], SQLite3::Database.new(File.join(@job, "plastic_home", "stores", "other", "work_graph.db")).execute("SELECT body FROM notes")
+  end
+
+  def test_a_store_database_that_is_missing_is_skipped_by_name_and_the_proof_passes
+    File.delete(File.join(@real, "stores", "plastic", "references.db"))
+    code, out, = run_cli(*proof_args("plastic"))
+
+    assert_equal 0, code
+    assert_includes out, "skipped stores/plastic/references.db: missing"
+    refute_path_exists File.join(@job, "plastic_home", "stores", "plastic", "references.db")
+  end
+
+  def test_a_store_database_at_a_stamp_above_zero_fails_the_proof_whichever_store_holds_it
+    make_database(File.join(@real, "stores", "other", "work_graph.db"))
+    set_version("stores/other/work_graph.db", 4)
+    code, _, err = run_cli(*proof_args("plastic"))
+
+    assert_equal 1, code
+    assert_includes err, "stores/other/work_graph.db has user_version 4"
+  end
+
+  def test_the_files_of_the_home_that_are_not_databases_are_copied_with_their_bytes
+    File.write(File.join(@real, "config.yml"), "advisor: none\n")
+    FileUtils.mkdir_p(File.join(@real, "stores", "plastic", "resources"))
+    File.write(File.join(@real, "stores", "plastic", "resources", "note.md"), "kept\n")
+    run_cli(*proof_args("plastic"))
+    copied = File.join(@job, "plastic_home")
+
+    assert_equal ["advisor: none\n", "kept\n", "3.0.0-alpha.1\n"], [File.read(File.join(copied, "config.yml")), File.read(File.join(copied, "stores", "plastic", "resources", "note.md")), File.read(File.join(copied, "VERSION"))]
+    assert_empty Dir.glob(File.join(copied, "**", "*.db-{wal,shm,journal}"))
   end
 
   def test_the_job_tmp_must_be_given
