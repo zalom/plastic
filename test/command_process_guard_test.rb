@@ -91,6 +91,45 @@ class CommandProcessGuardTest < Minitest::Test
     assert_equal [false, false], [starts_command?(%(text = "KernelCommand"\nputs text)), starts_command?(%(File.exist?("exe/plastic")))]
   end
 
+  CAUGHT = {
+    "Process.spawn" => %(Process.spawn("ruby", "exe/plastic", "status")),
+    "Kernel.system" => %(Kernel.system("ruby", "exe/plastic", "status")),
+    "Kernel.spawn" => %(Kernel.spawn("ruby", "exe/plastic", "status")),
+    "exec" => %(exec("ruby", "exe/plastic", "status")),
+    "IO.popen" => %(IO.popen(["ruby", "exe/plastic", "status"]).read),
+    "PTY.spawn" => %(PTY.spawn("ruby", "exe/plastic", "status")),
+    "backticks" => "`ruby exe/plastic status`",
+    "percent x" => "%x(ruby exe/plastic status)",
+    "one shell string" => %(system("ruby exe/plastic status")),
+    "launcher in a constant" => %(LAUNCHER = File.join(ROOT, "exe", "plastic")\nChildProcess.capture3(LAUNCHER, "status")),
+    "launcher by expand_path" => %(ChildProcess.capture3(RbConfig.ruby, File.expand_path("../exe/plastic", __dir__), "status")),
+    "launcher by join" => %(ChildProcess.capture3(File.join("exe", "plastic"), "status")),
+    "kernel by ruby -e" => %(ChildProcess.capture3(RbConfig.ruby, "-e", "exit Plastic::CLI.call(ARGV)", "status")),
+    "packaged bin/plastic" => %(ChildProcess.capture3(File.join(release, "bin", "plastic"), "status")),
+    "Open3 with the launcher" => %(Open3.capture3("ruby", "exe/plastic", "status"))
+  }.freeze
+
+  LEFT_ALONE = {
+    "a start that runs another program" => %(ChildProcess.capture3("git", "status")),
+    "a backtick that runs another program" => "`git status`",
+    "the launcher named with no start" => %(File.exist?("exe/plastic")),
+    "the launcher joined with no start" => %(File.join(root, "bin", "plastic")),
+    "the kernel named with no start" => %(Plastic::CLI.call(["status"])),
+    "a start named inside a string" => %(text = "Process.spawn exe/plastic")
+  }.freeze
+
+  CAUGHT.each do |form, source|
+    define_method("test_the_detector_finds_a_start_through_#{form.tr("^a-z", "_")}") { assert starts_command?(source) }
+  end
+
+  LEFT_ALONE.each do |form, source|
+    define_method("test_the_detector_leaves_alone_#{form.tr("^a-z", "_")}") { refute starts_command?(source) }
+  end
+
+  def test_the_allowed_files_are_named_one_by_one
+    assert_empty ALLOWED.grep(/\*\*/), "name each allowed file, not a folder"
+  end
+
   def test_no_test_outside_the_allowed_list_starts_a_command_in_a_child_process
     offenders = scanned_files.sort.select { |path| starts_command?(File.read(path)) }.map { |path| path.delete_prefix("#{ROOT}/") }
 
