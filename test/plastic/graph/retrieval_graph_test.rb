@@ -681,12 +681,3 @@ class RetrievalRoadmapRecordsTest < Plastic::TestCase
     assert_equal Digest::SHA256.hexdigest(document.fetch(:body)), document.fetch(:revision)
   end
 end
-
-class RetrievalBackupRecordsTest < Plastic::TestCase
-  def test_reads_backup_metadata
-    row = { name: "alpha/20260101100000", files: 3, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: STAMP, session_id: "fixture" }
-    store_graphs.databases.fetch(:local).transaction { |batch| batch.put(:backups, row, statement: :insert) }
-
-    assert_equal ["alpha/20260101100000"], retrieval.backups.map(&:name)
-  end
-end

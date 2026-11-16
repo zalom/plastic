@@ -35,8 +35,8 @@ class SchemaRunnerTest < Plastic::TestCase
     run_runner(home)
     versions = user_versions(home).transform_keys { |path| path.delete_prefix(home) }
 
-    assert_equal [Sequences.newest(:home)], versions.slice("/local.db").values
-    assert_equal [Sequences.newest(:store)], versions.except("/local.db").values.uniq
+    assert_equal [Sequences.newest(:home)], versions.slice("/plastic.db").values
+    assert_equal [Sequences.newest(:store)], versions.except("/plastic.db").values.uniq
   end
 
   def test_the_old_word_for_work_under_way_becomes_in_progress

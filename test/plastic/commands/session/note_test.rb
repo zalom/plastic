@@ -46,13 +46,13 @@ class SessionNoteTest < Plastic::TestCase
     result = call("stopped", "after", "Beta", env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal "stopped after Beta", store_graphs.retrieval.session("s-1").note
-    assert_includes result.out, "1 session in local.db"
+    assert_includes result.out, "1 session in plastic.db"
   end
 
   def test_the_run_of_the_call_is_kept_for_a_resume
     call("stopped", env: { "PLASTIC_SESSION" => "s-1" })
 
-    assert_includes store_graphs.databases[:local].rows("SELECT tool FROM routine_runs").map { |row| row.fetch("tool") }, "session note"
+    assert_includes store_graphs.databases[:local].rows("SELECT tool FROM command_runs").map { |row| row.fetch("tool") }, "session note"
   end
 
   def test_a_second_note_replaces_the_first_with_no_new_row

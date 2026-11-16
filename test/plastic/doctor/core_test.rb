@@ -107,10 +107,48 @@ class DoctorCoreTest < Plastic::TestCase
     assert_equal "add a line naming ~/.plastic/PLASTIC.md to #{agents}", check("AGENTS.md #{SLUG}:").repair
   end
 
-  def test_the_checks_change_no_file
+  def test_the_checks_change_no_file_but_the_home_gitignore
+    checks
     before = Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).sort
     checks
 
     assert_equal before, Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).sort
+  end
+
+  def gitignore = File.join(@plastic_home, ".gitignore")
+
+  def test_the_home_gitignore_gets_the_database_line_when_it_lacks_it
+    File.write(gitignore, "backups/\n")
+    checks
+
+    assert_equal ["backups/", "*.db"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_a_home_with_no_gitignore_gets_one_with_the_database_line
+    checks
+
+    assert_equal ["*.db"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_the_database_line_is_added_once
+    checks
+    checks
+
+    assert_equal ["*.db"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_the_gitignore_check_says_what_it_added
+    assert_equal "ok, *.db added", check(".gitignore:").value
+  end
+
+  def test_a_local_db_beside_plastic_db_is_a_finding_that_names_the_file
+    File.write(File.join(@plastic_home, "local.db"), "left from before")
+    found = check("local.db:")
+
+    assert_equal ["#{File.join(@plastic_home, "local.db")} is left beside plastic.db", "move local.db out of #{@plastic_home}; plastic update keeps a copy of it in backups/"], [found.value, found.repair]
+  end
+
+  def test_a_home_with_no_local_db_has_no_local_db_check
+    assert_nil check("local.db:")
   end
 end

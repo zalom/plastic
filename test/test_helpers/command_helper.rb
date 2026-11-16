@@ -27,8 +27,8 @@ module Plastic
         Result.new(out.string, err.string, code)
       end
 
-      def routine_run(tool, subject)
-        Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.routine_run(tool, subject)
+      def command_run(tool, subject)
+        Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.command_run(tool, subject)
       end
     end
   end

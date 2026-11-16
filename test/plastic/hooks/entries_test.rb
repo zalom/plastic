@@ -188,10 +188,10 @@ class BrokenStoreTest < Plastic::TestCase
       Plastic::Graph.create(home: @plastic_home, store: "global")
       plastic("intent", "new", "Alpha", table: Plastic::CLI::TABLE)
       Pool.release(@home)
-      File.binwrite(File.join(@plastic_home, "local.db"), "not a sqlite file")
+      File.binwrite(File.join(@plastic_home, "plastic.db"), "not a sqlite file")
       call = hook("start", START)
 
-      assert_equal [0, "", "plastic hook: local.db: file is not a database\n"], [call.code, call.out, call.err]
+      assert_equal [0, "", "plastic hook: plastic.db: file is not a database\n"], [call.code, call.out, call.err]
     end
   end
 

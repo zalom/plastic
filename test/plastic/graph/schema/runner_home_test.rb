@@ -19,7 +19,43 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     assert_equal [0, "ok"], [read_value(copies(home).first, "PRAGMA user_version"), read_value(copies(home).first, "PRAGMA quick_check")]
   end
 
+  def seed_local_rows(home)
+    SQLite3::Database.new(File.join(home, "local.db")).tap do |db|
+      db.execute("INSERT INTO routine_runs (store, tool, subject) VALUES ('alpha', 'intent new', '7')")
+      db.execute("INSERT INTO sessions (session_id, harness) VALUES ('s-1', 'claude-code')")
+      db.execute("INSERT INTO locks (store, intent_id, session_id) VALUES ('alpha', '7', 's-1')")
+    end.close
+  end
+
+  def rows_of(home, table) = SQLite3::Database.new(File.join(home, "plastic.db"), readonly: true).execute("SELECT * FROM #{table}")
+
+  def test_a_home_with_local_db_becomes_plastic_db_with_every_row
+    home = old_layout(fresh_home)
+    seed_local_rows(home)
+    Runner.new(home:, now: NOW).call
+
+    assert_equal [1, 1, 1], %w[command_runs sessions locks].map { |table| rows_of(home, table).size }
+    assert_equal [true, false], [File.exist?(File.join(home, "plastic.db")), File.exist?(File.join(home, "local.db"))]
+  end
+
+  def test_the_migrated_home_database_has_no_routine_runs_or_backups_table
+    home = old_layout(fresh_home)
+    Runner.new(home:, now: NOW).call
+    tables = SQLite3::Database.new(File.join(home, "plastic.db"), readonly: true).execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten
+
+    assert_empty tables & %w[routine_runs backups]
+  end
+
+  def test_the_copy_taken_before_the_rename_holds_the_rows_of_local_db
+    home = old_layout(fresh_home)
+    seed_local_rows(home)
+    Runner.new(home:, now: NOW).call
+
+    assert_equal [["alpha", "intent new", "7"]], SQLite3::Database.new(copies(home).first, readonly: true).execute("SELECT store, tool, subject FROM routine_runs").map { |row| row.first(3) }
+  end
+
   def test_a_home_that_is_current_leaves_no_copy
+
     home = fresh_home
     Runner.new(home:, now: NOW).call
 
@@ -31,7 +67,7 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     failing = Plastic::Graph::SchemaSequences::Migration.new(1, ->(_connection, _key) { raise SQLite3::SQLException, "no such table: gone" }, {})
     report = Runner.new(home:, now: NOW, sequences: { home: [failing], store: [] }).call
 
-    assert_equal "it could not be migrated (local.db: no such table: gone)", report.failed.fetch("home")
+    assert_equal "it could not be migrated (plastic.db: no such table: gone)", report.failed.fetch("home")
   end
 
   def test_a_home_whose_copy_fails_gives_its_reason

@@ -13,13 +13,6 @@ class GraphBackupWriterTest < Plastic::TestCase
     assert_raises(StandardError) { backup_at(home, at(2026, 1, 1, 10, 0, 0)) }
   end
 
-  def test_a_failed_copy_leaves_no_row
-    home = fresh_home
-    failing_backup(home)
-
-    assert_empty row_names(home)
-  end
-
   def test_a_failed_copy_marks_the_folder_failed
     home = fresh_home
     now = at(2026, 1, 1, 10, 0, 0)

@@ -50,13 +50,6 @@ class BackupTest < Plastic::TestCase
     assert_includes kept_run_tools(home), "backup"
   end
 
-  def test_a_backup_writes_one_row_named_for_the_store_and_the_folder
-    home = fresh_home
-    backup_call(home, "--store", "alpha")
-
-    assert_equal ["alpha/#{folder_names(home).first}"], row_names(home)
-  end
-
   def test_databases_backs_up_only_that_database
     home = fresh_home
     backup_call(home, "--store", "alpha", "--databases", "work_graph")
@@ -97,13 +90,13 @@ class BackupTest < Plastic::TestCase
     assert_equal "partial:work_graph.db", report.fetch("goal")
   end
 
-  def test_a_preview_writes_no_folder_and_no_row
+  def test_a_preview_writes_no_folder
     home = fresh_home
     result = backup_call(home, "--store", "alpha", "--dry-run")
 
     assert_equal 0, result.code
     assert_includes result.out, "preview"
-    assert_equal [[], []], [folder_names(home), row_names(home)]
+    assert_empty folder_names(home)
   end
 
   def test_a_preview_names_the_databases_it_would_copy

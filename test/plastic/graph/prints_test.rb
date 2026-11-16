@@ -398,7 +398,7 @@ class PrintAfterWriteTest < Plastic::TestCase
     assert_equal '{"hand":true}', File.read(store_path("#{intent.dir}/graph.json"))
   end
 
-  def test_a_print_that_cannot_write_ends_the_call_in_exit_1_with_a_failed_routine_run
+  def test_a_print_that_cannot_write_ends_the_call_in_exit_1_with_a_failed_command_run
     intent = open_keyed_intent
     FileUtils.rm_f(store_path("#{intent.dir}/graph.json"))
     FileUtils.mkdir_p(store_path("#{intent.dir}/graph.json"))
@@ -406,7 +406,7 @@ class PrintAfterWriteTest < Plastic::TestCase
 
     assert_equal 1, result.code
     refute_empty result.err
-    assert_equal "failed", retrieval.routine_run("node add", "1").status
+    assert_equal "failed", retrieval.command_run("node add", "1").status
   end
 end
 

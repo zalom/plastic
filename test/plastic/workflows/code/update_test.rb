@@ -13,7 +13,7 @@ class UpdatePlasticTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
-  def store_versions(home) = user_versions(home).reject { |path, _| path.end_with?("/local.db") }.values.uniq
+  def store_versions(home) = user_versions(home).reject { |path, _| path.end_with?("/plastic.db") }.values.uniq
 
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
 

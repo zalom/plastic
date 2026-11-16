@@ -56,9 +56,10 @@ class DoctorCommandTest < Plastic::TestCase
     assert_includes result.err, "no harness unknown; the registered harnesses are claude-code, codex, hermes"
   end
 
-  def test_the_doctor_changes_no_file_under_the_home
+  def test_a_second_doctor_run_changes_no_file_under_the_home
     File.delete(machine_path)
     FileUtils.rm_rf(store_dir)
+    doctor
     before = tree_snapshot(@home)
     doctor
 

@@ -33,6 +33,6 @@ class HarnessSessionRowsTest < Plastic::TestCase
     bare = Dir.mktmpdir
 
     assert_nil Plastic::Harnesses::SessionRows.new(bare).latest(%w[c-1 x-1])
-    refute_path_exists File.join(bare, "local.db")
+    refute_path_exists File.join(bare, "plastic.db")
   end
 end
