@@ -26,11 +26,18 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     assert_empty copies(home)
   end
 
+  def test_a_home_whose_copy_fails_gives_its_reason
+    home = old_layout(fresh_home)
+    File.write(File.join(home, "backups"), "a file where the folder should be")
+
+    assert_match(/\Athe copy of its database failed \(.+\)\z/, Runner.new(home:, now: NOW).call.failed.fetch("home"))
+  end
+
   def test_a_home_whose_copy_cannot_be_made_stays_behind_and_is_reported
     home = old_layout(fresh_home)
     File.write(File.join(home, "backups"), "a file where the folder should be")
     report = Runner.new(home:, now: NOW).call
 
-    assert_equal [0, ["home"]], [user_versions(home).fetch(File.join(home, "local.db")), report.failed]
+    assert_equal [0, ["home"]], [user_versions(home).fetch(File.join(home, "local.db")), report.failed.keys]
   end
 end
