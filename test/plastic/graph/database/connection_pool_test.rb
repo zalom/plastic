@@ -33,6 +33,7 @@ class ConnectionPoolTest < Plastic::TestCase
 
   def test_a_file_the_pool_makes_is_listed_as_made_and_a_file_on_the_disk_is_not
     older = File.join(@home, "pool", "older.db")
+    FileUtils.mkdir_p(File.dirname(older))
     SQLite3::Database.new(older).close
     Pool.for(older)
     Pool.for(path)
