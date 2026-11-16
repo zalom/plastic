@@ -42,11 +42,14 @@ class KnowledgeLegacyImportRollbackTest < Plastic::TestCase
   end
 
   def test_a_failed_import_keeps_the_databases_the_store_held_before
-    folder.write("work_graph.db", "rows from before")
+    Dir.mktmpdir do |dir|
+      store = Plastic::Graph::Knowledge::StoreFolder.new(File.join(dir, "older"))
+      store.write("work_graph.db", "rows from before")
 
-    assert_raises(RuntimeError) { ImportRollback.new(folder.root).call { damage } }
+      assert_raises(RuntimeError) { ImportRollback.new(store.root).call { store.write("knowledge_graph.db", "half") && raise("import failed") } }
 
-    assert_equal "rows from before", folder.read("work_graph.db")
+      assert_equal "rows from before", store.read("work_graph.db")
+    end
   end
 
   def test_a_recovered_import_leaves_no_saved_copy_behind

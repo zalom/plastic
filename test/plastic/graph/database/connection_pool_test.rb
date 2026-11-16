@@ -31,6 +31,15 @@ class ConnectionPoolTest < Plastic::TestCase
       [connection.get_first_value("PRAGMA foreign_keys"), connection.get_first_value("PRAGMA busy_timeout")]
   end
 
+  def test_a_file_the_pool_makes_is_listed_as_made_and_a_file_on_the_disk_is_not
+    older = File.join(@home, "pool", "older.db")
+    SQLite3::Database.new(older).close
+    Pool.for(older)
+    Pool.for(path)
+
+    assert_equal [true, false], [Pool.created.include?(path), Pool.created.include?(older)]
+  end
+
   def test_read_binds_the_values_its_placeholders_name
     assert_equal [{ "a" => 7 }], Pool.for(path).read("SELECT :n AS a", n: 7, other: 1)
   end
