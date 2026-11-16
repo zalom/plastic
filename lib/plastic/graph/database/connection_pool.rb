@@ -65,11 +65,18 @@ module Plastic
       module ConnectionPool
         def self.for(path) = connections[path] ||= connect(path)
 
-        # The database files this process made, by path; a file that was on the disk before is not one.
+        # The database files this process made, by full path; a file that was on the disk before is not one.
         def self.created = (@created ||= [])
 
+        # Removes the database files this process made under the `folder`, with their journals, and forgets them.
+        def self.remove_created(folder)
+          made = created.select { |path| path.start_with?(folder) }
+          @created = created - made
+          made.uniq.product(["", "-wal", "-shm", "-journal"]).map(&:join).select { |file| File.file?(file) }.each { |file| File.delete(file) }
+        end
+
         def self.connect(path)
-          created << path unless File.exist?(path)
+          created << File.expand_path(path) unless File.exist?(path)
           Connection.open(path)
         end
         private_class_method :connect

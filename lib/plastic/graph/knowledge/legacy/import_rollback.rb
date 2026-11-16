@@ -50,10 +50,7 @@ module Plastic
           end
 
           # A database this process made goes with the failed import; a database the store held before stays.
-          def remove_created_databases
-            made = Database::ConnectionPool.created.select { |path| path.start_with?("#{@root}/") }
-            made.flat_map { |path| ["", "-wal", "-shm", "-journal"].map { |suffix| "#{path}#{suffix}" } }.uniq.select { |path| File.file?(path) }.each { |path| File.delete(path) }
-          end
+          def remove_created_databases = Database::ConnectionPool.remove_created(File.join(File.expand_path(@root), ""))
 
           def set_aside
             disconnect
