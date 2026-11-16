@@ -152,7 +152,6 @@ module StoreProof
     def parse
       options = { real_home: File.join(Dir.home, ".plastic"), store: "plastic" }
       parser(options).order!(@argv)
-      @argv.shift if @argv.first == "--"
       options
     end
 

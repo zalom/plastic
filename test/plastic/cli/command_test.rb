@@ -6,7 +6,7 @@ class CommandTest < Plastic::TestCase
   # A command that prints the title of the intent it names, or stops the
   # way its --stop switch says.
   class Title < Plastic::CLI::Command
-    STOPS = { "refuse" => Refusal, "fail" => Failure }.freeze
+    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind }.freeze
 
     argument :intent_id, label: "ID", text: "the intent"
     option :stop, switch: "--stop KIND", text: "stop with this kind"
@@ -50,6 +50,14 @@ class CommandTest < Plastic::TestCase
     open_intent("Alpha")
 
     assert_equal ["plastic: stopped\n", 1], run_tool("1", "--stop", "fail").to_h.values_at(:err, :code)
+  end
+
+  def test_a_database_behind_the_code_is_refused_with_exit_three
+    open_intent("Alpha")
+    result = run_tool("1", "--stop", "behind")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "plastic: refused, stopped"
   end
 
   def test_help_prints_the_usage_and_every_switch

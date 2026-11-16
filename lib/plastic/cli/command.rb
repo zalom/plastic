@@ -91,7 +91,8 @@ module Plastic
         message = error.message
         case error
         when Refusal, Failure then stop(error)
-        when Graph::Behind then stop(Refusal.new(message, next_command: error.next_command))
+        when Graph::Behind
+          stop(Refusal.new(message, next_command: error.next_command))
         when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command(scope.projects[error.store])))
         else
           output.usage(message, usage_line)

@@ -86,7 +86,7 @@ class SchemaRunnerTest < Plastic::TestCase
   def test_a_store_whose_backup_folder_cannot_be_written_stays_behind
     home = old_home
     FileUtils.mkdir_p(File.join(home, "stores", "alpha", "backups"), mode: 0o555)
-    before = bytes_in(home, "/alpha/")
+    bytes_in(home, "/alpha/")
     report = run_runner(home)
 
     assert_equal [["alpha"], [0]], [report.failed, versions_in(home, "/alpha/")]
