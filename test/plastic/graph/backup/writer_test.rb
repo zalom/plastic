@@ -204,6 +204,29 @@ class GraphBackupWriterSafetyTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
+  def fill(home, name, rows)
+    Plastic::Graph::Database::ConnectionPool.release(root(home))
+    SQLite3::Database.new(store_file(home, name)).tap do |db|
+      db.execute("CREATE TABLE filler (id INTEGER PRIMARY KEY, body TEXT)")
+      db.transaction { rows.times { |index| db.execute("INSERT INTO filler (body) VALUES (?)", ["row #{index} " * 40]) } }
+    end.close
+  end
+
+  def damage_leaf(home, name, from_end)
+    path = store_file(home, name)
+    File.binwrite(path, File.binread(path).tap { |bytes| bytes[bytes.bytesize + (4096 * from_end) + 8, 40] = ("\xFF" * 40).b })
+  end
+
+  def test_a_database_with_a_damaged_leaf_page_fails_the_quick_check_and_leaves_no_folder
+    home = fresh_home
+    fill(home, "knowledge_graph", 2000)
+    damage_leaf(home, "knowledge_graph", -20)
+    error = assert_raises(Backup::Writer::Error) { writer(home, at(2026, 1, 1, 10, 0, 0)).call }
+
+    assert_match(/fails the quick check/, error.message)
+    assert_empty folder_names(home)
+  end
+
   def test_the_status_file_records_the_lowest_schema_version_of_the_store
     home = fresh_home
     stamp_versions(home, 3)
