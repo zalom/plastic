@@ -27,6 +27,16 @@ module StoreProof
     "savepoint", "backup", "migration", "traversal"
   ].freeze
 
+  # Counts the notes of a copied home that hold each phrase; a phrase with no hit proves nothing.
+  class Hits
+    def initialize(home, phrases = PHRASES)
+      @phrases = phrases
+      @notes = Dir.glob(File.join(home, "**", "*.md")).map { |file| File.read(file).downcase }
+    end
+
+    def counts = @phrases.to_h { |phrase| [phrase, @notes.count { |note| note.include?(phrase) }] }
+  end
+
   # The variables the command sees, each a folder under the job tmp.
   class Environment
     NAMES = { "HOME" => "home", "PLASTIC_HOME" => "plastic_home", "PLASTIC_SHARE" => "share", "PLASTIC_BIN" => "bin" }.freeze
@@ -208,6 +218,14 @@ module StoreProof
 
       Copies.new(real, plastic_home).call
       real.skipped.each { |file| @out.puts "skipped #{file}: missing" }
+      report_hits(plastic_home)
+    end
+
+    def report_hits(plastic_home)
+      counts = Hits.new(plastic_home).counts
+      counts.each { |phrase, count| @out.puts "hits: #{phrase} #{count}" }
+      empty = counts.select { |_phrase, count| count.zero? }.keys
+      raise Failed, "no hit for #{empty.join(", ")}" unless empty.empty?
     end
 
     def finish(real, digest, ran)

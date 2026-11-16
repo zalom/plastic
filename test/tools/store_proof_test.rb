@@ -20,6 +20,12 @@ module StoreProofHomes
     FileUtils.mkdir_p([@real, @job])
     FILES.each { |file| make_database(File.join(@real, file)) }
     File.write(File.join(@real, "VERSION"), "3.0.0-alpha.1\n")
+    write_notes(StoreProof::PHRASES.join(" "))
+  end
+
+  def write_notes(text)
+    FileUtils.mkdir_p(File.join(@real, "stores", "plastic", "store"))
+    File.write(File.join(@real, "stores", "plastic", "store", "notes.md"), text)
   end
 
   def teardown = FileUtils.rm_rf(@root)
@@ -133,12 +139,6 @@ class StoreProofChecksTest < Minitest::Test
     assert_equal 1, code
   end
 
-  def test_the_ten_fixed_search_phrases_are_ten_distinct_phrases
-    assert_equal 10, StoreProof::PHRASES.size
-    assert_equal StoreProof::PHRASES.size, StoreProof::PHRASES.uniq.size
-    assert_predicate StoreProof::PHRASES, :frozen?
-  end
-
   def test_a_real_file_that_is_missing_stops_the_proof_with_no_command_run
     File.delete(File.join(@real, "local.db"))
     ran = false
@@ -224,5 +224,30 @@ class StoreProofChecksTest < Minitest::Test
 
     assert_equal 2, code
     assert_includes err, "--job-tmp"
+  end
+end
+
+class StoreProofHitsTest < Minitest::Test
+  include StoreProofHomes
+
+  def test_the_ten_fixed_search_phrases_are_ten_distinct_phrases
+    assert_equal 10, StoreProof::PHRASES.size
+    assert_equal StoreProof::PHRASES.size, StoreProof::PHRASES.uniq.size
+    assert_predicate StoreProof::PHRASES, :frozen?
+  end
+
+  def test_a_phrase_with_no_hit_in_the_copied_notes_stops_the_proof_with_no_command_run
+    write_notes(StoreProof::PHRASES.first(9).join(" "))
+    ran = false
+    code, _out, err = run_cli(*proof_args("plastic"), runner: ->(*) { ran = true })
+
+    assert_equal [1, false], [code, ran]
+    assert_includes err, "no hit for traversal"
+  end
+
+  def test_every_phrase_that_hits_is_printed_with_its_count
+    _code, out, = run_cli(*proof_args("plastic"))
+
+    assert_includes out, "hits: traversal 1"
   end
 end
