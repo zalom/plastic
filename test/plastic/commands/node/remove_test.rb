@@ -9,7 +9,7 @@ class NodeRemoveCaseTest < Plastic::TestCase
   def test_removing_a_node_prints_it_and_offers_the_ready_list
     alpha_with_node(approved: false)
 
-    assert_case line('node remove 1 n1 --reason "folded into Test"'), code: 0, out: ["node: n1 removed", "next: plastic graph ready 1"]
+    assert_case line('node remove 1 n1 --reason "merged into Test"'), code: 0, out: ["node: n1 removed", "next: plastic graph ready 1"]
   end
 
   def test_removing_a_node_that_does_not_exist_exits_1_and_names_it
