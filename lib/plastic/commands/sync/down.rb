@@ -12,6 +12,8 @@ module Plastic
       class Down < Routine
         extend CLI::SyncOptions::Down
 
+        backs_up_first
+
         option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
 
         workflow :code_preview_sync_down do

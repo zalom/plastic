@@ -63,7 +63,7 @@ module Plastic
           def call(timestamp, databases: nil)
             refuse(timestamp)
             names = verified(timestamp, databases)
-            safety = Publisher.new(@target, now: @now).call
+            safety = Publisher.new(@target, now: @now, reason: "backup restore").call
             swap(names, timestamp)
             safety.fetch(:name).split("/").last
           end

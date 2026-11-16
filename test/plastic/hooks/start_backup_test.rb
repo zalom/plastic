@@ -18,6 +18,7 @@ class HooksStartBackupTest < Plastic::TestCase
     stale_home.tap do |home|
       seed_store(home, "global")
       backup_at(home, SEEDED, slug: "global")
+      %w[alpha global].each { |slug| add_intent(home, slug) }
     end
   end
 

@@ -29,6 +29,8 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The newer package is synced into the Plastic home | the Plastic home folder | stays on this machine |
 | The installed agents are refreshed | the settings of the agent harness, in the home folder | stays on this machine |
+| Every database behind its sequence is migrated after a backup of its store | the database files of the store, in the store folder | stays on this machine |
+| A migration backup is written for each store that moves | the backups folder, in the store folder | stays on this machine |
 | The newer release is downloaded and made the active release | the Plastic home folder | stays on this machine |
 
 The command is `Plastic::Commands::Update`, in [`commands/update.rb`](../../../../lib/plastic/commands/update.rb).

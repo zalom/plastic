@@ -28,7 +28,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     folders.write_report(folders.latest, status: "failed", goal: "all")
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic backup --project alpha"], found.to_a.then { |label, value, repair| [label, value, repair] }
+    assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic backup --store alpha"], found.to_a
   end
 
   def test_the_core_checks_carry_one_backups_check_for_each_store
@@ -36,6 +36,6 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     scope = Plastic::CLI::Scope.new(env: env_for(home), home: @home, slug: "alpha", directory: @home)
     labels = Plastic::Doctor::Core.new(scope, running: "0", loader: -> { "2" }, now: THIRTEEN_HOURS_LATER).checks.map(&:label)
 
-    assert_equal %w[backups\ alpha: backups\ beta:], labels.grep(/\Abackups/).sort
+    assert_equal ["backups alpha:", "backups beta:", "backups global:"], labels.grep(/\Abackups/).sort
   end
 end

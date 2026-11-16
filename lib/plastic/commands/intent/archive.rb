@@ -16,6 +16,7 @@ module Plastic
         writes :work, :knowledge, :references
         prints :index
         previews
+        backs_up_first
 
         workflow :code_archive_intent, next: :noop
 
