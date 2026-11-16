@@ -30,18 +30,12 @@ module Plastic
       private
 
       def copy
-        db = SQLite3::Database.new(@path)
-        db.execute("VACUUM INTO ?", [@target])
-      ensure
-        db&.close
+        SQLite3::Database.new(@path) { |db| db.execute("VACUUM INTO ?", [@target]) }
       end
 
       def verdict(path, what)
-        db = SQLite3::Database.new(path, readonly: true)
-        result = db.get_first_value("PRAGMA quick_check")
+        result = SQLite3::Database.new(path, readonly: true) { |db| db.get_first_value("PRAGMA quick_check") }
         raise SQLite3::CorruptException, "the #{what} of the home database fails the quick check: #{result}" unless result == "ok"
-      ensure
-        db&.close
       end
     end
   end

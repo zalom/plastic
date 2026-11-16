@@ -11,6 +11,14 @@ class SchemaGateTest < Plastic::TestCase
 
   def store_database(home, key = :work) = Plastic::Graph::Database.open_store(File.join(home, "stores", "alpha"), Plastic::Graph::Origin.new(home)).fetch(key)
 
+  def test_a_second_session_that_waited_for_the_lock_finds_the_tables_and_builds_nothing
+    connection = SQLite3::Database.new(File.join(Dir.mktmpdir, "a.db"))
+    connection.execute("CREATE TABLE taken (id)")
+    gate = Plastic::Graph::SchemaGate.new(connection, sequence: :store, key: :work, file: "a.db")
+
+    assert_equal [false, 0], [gate.send(:build_layout), connection.get_first_value("PRAGMA user_version")]
+  end
+
   def test_a_new_empty_database_gets_the_declared_schema_and_the_newest_stamp
     root = File.join(Dir.mktmpdir, "stores", "new")
     FileUtils.mkdir_p(root)

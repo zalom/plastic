@@ -32,7 +32,7 @@ module Plastic
       end
 
       def rename_lock_column(connection)
-        return unless connection.get_first_value(LOCKS_SQL)&.include?("taken_at")
+        return unless connection.get_first_value(LOCKS_SQL).include?("taken_at")
 
         connection.execute("ALTER TABLE locks RENAME COLUMN taken_at TO locked_at")
       end

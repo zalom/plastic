@@ -23,6 +23,17 @@ class SchemaSequencesTransactionTest < Plastic::TestCase
     assert_equal [1, 1], [applied.size, second.get_first_value("PRAGMA user_version")]
   end
 
+  def test_a_migration_already_stamped_is_skipped_when_a_longer_sequence_runs
+    applied = []
+    first = migration { |_connection, _key| applied << 1 }
+    second = Sequences::Migration.new(2, ->(_connection, _key) { applied << 2 }, {})
+    database = SQLite3::Database.new(@path)
+    Sequences.migrate(database, [first], :work)
+    Sequences.migrate(database, [first, second], :work)
+
+    assert_equal [[1, 2], 2], [applied, database.get_first_value("PRAGMA user_version")]
+  end
+
   def test_a_runner_that_cannot_get_the_write_lock_raises_busy_and_changes_nothing
     holder = SQLite3::Database.new(@path)
     holder.execute("BEGIN IMMEDIATE")
