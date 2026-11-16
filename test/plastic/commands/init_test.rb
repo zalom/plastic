@@ -96,6 +96,12 @@ class InitCommandTest < Plastic::TestCase
     assert_match(/3  \[x\] sync images and videos/, call("init").out)
   end
 
+  def test_once_the_sync_of_images_and_videos_is_off_it_is_listed_not_picked
+    Plastic::Config.new(@plastic_home).set("sync.media", false)
+
+    assert_match(/3  \[ \] sync images and videos/, call("init").out)
+  end
+
   def test_answering_every_choice_turns_the_sync_of_images_and_videos_on
     result = call("init", "a")
 

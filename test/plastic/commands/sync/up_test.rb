@@ -312,6 +312,18 @@ class SyncUpSelectionTest < Plastic::TestCase
     assert_equal 0, sync.code
     assert_equal [%w[2--beta.md spec.md], %w[store/2--beta/resources/shot.png]], [documents, kept]
   end
+
+  def test_a_kept_image_is_not_read_again_once_the_media_setting_is_off
+    config = File.join(@plastic_home, "config.yml")
+    File.write(config, "global:\n  sync:\n    media: true\n")
+    sync
+    File.write(config, "global:\n  sync:\n    media: false\n")
+    write("store/2--beta/resources/shot.png", "\x89PNG\x00 changed".b)
+    result = sync
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal [5], store_graphs.databases[:references].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
+  end
 end
 
 class SyncUpGraphArchiveKeptTest < Minitest::Test
