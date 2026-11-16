@@ -4,6 +4,7 @@ require_relative "../init"
 require_relative "../../../code_workflow"
 require_relative "../../../cli/screen"
 require_relative "../../../harnesses"
+require_relative "../../../config"
 
 module Plastic
   module Workflows
@@ -19,15 +20,22 @@ module Plastic
 
           sets :found, :picked, :harnesses, :media
 
-          # The found harnesses, then the sync of images and videos; none when no harness is found.
-          def self.choices(names)
-            labels = names.empty? ? [] : [*names, MEDIA]
-            labels.map { |label| CLI::Screen::Choice.new(label:, chosen: true) }
+          # The found harnesses, all picked, then the sync of images and videos,
+          # picked unless the home turned it off; none when no harness is found.
+          def self.choices(scope)
+            names = Harnesses.found_in(scope).map(&:name)
+            return [] if names.empty?
+
+            [*names.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }, CLI::Screen::Choice.new(label: MEDIA, chosen: media?(scope))]
           end
 
+          # Picked until the home's config.yml turns the sync of images and videos off.
+          def self.media?(scope) = !Plastic::Config::FALSE_VALUES.include?(Plastic::Config.new(scope.plastic_home).overrides.dig("sync", "media"))
+
           read "find the installed harnesses and read the person's answer" do |context|
-            found = Harnesses.found_in(context.scope).map(&:name)
-            result = CLI::Screen::Answer.new(Choose.choices(found)).call(context.answer) if found.any?
+            choices = Choose.choices(context.scope)
+            found = choices.map(&:label) - [MEDIA]
+            result = CLI::Screen::Answer.new(choices).call(context.answer) if found.any?
             labels = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
             context[:found] = found
             context[:picked] = labels - [MEDIA]

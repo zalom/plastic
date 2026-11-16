@@ -15,6 +15,7 @@ module Plastic
         OPTIONAL = %w[media documents references].freeze
         NOTES = %w[graph.json context.json].freeze
         REFERENCES = "references/"
+        INTENT_FILE = %r{\Astore/[^/]*--[^/]*/(.+)\z}
         MEDIA = %w[.png .jpg .jpeg .gif .webp .svg .avif .heic .bmp .ico .tif .tiff
           .mp4 .mov .webm .m4v .avi .mkv].freeze
 
@@ -44,6 +45,13 @@ module Plastic
         def read?(rel)
           kind = SyncSelection.kind_of(rel)
           kind == "notes" || @kinds.include?(kind)
+        end
+
+        # A path of the store folder: a file of an intent folder by its kind,
+        # every other file of the store always.
+        def selects?(path)
+          rel = path[INTENT_FILE, 1]
+          rel.nil? || read?(rel)
         end
       end
     end

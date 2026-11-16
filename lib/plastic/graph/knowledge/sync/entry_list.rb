@@ -9,7 +9,8 @@ module Plastic
     module Knowledge
       class Sync
         # Every path a sync looks at: the files of the store folder that can be
-        # read, the paths of its prints and the paths of its rows.
+        # read, the paths of its prints and the paths of its rows, each of a
+        # kind the selection of the folder reads.
         class EntryList
           def initialize(folder, retrieval, folders = nil)
             @folder = folder
@@ -21,7 +22,8 @@ module Plastic
             printed = @retrieval.printed
             paths = printed.keys
             prints = prints_of(paths)
-            (prints.keys | on_disk | paths).sort.map { |path| entry(path, printed[path], prints) }
+            selected = (prints.keys | on_disk | paths).select { |path| @folder.selection.selects?(path) }
+            selected.sort.map { |path| entry(path, printed[path], prints) }
           end
 
           def entry(path, printed_sha, prints) = Entry.for(@folder, path, printed_sha, prints.fetch(path, Entry::NO_PRINT))

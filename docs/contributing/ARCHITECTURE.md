@@ -288,6 +288,9 @@ files stay on disk and get no rows.
 | Documents | Every other file outside `references/` | When `sync.documents` is on |
 | References | Every file under `references/` | When `sync.references` is on |
 
+A file of a kind the settings leave out is not read, even when an earlier sync put it in rows.
+Its rows stay, and nothing on disk is removed.
+
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a
 write, never a copy of the row.
 

@@ -20,7 +20,7 @@ module Plastic
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
-        attr_reader :root
+        attr_reader :root, :selection
 
         # The event log an older release kept beside the roadmap at this path.
         def self.roadmap_log(path) = path.sub(/\.md\z/, ".savepoint.md")
