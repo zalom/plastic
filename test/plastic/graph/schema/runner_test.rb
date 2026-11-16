@@ -49,14 +49,14 @@ class SchemaRunnerTest < Plastic::TestCase
   def test_a_backup_of_the_store_is_taken_first_and_says_it_is_the_migration_backup
     home = old_home
     run_runner(home)
-    report = Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).report(folder_names(home).first)
+    report = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).report(folder_names(home).first)
 
     assert_equal ["migration", 0, "done"], report.values_at("reason", "version", "status")
   end
 
   def test_a_fresh_backup_does_not_stop_the_runner_from_taking_its_own
     home = old_home
-    Plastic::Graph::Knowledge::Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now: NOW - 60).call
+    Plastic::Graph::Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now: NOW - 60).call
     run_runner(home)
 
     assert_equal 2, folder_names(home).size

@@ -2,7 +2,7 @@
 
 require "forwardable"
 require_relative "knowledge/roadmap/item_open"
-require_relative "knowledge/backup/store_backups"
+require_relative "backup/store_backups"
 require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
@@ -113,7 +113,7 @@ module Plastic
       # The backups of this store: write, preview, list, purge and restore.
       def backups
         store = @retrieval.store
-        Knowledge::Backup::StoreBackups.new(local_db, File.join(home_dir, "stores", store), @retrieval, session: @writers.session)
+        Backup::StoreBackups.new(local_db, File.join(home_dir, "stores", store), @retrieval, session: @writers.session)
       end
 
       private

@@ -2,8 +2,8 @@
 
 require "time"
 require_relative "check"
-require_relative "../graph/knowledge/backup/folders"
-require_relative "../graph/knowledge/backup/folder_name"
+require_relative "../graph/backup/folders"
+require_relative "../graph/backup/folder_name"
 
 module Plastic
   module Doctor
@@ -13,7 +13,7 @@ module Plastic
     # other status is a finding. A store with no backup yet is no finding.
     class StoreBackups
       def initialize(store_root, slug, now:)
-        @folders = Graph::Knowledge::Backup::Folders.new(store_root)
+        @folders = Graph::Backup::Folders.new(store_root)
         @slug = slug
         @now = now
       end
@@ -32,7 +32,7 @@ module Plastic
       private
 
       def described(name)
-        taken = Graph::Knowledge::Backup::FolderName.time(name)
+        taken = Graph::Backup::FolderName.time(name)
         "newest #{taken.utc.iso8601}, #{((@now - taken) / 3600).floor} hours old, integrity passed"
       end
     end

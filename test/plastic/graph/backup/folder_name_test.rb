@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/knowledge/backup/folder_name"
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/backup/folder_name"
 
-class KnowledgeBackupFolderNameTest < Plastic::TestCase
-  FolderName = Plastic::Graph::Knowledge::Backup::FolderName
+class GraphBackupFolderNameTest < Plastic::TestCase
+  FolderName = Plastic::Graph::Backup::FolderName
 
   def backups_dir = File.join(@home, "backups")
 

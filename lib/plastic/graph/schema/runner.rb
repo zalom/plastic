@@ -2,7 +2,7 @@
 
 require_relative "../database"
 require_relative "../origin"
-require_relative "../knowledge/backup/writer"
+require_relative "../backup/writer"
 
 module Plastic
   module Graph
@@ -61,9 +61,9 @@ module Plastic
       end
 
       def backed_up?(slug)
-        Knowledge::Backup::Writer.new(File.join(@home, "stores", slug), slug, now: @now, reason: "migration").call
+        Backup::Writer.new(File.join(@home, "stores", slug), slug, now: @now, reason: "migration").call
         true
-      rescue Knowledge::Backup::Writer::Error, SQLite3::Exception, SystemCallError
+      rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError
         false
       end
     end

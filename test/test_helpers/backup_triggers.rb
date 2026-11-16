@@ -21,7 +21,7 @@ module BackupTriggers
   end
 
   def backup_reasons(home, slug = "alpha")
-    folders = Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", slug))
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", slug))
     folders.names.map { |name| folders.report(name)["reason"] }
   end
 

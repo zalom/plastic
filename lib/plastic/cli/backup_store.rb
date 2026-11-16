@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "command"
-require_relative "../graph/knowledge/backup/databases"
+require_relative "../graph/backup/databases"
 
 module Plastic
   class CLI
@@ -47,7 +47,7 @@ module Plastic
         raise CLI::Command::Usage, error.message
       end
 
-      def database_list = as_usage(Plastic::Graph::Knowledge::Backup::Databases::Unknown) { Plastic::Graph::Knowledge::Backup::Databases.parse(parsed[:databases]) }
+      def database_list = as_usage(Plastic::Graph::Backup::Databases::Unknown) { Plastic::Graph::Backup::Databases.parse(parsed[:databases]) }
 
       def scope
         @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)

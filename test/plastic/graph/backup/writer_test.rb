@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupWriterTest < Plastic::TestCase
+class GraphBackupWriterTest < Plastic::TestCase
   include BackupHomes
 
-  Backup = Plastic::Graph::Knowledge::Backup
+  Backup = Plastic::Graph::Backup
 
   def failing_backup(home)
     Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
@@ -91,10 +91,10 @@ class KnowledgeBackupWriterTest < Plastic::TestCase
   end
 end
 
-class KnowledgeBackupWriterLogTest < Plastic::TestCase
+class GraphBackupWriterLogTest < Plastic::TestCase
   include BackupHomes
 
-  Backup = Plastic::Graph::Knowledge::Backup
+  Backup = Plastic::Graph::Backup
   STAMP = "20260101100000"
   TIME = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z /
 
@@ -175,10 +175,10 @@ class KnowledgeBackupWriterLogTest < Plastic::TestCase
   end
 end
 
-class KnowledgeBackupWriterSafetyTest < Plastic::TestCase
+class GraphBackupWriterSafetyTest < Plastic::TestCase
   include BackupHomes
 
-  Backup = Plastic::Graph::Knowledge::Backup
+  Backup = Plastic::Graph::Backup
 
   def root(home) = File.join(home, "stores", "alpha")
 

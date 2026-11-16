@@ -3,7 +3,7 @@
 require_relative "../backup"
 require_relative "../../../code_workflow"
 require_relative "../../../cli/command/usage"
-require_relative "../../../graph/knowledge/backup/databases"
+require_relative "../../../graph/backup/databases"
 require_relative "../../schema_migration"
 
 module Plastic
@@ -34,9 +34,9 @@ module Plastic
 
           # The database names the restore replaces; a name the backup lacks is a usage error.
           def self.held(context, folder)
-            names = Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases)
+            names = Plastic::Graph::Backup::Databases.parse(context.databases)
             context.work.backups.restorer.held_in(folder, names:)
-          rescue Plastic::Graph::Knowledge::Backup::Restorer::Missing => error
+          rescue Plastic::Graph::Backup::Restorer::Missing => error
             raise CLI::Command::Usage, error.message
           end
 
@@ -52,7 +52,7 @@ module Plastic
 
           step "replace the databases", done: ->(context) { !context.safety.nil? },
             changes: { databases: "The chosen databases of the store are replaced by the copies of the backup folder", backups: "A safety backup of the replaced databases is written" } do |context|
-            names = Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases)
+            names = Plastic::Graph::Backup::Databases.parse(context.databases)
             context[:safety] = context.work.backups.restore(context.folder, databases: names)
             context[:restored] = held(context, context.folder)
           end

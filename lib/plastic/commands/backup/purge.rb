@@ -3,7 +3,7 @@
 require_relative "../backup"
 require_relative "../../routine"
 require_relative "../../cli/backup_store"
-require_relative "../../graph/knowledge/backup/older_than"
+require_relative "../../graph/backup/older_than"
 
 module Plastic
   module Commands
@@ -37,7 +37,7 @@ module Plastic
 
         def read_date
           text = parsed[:older_than]
-          as_usage(Plastic::Graph::Knowledge::Backup::OlderThan::Unreadable) { Plastic::Graph::Knowledge::Backup::OlderThan.parse(text) } if text
+          as_usage(Plastic::Graph::Backup::OlderThan::Unreadable) { Plastic::Graph::Backup::OlderThan.parse(text) } if text
         end
       end
     end

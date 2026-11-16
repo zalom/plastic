@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "time"
-require_relative "../../../graph/knowledge/backup/older_than"
+require_relative "../../../graph/backup/older_than"
 
 module Plastic
   module Workflows
@@ -11,7 +11,7 @@ module Plastic
         # `intent archive ID` archives one, and says what it did for each. An
         # intent that is not older than the date is passed over with no line.
         class ArchiveBefore
-          OlderThan = Plastic::Graph::Knowledge::Backup::OlderThan
+          OlderThan = Plastic::Graph::Backup::OlderThan
 
           def initialize(context)
             @work = context.work

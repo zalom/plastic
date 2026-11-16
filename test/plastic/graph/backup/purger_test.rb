@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupPurgerTest < Plastic::TestCase
+class GraphBackupPurgerTest < Plastic::TestCase
   include BackupHomes
 
-  Purger = Plastic::Graph::Knowledge::Backup::Purger
+  Purger = Plastic::Graph::Backup::Purger
 
   def test_a_failed_row_delete_puts_the_folder_back
     home = fresh_home
@@ -30,7 +30,7 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
   def test_a_folder_is_purged_whatever_its_status
     home = fresh_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "failed", goal: "full")
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "failed", goal: "full")
     local_db = Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local)
     Purger.new(local_db, File.join(home, "stores", "alpha"), "alpha").remove("20260101100000")
 
@@ -47,10 +47,10 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
   end
 end
 
-class KnowledgeBackupPurgerExpiryTest < Plastic::TestCase
+class GraphBackupPurgerExpiryTest < Plastic::TestCase
   include BackupHomes
 
-  Backup = Plastic::Graph::Knowledge::Backup
+  Backup = Plastic::Graph::Backup
   NOW = Time.utc(2026, 1, 10, 12, 0, 0)
 
   def purger(home) = Backup::Purger.new(Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local), File.join(home, "stores", "alpha"), "alpha")

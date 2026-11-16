@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../code_workflow"
-require_relative "../../graph/knowledge/backup/databases"
+require_relative "../../graph/backup/databases"
 
 module Plastic
   module Workflows
@@ -16,7 +16,7 @@ module Plastic
 
         step "write the backup folder", done: ->(context) { !context.name.nil? },
           changes: { backups: "A backup folder with a copy of each chosen database is written" } do |context|
-          row = context.work.backups.write(databases: Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases), live: context.scope.live)
+          row = context.work.backups.write(databases: Plastic::Graph::Backup::Databases.parse(context.databases), live: context.scope.live)
           context[:name] = row.fetch(:name)
           context[:files] = row.fetch(:files)
           context[:bytes] = row.fetch(:bytes)

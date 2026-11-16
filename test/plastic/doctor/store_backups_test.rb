@@ -24,7 +24,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
 
   def test_a_newest_backup_marked_failed_is_a_finding_that_names_the_backup_command
     home = stale_home
-    folders = Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha"))
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
     folders.write_report(folders.latest, status: "failed", goal: "all")
     found = check(home, THIRTEEN_HOURS_LATER)
 

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupDueTest < Plastic::TestCase
+class GraphBackupDueTest < Plastic::TestCase
   include BackupHomes
   include BackupTriggers
 
-  Due = Plastic::Graph::Knowledge::Backup::Due
+  Due = Plastic::Graph::Backup::Due
 
   def due(home, now, slug: "alpha") = Due.new(home:, slug:, now:)
 

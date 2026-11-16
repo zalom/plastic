@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupRestorerTest < Plastic::TestCase
+class GraphBackupRestorerTest < Plastic::TestCase
   include BackupHomes
 
-  Restorer = Plastic::Graph::Knowledge::Backup::Restorer
+  Restorer = Plastic::Graph::Backup::Restorer
   STAMP = "20260101100000"
 
   def setup
@@ -94,7 +94,7 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
     assert_equal 2, intent_count(@restore_home)
   end
 
-  def mark(status) = Plastic::Graph::Knowledge::Backup::Folders.new(root).write_report(STAMP, status:, goal: "full")
+  def mark(status) = Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status:, goal: "full")
 
   def test_a_backup_that_is_not_done_is_refused_naming_its_status
     mark("in-progress")

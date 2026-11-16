@@ -61,7 +61,7 @@ class BackupRestoreTest < Plastic::TestCase
   end
 
   def mark_second(home, status)
-    Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(SECOND, status:, goal: "full")
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(SECOND, status:, goal: "full")
   end
 
   def test_a_database_name_that_is_unknown_refuses_and_names_it

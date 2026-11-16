@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupDatabasesTest < Plastic::TestCase
-  Databases = Plastic::Graph::Knowledge::Backup::Databases
+class GraphBackupDatabasesTest < Plastic::TestCase
+  Databases = Plastic::Graph::Backup::Databases
 
   def test_no_list_means_no_choice
     assert_nil Databases.parse(nil)

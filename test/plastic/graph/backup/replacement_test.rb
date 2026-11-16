@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupReplacementTest < Plastic::TestCase
-  Replacement = Plastic::Graph::Knowledge::Backup::Replacement
+class GraphBackupReplacementTest < Plastic::TestCase
+  Replacement = Plastic::Graph::Backup::Replacement
 
   def setup
     super

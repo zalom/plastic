@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../graph/knowledge/backup/due"
+require_relative "../graph/backup/due"
 
 module Plastic
   class Routine < CLI::Command
@@ -20,7 +20,7 @@ module Plastic
       def back_up_first
         return unless self.class.backs_up_first? && !parsed[:dry_run]
 
-        Graph::Knowledge::Backup::Due.new(home: scope.plastic_home, slug: backup_slug, now: environment.now).call(words)
+        Graph::Backup::Due.new(home: scope.plastic_home, slug: backup_slug, now: environment.now).call(words)
       end
 
       def backup_slug = parsed[:store] || scope.slug

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
+require_relative "../../../test_helper"
 
-class KnowledgeBackupIntegrityTest < Plastic::TestCase
+class GraphBackupIntegrityTest < Plastic::TestCase
   include BackupHomes
 
-  Integrity = Plastic::Graph::Knowledge::Backup::Integrity
+  Integrity = Plastic::Graph::Backup::Integrity
 
   def backup_file(home, name)
     folder = backup_at(home, at(2026, 1, 1, 10, 0, 0)).fetch(:name).split("/").last

@@ -3,7 +3,7 @@
 require_relative "../hook"
 require_relative "../graph"
 require_relative "../doctor"
-require_relative "../graph/knowledge/backup/due"
+require_relative "../graph/backup/due"
 require_relative "../harnesses/detection"
 require_relative "recap"
 require_relative "doctor_line"
@@ -35,7 +35,7 @@ module Plastic
 
       def back_up_stores
         [scope.slug, CLI::Scope::GLOBAL].uniq.each do |slug|
-          Graph::Knowledge::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
+          Graph::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
         end
       end
 

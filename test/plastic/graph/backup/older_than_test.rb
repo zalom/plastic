@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/knowledge/backup/older_than"
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/backup/older_than"
 
-class KnowledgeBackupOlderThanTest < Plastic::TestCase
-  OlderThan = Plastic::Graph::Knowledge::Backup::OlderThan
+class GraphBackupOlderThanTest < Plastic::TestCase
+  OlderThan = Plastic::Graph::Backup::OlderThan
 
   def test_a_date_is_local_midnight_of_that_day
     assert_equal Time.new(2026, 10, 5), OlderThan.parse("2026-10-05")
