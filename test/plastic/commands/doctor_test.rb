@@ -182,7 +182,7 @@ class CodexDoctorDamageCaseTest < Plastic::TestCase
   end
 end
 
-class DoctorProcessTest < Plastic::TestCase
+class DoctorRepairTest < Plastic::TestCase
   Pool = Plastic::Graph::Database::ConnectionPool
 
   # The test runs on a home of its own, and its connections close before the damage step.

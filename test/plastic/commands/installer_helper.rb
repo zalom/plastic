@@ -70,23 +70,22 @@ module InstallerHelper
     directory
   end
 
-  # A gzip tar of one folder under its own name, with each file's mode kept.
+  # A gzip tar of one folder under its own name, as the release archive is: plain file entries
+  # only, no folder entries, each mode masked to its permission bits.
   def write_archive(archive, base, folder)
     Zlib::GzipWriter.open(archive) do |gzip|
       Gem::Package::TarWriter.new(gzip) do |tar|
-        Dir.glob("#{folder}/**/*", File::FNM_DOTMATCH, base: base).reject { |name| name.end_with?("/.") }.sort.each { |name| tar_entry(tar, name, File.join(base, name)) }
+        files = Dir.glob("#{folder}/**/*", File::FNM_DOTMATCH, base: base).select { |name| File.file?(File.join(base, name)) }
+        files.sort.each { |name| tar_entry(tar, name, File.join(base, name)) }
       end
     end
   end
 
   def tar_entry(tar, name, path)
-    mode = File.stat(path).mode
-    return tar.mkdir(name, mode) if File.directory?(path)
-
-    tar.add_file_simple(name, mode, File.size(path)) { |entry| entry.write(File.binread(path)) }
+    tar.add_file_simple(name, File.stat(path).mode & 0o777, File.size(path)) { |entry| entry.write(File.binread(path)) }
   end
 
-  def launcher_calls =File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
+  def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
 
   def installed_home_without_stores
     FileUtils.mkdir_p(File.join(@home, ".claude"))
