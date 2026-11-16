@@ -1,27 +1,36 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
-require_relative "child_process_guard_test"
 require "prism"
 
 # Outside the core acceptance documents, no test starts a command in a child process.
 class CommandProcessGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   ALLOWED = %w[
-    test/varar/**/*.rb test/cli/**/*.rb test/support/**/*.rb test/runtime_bundle_test.rb test/release_build_test.rb
-    test/install_sh_*.rb test/installer_*.rb test/installer_release/**/*.rb test/command_process_guard_test.rb
+    test/varar/*.rb test/varar/support/*.rb
+    test/cli/launcher_test.rb test/cli/launcher_uninstall_test.rb test/cli/package_bin_test.rb test/cli/release_contract_test.rb
+    test/cli/lazy_command_dispatch_test.rb test/cli/retrieval_read_cli_test.rb
+    test/runtime_bundle_test.rb test/release_build_test.rb
+    test/command_names_guard_test.rb test/kernel_paths_guard_test.rb
+    test/install_sh_*.rb test/installer_release/*.rb
+    test/support/child_process.rb test/support/install_sh_helper.rb test/support/second_load.rb test/support/second_load_test.rb
+    test/command_process_guard_test.rb
   ].freeze
   SUPPORT_FILES = %w[kernel_command two_homes delivered_homes].freeze
+  TOOL_WORDS = %w[exe/plastic bin/plastic Plastic::CLI].freeze
+  TOOL_JOINS = [%w[exe plastic], %w[bin plastic]].freeze
+  FREE_STARTERS = %i[system spawn exec].freeze
+  RECEIVER_STARTERS = { ChildProcess: nil, Open3: nil, Kernel: FREE_STARTERS, Process: %i[spawn exec], IO: %i[popen], PTY: %i[spawn] }.freeze
 
-  # What a source file does that starts a command in a child process.
+  # What a source file does that starts a command in a child process: it starts some process
+  # and it names the tool, in one file.
   class Reaches < Prism::Visitor
-    attr_reader :found
-
     def initialize
       super
       @found = []
-      @starting = 0
     end
+
+    def result = (@found.include?(:start) && @found.include?(:tool) ? [:launcher] : []) + (@found & %i[kernel_command support])
 
     def visit_constant_read_node(node)
       @found << :kernel_command if node.name == :KernelCommand
@@ -29,36 +38,50 @@ class CommandProcessGuardTest < Minitest::Test
     end
 
     def visit_string_node(node)
-      @found << :launcher if launcher_string?(node)
-      @found << :support if SUPPORT_FILES.any? { |name| node.unescaped.end_with?("varar/support/#{name}") }
+      name_text(node.unescaped)
+      super
+    end
+
+    def visit_x_string_node(node)
+      @found << :start
+      name_text(node.unescaped)
+      super
+    end
+
+    def visit_interpolated_x_string_node(node)
+      @found << :start
       super
     end
 
     def visit_call_node(node)
-      @found << :launcher if @starting.positive? && joins_launcher?(node)
-      starter = starter?(node)
-      @starting += 1 if starter
+      @found << :start if starter?(node)
+      @found << :tool if joins_tool?(node)
       super
-      @starting -= 1 if starter
     end
 
     private
 
-    def launcher_string?(node) = @starting.positive? && node.unescaped == "exe/plastic"
+    def name_text(text)
+      @found << :tool if TOOL_WORDS.any? { |word| text.include?(word) }
+      @found << :support if SUPPORT_FILES.any? { |name| text.end_with?("varar/support/#{name}") }
+    end
 
     def starter?(node)
       receiver = node.receiver
-      receiver.is_a?(Prism::ConstantReadNode) ? %i[ChildProcess Open3].include?(receiver.name) : %i[system spawn].include?(node.name)
+      return FREE_STARTERS.include?(node.name) if receiver.nil?
+      return false unless receiver.is_a?(Prism::ConstantReadNode) && RECEIVER_STARTERS.key?(receiver.name)
+
+      (names = RECEIVER_STARTERS[receiver.name]).nil? || names.include?(node.name)
     end
 
-    def joins_launcher?(node)
-      node.name == :join && node.arguments && %w[exe plastic].all? { |part| strings(node).include?(part) }
+    def joins_tool?(node)
+      node.name == :join && node.arguments && TOOL_JOINS.any? { |parts| (parts - strings(node)).empty? }
     end
 
     def strings(node) = node.arguments.arguments.grep(Prism::StringNode).map(&:unescaped)
   end
 
-  def reaches(source) = Reaches.new.tap { |visitor| Prism.parse(source).value.accept(visitor) }.found.uniq
+  def reaches(source) = Reaches.new.tap { |visitor| Prism.parse(source).value.accept(visitor) }.result.uniq
 
   def starts_command?(source) = reaches(source).any?
 

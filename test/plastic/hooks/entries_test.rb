@@ -7,7 +7,6 @@ require_relative "../../../lib/plastic/config"
 require "fileutils"
 require "json"
 require_relative "../../test_helper"
-require_relative "../../support/child_process"
 
 class EntriesTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"
@@ -203,29 +202,6 @@ class BrokenStoreTest < Plastic::TestCase
 
       assert_equal [0, "Plastic: a new session in store global. Run plastic next before anything else.\n",
         "plastic hook: the event names no session; nothing recorded\n"], [call.code, call.out, call.err]
-    end
-  end
-
-  def failing_command(home)
-    File.join(home, "plastic").tap do |path|
-      File.write(path, "#!/bin/sh\nexit 2\n")
-      File.chmod(0o755, path)
-    end
-  end
-
-  def written_hook_lines(command)
-    hooks = Plastic::Hooks::Entries.new(command: command, config: nil, launchers: {}).codex({})["hooks"]
-    hooks.values.flatten.flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
-  end
-
-  def test_every_hook_line_the_installer_writes_exits_zero_when_the_call_fails
-    Dir.mktmpdir do |home|
-      lines = written_hook_lines(failing_command(home))
-
-      assert_equal Plastic::Harnesses::EVENTS.size, lines.size
-      lines.each do |line|
-        assert ChildProcess.system(line, chdir: home), "#{line} did not exit zero"
-      end
     end
   end
 end
