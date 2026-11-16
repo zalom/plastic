@@ -14,7 +14,7 @@ class KnowledgeSyncSelectionTest < Plastic::TestCase
   def config(text) = File.write(File.join(@plastic_home, "config.yml"), text)
 
   def test_each_path_has_the_kind_its_folder_and_extension_name
-    kinds = PATHS.map { |rel| SyncSelection.none.kind(rel) }
+    kinds = PATHS.map { |rel| SyncSelection.kind_of(rel) }
 
     assert_equal %w[notes notes notes notes notes media media documents documents references references], kinds
   end

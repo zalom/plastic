@@ -27,25 +27,24 @@ module Plastic
 
         def self.all = new(OPTIONAL)
 
-        def initialize(kinds)
-          @kinds = kinds
-        end
-
-        def read?(rel)
-          kind = kind(rel)
-          kind == "notes" || @kinds.include?(kind)
-        end
-
-        def kind(rel)
+        def self.kind_of(rel)
           return "references" if rel.start_with?(REFERENCES)
           return "notes" if note?(rel)
 
           MEDIA.include?(File.extname(rel).downcase) ? "media" : "documents"
         end
 
-        private
+        def self.note?(rel) = File.extname(rel).casecmp?(".md") || NOTES.include?(rel) || LegacyPath.legacy?(rel)
+        private_class_method :note?
 
-        def note?(rel) = File.extname(rel).casecmp?(".md") || NOTES.include?(rel) || LegacyPath.legacy?(rel)
+        def initialize(kinds)
+          @kinds = kinds
+        end
+
+        def read?(rel)
+          kind = SyncSelection.kind_of(rel)
+          kind == "notes" || @kinds.include?(kind)
+        end
       end
     end
   end
