@@ -2,7 +2,9 @@
 
 require_relative "../backup"
 require_relative "folder_name"
+require_relative "../database"
 require_relative "folders"
+require_relative "purger"
 require_relative "writer"
 
 module Plastic
@@ -12,7 +14,9 @@ module Plastic
       # older than twelve hours, with the reason that asked for it. It never
       # raises, because a trigger must not stop the call that asked: a store
       # that cannot be backed up answers :failed, and the call goes on. The
-      # time is passed in.
+      # time is passed in. A backup that was taken is followed by the purge of the
+      # folders older than three days, which keeps the newest done backup and the
+      # newest backup of a migration.
       class Due
         WINDOW = 12 * 3600
 
@@ -20,6 +24,7 @@ module Plastic
         Result = Data.define(:status, :row)
 
         def initialize(home:, slug:, now:)
+          @home = home
           @root = File.join(home, "stores", slug)
           @slug = slug
           @now = now
@@ -30,12 +35,23 @@ module Plastic
           return Result.new(:fresh, nil) unless stale?
 
           row = Writer.new(@root, @slug, now: @now, automatic: true, reason:).call
+          purge if row
           Result.new(row ? :taken : :unchanged, row)
         rescue => _error
           Result.new(:failed, nil)
         end
 
         private
+
+        def purge
+          purger = Purger.new(Database.open_local(@home).fetch(:local), @root, @slug)
+          (purger.expired(now: @now) - [newest_done]).each { |name| purger.remove(name) }
+        end
+
+        def newest_done
+          folders = Folders.new(@root)
+          folders.names.reverse.find { |name| folders.status(name) == "done" }
+        end
 
         def stale?
           newest = Folders.new(@root).latest
