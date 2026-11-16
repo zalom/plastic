@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../backup"
+require_relative "copy"
 require_relative "folder_name"
 require_relative "../database"
 require_relative "folders"
@@ -12,7 +13,8 @@ module Plastic
     module Backup
       # The automatic backup of one store: taken when the newest backup is
       # older than twelve hours, with the reason that asked for it. It never
-      # raises, because a trigger must not stop the call that asked: a store
+      # raises, because a trigger must not stop the call that asked. A store with
+      # no database file is missing and needs none. A store
       # that cannot be backed up answers :failed, and the call goes on. The
       # time is passed in. A backup that was taken is followed by the purge of the
       # folders older than three days, which keeps the newest done backup and the
@@ -31,7 +33,7 @@ module Plastic
         end
 
         def call(reason)
-          return Result.new(:missing, nil, nil) unless File.directory?(@root)
+          return Result.new(:missing, nil, nil) if Copy.new(now: @now).sources(@root).empty?
           return Result.new(:fresh, nil, nil) unless stale?
 
           row = Writer.new(@root, @slug, now: @now, automatic: true, reason:).call
