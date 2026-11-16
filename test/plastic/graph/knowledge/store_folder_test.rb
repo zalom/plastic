@@ -41,11 +41,19 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_intent_files_list_every_kept_file_of_every_intent_folder
+    folder = StoreFolder.new(@root, selection: Plastic::Graph::Knowledge::SyncSelection.all)
     %w[store/1--a/spec.md store/1--a/.hidden store/1--a/delivery.lock store/1--a/.DS_Store store/2--b/x/y.bin
-      store/notes.md].each { |rel| @folder.write(rel, "x") }
+      store/notes.md].each { |rel| folder.write(rel, "x") }
 
-    assert_equal %w[store/1--a store/2--b], @folder.intent_dirs
-    assert_equal %w[store/1--a/.hidden store/1--a/spec.md store/2--b/x/y.bin], @folder.intent_files
+    assert_equal %w[store/1--a store/2--b], folder.intent_dirs
+    assert_equal %w[store/1--a/.hidden store/1--a/spec.md store/2--b/x/y.bin], folder.intent_files
+  end
+
+  def test_intent_files_leave_out_the_kinds_the_selection_does_not_read
+    %w[store/1--a/spec.md store/1--a/graph.json store/1--a/shot.png store/1--a/page.html
+      store/1--a/references/notes.md].each { |rel| @folder.write(rel, "x") }
+
+    assert_equal %w[store/1--a/graph.json store/1--a/spec.md], @folder.intent_files
   end
 
   def test_the_databases_are_ignored_once_beside_the_lines_already_there

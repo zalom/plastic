@@ -77,21 +77,13 @@ class ChangeLogTest < Plastic::TestCase
 
   def changes(database = work) = database.rows("SELECT * FROM changes ORDER BY seq")
 
-  def test_every_put_appends_one_change_with_the_whole_row
+  def test_every_put_appends_one_change_with_its_key_and_no_row
     work.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
     change = sole(changes)
 
-    assert_equal ["clusters", "put", origin], change.values_at("table", "operation", "origin_id")
-    assert_equal({ "name" => "Core", "intent_id" => "1", "origin_id" => origin }, JSON.parse(change["row"]))
+    assert_equal ["clusters", "put", origin, nil], change.values_at("table", "operation", "origin_id", "row")
+    assert_equal({ "name" => "Core", "intent_id" => "1", "origin_id" => origin }, JSON.parse(change["key"]))
     assert_match(/[+-]\d\d:\d\d\z/, change["at"])
-  end
-
-  def test_the_change_row_carries_the_autoincrement_id
-    store_graphs.work.write_intent(title: "Alpha")
-    row = JSON.parse(changes.find { |change| change["table"] == "intents" }["row"])
-
-    assert_equal 1, row["id"]
-    assert_equal "1", row["intent_id"]
   end
 
   def test_a_failed_write_leaves_no_change_row
@@ -116,13 +108,14 @@ class ChangeLogTest < Plastic::TestCase
     assert_equal({ "name" => "Core", "intent_id" => "1", "origin_id" => origin }, JSON.parse(change["key"]))
   end
 
-  def test_a_kept_file_logs_its_bytes_as_hex
+  def test_a_kept_file_logs_its_name_and_not_its_bytes
     references = store_graphs.databases[:references]
     row = { name: "store/1--a/resources/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("ab"),
             intent_id: "1", sha256: "x" }
     references.transaction { |batch| batch.put(:sqlar, row) }
+    change = sole(changes(references))
 
-    assert_equal "6162", JSON.parse(sole(changes(references))["row"])["data"]
+    assert_equal [{ "name" => "store/1--a/resources/x.bin" }, nil], [JSON.parse(change["key"]), change["row"]]
   end
 
   def test_the_local_database_keeps_no_change_log
