@@ -34,6 +34,16 @@ class SchemaSequencesTransactionTest < Plastic::TestCase
     assert_equal [[1, 2], 2], [applied, database.get_first_value("PRAGMA user_version")]
   end
 
+  def test_a_migration_stamped_while_the_runner_waited_for_the_lock_is_not_applied_again
+    applied = []
+    step = migration { |_connection, _key| applied << true }
+    database = SQLite3::Database.new(@path)
+    database.execute("PRAGMA user_version = 1")
+    Sequences.send(:apply_once, database, step, :work)
+
+    assert_empty applied
+  end
+
   def test_a_runner_that_cannot_get_the_write_lock_raises_busy_and_changes_nothing
     holder = SQLite3::Database.new(@path)
     holder.execute("BEGIN IMMEDIATE")
