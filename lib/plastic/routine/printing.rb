@@ -34,8 +34,8 @@ module Plastic
         Failed.new(workflow: :print, step: "files", reason: Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again")
       end
 
-      def walk(routine_run, ctx)
-        Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call { |value| printing(value, ctx) }
+      def walk(command_run, ctx)
+        Traversal.new(chain, ctx, command_run) { |run| save_command_run(run) }.call { |value| printing(value, ctx) }
       end
 
       def printing(value, ctx)

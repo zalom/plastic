@@ -40,6 +40,9 @@ module Plastic
 
         def write_report(name, status:, goal:, **extra) = File.write(File.join(path(name), "status.yml"), { "status" => status, "goal" => goal }.merge(extra.transform_keys(&:to_s)).to_yaml)
 
+        # Adds the digest of the folder's files to its status file.
+        def record_digest(name) = File.write(File.join(path(name), "status.yml"), report(name).merge("digest" => digest(name)).to_yaml)
+
         # The verdict of the newest check of the live files: time, verdict, and for a failure the file and the reason.
         def last_check
           file = File.join(dir, "last-check.yml")

@@ -34,7 +34,7 @@ module Plastic
       private
 
       def run_chain
-        finish(open_routine_run)
+        finish(open_command_run)
       rescue Graph::Database::Error => error
         raise CLI::Command::Failure, error.message
       end

@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require_relative "../routine_run"
+require_relative "../command_run"
 require_relative "work/session/reader"
 require_relative "work/reader"
 require_relative "source"
 require_relative "knowledge/link"
 require_relative "knowledge/roadmap"
 require_relative "knowledge/archive"
-require_relative "knowledge/backup"
 require_relative "retrieval/evidence/writer"
 require_relative "retrieval/evidence/integrity"
 require_relative "retrieval/reference_backfill"
@@ -54,7 +53,7 @@ module Plastic
 
       attr_reader :store
 
-      def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :liveness, :last_run, :touched
+      def_delegators :sessions, :command_run, :session, :previous_session, :predecessor, :locks_of, :lock, :liveness, :last_run, :touched
       def_delegators :work, :ready_nodes, :node, :rulings, :links, :every_link
       def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :backfill, :repair, :search_index_report
       def_delegators "evidence.references", :reference, :search_reference

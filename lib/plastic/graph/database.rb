@@ -49,8 +49,8 @@ module Plastic
         Error.new("#{file}: #{message.lines.first.chomp.delete_suffix(":")}")
       end
 
-      # A call saves its routine run at each step, and it is still one row.
-      RUNS = "routine_runs"
+      # A call saves its command run at each step, and it is still one row.
+      RUNS = "command_runs"
 
       attr_reader :path, :written
 
@@ -104,11 +104,11 @@ module Plastic
       end
 
       # What this call wrote here, as the report says it:
-      # "1 intent and 1 savepoint line in work_graph.db". The routine run row is left out,
+      # "1 intent and 1 savepoint line in work_graph.db". The command run row is left out,
       # and the phrase is nil when nothing else was written.
       def written_phrase = wrote_rows? ? "#{Schema.phrase(written.except(RUNS))} in #{file}" : nil
 
-      # Whether this call wrote a row other than its routine run.
+      # Whether this call wrote a row other than its command run.
       def wrote_rows? = written.keys.any? { |table| table != RUNS }
 
       # What the report says of this database: what this call wrote.

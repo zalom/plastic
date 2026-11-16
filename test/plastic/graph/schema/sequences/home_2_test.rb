@@ -10,7 +10,7 @@ class SchemaHome2Test < Plastic::TestCase
   Home1 = Plastic::Graph::SchemaHome1
   Home2 = Plastic::Graph::SchemaHome2
 
-  PINNED = "pending"
+  PINNED = "1a521c37f40c98f7a9d7b0f1f8d54bfbbe520ae42de99a71e895808306a3caba"
 
   def migrated_database
     SQLite3::Database.new(":memory:").tap do |database|

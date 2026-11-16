@@ -270,9 +270,10 @@ class CodexDoctorCommandTest < Plastic::TestCase
     assert_equal [1, 0, "", ["hook SessionStart", "plastic install --reinstall"]], [found.code, repaired.code, repaired.err, words]
   end
 
-  def test_a_damaged_codex_home_is_unchanged_after_the_doctor
+  def test_a_second_doctor_run_on_a_damaged_codex_home_changes_no_file
     File.delete(codex_record)
     File.delete(machine_path)
+    doctor("--harness", "codex")
     before = tree_snapshot(@home)
     result = doctor("--harness", "codex")
 

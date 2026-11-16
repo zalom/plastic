@@ -10,7 +10,7 @@ module Plastic
       opens_no_store
 
       option :reinstall, switch: "--reinstall", default: false,
-        text: "sync the files again and make the global store and local.db when they are missing or behind"
+        text: "sync the files again and make the global store and plastic.db when they are missing or behind"
       option :dry_run, switch: "--dry-run", default: false, text: "list what would change and change nothing"
 
       workflow :code_preview_install do

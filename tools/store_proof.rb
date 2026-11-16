@@ -77,7 +77,7 @@ module StoreProof
 
     def initialize(home)
       @home = home
-      @files = ["local.db", *Dir.glob(File.join(home, "stores", "*", "*.db")).map { |file| file.delete_prefix("#{home}/") }.sort]
+      @files = ["plastic.db", *Dir.glob(File.join(home, "stores", "*", "*.db")).map { |file| file.delete_prefix("#{home}/") }.sort]
     end
 
     attr_reader :files

@@ -9,7 +9,7 @@ module ArchitectureFigures
       desc: "node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       removed | | 30 30 220 | removed | Gone | line | | Only an open node. It / leaves the graph.
-      lock | | 350 30 260 | Delivery lock | row in local.db | code | | Live while renewed within 1800 s, / or while a node of its session / is claimed within 7200 s.
+      lock | | 350 30 260 | Delivery lock | row in plastic.db | code | | Live while renewed within 1800 s, / or while a node of its session / is claimed within 7200 s.
       open | | 30 200 220 | open | 1  Added | line | | The main session writes it / with node add, keyed to the / done criterion it serves.
       claimed | | 350 200 260 | claimed | 2  Dispatched | agent | | The main session claims it as / it dispatches the agent. The / claim keeps the lock live.
       done | | 900 200 230 | done | 3  Judged | end | | The main session judges the / report and records its / findings.

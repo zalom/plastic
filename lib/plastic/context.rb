@@ -51,7 +51,7 @@ module Plastic
       @facts[name] = value
     end
 
-    # Facts are saved with the routine run, so a resumed call sees what the first
+    # Facts are saved with the command run, so a resumed call sees what the first
     # call found. Only declared names are ever saved.
     def facts = @facts.to_h
 

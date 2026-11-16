@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  # What every end value leaves on its routine run. A value that stops the
+  # What every end value leaves on its command run. A value that stops the
   # call, Failed or Refused, has a message, and the message is the because:
   # line when the value carries none.
   module EndValue

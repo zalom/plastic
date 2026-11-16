@@ -19,10 +19,6 @@ module Plastic
             .to_h { |row| row.values_at("path", "sha256") }
         end
 
-        def backups
-          databases.fetch(:local).rows("SELECT * FROM backups ORDER BY at").map { |row| Knowledge::Backup.from_h(row) }
-        end
-
         private
 
         attr_reader :databases

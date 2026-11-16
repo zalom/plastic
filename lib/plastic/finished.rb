@@ -6,7 +6,7 @@ require_relative "failed"
 module Plastic
   # The workflows reached their end: next: names the outcome's offer, or none. Exit 0.
   #
-  # A routine ends in one of four values, each named after the routine run status it
+  # A routine ends in one of four values, each named after the command run status it
   # leaves and each with its own exit code. Each value prints its own last
   # lines through `report` and returns the exit code; no workflow picks a
   # number, so exit 8 cannot exist.

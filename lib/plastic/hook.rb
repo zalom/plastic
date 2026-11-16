@@ -15,7 +15,7 @@ module Plastic
   #   exit    always 0; a broken hook must never break the session
   #   stderr  a diagnostic line, shown only in the harness's debug log
   #
-  # So a hook is not a Routine: it prints no next: line, has no routine run, and
+  # So a hook is not a Routine: it prints no next: line, has no command run, and
   # rescues every error. A hook never stops the agent.
   class Hook < CLI::Command
     def self.call(argv, environment: CLI::Command::Environment.current, **rest)

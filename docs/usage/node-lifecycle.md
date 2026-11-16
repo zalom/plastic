@@ -39,7 +39,7 @@ failure, a question or an impediment goes in with `plastic node fail`, `plastic 
 
 ## How a claim keeps the lock live
 
-`plastic auto ID` takes the delivery lock: one row of `local.db` that names the session that
+`plastic auto ID` takes the delivery lock: one row of `plastic.db` that names the session that
 delivers the intent. The lock is live while the session runs and one of these holds:
 
 - The stop hook renewed the lock within the last 1800 seconds.

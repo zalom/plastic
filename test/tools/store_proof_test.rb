@@ -11,7 +11,7 @@ require "fileutils"
 # proves the real files stayed as they were. Every test uses a throwaway
 # folder as the real home and another as the job tmp.
 module StoreProofHomes
-  FILES = %w[local.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db stores/plastic/references.db].freeze
+  FILES = %w[plastic.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db stores/plastic/references.db].freeze
 
   def setup
     @root = Dir.mktmpdir("store-proof")
@@ -84,7 +84,7 @@ class StoreProofTest < Minitest::Test
 
   def test_the_copies_hold_the_rows_of_the_real_files_and_pass_the_quick_check
     run_cli(*proof_args("plastic"))
-    copy = File.join(@job, "plastic_home", "local.db")
+    copy = File.join(@job, "plastic_home", "plastic.db")
 
     assert_equal [["kept"]], SQLite3::Database.new(copy).execute("SELECT body FROM notes")
     assert_equal [["ok"]], SQLite3::Database.new(copy).execute("PRAGMA quick_check")
@@ -116,21 +116,21 @@ class StoreProofChecksTest < Minitest::Test
   end
 
   def test_a_real_file_that_is_not_at_version_zero_before_the_run_fails_the_proof
-    set_version("local.db", 2)
+    set_version("plastic.db", 2)
     ran = false
     code, _, err = run_cli(*proof_args("plastic"), runner: ->(*) { ran = true })
 
     assert_equal [1, false], [code, ran]
-    assert_includes err, "local.db has user_version 2"
+    assert_includes err, "plastic.db has user_version 2"
   end
 
   def test_a_real_file_that_fails_the_quick_check_stops_the_proof_with_no_command_run
-    File.write(File.join(@real, "local.db"), "not a database")
+    File.write(File.join(@real, "plastic.db"), "not a database")
     ran = false
     code, _, err = run_cli(*proof_args("plastic"), runner: ->(*) { ran = true })
 
     assert_equal [1, false], [code, ran]
-    assert_includes err, "local.db"
+    assert_includes err, "plastic.db"
   end
 
   def test_a_failing_command_fails_the_proof_with_its_status
@@ -140,7 +140,7 @@ class StoreProofChecksTest < Minitest::Test
   end
 
   def test_a_real_file_that_is_missing_stops_the_proof_with_no_command_run
-    File.delete(File.join(@real, "local.db"))
+    File.delete(File.join(@real, "plastic.db"))
     ran = false
     code, = run_cli(*proof_args("plastic"), runner: ->(*) { ran = true })
 
@@ -149,7 +149,7 @@ class StoreProofChecksTest < Minitest::Test
 
   def test_a_copy_target_that_already_exists_fails_the_proof
     FileUtils.mkdir_p(File.join(@job, "plastic_home"))
-    File.write(File.join(@job, "plastic_home", "local.db"), "in the way")
+    File.write(File.join(@job, "plastic_home", "plastic.db"), "in the way")
     code, = run_cli(*proof_args("plastic"))
 
     assert_equal 1, code

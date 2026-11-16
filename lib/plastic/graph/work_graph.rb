@@ -11,7 +11,7 @@ require_relative "knowledge/intent/noter"
 
 module Plastic
   module Graph
-    # The write side of the graphs: routine runs, sessions and locks at the
+    # The write side of the graphs: command runs, sessions and locks at the
     # home, and the rows and printed files of one store. Every write keeps
     # the store's databases out of its versioning. `session` names the
     # harness session this call runs as, nil when the harness sets none.
@@ -53,11 +53,11 @@ module Plastic
         @writers = Work::Writers.new(databases, retrieval, folder, session)
       end
 
-      # A routine run is call memory, kept off the report.
-      def save_routine_run(routine_run)
-        row = routine_run.to_h.merge(store: @retrieval.store, subject: routine_run.subject.to_s, session_id: @writers.session)
-        @databases.fetch(:local).transaction { |batch| batch.put(:routine_runs, row) }
-        routine_run
+      # A command run is call memory, kept off the report.
+      def save_command_run(command_run)
+        row = command_run.to_h.merge(store: @retrieval.store, subject: command_run.subject.to_s, session_id: @writers.session)
+        @databases.fetch(:local).transaction { |batch| batch.put(:command_runs, row) }
+        command_run
       end
 
       # Keeps the store's own databases out of its versioning; a hook calls

@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Containers
     META = Diagram::Meta.new(file: "containers.svg", width: 1160, height: 770, title: "What runs and where Plastic keeps its data",
-      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and local.db. The program reads and writes four SQLite databases: local.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
+      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       install | zone | 10 10 1140 135 | Plastic install: ~/.local/share/plastic | | | |
       launcher | | 30 44 230 | ~/.local/bin/plastic | link | line | | Found on the PATH, / where you run plastic.
@@ -16,7 +16,7 @@ module ArchitectureFigures
       home | zone | 10 165 1140 170 | Plastic home | | | |
       instructions | | 30 199 230 | PLASTIC.md | file | agent | | The always-on instructions / the harness imports.
       program | | 330 199 260 | exe/plastic | pointer | code | mono | A launcher that points to / the active program.
-      local | cylinder | 640 205 210 | local.db | | | | routine_runs, sessions, / locks, backups
+      local | cylinder | 640 205 210 | plastic.db | | | | command_runs, sessions, / locks
       registry | | 880 199 250 | config.yml, projects.yml | files | line | | Settings, and the list of / projects: slug to repository.
       store | zone | 10 370 1140 390 | A store | | | |
       work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, edges
@@ -41,8 +41,8 @@ module ArchitectureFigures
     ].freeze
     NAMES = [
       ["path", "exe/plastic", "exe/plastic"],
-      *%w[local.db work_graph.db knowledge_graph.db references.db].map { |name| ["database", name, name] },
-      *%w[routine_runs sessions locks backups intents nodes edges documents rulings links sqlar].map { |name| ["table", name, name] },
+      *%w[plastic.db work_graph.db knowledge_graph.db references.db].map { |name| ["database", name, name] },
+      *%w[command_runs sessions locks intents nodes edges documents rulings links sqlar].map { |name| ["table", name, name] },
       *%w[store/index.json spec.md graph.json savepoint.md outcome.md context.json].map { |name| ["store_file", name, name] },
       ["command", "sync up", "sync up"]
     ].freeze

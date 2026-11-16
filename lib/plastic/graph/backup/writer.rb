@@ -101,6 +101,7 @@ module Plastic
 
         def write(folder, extra)
           @copy.call(Copy::Slot.new(@root, folders, folder, nil, extra))
+          folders.record_digest(folder)
           row(folder)
         end
 

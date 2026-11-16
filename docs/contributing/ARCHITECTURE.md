@@ -17,7 +17,7 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## What runs and where it keeps data
 
-![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, local.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
+![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
 
 One program, `active/bin/plastic` of the install, serves every command and the three hooks.
 Everything it keeps lives under the Plastic home.
@@ -27,7 +27,7 @@ Everything it keeps lives under the Plastic home.
 | `~/.local/share/plastic/` | The install: `active/bin/plastic`, the program; `releases/VERSION/`, one folder for each release; and `download/`, the files `plastic update` fetched. Each release runs on the Ruby that was on the `PATH` at install. `~/.local/bin/plastic` links to the program. |
 | `exe/plastic` | In the home, the launcher the non-release hooks run. |
 | `PLASTIC.md` | The always-on instructions that the harness imports. |
-| `local.db` | What belongs to one machine: `routine_runs`, `sessions`, `locks` and `backups`. |
+| `plastic.db` | What belongs to one machine: `command_runs`, `sessions` and `locks`. |
 | `config.yml`, `projects.yml` | The settings, and the list of projects from slug to repository. |
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
@@ -81,14 +81,14 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `AgentWorkflow` | `lib/plastic/agent_workflow.rb` | Steps in plain words for the agent. It hands off while any step is left undone. |
 | `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_auto` is `Workflows::Code::Auto`, in `lib/plastic/workflows/code/auto.rb`. |
 | `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
-| `RoutineRun` | `lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
+| `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
 | `Hook` | `lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
 | `Config`, `Config::Document` | `lib/plastic/config.rb`, `lib/plastic/config/` | `config.yml` read in layers: the shipped defaults, the `global` section, then the section of the harness. `Document` writes one key and keeps the anchors the file holds. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
-| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |
+| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, locks, intents, nodes and edges. |
 | `Graph::RetrievalGraph` | `lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
 | `Graph::Printer` | `lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Knowledge::Sync` | `lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
@@ -171,7 +171,7 @@ text that Plastic prints in the planning hand-off.
 
 `plastic auto ID` takes the delivery lock and sets the intent in progress. It refuses with exit 3 for
 an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
-row of `local.db`, keyed by the store and the intent, and it names the session. A lock is live
+row of `plastic.db`, keyed by the store and the intent, and it names the session. A lock is live
 until its session ends, while it was renewed within 1800 seconds, or while its session holds a
 node of the intent claimed within 7200 seconds. `hook stop` renews it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
@@ -223,10 +223,10 @@ so no workflow picks a number.
 A usage error exits 2. A command raises, and the `run` method maps the error: `Failure`
 gives 1, `Usage` and an unknown project give 2, and `Refusal` gives 3.
 
-### The routine run row
+### The command run row
 
-A routine run is one call of one tool on one subject. A tool that writes keeps it as a row of
-`routine_runs` in `local.db`, keyed by the store, the tool and the subject. A tool that writes
+A command run is one call of one tool on one subject. A tool that writes keeps it as a row of
+`command_runs` in `plastic.db`, keyed by the store, the tool and the subject. A tool that writes
 nothing keeps it in memory. The traversal saves the row after each workflow and again when the
 call ends.
 
@@ -236,7 +236,7 @@ call ends.
 | `handed_off` | The agent has steps to do. | Reads the saved facts and checks the steps again. |
 | `failed` | A step broke. | Retries the workflow that broke. |
 | `refused` | The owner holds a step. | Asks again. |
-| `finished` | The chain ended. | Starts a new routine run. |
+| `finished` | The chain ended. | Starts a new command run. |
 
 A step that changes state has a done check, so a change that already happened is skipped and
 never runs twice.
@@ -244,7 +244,7 @@ never runs twice.
 ### The hook reply
 
 A hook is a command that the harness calls on an event. It is not a routine: it prints no
-`next:` line and keeps no routine run. It reads the event as JSON on stdin, prints a plain text
+`next:` line and keeps no command run. It reads the event as JSON on stdin, prints a plain text
 reply, and always exits 0. On an error it prints one line on stderr and still exits 0, so a
 broken hook never breaks the session. A hook takes no harness option: the start hook names the
 harness from the event, the session variables, the transcript path and the process tree, in that

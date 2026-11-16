@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../knowledge/backup"
 require_relative "databases"
 require_relative "folders"
 require_relative "publisher"
@@ -14,7 +13,7 @@ module Plastic
       # The backups of one store as a call sees them: write one, preview
       # one, list, purge and restore. The clock is passed in.
       class StoreBackups
-        # One line of the list: a folder, its row or both.
+        # One line of the list: a folder and what its status file says of it.
         Entry = Struct.new(:number, :folder, :started, :status, :goal, :flag)
 
         def initialize(local_db, store_root, retrieval, session: nil, clock: Time)
@@ -33,16 +32,10 @@ module Plastic
           { folder: FolderName.for(folders.dir, @clock.now), databases: held }
         end
 
-        # This store's rows, oldest first.
-        def rows = @target.local_db.rows("SELECT * FROM backups ORDER BY at").map { |row| Knowledge::Backup.from_h(row) }.select { |backup| backup.name.start_with?("#{@target.slug}/") }
+        # Every folder of this store, in the order of their names.
+        def entries = folders.names.each_with_index.map { |name, index| entry(index + 1, name) }
 
-        # Every folder and every row of this store, in the order of their names.
-        def entries
-          held = rows.to_h { |backup| [backup.folder, backup] }
-          (folders.names | held.keys).sort.each_with_index.map { |name, index| entry(index + 1, name, held[name]) }
-        end
-
-        def purger = Purger.new(@target.local_db, @target.root, @target.slug)
+        def purger = Purger.new(@target.root)
 
         def restorer = Restorer.new(@target, @retrieval, now: @clock.now)
 
@@ -53,15 +46,16 @@ module Plastic
 
         private
 
-        def entry(number, name, backup)
+        def entry(number, name)
           Entry.new(number, name, FolderName.time(name).localtime.strftime("%Y-%m-%d %H:%M:%S"),
-            folders.status(name), folders.goal(name), flag(backup))
+            folders.status(name), folders.goal(name), flag(name))
         end
 
-        def flag(backup)
-          return "no row" unless backup
+        def flag(name)
+          recorded = folders.report(name)["digest"]
+          return "unverified" unless recorded
 
-          backup.flag(File.expand_path("../..", @target.root))
+          (folders.digest(name) == recorded) ? nil : "changed"
         end
       end
     end
