@@ -8,9 +8,11 @@ require "sqlite3"
 # Runs a command against copies of the real stores and proves the real files
 # stayed as they were. The copies and the four variables the command sees
 # all sit under one job tmp folder, and the proof aborts before any copy when
-# one of them does not. The four real databases are read only, copied with
+# one of them does not. The real databases are read only, copied with
 # VACUUM INTO and checked with the quick check; afterwards each still holds
-# user_version 0 and the VERSION record is the same.
+# user_version 0 and the VERSION record is the same. Every store under
+# stores/ is taken; a database a store lacks is skipped by name. The other
+# files of the home are copied with cp.
 module StoreProof
   # A path the command would see sits outside the job tmp.
   class Outside < StandardError; end
@@ -56,13 +58,16 @@ module StoreProof
     def under?(path) = File.expand_path(path).start_with?(@job_tmp + File::SEPARATOR)
   end
 
-  # The four real databases and the version record of one real home.
+  # The real databases and the version record of one real home: the home
+  # database and every database of every store under stores/.
   class Real
     VERSION_FILE = "VERSION"
+    STORE_DATABASES = %w[work_graph knowledge_graph references].freeze
+    SIDE_FILE = /\.db(-wal|-shm|-journal)?\z/
 
-    def initialize(home, store)
+    def initialize(home)
       @home = home
-      @files = ["local.db", *%w[work_graph knowledge_graph references].map { |name| File.join("stores", store, "#{name}.db") }]
+      @files = ["local.db", *Dir.glob(File.join(home, "stores", "*", "*.db")).map { |file| file.delete_prefix("#{home}/") }.sort]
     end
 
     attr_reader :files
@@ -72,6 +77,16 @@ module StoreProof
     def version_digest = Digest::SHA256.file(path(VERSION_FILE)).hexdigest
 
     def versions = @files.to_h { |file| [file, user_version(file)] }
+
+    # The databases a store folder lacks, by their path in the home.
+    def skipped
+      Dir.glob(File.join(@home, "stores", "*")).sort.flat_map do |store|
+        STORE_DATABASES.map { |name| File.join("stores", File.basename(store), "#{name}.db") }.reject { |file| File.exist?(path(file)) }
+      end
+    end
+
+    # The files of the home that are not databases, by their path in the home.
+    def others = Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).select { |file| File.file?(file) && !file.match?(SIDE_FILE) }.map { |file| file.delete_prefix("#{@home}/") }.sort
 
     def problems(digest)
       stale = versions.reject { |_file, version| version.zero? }.map { |file, version| "#{file} has user_version #{version}" }
@@ -99,9 +114,18 @@ module StoreProof
       @plastic_home = plastic_home
     end
 
-    def call = @real.files.each { |file| copy(file) }
+    def call
+      @real.files.each { |file| copy(file) }
+      @real.others.each { |file| copy_plain(file) }
+    end
 
     private
+
+    def copy_plain(file)
+      target = File.join(@plastic_home, file)
+      FileUtils.mkdir_p(File.dirname(target))
+      FileUtils.cp(@real.path(file), target)
+    end
 
     def copy(file)
       target = File.join(@plastic_home, file)
@@ -118,11 +142,11 @@ module StoreProof
     end
   end
 
-  # The command line: `store-proof --job-tmp DIR [--real-home DIR] [--store SLUG] -- COMMAND...`.
+  # The command line: `store-proof --job-tmp DIR [--real-home DIR] -- COMMAND...`.
   # Exit 0 when the command ran and the real files stayed, 1 when a file cannot be trusted or
   # changed or the command failed, 2 when called wrongly, 3 when a path sits outside the job tmp.
   class CLI
-    def initialize(argv, out: $stdout, err: $stderr, runner: Runner)
+    def initialize(argv, out: $stdout, err: $stderr, runner: Runner.new)
       @argv = argv.dup
       @out = out
       @err = err
@@ -143,21 +167,27 @@ module StoreProof
     end
 
     # Starts the command with only the variables of the proof and the PATH.
-    Runner = lambda do |env, command|
-      system(env.merge("PATH" => ENV.fetch("PATH", "")), *command, unsetenv_others: true)
+    # The spawner is passed in, so a test never starts a process.
+    class Runner
+      def initialize(spawner: Kernel.method(:system), path: ENV.fetch("PATH", ""))
+        @spawner = spawner
+        @path = path
+      end
+
+      def call(env, command) = @spawner.call(env.merge("PATH" => @path), *command, unsetenv_others: true)
     end
 
     private
 
     def parse
-      options = { real_home: File.join(Dir.home, ".plastic"), store: "plastic" }
+      options = { real_home: File.join(Dir.home, ".plastic") }
       parser(options).order!(@argv)
       options
     end
 
     def parser(options)
       OptionParser.new do |parser|
-        %i[job_tmp real_home store plastic_home].each do |key|
+        %i[job_tmp real_home plastic_home].each do |key|
           parser.on("--#{key.to_s.tr("_", "-")} VALUE") { |value| options[key] = value }
         end
       end
@@ -166,7 +196,7 @@ module StoreProof
     def prove(options)
       env = Environment.new(options[:job_tmp], plastic_home: options[:plastic_home]).to_h
       Guard.new(options[:job_tmp]).check(env)
-      real = Real.new(options[:real_home], options[:store])
+      real = Real.new(options[:real_home])
       digest = real.version_digest
       copy_when_trusted(real, digest, env.fetch("PLASTIC_HOME"))
       finish(real, digest, @runner.call(env, @argv))
@@ -177,6 +207,7 @@ module StoreProof
       raise Failed, stale.join("; ") unless stale.empty?
 
       Copies.new(real, plastic_home).call
+      real.skipped.each { |file| @out.puts "skipped #{file}: missing" }
     end
 
     def finish(real, digest, ran)

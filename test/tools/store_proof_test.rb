@@ -213,8 +213,9 @@ class StoreProofChecksTest < Minitest::Test
     File.write(File.join(@real, "stores", "plastic", "resources", "note.md"), "kept\n")
     run_cli(*proof_args("plastic"))
     copied = File.join(@job, "plastic_home")
+    contents = %w[config.yml stores/plastic/resources/note.md VERSION].map { |file| File.read(File.join(copied, file)) }
 
-    assert_equal ["advisor: none\n", "kept\n", "3.0.0-alpha.1\n"], [File.read(File.join(copied, "config.yml")), File.read(File.join(copied, "stores", "plastic", "resources", "note.md")), File.read(File.join(copied, "VERSION"))]
+    assert_equal ["advisor: none\n", "kept\n", "3.0.0-alpha.1\n"], contents
     assert_empty Dir.glob(File.join(copied, "**", "*.db-{wal,shm,journal}"))
   end
 
