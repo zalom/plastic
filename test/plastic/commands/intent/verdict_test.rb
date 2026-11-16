@@ -2,6 +2,23 @@
 
 require_relative "../../../test_helper"
 
+class IntentVerdictCaseTest < Plastic::TestCase
+  def test_an_accept_after_the_work_is_done_prints_round_1_and_offers_the_end
+    alpha_with_node
+    ran("auto 1", "node claim 1 n1", "node done 1 n1 Built")
+
+    assert_case line('intent verdict 1 accept "Every criterion holds"'), code: 0,
+      out: ["verdict: accept round 1", "next: plastic intent end 1"]
+  end
+
+  def test_a_revise_prints_round_1_and_offers_a_new_node
+    ran("intent new Alpha")
+
+    assert_case line('intent verdict 1 revise "One edge fails"'), code: 0,
+      out: ["verdict: revise round 1", "next: plastic node add 1 TITLE --criterion KEY"]
+  end
+end
+
 class IntentVerdictTest < Plastic::TestCase
   include LifecycleHelper
 
@@ -16,7 +33,10 @@ class IntentVerdictTest < Plastic::TestCase
   end
 
   def test_an_unknown_verdict_exits_2_with_no_row
-    assert_equal [2, []], [verdict("maybe", "x").code, verdicts]
+    result = verdict("maybe", "x")
+
+    assert_equal [2, []], [result.code, verdicts]
+    assert_includes result.err, "the verdict takes accept or revise"
   end
 
   def test_a_verdict_without_findings_exits_2_with_no_row
@@ -49,9 +69,9 @@ class IntentVerdictTest < Plastic::TestCase
     verdict("revise", "one")
     result = verdict("revise", "two")
 
-    assert_equal 3, result.code
     assert_equal [1, 2], verdicts.map { |row| row.fetch("round") }
-    assert_includes result.err + result.out, "review round"
+    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent and a follow-up intent"]
+    refute_match(/^next:/, result.out)
   end
 
   def test_a_third_verdict_is_refused_with_two_rows
@@ -114,6 +134,7 @@ class IntentVerdictAcceptGateTest < Plastic::TestCase
     result = verdict("accept")
 
     assert_equal [1, []], [result.code, verdicts]
+    assert_includes result.err, "intent 1 names no done criterion; an accept needs one"
     assert_match(/^next: plastic intent spec 1/, result.out)
   end
 
@@ -149,6 +170,8 @@ class IntentVerdictRefusalTest < Plastic::TestCase
     result = cli("intent", "verdict", "9", "accept", "x")
 
     assert_equal [1, []], [result.code, work_rows("verdicts")]
+    assert_includes result.err, "no intent 9 in this store"
+    refute_match(/^next:/, result.out)
   end
 
   %w[done abandoned].each do |status|

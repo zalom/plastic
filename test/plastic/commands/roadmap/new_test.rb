@@ -9,14 +9,16 @@ class RoadmapNewTest < Plastic::TestCase
   def test_new_creates_the_roadmap_row_and_offers_the_first_batch
     result = call("r1", "--title", "Make it useful", "--goal", "Close the blockers")
 
-    assert_equal [0, "Make it useful", "Close the blockers"], [result.code, *store_graphs.retrieval.roadmap("r1").to_h.values_at(:title, :goal)]
+    assert_equal [0, "Make it useful", "Close the blockers", ""], [result.code, *store_graphs.retrieval.roadmap("r1").to_h.values_at(:title, :goal), result.err]
+    assert_includes result.out, "roadmap: r1 Make it useful"
     assert_includes result.out, "next: plastic roadmap batch r1 1"
   end
 
   def test_a_roadmap_with_no_title_is_titled_by_its_name
-    call("r1")
+    result = call("r1")
 
     assert_equal "r1", store_graphs.retrieval.roadmap("r1").title
+    assert_call result, code: 0, err: "", out: ["roadmap: r1 r1", "next: plastic roadmap batch r1 1"]
   end
 
   def test_new_prints_the_roadmap_file
@@ -32,6 +34,7 @@ class RoadmapNewTest < Plastic::TestCase
 
     assert_equal [1, "First"], [result.code, store_graphs.retrieval.roadmap("r1").title]
     assert_includes result.err, "roadmap r1 already exists"
+    assert_includes result.out, "next: plastic roadmap show r1"
   end
 
   def write_own_plan = write("roadmaps/r2.md", "# My own plan\n")

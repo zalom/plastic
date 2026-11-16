@@ -3,6 +3,22 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/config/list"
 
+class ConfigListDefaultsTest < Plastic::TestCase
+  def test_the_list_opens_with_the_default_of_the_first_setting_and_offers_the_set
+    result = line("config list")
+
+    assert_case result, code: 0, out: ["next: plastic config set KEY VALUE"]
+    assert_equal "statusline false", result.out.lines.first.squeeze(" ").chomp
+  end
+
+  def test_the_list_of_one_harness_offers_the_set_for_that_harness
+    result = line("config list --harness codex")
+
+    assert_case result, code: 0, out: ["next: plastic config set KEY VALUE --harness codex"]
+    assert_equal "statusline false", result.out.lines.first.squeeze(" ").chomp
+  end
+end
+
 class ConfigListTest < Plastic::TestCase
   def list(*words) = plastic("config", "list", *words, table: Plastic::CLI::TABLE)
 

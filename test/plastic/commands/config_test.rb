@@ -3,6 +3,24 @@
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/config"
 
+class ConfigChoiceScreenTest < Plastic::TestCase
+  QUESTION = ["question: Which settings are on?", "choices: 1 [ ] statusline",
+    "answer: answer with numbers separated by commas (1,2), a for all, or q to leave with no change"].freeze
+
+  def test_with_no_terminal_the_numbered_list_and_the_answer_line_print
+    assert_case line("config"), code: 0, out: [*QUESTION, "next: plastic config <answer>"]
+  end
+
+  def test_an_answer_saves_the_settings_it_turns_on
+    assert_case line("config 1"), code: 0,
+      out: ["statusline true", "screens false", "advisor.enabled false", "next: plastic config list"]
+  end
+
+  def test_the_list_of_one_harness_offers_the_answer_for_that_harness
+    assert_case line("config --harness codex"), code: 0, out: [*QUESTION, "next: plastic config --harness codex <answer>"]
+  end
+end
+
 class ConfigCommandTest < Plastic::TestCase
   def config(*words) = plastic("config", *words, table: Plastic::CLI::TABLE)
 

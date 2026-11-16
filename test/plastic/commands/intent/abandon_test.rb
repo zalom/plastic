@@ -2,6 +2,35 @@
 
 require_relative "../../../test_helper"
 
+class IntentAbandonCaseTest < Plastic::TestCase
+  OUTCOME = "# Outcome\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n"
+
+  def abandoned
+    ran("intent new Alpha")
+    write("store/1--alpha/outcome.md", OUTCOME)
+    sync_up
+  end
+
+  def test_abandoning_prints_the_status_and_the_stop_step_for_the_processes
+    abandoned
+
+    assert_case line("intent abandon 1"), code: 0, out: ["intent: 1 abandoned",
+      "1. Stop the processes and the agents that intent 1 started: servers, watchers, background jobs and subagents. " \
+      "Plastic runs none of them and stops none of them."]
+  end
+
+  def test_abandoning_an_abandoned_intent_exits_1_and_says_it_cannot
+    abandoned
+    ran("intent abandon 1")
+
+    assert_case line("intent abandon 1"), code: 1, out: "", err: ["intent 1 is abandoned; it can no longer be abandoned"]
+  end
+
+  def test_abandoning_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent abandon 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentAbandonTest < Plastic::TestCase
   include LifecycleHelper
 
@@ -25,7 +54,10 @@ class IntentAbandonTest < Plastic::TestCase
   def test_an_option_is_a_usage_error
     droppable
 
-    assert_equal [2, "open"], [abandon("--judge", "agent").code, retrieval.intent("1").status]
+    result = abandon("--judge", "agent")
+
+    assert_equal [2, "open"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err, "invalid option: --judge"
   end
 
   def test_without_the_reverted_bullet_it_hands_over_the_revert_steps
@@ -40,8 +72,12 @@ class IntentAbandonTest < Plastic::TestCase
     droppable(reverted: false)
     result = abandon
 
-    assert_includes result.out, "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base."
     refute_includes result.out, "your own"
+    assert_call result, code: 0, out: [
+      "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
+      "Plastic runs no version control command; it records what you write.",
+      "Write in store/1--alpha/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. Run plastic sync up and then plastic intent abandon 1 again."
+    ]
   end
 
   def test_with_the_reverted_bullet_it_closes_cancelled_with_no_completion

@@ -4,6 +4,31 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/edge/add"
 require_relative "../../../../lib/plastic/commands/node/add"
 
+class EdgeAddCaseTest < Plastic::TestCase
+  def test_an_edge_between_two_nodes_prints_it_and_offers_the_graph
+    alpha_specified(TWO_CRITERIA)
+    ran("node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green")
+
+    assert_case line("edge add 1 n2 n1"), code: 0, out: ["edge: n2 to n1", "next: plastic graph show 1"]
+  end
+
+  def test_an_edge_from_a_node_to_itself_exits_1_and_names_the_loop
+    alpha_with_node(approved: false)
+
+    assert_case line("edge add 1 n1 n1"), code: 1, out: "", err: ["edge n1 to n1 would loop or names a missing node"]
+  end
+
+  def test_an_edge_to_a_missing_node_exits_1_and_names_the_edge
+    alpha_with_node(approved: false)
+
+    assert_case line("edge add 1 n1 n9"), code: 1, out: "", err: ["edge n1 to n9 would loop or names a missing node"]
+  end
+
+  def test_an_edge_in_a_missing_intent_exits_1_and_names_it
+    assert_case line("edge add 9 n2 n1"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class EdgeAddTest < Plastic::TestCase
   def call(*args) = plastic("edge", "add", *args, table: Plastic::CLI::TABLE)
 

@@ -2,6 +2,8 @@
 
 require "digest"
 require "json"
+require "rubygems/package"
+require "zlib"
 require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/installations"
@@ -61,11 +63,26 @@ module InstallerHelper
     directory = File.join(@home, "release-#{version}")
     release_package(File.join(directory, "package"), version)
     archive = File.join(directory, "plastic.tgz")
-    ChildProcess.system("tar", "-czf", archive, "-C", directory, "package", exception: true)
+    write_archive(archive, directory, "package")
     identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
     InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
     directory
+  end
+
+  # A gzip tar of one folder under its own name, as the release archive is: plain file entries
+  # only, no folder entries, each mode masked to its permission bits.
+  def write_archive(archive, base, folder)
+    Zlib::GzipWriter.open(archive) do |gzip|
+      Gem::Package::TarWriter.new(gzip) do |tar|
+        files = Dir.glob("#{folder}/**/*", File::FNM_DOTMATCH, base: base).select { |name| File.file?(File.join(base, name)) }
+        files.sort.each { |name| tar_entry(tar, name, File.join(base, name)) }
+      end
+    end
+  end
+
+  def tar_entry(tar, name, path)
+    tar.add_file_simple(name, File.stat(path).mode & 0o777, File.size(path)) { |entry| entry.write(File.binread(path)) }
   end
 
   def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []

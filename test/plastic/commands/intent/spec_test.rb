@@ -3,6 +3,12 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/spec"
 
+class IntentSpecCaseTest < Plastic::TestCase
+  def test_the_spec_of_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent spec 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentSpecTest < Plastic::TestCase
   def call(*args) = plastic("intent", "spec", *args, table: Plastic::CLI::TABLE)
 
@@ -33,7 +39,9 @@ class IntentSpecTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
+    assert_equal [0, "# The grilling", ""], [result.code, result.out.lines.first.chomp, result.err]
     assert_includes result.out, "open: which store wins"
+    assert_includes result.out, "next: plastic intent rule #{intent.intent_id} TEXT"
   end
 
   def test_a_clear_spec_without_a_go_ahead_asks_the_owner_and_offers_no_command
@@ -42,9 +50,9 @@ class IntentSpecTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal [0, nil], [result.code, result.out[/^next: .*/]]
-    assert_includes result.out, "because: the owner must give the go-ahead for intent #{intent.intent_id}"
-    assert_includes result.out, "Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve #{intent.intent_id}."
+    assert_equal [nil, "# The grilling"], [result.out[/^next: .*/], result.out.lines.first.chomp]
+    refute_includes result.out, "open:"
+    assert_call result, code: 0, err: "", out: ["because: the owner must give the go-ahead for intent #{intent.intent_id}", "Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve #{intent.intent_id}."]
   end
 
   def test_a_clear_spec_with_a_go_ahead_offers_auto
@@ -54,7 +62,9 @@ class IntentSpecTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_includes result.out, "next: plastic auto #{intent.intent_id}"
+    assert_equal "# The grilling", result.out.lines.first.chomp
+    refute_includes result.out, "open:"
+    assert_call result, code: 0, err: "", out: ["next: plastic auto #{intent.intent_id}"]
   end
 
   def test_no_spec_misses_no_open_decision
@@ -62,6 +72,8 @@ class IntentSpecTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
+    assert_equal [0, "# The grilling", ""], [result.code, result.out.lines.first.chomp, result.err]
     refute_includes result.out, "open:"
+    assert_includes result.out, "next: plastic sync up"
   end
 end

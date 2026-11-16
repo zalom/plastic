@@ -25,7 +25,7 @@ class DistributionTest < Plastic::TestCase
   def test_a_file_the_package_does_not_ship_is_skipped
     distribute
 
-    refute_path_exists File.join(plastic, "deprecations.yml")
+    refute_path_exists File.join(plastic, "CHANGELOG.md")
   end
 
   def test_the_first_install_and_an_update_say_what_they_do

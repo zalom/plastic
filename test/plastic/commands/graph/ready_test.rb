@@ -5,6 +5,25 @@ require_relative "../../../../lib/plastic/commands/graph/ready"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/edge/add"
 
+class GraphReadyCaseTest < Plastic::TestCase
+  def test_the_node_whose_needs_are_met_is_ready_and_offers_the_claim
+    alpha_specified(TWO_CRITERIA)
+    ran("intent approve 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
+
+    assert_case line("graph ready 1"), code: 0, out: ["ready: n2 Test", "next: plastic node claim 1 n2"]
+  end
+
+  def test_an_intent_with_no_nodes_has_nothing_ready
+    ran("intent new Alpha")
+
+    assert_case line("graph ready 1"), code: 0, out: "because: no node is ready to claim\n"
+  end
+
+  def test_a_missing_intent_exits_1_and_names_it
+    assert_case line("graph ready 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class GraphReadyTest < Plastic::TestCase
   def call(*args) = plastic("graph", "ready", *args, table: Plastic::CLI::TABLE)
 

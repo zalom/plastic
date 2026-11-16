@@ -3,6 +3,16 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/commands/intent/lock/status"
 
+class IntentLockStatusCaseTest < Plastic::TestCase
+  def test_a_lock_taken_by_auto_is_live_for_its_session_and_offers_the_brief
+    alpha_specified(UNKEYED_CRITERION)
+    ran("intent approve 1", "auto 1")
+
+    assert_case line("intent lock status 1"), code: 0,
+      out: /lock: session s-1, mode auto, locked \S+, renewed \S+, live: renewed within 30 minutes\n.*next: plastic intent brief 1/m
+  end
+end
+
 class IntentLockStatusTest < Plastic::TestCase
   include AutoHelper
 
@@ -15,9 +25,8 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, nil], [result.code, next_line(result)]
-    assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
-    assert_includes result.out, "Ask the owner for the go-ahead."
+    assert_equal [nil, ""], [next_line(result), result.err]
+    assert_call result, code: 0, out: ["lock: none\n", "because: the owner must give the go-ahead for intent 1", "Ask the owner for the go-ahead.", "record it with plastic intent approve 1."]
   end
 
   def test_an_approved_intent_with_no_lock_says_none_and_offers_auto

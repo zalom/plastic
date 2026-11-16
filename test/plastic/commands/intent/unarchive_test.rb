@@ -89,7 +89,9 @@ class IntentUnarchiveTest < Plastic::TestCase
 
     result = restore_call(intent.intent_id)
 
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "intent: #{intent.intent_id} unarchived"
+    assert_includes result.out, "next: plastic intent show #{intent.intent_id}"
   end
 
   def test_archive_no_longer_takes_revert
@@ -116,7 +118,8 @@ class IntentUnarchiveTest < Plastic::TestCase
 
     result = restore_call(intent.intent_id)
 
-    assert_equal [1, true], [result.code, result.err.include?("not archived")]
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "intent #{intent.intent_id} is not archived"
     refute retrieval.archived?(intent.intent_id)
   end
 end

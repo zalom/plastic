@@ -5,6 +5,56 @@ require_relative "../../../../lib/plastic/commands/intent/brief"
 require_relative "../../../../lib/plastic/commands/intent/rule"
 require_relative "../../../../lib/plastic/commands/node/add"
 
+class IntentBriefCaseTest < Plastic::TestCase
+  def test_the_brief_of_an_intent_started_from_a_legacy_roadmap_carries_the_goal_and_the_done_criteria_of_its_batch
+    legacy_roadmap
+    ran("roadmap next make-it-useful --batch 1", "roadmap open make-it-useful 2")
+
+    assert_case line("intent brief 2"), code: 0, out: ["goal: Close the two blockers",
+      "criterion: a guest sees only their own order", "criterion: add to cart works on every page"]
+  end
+
+  def test_the_brief_after_a_full_pass_of_the_work_graph_shows_the_rulings_and_the_ready_node
+    work_graph_pass
+
+    assert_case line("intent brief 1"), code: 0, out: ["ruling: D1 Flowbite styles every delivery (superseded)",
+      "ruling: D2 Direct mode only", "ready: n2 build it"]
+  end
+
+  MAIN_SESSION = ["main session: take the delivery lock with plastic auto 1",
+    "main session: record each ruling with plastic intent rule 1 TEXT",
+    "main session: write spec.md and add the work nodes with plastic node add 1 TITLE --criterion KEY",
+    "main session: claim each node as you dispatch it with plastic node claim 1 NODE",
+    "main session: judge each node's report and record it with plastic node done 1 NODE TEXT",
+    "main session: judge the intent with plastic intent judge 1",
+    "main session: close the intent after the merge with plastic intent end 1"].freeze
+  PLAN_STEP = "1. Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, " \
+    "or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE " \
+    "--criterion KEY, then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
+
+  def test_a_brief_with_no_spec_says_where_the_agent_writes_it
+    ran("intent new Alpha")
+
+    assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
+      'spec: none yet; the agent writes store/1--alpha/spec.md, and the done criteria are the bullets under its "## Done criteria" heading, ' \
+      "each written - [c1] text", *MAIN_SESSION, PLAN_STEP, "plastic node fail ID NODE TEXT is for work that was tried and failed."]
+  end
+
+  def test_a_brief_with_a_spec_a_ruling_and_a_node_names_each_and_offers_the_claim
+    alpha_specified("# Spec\n\n## Done criteria\n\n- [tests-pass] the CLI ships\n")
+    ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
+
+    assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
+      'spec: store/1--alpha/spec.md; the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text',
+      "criterion: [tests-pass] the CLI ships", "ruling: D1 ship the CLI first", "ready: n1 Build", *MAIN_SESSION,
+      "next: plastic node claim 1 n1"]
+  end
+
+  def test_a_brief_of_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent brief 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentBriefTest < Plastic::TestCase
   def call(*args) = plastic("intent", "brief", *args, table: Plastic::CLI::TABLE)
 

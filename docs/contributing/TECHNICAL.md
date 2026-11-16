@@ -24,26 +24,13 @@ The following table says when each step passes.
 | ---- | ----------- |
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
-| Timing check | The timings file exists and the re-run of a slow file ran. A test file over 5 seconds or a Varar document over 10, on a re-run when the first run went over, is a target: the gate prints it and fails nothing. |
 | Patch coverage | Every changed line and branch is covered. |
 | Mutation testing | Frozen, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
 | RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
 
-A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells, RubyCritic score and Timing check steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
-
-The Tests step loads `bin/lib/test_timings.rb`, a Minitest extension that sums each test's
-time into a file under the sandbox `PLASTIC_TMP`, booking a Varar document's tests to the
-document (read from `varar.config.json`) rather than to the gem file that defines them. The
-Timing check step then reads that file: a file or document over its cap is re-run alone
-before it is called red, and the gate prints both times either way. RSpec projects, and
-Minitest run through `bin/rails test`, have no step to load the extension into, so the gate
-skips the Timing check for them and says so.
-
-Coverage starts before the timing extension loads. A timing rerun must succeed;
-a fast failure cannot pass the cap. A Varar rerun selects the named document's
-generated test class, so other documents do not count toward its time.
+A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells and RubyCritic score steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
 
 The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
 the run, and the gate prints that it skipped the step. The step itself stays in the code. When
@@ -69,9 +56,9 @@ out a file that `.rubocop_todo.yml` or `.reek.yml` lists, because that file is o
 it prints the names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
-into a live call, and the throwaway home keeps that call away from the real one. The timings
-file the Tests step writes and the mutation report Mutineer writes both live under that same
-`PLASTIC_TMP`, so a mutant that reaches for either file finds only the throwaway copy.
+into a live call, and the throwaway home keeps that call away from the real one. The mutation
+report Mutineer writes lives under that same `PLASTIC_TMP`, so a mutant that reaches for it
+finds only the throwaway copy.
 
 Use the merge base with the target branch as the base commit. An older base makes the gate
 measure lines that the branch did not change. For a branch of `alpha`, the base is
@@ -108,8 +95,9 @@ tracked database and its rollback journal are left to the transaction rollback i
 file comparison. Teardown also closes any database the test opened. The tests run the real
 `Graph::Database` through the `sqlite3` gem, so each one reads and writes the state the
 commands would.
-- **Acceptance documents** under `varar/` run each command of the storage kernel in a child
-  Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
+- **Acceptance documents** under `varar/` are the 9 core documents: `status`, `sync-up`,
+  `sync-down`, `sync-import`, `sync-second-home`, `backup`, `backup-list`, `backup-restore` and
+  `legacy-import`. Each runs its command in a child Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
   directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
@@ -117,29 +105,10 @@ commands would.
 
 ## The byte budget
 
-`bin/plastic-bench` is the one script that measures every standing surface, the agent catalog
-included. It builds a fixture home with the real installer and measures the session boot
-there. `test/context_budget_bench_test.rb` runs the same module in the suite, so a crossed
-ceiling turns the suite red.
-
-| Surface | What it measures | Ceiling in bytes |
-| ------- | ---------------- | ---------------- |
-| Core block | `PLASTIC.md` | under 8,192 |
-| Boot injection | The context the start hook gives the fixture session | under 15,000 |
-| Boot injection plus skill catalog | The two together | under 17,500, lowered and never raised |
-| Standing surface | The core block, the boot injection and both catalogs | under 5,000 |
-
-The bench also reports the agent catalog, the skill catalog, the median skill body and the
-working set, with the working set's gap to its 15,000 target. It enforces no ceiling on those.
-
-| Option | Does |
-| ------ | ---- |
-| `--repeat N` | Runs N boots, 5 by default, and fails when they disagree |
-| `--core-file PATH` | Measures PATH as the core block, to show that a ceiling can fail |
-| `--repo PATH` | Measures another Plastic checkout |
-
-It exits 0 when every ceiling holds, 1 when one is crossed, and 2 on bad usage. The bench is a
-maintainer tool: it reads this repository's own files, so it is never installed.
+`test/standing_surface_test.rb` sums what every session carries before the person types:
+`PLASTIC.md`, the name and description of each agent and skill, and the context that
+`plastic hook start` prints. The sum stays under 5,000 bytes, and a crossed cap turns the
+suite red.
 
 ## Layout
 
@@ -165,6 +134,6 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 | `tools/command_reference*` | The plain Ruby that reads the kernel and writes the command pages. |
 | `tools/command-reference` | Rebuilds the pages: `ruby tools/command-reference`. |
 | `docs/reference/commands/` | The generated command pages, six parts each: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. |
-| `varar/` | The acceptance documents. |
-| `test/varar/` | The step files for the acceptance documents. |
-| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the storage documents. |
+| `varar/` | The 9 core acceptance documents. |
+| `test/varar/` | The step files for the core acceptance documents. |
+| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the core documents. |

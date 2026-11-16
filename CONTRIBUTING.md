@@ -11,15 +11,14 @@ commits and releases. This page points to the rest.
 
 ## Test a change
 
-Every test in this repository follows one of five patterns. Choose the pattern by what the code
+Every test in this repository follows one of four patterns. Choose the pattern by what the code
 under test touches, open the example and keep its shape.
 
 | The code under test | Pattern | Built on | Example |
 | --- | --- | --- | --- |
 | A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent/new_test.rb` |
-| What a person gets from a command: the exit code and both output streams | Child process test | `Minitest::Test` with `KernelCommand` | `test/plastic/hooks/broken_store_test.rb` |
 | `install.sh` or an installer script | Installer test | `Minitest::Test` with `InstallShHelper` | `test/install_sh_dependency_test.rb` |
-| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-start.md` |
+| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/status.md` |
 | A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
 
 A test file has the path of its source file: `lib/plastic/commands/intent/new.rb` is
@@ -32,7 +31,12 @@ tested by `test/plastic/commands/intent/new_test.rb`.
    process gets `HOME` and `PLASTIC_HOME` in the hash passed to it. No test reads or writes the
    real `~/.plastic` or `~/.claude`.
 1. Pass the environment as a value. A test never assigns to `ENV`.
-1. Start a child process through `ChildProcess` (`test/support/child_process.rb`), which takes
+1. Outside the core acceptance documents, no test starts a child process for a command. A command
+   runs through the `plastic` helper, in the test's own process. The exceptions are the tests of
+   the launcher, of the release package, of the shipped bundle, and of how a fresh process loads a
+   command. A guard test refuses every other test.
+1. Start every child process a test needs through `ChildProcess` (`test/support/child_process.rb`),
+   which serves the acceptance documents, the installer tests and those exceptions. It takes
    the same arguments as `Open3` and `system`. The child gets only the values the test passes, a
    fixed `PATH` and `LANG`, and an empty throwaway `HOME` when the test passes none. Nothing of the
    session that runs the suite reaches it. A guard test refuses every other way to start a process.
@@ -66,7 +70,7 @@ bundle exec ruby bin/verify-change <base commit>
 
 Run the test of each changed file once. When you change a command, workflow or graph class, run
 `ruby tools/command-reference` and commit the pages it rewrites. Then run the gate once before the commit: it runs the
-lint, the tests of the changed files with coverage, and the timing check. The smell, score and timing steps print their result against the target and fail nothing, unless their tool did not run. Just before the pull
+lint, the tests of the changed files with coverage, and the smell and score steps. The smell and score steps print their result against the target and fail nothing, unless their tool did not run. Just before the pull
 request is created, run the full suite one time with `ruby bin/test` and fix what it finds. After
 the pull request exists, CI takes over: read its failures and fix those, with no more full runs
 on your machine.
@@ -91,10 +95,8 @@ on your machine.
 ## Cut a release
 
 1. Bump the version in `package.json`.
-2. Add or update the entry in `deprecations.yml` for anything this release removes or
-   replaces.
-3. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
+2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
    `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
    no tag yet. The release carries the three files `install.sh` downloads.
-4. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
+3. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
    lanes and the stable-line guarantees.

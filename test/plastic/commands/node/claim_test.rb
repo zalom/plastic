@@ -10,6 +10,38 @@ require_relative "../../../../lib/plastic/commands/node/fail"
 require_relative "../../../../lib/plastic/commands/node/release"
 require_relative "../../../../lib/plastic/commands/edge/add"
 
+class NodeClaimCaseTest < Plastic::TestCase
+  def chained
+    alpha_specified(TWO_CRITERIA)
+    ran("intent approve 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
+  end
+
+  def test_claiming_a_ready_node_prints_it_with_its_criterion_and_offers_done
+    alpha_with_node
+
+    assert_case line("node claim 1 n1"), code: 0,
+      out: ["node: n1 Build", "criterion: tests-pass", "next: plastic node done 1 n1 TEXT"]
+  end
+
+  def test_claiming_the_node_whose_needs_are_met_prints_it_and_offers_done
+    chained
+
+    assert_case line("node claim 1 n2"), code: 0,
+      out: ["node: n2 Test", "criterion: suite-green", "next: plastic node done 1 n2 TEXT"]
+  end
+
+  def test_claiming_a_node_that_needs_an_undone_node_exits_1_and_names_the_ready_list
+    chained
+
+    assert_case line("node claim 1 n1"), code: 1, out: "",
+      err: ["node n1 needs a node that is not done; plastic graph ready 1 lists the nodes to claim"]
+  end
+
+  def test_claiming_in_a_missing_intent_exits_1_and_names_it
+    assert_case line("node claim 9 n1"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class NodeClaimTest < Plastic::TestCase
   def test_the_claim_offers_the_text_and_no_judge
     open_intent
@@ -99,7 +131,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n9")
 
-    assert_equal 1, result.code
+    assert_equal [1, ""], [result.code, result.out]
     assert_includes result.err, "no node n9 in intent 1"
   end
 
@@ -197,6 +229,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 1, result.code
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "node n1 is claimed; it cannot move to claimed"
   end
 end

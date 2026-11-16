@@ -25,7 +25,6 @@
     "hooks/",
     "agents/",
     "PLASTIC.md",
-    "deprecations.yml",
     "runtime/Gemfile",
     "runtime/Gemfile.lock",
     "VERSION"

@@ -3,6 +3,33 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/config/set"
 
+class ConfigSetMessagesTest < Plastic::TestCase
+  def test_a_model_set_for_a_harness_prints_the_setting_and_offers_the_get_for_that_harness
+    result = line("config set agents.models.plastic-executor opus --harness codex")
+
+    assert_case result, code: 0, out: ["agents.models.plastic-executor opus",
+      "next: plastic config get agents.models.plastic-executor --harness codex"]
+  end
+
+  def test_screens_set_to_false_prints_the_setting_and_offers_the_get
+    assert_case line("config set screens false"), code: 0, out: ["screens false", "next: plastic config get screens"]
+  end
+
+  def test_screens_set_to_maybe_exits_2_and_names_the_two_values
+    assert_case line("config set screens maybe"), code: 2, out: "", err: ["screens takes true or false"]
+  end
+
+  def test_a_model_set_with_no_harness_exits_2_and_names_the_list
+    assert_case line("config set agents.models.plastic-executor opus"), code: 2, out: "",
+      err: ["no setting agents.models.plastic-executor; plastic config list names them"]
+  end
+
+  def test_an_unregistered_harness_exits_2_and_names_the_registered_ones
+    assert_case line("config set screens false --harness gemini"), code: 2, out: "",
+      err: ["no harness gemini; the registered harnesses are claude-code, codex, hermes"]
+  end
+end
+
 class ConfigSetTest < Plastic::TestCase
   def set(*words) = plastic("config", "set", *words, table: Plastic::CLI::TABLE)
 

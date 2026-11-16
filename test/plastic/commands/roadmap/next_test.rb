@@ -5,6 +5,24 @@ require_relative "../../../../lib/plastic/commands/roadmap/batch"
 require_relative "../../../../lib/plastic/commands/roadmap/add"
 require_relative "../../../../lib/plastic/commands/roadmap/next"
 
+class RoadmapNextCaseTest < Plastic::TestCase
+  def test_the_first_batch_of_a_legacy_roadmap_has_two_ready_items
+    legacy_roadmap
+
+    assert_case line("roadmap next make-it-useful --batch 1"), code: 0, out: ["2: ready", "3: ready"]
+  end
+
+  def test_a_batch_with_no_items_has_nothing_next_and_offers_the_roadmap
+    shop_batch
+
+    assert_case line("roadmap next shop"), code: 0, out: ["next: plastic roadmap show shop"]
+  end
+
+  def test_the_next_item_of_a_roadmap_that_does_not_exist_exits_1_and_names_it
+    assert_case line("roadmap next shop"), code: 1, out: "", err: ["no roadmap shop"]
+  end
+end
+
 class RoadmapNextTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "next", *args, table: Plastic::CLI::TABLE)
 
@@ -29,7 +47,7 @@ class RoadmapNextTest < Plastic::TestCase
     result = call("r1")
 
     refute_includes result.out, "a: "
-    assert_includes result.out, "b: blocked"
+    assert_call result, code: 0, err: "", out: ["b: blocked", "next: plastic roadmap open r1 a"]
   end
 
   def test_b_is_printed_once_a_is_done

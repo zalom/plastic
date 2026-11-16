@@ -22,9 +22,9 @@ class CoreFilesTest < Plastic::TestCase
     assert_empty files.keys.grep(%r{\A(?:scripts|bin)/})
   end
 
-  def test_the_real_package_ships_the_deprecations_file_and_every_kernel_file
+  def test_the_real_package_ships_every_kernel_file_and_no_deprecations_file
     real = Plastic::Installations::CoreFiles.new(REAL_PACKAGE).call
 
-    assert_equal ["deprecations.yml", "lib/plastic.rb"], real.keys & ["deprecations.yml", "lib/plastic.rb"]
+    assert_equal ["lib/plastic.rb"], real.keys & ["deprecations.yml", "lib/plastic.rb"]
   end
 end

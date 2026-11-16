@@ -4,7 +4,6 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/revise"
 require "minitest/autorun"
 require "tmpdir"
-require_relative "../../../varar/support/kernel_command"
 
 class IntentReviseTest < Plastic::TestCase
   FILE = "intent.md"
@@ -49,8 +48,7 @@ class IntentReviseTest < Plastic::TestCase
 
     result = call("1", "Beta, after grilling", "--dry-run")
 
-    assert_equal 0, result.code, result.err
-    assert_includes result.out, "what was: Alpha\nwhat: Beta, after grilling\n"
+    assert_call result, code: 0, out: ["what was: Alpha\nwhat: Beta, after grilling\n", "next: plastic intent revise 1 Beta,\\ after\\ grilling\n"]
     assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end
 
@@ -61,7 +59,7 @@ class IntentReviseTest < Plastic::TestCase
     second = call("1", "Gamma", "--why", "The goal moved again", "--dry-run")
 
     assert_includes first.out, "why was: none\nwhy: The owner moved the goal\n"
-    assert_includes second.out, "why was: The owner moved the goal\nwhy: The goal moved again\n"
+    assert_call second, code: 0, out: ["why was: The owner moved the goal\nwhy: The goal moved again\n", "next: plastic intent revise 1 Gamma --why The\\ goal\\ moved\\ again\n"]
   end
 
   def test_a_done_intent_exits_1_with_no_row_written_and_offers_plastic_next
@@ -152,18 +150,15 @@ class IntentReviseTest < Plastic::TestCase
   end
 end
 
-class IntentReviseCommandTest < Minitest::Test
-  def test_the_command_revises_an_intent_in_a_child_process
-    Dir.mktmpdir do |home|
-      kernel = KernelCommand.new(home)
-      kernel.command!("intent", "new", "Alpha")
+class IntentReviseCommandTest < Plastic::TestCase
+  def test_the_command_revises_an_intent_through_the_plastic_helper
+    plastic("intent", "new", "Alpha", table: Plastic::CLI::TABLE)
 
-      call = kernel.command("intent", "revise", "1", "Beta, after grilling", "--why", "The owner moved the goal")
+    call = plastic("intent", "revise", "1", "Beta, after grilling", "--why", "The owner moved the goal", table: Plastic::CLI::TABLE)
 
-      assert_equal [0, ""], [call.code, call.err]
-      assert_includes call.out, "what: Beta, after grilling"
-      assert_equal [["Beta, after grilling"]], kernel.rows("work_graph.db", "SELECT title FROM intents")
-    end
+    assert_equal [0, ""], [call.code, call.err]
+    assert_includes call.out, "what: Beta, after grilling"
+    assert_equal [{ "title" => "Beta, after grilling" }], store_graphs.databases.fetch(:work).rows("SELECT title FROM intents").map { |row| row.to_h.transform_keys(&:to_s) }
   end
 end
 

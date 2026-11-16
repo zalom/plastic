@@ -2,7 +2,6 @@
 
 require_relative "../../test_helper"
 require_relative "install_fixture"
-require_relative "../../varar/support/kernel_command"
 require "plastic/installations/bootstrap"
 
 class BootstrapTest < Plastic::TestCase
@@ -12,7 +11,13 @@ class BootstrapTest < Plastic::TestCase
 
   def global(*parts) = File.join(Plastic::StoreLayout.global_store(plastic), *parts)
 
-  def command(*argv) = KernelCommand.new(fresh).command(*argv)
+  # The command line against the fresh home, in this process; `plastic` here names the folder of that home.
+  def command(*argv)
+    out = StringIO.new
+    err = StringIO.new
+    code = Plastic::CLI.call(argv, environment: environment(env: { "PLASTIC_HOME" => plastic }, out:, err:), table: Plastic::CLI::TABLE)
+    Plastic::TestCase::CommandHelper::Result.new(out.string, err.string, code)
+  end
 
   def test_a_first_install_says_what_it_does
     out, = bootstrap

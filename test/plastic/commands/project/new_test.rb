@@ -4,6 +4,22 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/project/new"
 require_relative "../../../../lib/plastic/commands/intent/new"
 
+class ProjectNewCaseTest < Plastic::TestCase
+  def test_registering_a_project_prints_its_home_and_offers_the_first_intent
+    assert_case line("project new blog #{@home}"), code: 0, out: ["project blog: #{@home}", "next: plastic intent new TITLE --project blog"]
+  end
+
+  def test_registering_the_same_project_again_prints_the_same_lines
+    ran("project new blog #{@home}")
+
+    assert_case line("project new blog #{@home}"), code: 0, out: ["project blog: #{@home}", "next: plastic intent new TITLE --project blog"]
+  end
+
+  def test_a_name_with_a_capital_or_an_underscore_exits_2_and_names_the_rule
+    assert_case line("project new Bad_Name #{@home}"), code: 2, out: "", err: ["the name must be lowercase letters, digits and dashes"]
+  end
+end
+
 class ProjectNewTest < Plastic::TestCase
   def make(*argv) = plastic("project", "new", *argv, table: Plastic::CLI::TABLE)
 
@@ -26,15 +42,15 @@ class ProjectNewTest < Plastic::TestCase
   def test_global_is_refused
     result = make("global", checkout)
 
-    assert_equal 3, result.code
-    assert_match(/global/, result.err)
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, "global is the name of the global store, not of a project"
   end
 
   def test_a_path_that_is_not_a_directory_fails
     result = make("blog", File.join(checkout, "missing"))
 
-    assert_equal 1, result.code
-    assert_match(/not a directory/, result.err)
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "#{File.join(checkout, "missing")} is not a directory"
   end
 
   def test_a_name_registered_at_another_path_is_refused_and_the_file_kept
@@ -79,7 +95,7 @@ class ProjectNewTest < Plastic::TestCase
     assert_equal "# blog\n\nRules for agents working on this repository.\n\n" \
                  "Plastic's instructions are in ~/.plastic/PLASTIC.md.\n", File.read(rule_file("AGENTS.md"))
     assert_equal "@AGENTS.md\n", File.read(rule_file("CLAUDE.md"))
-    assert_includes result.out, "created  AGENTS.md and CLAUDE.md in #{checkout}"
+    assert_call result, code: 0, err: "", out: ["created  AGENTS.md and CLAUDE.md in #{checkout}", "project  blog: #{checkout}", "next: plastic intent new TITLE --project blog"]
   end
 
   def test_a_present_agents_file_is_left_byte_for_byte

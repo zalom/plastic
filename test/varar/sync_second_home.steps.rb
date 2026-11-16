@@ -4,10 +4,13 @@ require "varar"
 require "json"
 require "fileutils"
 require "tmpdir"
-require_relative "support/two_homes"
+require_relative "support/kernel_command"
+require_relative "../test_helpers/two_homes"
 
 module SyncSecondHomeAcceptance
   extend TwoHomes
+
+  def self.home_command(directory) = KernelCommand.new(directory)
 
   QUERIES = {
     "nodes with their states" => "SELECT id, state, by, retries, updated_at FROM nodes ORDER BY id",

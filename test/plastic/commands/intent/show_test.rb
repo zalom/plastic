@@ -4,6 +4,20 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/show"
 require_relative "../../../../lib/plastic/commands/intent/rule"
 
+class IntentShowCaseTest < Plastic::TestCase
+  def test_showing_an_intent_prints_its_criteria_ruling_node_and_savepoint
+    alpha_specified
+    ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
+
+    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (open)", "criteria: 1", "ruling: D1 ship the CLI first",
+      "node: n1 open Build", "Opened: Alpha", "next: plastic intent brief 1"]
+  end
+
+  def test_showing_a_missing_intent_exits_1_and_names_it
+    assert_case line("intent show 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class IntentShowTest < Plastic::TestCase
   def call(*args) = plastic("intent", "show", *args, table: Plastic::CLI::TABLE)
 
@@ -18,9 +32,7 @@ class IntentShowTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal 0, result.code
-    assert_includes result.out, "intent: #{intent.intent_id} Alpha (open)"
-    assert_includes result.out, "criteria: 0"
+    assert_call result, code: 0, err: "", out: ["intent: #{intent.intent_id} Alpha (open)", "criteria: 0", "Opened: Alpha"]
   end
 
   def test_shows_a_ruling_and_the_last_savepoint

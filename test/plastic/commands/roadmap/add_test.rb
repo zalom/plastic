@@ -4,6 +4,32 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/roadmap/batch"
 require_relative "../../../../lib/plastic/commands/roadmap/add"
 
+class RoadmapAddCaseTest < Plastic::TestCase
+  def test_adding_the_first_item_prints_it_and_offers_the_roadmap
+    shop_batch
+
+    assert_case line('roadmap add shop 1 guest --title "Lock down guest orders"'), code: 0,
+      out: ["item: guest Lock down guest orders", "next: plastic roadmap show shop"]
+  end
+
+  def test_adding_an_item_that_needs_another_prints_it_and_offers_the_roadmap
+    shop_guest
+
+    assert_case line('roadmap add shop 1 pay --title "Charge on confirm" --needs guest'), code: 0,
+      out: ["item: pay Charge on confirm", "next: plastic roadmap show shop"]
+  end
+
+  def test_adding_to_a_batch_that_does_not_exist_exits_1_and_names_it
+    assert_case line("roadmap add shop 1 guest"), code: 1, out: "", err: ["no batch 1 on roadmap shop"]
+  end
+
+  def test_an_item_that_needs_a_missing_item_exits_1_and_names_it
+    shop_guest
+
+    assert_case line("roadmap add shop 1 pay --needs nope"), code: 1, out: "", err: ["no item nope on roadmap shop"]
+  end
+end
+
 class RoadmapAddTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "add", *args, table: Plastic::CLI::TABLE)
 

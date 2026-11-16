@@ -3,6 +3,21 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/roadmap/batch"
 
+class RoadmapBatchCaseTest < Plastic::TestCase
+  def test_a_second_batch_prints_its_number_and_title_and_offers_the_roadmap
+    shop_batch
+
+    assert_case line("roadmap batch shop 2 --title Payments"), code: 0, out: ["batch: shop 2 Payments", "next: plastic roadmap show shop"]
+  end
+
+  def test_a_done_criterion_on_an_existing_batch_prints_the_batch_and_offers_the_roadmap
+    shop_batch
+
+    assert_case line('roadmap batch shop 1 --done "guest orders need a login"'), code: 0,
+      out: ["batch: shop 1 Blockers", "next: plastic roadmap show shop"]
+  end
+end
+
 class RoadmapBatchTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "batch", *args, table: Plastic::CLI::TABLE)
 
@@ -23,7 +38,7 @@ class RoadmapBatchTest < Plastic::TestCase
     result = call("ghost", "1", "--title", "T")
 
     assert_equal [1, "next: plastic roadmap new ghost"], [result.code, result.out.lines.grep(/^next:/).first&.chomp]
-    assert_includes result.err, "no roadmap ghost"
+    assert_equal "plastic: no roadmap ghost\n", result.err
   end
 
   def test_a_batch_on_an_unknown_roadmap_writes_no_row

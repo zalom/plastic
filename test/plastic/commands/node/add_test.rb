@@ -3,6 +3,15 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/add"
 
+class NodeAddCaseTest < Plastic::TestCase
+  def test_a_node_with_an_input_path_prints_its_id_and_offers_the_edge
+    alpha_specified
+
+    assert_case line("node add 1 Build --criterion tests-pass --input docs/plan.md"), code: 0,
+      out: ["node: n1", "next: plastic edge add 1 FROM TO"]
+  end
+end
+
 class NodeAddTest < Plastic::TestCase
   include LifecycleHelper
 
@@ -13,7 +22,11 @@ class NodeAddTest < Plastic::TestCase
   def test_missing_criterion_exits_2
     specified
 
-    assert_equal 2, call("1", "do the thing").code
+    result = call("1", "do the thing")
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_includes result.err, "missing --criterion"
+    assert_empty nodes
   end
 
   def test_a_known_key_writes_the_node_with_the_key
@@ -21,7 +34,7 @@ class NodeAddTest < Plastic::TestCase
 
     result = call("1", "do the thing", "--criterion", KEY)
 
-    assert_includes result.out, "node: n1"
+    assert_call result, code: 0, err: "", out: ["node: n1", "next: plastic edge add 1 FROM TO"]
     assert_equal [KEY], nodes.map { |row| row.fetch("criterion") }
   end
 
@@ -47,7 +60,8 @@ class NodeAddTest < Plastic::TestCase
 
     result = call("1", "do the thing", "--criterion", "nope")
 
-    assert_equal [1, true], [result.code, %w[works other].all? { |key| result.err.include?(key) }]
+    assert_call result, code: 1, err: ["works", "other", "criterion \"nope\" is not a done criterion key of spec.md"]
+    refute_match(/^next:/, result.out)
     assert_empty nodes
   end
 
@@ -63,6 +77,7 @@ class NodeAddTest < Plastic::TestCase
     result = call("1", "do the thing", "--criterion", KEY)
 
     assert_equal [1, true], [result.code, result.err.include?("done criteria") && result.err.include?("sync up")]
+    assert_includes result.err, "intent 1 has no synced spec.md; write its done criteria, then run plastic sync up"
     assert_empty nodes
   end
 
@@ -75,8 +90,8 @@ class NodeAddTest < Plastic::TestCase
   def test_refused_on_a_missing_intent
     result = call("9", "do the thing", "--criterion", KEY)
 
-    assert_equal 1, result.code
-    assert_includes result.err, "no intent 9"
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "no intent 9 in this store"
   end
 
   def test_takes_the_intent_as_its_subject

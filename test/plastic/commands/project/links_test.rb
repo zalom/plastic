@@ -12,6 +12,13 @@ class ProjectLinksTest < Plastic::TestCase
     end
   end
 
+  def test_a_project_with_no_links_prints_the_status_as_next_and_exits_zero
+    result = links
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "next: plastic status"
+  end
+
   def test_a_link_to_a_missing_intent_is_listed_and_exits_zero_with_the_count
     open_intent
     link("1", "9")
@@ -34,7 +41,10 @@ class ProjectLinksTest < Plastic::TestCase
     open_intent("Beta")
     link("1", "2")
 
-    assert_equal [0, ""], [links.code, links.err]
+    result = links
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "next: plastic status"
   end
 
   def test_several_broken_links_are_counted_in_the_plural
@@ -49,6 +59,9 @@ class ProjectLinksTest < Plastic::TestCase
     open_intent
     link("1", "other:5")
 
-    assert_equal 0, links.code
+    result = links
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "next: plastic status"
   end
 end

@@ -3,6 +3,27 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/link"
 
+class IntentLinkCaseTest < Plastic::TestCase
+  def test_linking_two_intents_prints_the_link_and_offers_sync_down
+    ran("intent new Alpha", "intent new Beta")
+
+    assert_case line("intent link 1 cites 2"), code: 0, out: ["link: 1 cites 2", "next: plastic sync down"]
+  end
+
+  def test_linking_to_a_missing_intent_exits_1_and_names_it
+    ran("intent new Alpha")
+
+    assert_case line("intent link 1 chain 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+
+  def test_linking_with_an_unknown_kind_exits_2_and_names_the_kinds
+    ran("intent new Alpha", "intent new Beta")
+
+    assert_case line("intent link 1 likes 2"), code: 2, out: "",
+      err: ["KIND takes cites, supersedes, answers, source, chain"]
+  end
+end
+
 class IntentLinkTest < Plastic::TestCase
   def call(*args) = plastic("intent", "link", *args, table: Plastic::CLI::TABLE)
 

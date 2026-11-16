@@ -14,6 +14,30 @@ class ReleasingSkillPublishTest < Minitest::Test
     assert_includes content, "publish.yml",
       "AGENTS.md's release doctrine line must name the publish workflow, not describe a release made by hand"
   end
+
+  def test_the_publish_workflow_runs_no_suite
+    steps = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "publish.yml")), aliases: false)["jobs"].values.flat_map { |job| Array(job["steps"]) }
+    suite_runs = steps.map { |step| step["run"].to_s }.grep(/\bruby bin\/test\b/)
+
+    refute_empty steps
+    assert_empty suite_runs
+  end
+
+  def test_the_release_job_waits_for_a_test_job_that_calls_the_test_workflow
+    jobs = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "publish.yml")), aliases: false)["jobs"]
+    test_job = jobs["test"]
+
+    refute_nil test_job, "expected a job named test"
+    assert_equal "./.github/workflows/test.yml", test_job["uses"]
+    assert_includes Array(jobs["release"]["needs"]), "test"
+  end
+
+  def test_the_test_workflow_can_be_called_by_another_workflow
+    parsed = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "test.yml")), aliases: false)
+    triggers = parsed["on"] || parsed[true]
+
+    assert triggers.key?("workflow_call"), "expected workflow_call among the triggers of test.yml"
+  end
 end
 
 # The CI workflow test.yml triggers on `alpha` and on manual dispatch, and runs

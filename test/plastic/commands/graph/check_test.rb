@@ -5,6 +5,12 @@ require_relative "../../../../lib/plastic/commands/graph/check"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/edge/add"
 
+class GraphCheckCaseTest < Plastic::TestCase
+  def test_checking_a_missing_intent_exits_1_and_names_it
+    assert_case line("graph check 9"), code: 1, out: "", err: ["no intent 9 in this store"]
+  end
+end
+
 class GraphCheckTest < Plastic::TestCase
   def call(*args) = plastic("graph", "check", *args, table: Plastic::CLI::TABLE)
 
@@ -76,7 +82,9 @@ class GraphCheckTest < Plastic::TestCase
 
     result = call("1")
 
+    assert_equal 1, result.code
     assert_includes result.out, "finding: intent 1 names no done criterion"
+    assert_equal "plastic: see the findings above\n", result.err
   end
 
   def test_a_done_node_with_findings_passes
@@ -95,8 +103,9 @@ class GraphCheckTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "no findings"
+    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
   end
 
   def test_a_clean_graph_offers_the_first_ready_node

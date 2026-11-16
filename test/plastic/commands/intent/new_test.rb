@@ -3,6 +3,75 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/new"
 
+class IntentNewCaseTest < Plastic::TestCase
+  FILES = %w[graph.json intent.md savepoint.md].freeze
+
+  def index_ids
+    return [] unless File.exist?(store_path("store/index.json"))
+
+    JSON.parse(File.read(store_path("store/index.json"))).fetch("intents", []).map { |row| row.fetch("intent_id") }
+  end
+
+  def files_of(id) = Dir.children(Dir[store_path("store/#{id}--*")].first).sort
+
+  def test_a_title_in_an_empty_store_opens_intent_1_with_its_rows_and_files
+    assert_case line("intent new Build the thing"), code: 0, out: ["because: intent 1 has its rows and its files"]
+    assert_equal [%w[1], FILES], [index_ids, files_of("1")]
+  end
+
+  def test_a_child_takes_the_next_letter_under_its_parent
+    ran("intent new Parent")
+
+    assert_case line("intent new Child --parent 1"), code: 0, out: ["because: intent 1a has its rows and its files"]
+    assert_equal [%w[1 1a], FILES], [index_ids, files_of("1a")]
+  end
+
+  def test_a_ref_to_an_intent_of_this_installation_says_so
+    ran("intent new Parent")
+
+    assert_case line("intent new Second --ref 1-#{origin}"), code: 0, out: ["ref: intent 1 of this installation"]
+    assert_equal [%w[1 2], FILES], [index_ids, files_of("2")]
+  end
+
+  def test_a_ref_to_a_ticket_is_kept_as_written
+    assert_case line("intent new Ticketed --ref ENG-12"), code: 0, out: ["ref: ENG-12"]
+    assert_equal [%w[1], FILES], [index_ids, files_of("1")]
+  end
+
+  def test_a_parent_that_does_not_exist_exits_1_and_writes_nothing
+    assert_case line("intent new Orphan --parent 9"), code: 1, out: "", err: ["no intent 9 in this store to be the parent"]
+    assert_empty index_ids
+  end
+
+  def test_a_ref_to_an_intent_that_does_not_exist_exits_1_and_writes_nothing_more
+    ran("intent new Parent")
+
+    assert_case line("intent new Second --ref 5-#{origin}"), code: 1, out: "", err: ["no intent 5 of this installation for the ref"]
+    assert_equal %w[1], index_ids
+  end
+
+  def test_a_new_intent_with_the_status_done_exits_1_and_writes_nothing
+    assert_case line("intent new Late --status done"), code: 1, out: "",
+      err: ["a new intent takes the status open, parked or future, not done"]
+    assert_empty index_ids
+  end
+
+  def test_a_store_that_still_has_index_md_exits_1_and_says_to_sync_up
+    FileUtils.cp_r(File.join(File.expand_path("../../../fixtures/legacy_store", __dir__), "."), store_root)
+
+    assert_case line("intent new Too soon"), code: 1, out: "",
+      err: ["this store still has INDEX.md; run plastic sync up to import it first"]
+  end
+
+  def test_an_index_edited_by_hand_exits_1_and_says_to_sync_up_first
+    ran("intent new First")
+    write("store/index.json", "{}\n")
+
+    assert_case line("intent new Second"), code: 1, out: ["next: plastic sync up"], err: ["store/index.json changed since its last print on this home, " \
+      "by hand or in a copy from another home; run plastic sync up first to read it into rows"]
+  end
+end
+
 class IntentNewTest < Plastic::TestCase
   IntentNew = Plastic::Commands::Intent::New
 

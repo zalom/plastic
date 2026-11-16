@@ -148,8 +148,20 @@ class GraphResumeTest < Plastic::TestCase
   def test_a_store_with_nothing_open_has_no_intent_in_play
     result = call
 
-    assert_includes lines(result), "in play: none"
-    assert_includes lines(result), "then: nothing is open"
+    wanted = ["store: global", "in play: none", "then: nothing is open", "next: plastic status"]
+
+    assert_equal [0, "", wanted], [result.code, result.err, lines(result) & wanted]
+  end
+
+  def test_a_ready_node_prints_the_savepoint_the_then_line_and_the_claim_as_next
+    intent = ready_intent
+    add_node(intent, "a")
+
+    result = call
+
+    wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 (because node n1 is ready)", "next: plastic node claim 1 n1"]
+
+    assert_equal [0, "", wanted, 1], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("savepoint: ") }]
   end
 
   def test_no_store_with_work_sends_the_agent_to_plastic_status
@@ -205,8 +217,21 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "global,b")
 
-    assert_includes lines(result), "then: nothing is open"
-    assert_includes lines(result), "then: plastic auto 1 (because intent 1 is open)"
+    assert_equal [0, "", ["store: global", "store: b"]], [result.code, result.err, lines(result).grep(/\Astore: /)]
+    assert_equal ["then: nothing is open", "in play: 1 Beta (open)", "then: plastic auto 1 (because intent 1 is open)", "next: plastic auto 1 --project b"],
+      lines(result).grep(/\A(in play|then|next): /).reject { |line| line == "in play: none" }
+  end
+
+  def test_a_store_whose_intent_has_no_done_criteria_names_the_spec_command_as_its_then_line
+    register("b")
+    store_intent("b", "Alpha")
+
+    result = call("--stores", "global,b")
+    shown = lines(result).map { |line| line.sub(/\A(savepoint: )\S+/, '\1TIME') }
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal ["store: global", "in play: none", "then: nothing is open", "store: b", "in play: 1 Alpha (open)", "savepoint: TIME Opened: Alpha",
+      "then: plastic intent spec 1 (because intent 1 has no done criteria)", "", "next: plastic intent spec 1 --project b"], shown.reject { |line| line.start_with?("because:") }
   end
 
   def test_a_name_that_is_no_project_exits_2_and_lists_the_projects

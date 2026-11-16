@@ -3,8 +3,8 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/sync/up"
 require "json"
-require_relative "../../../varar/support/delivered_homes"
-require_relative "../../../varar/support/two_homes"
+require_relative "../../../test_helpers/delivered_homes"
+require_relative "../../../test_helpers/two_homes"
 require_relative "../../../../lib/plastic/commands/roadmap/show"
 
 class SyncUpTest < Plastic::TestCase
