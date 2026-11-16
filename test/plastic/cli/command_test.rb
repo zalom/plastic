@@ -6,7 +6,7 @@ class CommandTest < Plastic::TestCase
   # A command that prints the title of the intent it names, or stops the
   # way its --stop switch says.
   class Title < Plastic::CLI::Command
-    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind, "missing" => Plastic::Graph::MissingStore }.freeze
+    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
 
     argument :intent_id, label: "ID", text: "the intent"
     option :stop, switch: "--stop KIND", text: "stop with this kind"
@@ -44,6 +44,13 @@ class CommandTest < Plastic::TestCase
 
     assert_equal ["title:  Alpha\n", 3], [result.out, result.code]
     assert_includes result.err, "plastic: refused, stopped"
+  end
+
+  def test_a_store_ahead_of_the_code_and_a_store_behind_it_are_both_out_of_step_and_stop_with_exit_three
+    open_intent("Alpha")
+    codes = %w[behind ahead].map { |kind| run_tool("1", "--stop", kind).code }
+
+    assert_equal [[3, 3], [Plastic::Graph::OutOfStep] * 2], [codes, [Plastic::Graph::Behind.superclass, Plastic::Graph::Ahead.superclass]]
   end
 
   def test_a_failure_exits_one_with_its_line
