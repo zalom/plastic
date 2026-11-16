@@ -44,6 +44,15 @@ class GraphBackupWriterClaimTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
+  def test_a_second_automatic_backup_in_the_same_second_finds_the_folder_taken_and_takes_none
+    home = fresh_home
+    backup_at(home, FIRST)
+    add_intent(home)
+
+    assert_nil automatic(home, FIRST)
+    assert_equal ["20260101100000"], folder_names(home)
+  end
+
   def test_an_unchanged_store_removes_its_claim_and_keeps_the_newest_backup
     home = fresh_home
     backup_at(home, FIRST)

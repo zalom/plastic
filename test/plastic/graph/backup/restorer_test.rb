@@ -78,6 +78,15 @@ class GraphBackupRestorerTest < Plastic::TestCase
     assert_equal before, bytes("work_graph")
   end
 
+  def test_a_partial_restore_ignores_a_missing_live_file_and_an_unreadable_one_when_it_reads_the_store_version
+    ready = restorer
+    Plastic::Graph::Database::ConnectionPool.release(root)
+    File.delete(store_file(@restore_home, "references"))
+    File.write(store_file(@restore_home, "knowledge_graph"), "not a database")
+
+    assert_nil ready.refusal(STAMP, databases: %w[work_graph])
+  end
+
   def test_stale_journal_files_beside_a_target_are_removed
     %w[-journal -wal -shm].each { |suffix| File.write("#{store_file(@restore_home, "work_graph")}#{suffix}", "stale") }
     restorer.call(STAMP)
