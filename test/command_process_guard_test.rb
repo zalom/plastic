@@ -30,7 +30,7 @@ class CommandProcessGuardTest < Minitest::Test
       @found = []
     end
 
-    def result = (@found.include?(:start) && @found.include?(:tool) ? [:launcher] : []) + (@found & %i[kernel_command support])
+    def result = (@found & %i[kernel_command support]) + (launcher? ? [:launcher] : [])
 
     def visit_constant_read_node(node)
       @found << :kernel_command if node.name == :KernelCommand
@@ -60,6 +60,8 @@ class CommandProcessGuardTest < Minitest::Test
     end
 
     private
+
+    def launcher? = @found.include?(:start) && @found.include?(:tool)
 
     def name_text(text)
       @found << :tool if TOOL_WORDS.any? { |word| text.include?(word) }

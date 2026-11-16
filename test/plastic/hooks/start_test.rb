@@ -36,39 +36,6 @@ class StartTest < Plastic::TestCase
     assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
-  def claude(session) = { "CLAUDE_CODE_SESSION_ID" => session }
-
-  def run_first_session
-    first = claude("s-1")
-    plastic("hook", "start", input: JSON.generate(source: "startup"), env: first, table: Plastic::CLI::TABLE)
-    %w[Alpha Beta].each { |title| plastic("intent", "new", title, env: first, table: Plastic::CLI::TABLE) }
-    plastic("session", "note", "stopped", "after", "Beta", env: first, table: Plastic::CLI::TABLE)
-  end
-
-  def reply_names(out) = ["Alpha", "Beta", "intent new", "stopped after Beta"].select { |name| out.include?(name) }
-
-  def test_a_cleared_session_names_both_intents_the_savepoint_and_the_note_for_the_claude_code_row
-    run_first_session
-    result = call(source: "clear", env: claude("s-1"))
-
-    assert_equal [0, ""], [result.code, result.err]
-    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", result.out.lines(chomp: true).first
-    assert_equal ["Alpha", "Beta", "intent new", "stopped after Beta"], reply_names(result.out)
-    assert_equal "claude-code", store_graphs.retrieval.session("s-1").harness
-  end
-
-  def test_a_cleared_second_session_names_both_intents_the_savepoint_and_the_note_after_the_first_ends
-    run_first_session
-    plastic("hook", "end", input: JSON.generate(reason: "clear"), env: claude("s-1"), table: Plastic::CLI::TABLE)
-    @session = "s-2"
-    result = call(source: "clear", env: claude("s-2"))
-
-    assert_equal [0, ""], [result.code, result.err]
-    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", result.out.lines(chomp: true).first
-    assert_equal ["Alpha", "Beta", "intent new", "stopped after Beta"], reply_names(result.out)
-    assert_equal ["claude-code", "clear"], [harness, store_graphs.retrieval.session("s-1").end_reason]
-  end
-
   def test_a_compacted_session_names_the_compaction_the_savepoint_and_the_note_with_exit_0
     printed_intent
     opened_work.write_note("s-1", "note text")
@@ -164,6 +131,55 @@ class StartTest < Plastic::TestCase
       FileUtils.mkdir_p([project_dir, File.join(@plastic_home, "stores", "widgets")])
       File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  widgets:\n    path: #{project_dir}\n")
     end
+  end
+end
+
+class StartSessionRowTest < Plastic::TestCase
+  fixtures :empty
+
+  CLEARED = "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume."
+  NAMES = ["Alpha", "Beta", "intent new", "stopped after Beta"].freeze
+
+  def claude(session) = { "CLAUDE_CODE_SESSION_ID" => session }
+
+  def invoke(session, *argv, input: "{}") = plastic(*argv, input:, env: claude(session), table: Plastic::CLI::TABLE)
+
+  def run_first_session
+    invoke("s-1", "hook", "start", input: JSON.generate(source: "startup"))
+    %w[Alpha Beta].each { |title| invoke("s-1", "intent", "new", title) }
+    invoke("s-1", "session", "note", "stopped", "after", "Beta")
+  end
+
+  def clear_reply(session) = invoke(session, "hook", "start", input: JSON.generate(source: "clear"))
+
+  def summary(result) = [result.code, result.err, result.out.lines(chomp: true).first, NAMES.select { |name| result.out.include?(name) }]
+
+  def test_a_cleared_session_names_both_intents_the_savepoint_and_the_note
+    run_first_session
+
+    assert_equal [0, "", CLEARED, NAMES], summary(clear_reply("s-1"))
+  end
+
+  def test_a_cleared_session_records_the_claude_code_harness
+    run_first_session
+    clear_reply("s-1")
+
+    assert_equal "claude-code", store_graphs.retrieval.session("s-1").harness
+  end
+
+  def test_a_cleared_second_session_names_both_intents_the_savepoint_and_the_note_after_the_first_ends
+    run_first_session
+    invoke("s-1", "hook", "end", input: JSON.generate(reason: "clear"))
+
+    assert_equal [0, "", CLEARED, NAMES], summary(clear_reply("s-2"))
+  end
+
+  def test_a_cleared_second_session_records_the_claude_code_harness_and_the_end_of_the_first
+    run_first_session
+    invoke("s-1", "hook", "end", input: JSON.generate(reason: "clear"))
+    clear_reply("s-2")
+
+    assert_equal ["claude-code", "clear"], [store_graphs.retrieval.session("s-2").harness, store_graphs.retrieval.session("s-1").end_reason]
   end
 end
 
