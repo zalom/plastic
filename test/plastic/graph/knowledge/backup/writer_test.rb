@@ -29,6 +29,12 @@ class KnowledgeBackupWriterTest < Plastic::TestCase
     assert_equal "failed", Backup::Folders.new(File.join(home, "stores", "alpha")).status("20260101100000")
   end
 
+  def test_a_mode_key_the_writer_does_not_know_is_refused
+    error = assert_raises(ArgumentError) { Backup::Writer.new(File.join(fresh_home, "stores", "alpha"), "alpha", now: at(2026, 1, 1, 10, 0, 0), speed: :fast) }
+
+    assert_includes error.message, "speed"
+  end
+
   def test_a_damaged_database_leaves_no_folder
     home = fresh_home
     failing_backup(home)

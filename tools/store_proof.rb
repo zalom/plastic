@@ -79,19 +79,16 @@ module StoreProof
       stale
     end
 
-    def self.scalar(path, sql, readonly: false)
-      db = SQLite3::Database.new(path, readonly: readonly)
-      db.get_first_value(sql)
+    def self.scalar(path, sql)
+      SQLite3::Database.open(path, readonly: true) { |db| db.get_first_value(sql) }
     rescue SQLite3::Exception => error
       raise Failed, "#{File.basename(path)}: #{error.message}"
-    ensure
-      db&.close
     end
 
     private
 
     def user_version(file)
-      self.class.scalar(path(file), "PRAGMA user_version", readonly: true)
+      self.class.scalar(path(file), "PRAGMA user_version")
     end
   end
 
@@ -111,7 +108,7 @@ module StoreProof
       FileUtils.mkdir_p(File.dirname(target))
       vacuum(file, target)
       verdict = Real.scalar(target, "PRAGMA quick_check")
-      raise Failed, "#{file}: the copy fails the quick check (#{verdict})" unless verdict == "ok"
+      (verdict == "ok") || raise(Failed, "#{file}: the copy fails the quick check (#{verdict})")
     end
 
     def vacuum(file, target)

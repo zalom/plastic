@@ -32,14 +32,12 @@ module Plastic
           private
 
           def inspect_file(path)
-            database = SQLite3::Database.new(path, readonly: true)
-            raise Failed, "#{path} fails the quick check" unless database.get_first_value("PRAGMA quick_check") == "ok"
-
-            database.get_first_value("PRAGMA user_version")
+            SQLite3::Database.open(path, readonly: true) do |database|
+              (database.get_first_value("PRAGMA quick_check") == "ok") || raise(Failed, "#{path} fails the quick check")
+              database.get_first_value("PRAGMA user_version")
+            end
           rescue SQLite3::Exception => error
             raise Failed, "#{path} cannot be read: #{error.message}"
-          ensure
-            database&.close
           end
         end
       end

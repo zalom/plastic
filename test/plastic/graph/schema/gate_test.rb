@@ -74,6 +74,19 @@ class SchemaGateTest < Plastic::TestCase
 
     assert_raises(Behind) { Plastic::Graph::SchemaGate.new(waiting, sequence: :store, key: :work, file: "work_graph.db").call }
   end
+
+  def test_a_session_whose_wait_for_the_write_lock_gives_up_is_refused_as_busy_and_behind
+    home = old_layout(fresh_home)
+    path = store_file(home, "work_graph")
+    rival = SQLite3::Database.new(path)
+    rival.execute("BEGIN IMMEDIATE")
+    waiting = SQLite3::Database.new(path)
+    waiting.busy_handler { |_count| false }
+    error = assert_raises(Behind) { Plastic::Graph::SchemaGate.new(waiting, sequence: :store, key: :work, file: "work_graph.db").call }
+
+    assert_includes error.message, "is busy and behind this code"
+    rival.execute("ROLLBACK")
+  end
 end
 
 class SchemaBehindCommandTest < Plastic::TestCase

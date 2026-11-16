@@ -83,6 +83,15 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_equal Sequences.newest(:store), user_versions(home).fetch(store_file(home, "work_graph", "beta"))
   end
 
+  def test_a_store_whose_backup_folder_cannot_be_written_stays_behind
+    home = old_home
+    FileUtils.mkdir_p(File.join(home, "stores", "alpha", "backups"), mode: 0o555)
+    before = bytes_in(home, "/alpha/")
+    report = run_runner(home)
+
+    assert_equal [["alpha"], [0]], [report.failed, versions_in(home, "/alpha/")]
+  end
+
   def test_a_run_that_is_killed_inside_a_migration_leaves_the_version_and_runs_again_clean
     home = old_home
     killed = Sequences::Migration.new(1, ->(connection, key) { Sequences::CURRENT_LAYOUT.call(connection, key).then { raise "killed" } })

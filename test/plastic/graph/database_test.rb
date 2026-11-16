@@ -11,6 +11,10 @@ class DatabaseTest < Plastic::TestCase
 
   def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
 
+  def test_the_version_of_a_file_that_does_not_exist_is_nil
+    assert_nil scratch("absent.db").version
+  end
+
   def test_rows_returns_the_rows_of_one_statement
     assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a")
   end

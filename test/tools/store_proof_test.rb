@@ -10,7 +10,7 @@ require "fileutils"
 # The proof wrapper runs a command against copies of the real stores and
 # proves the real files stayed as they were. Every test uses a throwaway
 # folder as the real home and another as the job tmp.
-class StoreProofTest < Minitest::Test
+module StoreProofHomes
   FILES = %w[local.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db stores/plastic/references.db].freeze
 
   def setup
@@ -39,6 +39,10 @@ class StoreProofTest < Minitest::Test
   end
 
   def proof_args(*command) = ["--job-tmp", @job, "--real-home", @real, "--", *command]
+end
+
+class StoreProofTest < Minitest::Test
+  include StoreProofHomes
 
   def test_a_run_whose_paths_sit_under_the_job_tmp_runs_the_command_with_the_four_variables
     seen = nil
@@ -86,6 +90,10 @@ class StoreProofTest < Minitest::Test
 
     assert_equal before, FILES.to_h { |file| [file, File.binread(File.join(@real, file))] }
   end
+end
+
+class StoreProofChecksTest < Minitest::Test
+  include StoreProofHomes
 
   def test_a_real_file_whose_version_changed_during_the_run_fails_the_proof
     code, _, err = run_cli(*proof_args("plastic"), runner: ->(*) { set_version("stores/plastic/work_graph.db", 1) })
@@ -129,6 +137,44 @@ class StoreProofTest < Minitest::Test
     assert_equal 10, StoreProof::PHRASES.size
     assert_equal StoreProof::PHRASES.size, StoreProof::PHRASES.uniq.size
     assert_predicate StoreProof::PHRASES, :frozen?
+  end
+
+  def test_a_real_file_that_is_missing_stops_the_proof_with_no_command_run
+    File.delete(File.join(@real, "local.db"))
+    ran = false
+    code, = run_cli(*proof_args("plastic"), runner: ->(*) { ran = true })
+
+    assert_equal [1, false], [code, ran]
+  end
+
+  def test_a_copy_target_that_already_exists_fails_the_proof
+    FileUtils.mkdir_p(File.join(@job, "plastic_home"))
+    File.write(File.join(@job, "plastic_home", "local.db"), "in the way")
+    code, = run_cli(*proof_args("plastic"))
+
+    assert_equal 1, code
+  end
+
+  def test_an_unknown_option_is_called_wrongly
+    code, = run_cli("--bogus", *proof_args("plastic"))
+
+    assert_equal 2, code
+  end
+
+  def test_a_command_given_with_no_separator_still_runs
+    seen = nil
+    run_cli("--job-tmp", @job, "--real-home", @real, "plastic", "status", runner: ->(_env, command) { seen = command })
+
+    assert_equal %w[plastic status], seen
+  end
+
+  def test_the_default_runner_starts_the_command_with_only_the_given_variables
+    env = StoreProof::Environment.new(@job).to_h
+    marker = File.join(@job, "ran")
+
+    assert StoreProof::CLI::Runner.call(env, ["ruby", "-e", "File.write(ARGV[0], ENV.fetch('PLASTIC_HOME'))", marker])
+    assert_equal env.fetch("PLASTIC_HOME"), File.read(marker)
+    refute StoreProof::CLI::Runner.call(env, ["ruby", "-e", "exit 1"])
   end
 
   def test_the_job_tmp_must_be_given
