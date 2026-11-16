@@ -22,4 +22,10 @@ class LinesTest < Minitest::Test
 
     assert_equal ["ruling: r1 old (superseded)", "ruling: r2 new"], lines.rulings(rulings)
   end
+
+  def test_rulings_print_in_number_order_not_text_order
+    rulings = %w[D10 D1 D2].map { |id| Ruling.new(id: id, text: id.downcase) }
+
+    assert_equal ["ruling: D1 d1", "ruling: D2 d2", "ruling: D10 d10"], lines.rulings(rulings)
+  end
 end
