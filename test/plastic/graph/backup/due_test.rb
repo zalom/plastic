@@ -60,3 +60,45 @@ class GraphBackupDueTest < Plastic::TestCase
     assert_equal :missing, due(home, SEEDED, slug: "nowhere").call("session start").status
   end
 end
+
+# The purge of backups older than three days runs after an automatic backup is taken.
+class GraphBackupDuePurgeTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+
+  Due = Plastic::Graph::Backup::Due
+  FOUR_DAYS_LATER = SEEDED + (4 * 24 * 3600)
+
+  def migration_backup(home, now)
+    add_intent(home)
+    Plastic::Graph::Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now:, reason: "migration").call
+  end
+
+  def taken_after_four_days(home)
+    add_intent(home)
+    Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("sync up")
+  end
+
+  def test_a_backup_taken_removes_the_folders_older_than_three_days_with_their_rows
+    home = stale_home
+    taken_after_four_days(home)
+
+    assert_equal [stamp(FOUR_DAYS_LATER)], folder_names(home)
+    assert_equal ["alpha/#{stamp(FOUR_DAYS_LATER)}"], row_names(home)
+  end
+
+  def test_the_newest_migration_backup_stays_until_a_newer_one_is_taken
+    home = stale_home
+    migration_backup(home, SEEDED + 3600)
+    taken_after_four_days(home)
+
+    assert_equal [stamp(SEEDED + 3600), stamp(FOUR_DAYS_LATER)], folder_names(home)
+  end
+
+  def test_a_store_that_took_no_backup_purges_nothing
+    home = stale_home
+    result = Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("sync up")
+
+    assert_equal [:unchanged, [stamp(SEEDED)]], [result.status, folder_names(home)]
+  end
+end
