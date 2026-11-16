@@ -23,13 +23,18 @@ module Plastic
           # Nothing to copy, or a database that cannot be trusted.
           class Error < StandardError; end
 
-          def initialize(store_root, slug, now:, databases: nil, copy: Copy.new(now:, databases:), automatic: false, reason: nil)
+          MODE_KEYS = %i[automatic reason].freeze
+
+          def initialize(store_root, slug, now:, copy: Copy.new(now:), **mode)
             @root = store_root
             @slug = slug
             @now = now
             @copy = copy
-            @automatic = automatic
-            @reason = reason
+            unknown = mode.keys - MODE_KEYS
+            raise ArgumentError, "unknown keyword: #{unknown.first}" if unknown.any?
+
+            @automatic = mode.fetch(:automatic, false)
+            @reason = mode[:reason]
           end
 
           # The backup row, or nil when an automatic backup had nothing to do.
@@ -62,12 +67,12 @@ module Plastic
 
           def claim
             FileUtils.mkdir_p(folders.dir)
-            @automatic ? take(FolderName.timestamp(@now)) : take(FolderName.for(folders.dir, @now))
+            @automatic ? claim_folder(FolderName.timestamp(@now)) : claim_folder(FolderName.for(folders.dir, @now))
           rescue Errno::EEXIST
             nil
           end
 
-          def take(name) = Dir.mkdir(folders.path(name)) && name
+          def claim_folder(name) = Dir.mkdir(folders.path(name)) && name
 
           def extra(check, version) = { version:, fingerprint: check.fingerprint, reason: @reason }.compact
 

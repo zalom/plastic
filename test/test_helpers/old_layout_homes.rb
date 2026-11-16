@@ -49,7 +49,11 @@ module OldLayoutHomes
     end
   end
 
-  def read_value(path, sql) = with_database(path, readonly: true) { |db| db.get_first_value(sql) }
+  def read_value(path, sql)
+    with_database(path, readonly: true) { |db| db.get_first_value(sql) }
+  rescue SQLite3::NotADatabaseException
+    :unreadable
+  end
 
   def with_database(path, readonly: false)
     db = SQLite3::Database.new(path, readonly:)

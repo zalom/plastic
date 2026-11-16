@@ -35,8 +35,8 @@ class SchemaRunnerTest < Plastic::TestCase
     run_runner(home)
     versions = user_versions(home).transform_keys { |path| path.delete_prefix(home) }
 
-    assert_equal [Sequences.newest(:home)], versions.select { |path, _| path == "/local.db" }.values
-    assert_equal [Sequences.newest(:store)], versions.reject { |path, _| path == "/local.db" }.values.uniq
+    assert_equal [Sequences.newest(:home)], versions.slice("/local.db").values
+    assert_equal [Sequences.newest(:store)], versions.except("/local.db").values.uniq
   end
 
   def test_the_old_word_for_work_under_way_becomes_in_progress
@@ -76,10 +76,10 @@ class SchemaRunnerTest < Plastic::TestCase
     home = old_home
     Plastic::Graph::Database::ConnectionPool.release(home)
     File.write(store_file(home, "work_graph"), "not a database")
-    before = file_bytes(home).select { |path, _| path.include?("/alpha/") }
+    before = bytes_in(home, "/alpha/")
     report = run_runner(home)
 
-    assert_equal [["alpha"], before], [report.failed, file_bytes(home).select { |path, _| path.include?("/alpha/") }]
+    assert_equal [["alpha"], before], [report.failed, bytes_in(home, "/alpha/")]
     assert_equal Sequences.newest(:store), user_versions(home).fetch(store_file(home, "work_graph", "beta"))
   end
 
@@ -89,7 +89,7 @@ class SchemaRunnerTest < Plastic::TestCase
     sequences = { home: Sequences::SEQUENCES.fetch(:home), store: [killed] }
 
     assert_raises(RuntimeError) { run_runner(home, sequences:) }
-    assert_equal [0], user_versions(home).select { |path, _| path.include?("/stores/") }.values.uniq
+    assert_equal [0], versions_in(home, "/stores/")
     run_runner(home)
 
     assert_equal layouts(fresh_home), layouts(home)
@@ -108,11 +108,17 @@ class SchemaRunnerTest < Plastic::TestCase
   def test_backup_migrate_restore_and_migrate_again_give_equal_row_digests
     home = old_home
     run_runner(home)
-    migrated = store_files(home).to_h { |path| [File.basename(path), row_digest(path)] }
+    migrated = store_digests(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
     restore_call(home, "--store", "alpha", "--latest")
 
-    assert_equal [Sequences.newest(:store)], user_versions(home).select { |path, _| path.include?("/alpha/") }.values.uniq
-    assert_equal migrated, store_files(home).to_h { |path| [File.basename(path), row_digest(path)] }
+    assert_equal [Sequences.newest(:store)], versions_in(home, "/alpha/")
+    assert_equal migrated, store_digests(home)
   end
+
+  def bytes_in(home, part) = file_bytes(home).select { |path, _| path.include?(part) }
+
+  def versions_in(home, part) = user_versions(home).select { |path, _| path.include?(part) }.values.uniq
+
+  def store_digests(home) = store_files(home).to_h { |path| [File.basename(path), row_digest(path)] }
 end

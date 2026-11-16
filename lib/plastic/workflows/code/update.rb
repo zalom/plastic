@@ -4,6 +4,7 @@ require_relative "../../code_workflow"
 require_relative "../installation"
 require_relative "../release_command"
 require_relative "../release_update"
+require_relative "../schema_migration"
 
 module Plastic
   module Workflows
@@ -17,7 +18,7 @@ module Plastic
         clear_declarations
         summary "Downloads and checks the newest release and names the command that installs it."
 
-        sets :newer, :synced, :active, :release, :downloaded, :command
+        sets :newer, :synced, :active, :release, :downloaded, :command, :migrated
 
         read "check whether the running package is newer" do |context|
           installation = Installation.of(context)
@@ -31,6 +32,11 @@ module Plastic
           lines = Installation.capture { installation.install(agents) }
           lines.each { |line| context.print(line) }
           context[:synced] = true
+        end
+
+        step "bring the databases to the newest layout", done: ->(context) { !context.migrated.nil? },
+          changes: { databases: "Every database behind its sequence is migrated after a backup of its store", backups: "A migration backup is written for each store that moves" } do |context|
+          context[:migrated] = SchemaMigration.bring_current(context).migrated
         end
 
         read "find a newer release on the chosen channel" do |context|

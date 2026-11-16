@@ -58,7 +58,7 @@ class GraphTest < Plastic::TestCase
 
   def test_wrote_says_the_rename_first
     machine = File.join(@home, "machine")
-    Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local)).rows("SELECT 1")
+    Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local), track: { sequence: :home, key: :local }).rows("SELECT 1")
     Plastic::Graph::Database::ConnectionPool.release(machine)
     opened = Plastic::Graph.create(home: machine, store: "plastic")
     opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }

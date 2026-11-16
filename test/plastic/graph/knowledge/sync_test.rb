@@ -104,7 +104,7 @@ class KnowledgeSyncTest < Plastic::TestCase
     folder.delete(".gitignore")
     run_sync(:up)
 
-    assert_equal "*.db\n*.db-journal\n", folder.read(".gitignore")
+    assert_equal "*.db\n*.db-journal\nbackups/\n", folder.read(".gitignore")
   end
 
   def test_a_level_file_with_no_record_is_recorded

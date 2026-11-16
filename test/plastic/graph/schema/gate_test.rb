@@ -43,17 +43,19 @@ class SchemaGateTest < Plastic::TestCase
     assert_raises(Plastic::Graph::Ahead) { store_database(home).rows("SELECT 1") }
   end
 
+  def finish_rival(rival)
+    rival.execute("PRAGMA user_version = #{Sequences.newest(:store)}")
+    rival.execute("COMMIT")
+    true
+  end
+
   def test_a_session_that_waits_for_the_write_lock_finds_the_store_current
     home = old_layout(fresh_home)
     path = store_file(home, "work_graph")
     rival = SQLite3::Database.new(path)
     rival.execute("BEGIN IMMEDIATE")
     waiting = SQLite3::Database.new(path)
-    waiting.busy_handler do |_count|
-      rival.execute("PRAGMA user_version = #{Sequences.newest(:store)}")
-      rival.execute("COMMIT")
-      true
-    end
+    waiting.busy_handler { |_count| finish_rival(rival) }
     Plastic::Graph::SchemaGate.new(waiting, sequence: :store, key: :work, file: "work_graph.db").call
 
     assert_equal Sequences.newest(:store), waiting.get_first_value("PRAGMA user_version")
@@ -100,10 +102,16 @@ class SchemaBehindCommandTest < Plastic::TestCase
 
   def test_a_hook_on_a_behind_store_prints_one_line_and_exits_0
     home = behind_home
-    result = plastic("hook", "start", input: JSON.generate({ cwd: File.join(home, "stores", "alpha") }),
+    result = plastic("hook", "start", input: JSON.generate({ cwd: YAML.load_file(File.join(home, "projects.yml")).dig("projects", "alpha", "path") }),
       env: env_for(home).merge("PLASTIC_SESSION" => "s-1"), table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
     assert_equal 1, result.err.lines.size
+  end
+
+  def finish_rival(rival)
+    rival.execute("PRAGMA user_version = #{Sequences.newest(:store)}")
+    rival.execute("COMMIT")
+    true
   end
 end

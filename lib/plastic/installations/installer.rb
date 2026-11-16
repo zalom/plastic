@@ -74,9 +74,16 @@ module Plastic
 
       def prepare(kind)
         Distribution.new(package, tmp_dirs: @tmp_dirs).call(kind)
+        migrate_databases
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
         AdvisorMigration.file(File.join(plastic_home, "config.yml"))
         report_config_upgrade
+      end
+
+      def migrate_databases
+        Graph::SchemaRunner.new(home: plastic_home).call.failed.each do |slug|
+          puts "   migrate: #{slug} stays behind because its backup failed; fix the cause and run plastic update"
+        end
       end
 
       def report_config_upgrade
