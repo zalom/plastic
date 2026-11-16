@@ -320,5 +320,19 @@ is never stored: it is derived on each read as done, dropped, in flight, blocked
 
 A restore never syncs by itself, because a sync can undo it. It ends with
 `next: plastic sync down --project STORE`, which writes the files from the restored rows.
+A backup copies only databases that pass the quick check, goes into the git-ignored
+`backups/`, records the schema version in `status.yml`, skips an unchanged store and keeps
+three days. A backup runs by itself when the newest is older than 12 hours: at session start
+for the current and the global store, before `intent archive`, `sync up`, `sync down` and
+`backup restore`, and at `intent end`. `plastic doctor` prints each store's backup age and
+integrity.
+
+The schema runner brings the home and each store to the newest version from the install
+workflow and `plastic update` only, after a backup. A database behind its sequence makes a
+command exit 3 with `plastic update` as the next step, and a hook print one line and exit 0.
+
+`tools/store-proof` runs a command against copies of the real stores under a job tmp folder
+and checks that the real files keep their version and `VERSION` stays unchanged.
+
 Backups recover one store on the same installation. They are not a way to hand work to a
 colleague.
