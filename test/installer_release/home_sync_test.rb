@@ -21,6 +21,14 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal File.join(share, "active", "bin", "plastic"), File.readlink(launcher)
   end
 
+  def test_relinks_a_launcher_that_points_to_the_launcher_of_an_earlier_release
+    FileUtils.mkdir_p(File.dirname(launcher))
+    File.symlink(File.join(plastic_home, "bin", "plastic"), launcher)
+    sync.call
+
+    assert_equal [File.join(share, "active", "bin", "plastic"), ""], [File.readlink(launcher), @out.string]
+  end
+
   def test_leaves_a_launcher_the_user_wrote_alone
     FileUtils.mkdir_p(File.dirname(launcher))
     File.write(launcher, "#!/bin/sh\necho mine\n")

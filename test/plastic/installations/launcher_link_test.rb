@@ -31,6 +31,15 @@ class LauncherLinkTest < Plastic::TestCase
     refute_predicate link, :ours?
   end
 
+  def test_a_link_to_a_retired_launcher_is_ours_but_not_linked
+    retired = File.join(@home, ".plastic", "bin", "plastic")
+    File.symlink(retired, path)
+
+    link = Plastic::Installations::LauncherLink.new(path, share, retired: [retired])
+
+    assert_equal [true, false], [link.ours?, link.linked?]
+  end
+
   def test_a_launcher_the_user_wrote_is_not_ours
     File.write(path, "#!/bin/sh\n")
 

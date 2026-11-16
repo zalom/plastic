@@ -41,6 +41,14 @@ class KnowledgeLegacyImportRollbackTest < Plastic::TestCase
     assert_equal "original", folder.read("INDEX.md")
   end
 
+  def test_a_failed_import_keeps_the_databases_the_store_held_before
+    folder.write("work_graph.db", "rows from before")
+
+    assert_raises(RuntimeError) { ImportRollback.new(folder.root).call { damage } }
+
+    assert_equal "rows from before", folder.read("work_graph.db")
+  end
+
   def test_a_recovered_import_leaves_no_saved_copy_behind
     assert_raises(RuntimeError) { ImportRollback.new(folder.root).call { damage } }
 
