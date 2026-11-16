@@ -159,3 +159,81 @@ class KnowledgeBackupWriterLogTest < Plastic::TestCase
     assert_equal 3, writer(home).call.fetch(:files)
   end
 end
+
+class KnowledgeBackupWriterSafetyTest < Plastic::TestCase
+  include BackupHomes
+
+  Backup = Plastic::Graph::Knowledge::Backup
+
+  def root(home) = File.join(home, "stores", "alpha")
+
+  def writer(home, time, **options) = Backup::Writer.new(root(home), "alpha", now: time, **options)
+
+  def stamp_versions(home, version)
+    Plastic::Graph::Database::ConnectionPool.release(root(home))
+    %w[work_graph knowledge_graph references].each do |name|
+      SQLite3::Database.new(store_file(home, name)).tap { |db| db.execute("PRAGMA user_version = #{version}") }.close
+    end
+  end
+
+  def damage(home, name)
+    Plastic::Graph::Database::ConnectionPool.release(root(home))
+    File.binwrite(store_file(home, name), File.binread(store_file(home, name)).tap { |bytes| bytes[100, 200] = ("\xFF" * 200).b })
+  end
+
+  def test_a_database_that_fails_the_quick_check_stops_the_backup_before_any_copy
+    home = fresh_home
+    damage(home, "knowledge_graph")
+
+    assert_raises(Backup::Writer::Error) { writer(home, at(2026, 1, 1, 10, 0, 0)).call }
+    assert_empty folder_names(home)
+  end
+
+  def test_the_status_file_records_the_lowest_schema_version_of_the_store
+    home = fresh_home
+    stamp_versions(home, 3)
+    writer(home, at(2026, 1, 1, 10, 0, 0)).call
+
+    assert_equal 3, Backup::Folders.new(root(home)).report("20260101100000").fetch("version")
+  end
+
+  def test_an_automatic_backup_of_an_unchanged_store_is_skipped
+    home = fresh_home
+    writer(home, at(2026, 1, 1, 10, 0, 0), automatic: true).call
+
+    assert_nil writer(home, at(2026, 1, 1, 23, 0, 0), automatic: true).call
+    assert_equal ["20260101100000"], folder_names(home)
+  end
+
+  def test_an_automatic_backup_of_a_changed_store_is_written
+    home = fresh_home
+    writer(home, at(2026, 1, 1, 10, 0, 0), automatic: true).call
+    add_intent(home)
+
+    assert_kind_of Hash, writer(home, at(2026, 1, 1, 23, 0, 0), automatic: true).call
+    assert_equal 2, folder_names(home).size
+  end
+
+  def test_a_manual_backup_of_an_unchanged_store_is_still_written
+    home = fresh_home
+    writer(home, at(2026, 1, 1, 10, 0, 0)).call
+    writer(home, at(2026, 1, 1, 23, 0, 0)).call
+
+    assert_equal 2, folder_names(home).size
+  end
+
+  def test_two_automatic_writers_starting_in_the_same_second_make_one_folder
+    home = fresh_home
+    FileUtils.mkdir_p(File.join(backups_dir(home), "20260101100000"))
+
+    assert_nil writer(home, at(2026, 1, 1, 10, 0, 0), automatic: true).call
+    assert_equal ["20260101100000"], folder_names(home)
+  end
+
+  def test_a_migration_backup_says_so_in_its_status_file
+    home = fresh_home
+    writer(home, at(2026, 1, 1, 10, 0, 0), reason: "migration").call
+
+    assert_equal "migration", Backup::Folders.new(root(home)).report("20260101100000").fetch("reason")
+  end
+end
