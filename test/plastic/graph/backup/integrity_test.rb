@@ -15,20 +15,20 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_sound_backup_file_passes
     home = fresh_home
 
-    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph").call
+    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: 1).call
   end
 
   def test_a_file_that_is_not_a_database_is_rejected
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     File.write(path, "not a database" * 100)
-    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph").call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: 1).call }
 
     assert_includes error.message, "is not a readable database"
   end
 
   def test_a_missing_file_is_rejected
     path = File.join(Dir.mktmpdir, "absent.db")
-    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph").call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: 1).call }
 
     assert_includes error.message, path
   end
@@ -45,7 +45,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
 
   def test_a_database_whose_pages_are_damaged_fails_the_integrity_check
     path = damaged_file
-    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph").call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: 1).call }
 
     assert_includes error.message, "fails the integrity check"
   end
@@ -57,14 +57,43 @@ class GraphBackupIntegrityTest < Plastic::TestCase
     database.execute("DROP TABLE legacy_intents_data")
     database.close
 
-    assert_nil Integrity.new(path, "knowledge_graph").call
+    assert_nil Integrity.new(path, "knowledge_graph", version: 0).call
   end
 
   def test_a_database_that_lacks_the_schema_tables_is_rejected
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     SQLite3::Database.new(path).tap { |database| database.execute("CREATE TABLE other (id INTEGER)") }.close
-    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph").call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: 1).call }
 
     assert_includes error.message, "lacks the tables"
+  end
+end
+
+class GraphBackupIntegrityVersionTest < Plastic::TestCase
+  Integrity = Plastic::Graph::Backup::Integrity
+
+  def file_without(*tables)
+    path = File.join(Dir.mktmpdir, "work_graph-1.db")
+    db = SQLite3::Database.new(path)
+    db.execute_batch(Plastic::Graph::Schema.fetch(:work))
+    tables.each { |table| db.execute("DROP TABLE #{table}") }
+    db.close
+    path
+  end
+
+  def test_a_version_zero_backup_without_the_later_tables_passes
+    assert_nil Integrity.new(file_without("approvals", "verdicts"), "work_graph", version: 0).call
+  end
+
+  def test_a_version_one_backup_without_a_table_of_version_one_is_rejected
+    error = assert_raises(Integrity::Rejected) { Integrity.new(file_without("approvals"), "work_graph", version: 1).call }
+
+    assert_includes error.message, "lacks the tables approvals"
+  end
+
+  def test_a_version_above_the_newest_is_rejected
+    error = assert_raises(Integrity::Rejected) { Integrity.new(file_without, "work_graph", version: 99).call }
+
+    assert_includes error.message, "newer than this code"
   end
 end
