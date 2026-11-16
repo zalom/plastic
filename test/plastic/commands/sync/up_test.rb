@@ -284,6 +284,8 @@ end
 
 # Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
 class SyncUpSelectionTest < Plastic::TestCase
+  include ConfigHomes
+
   def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def setup
@@ -307,13 +309,13 @@ class SyncUpSelectionTest < Plastic::TestCase
   end
 
   def test_a_sync_with_the_media_setting_on_keeps_the_image_and_no_other_file
-    File.write(File.join(@plastic_home, "config.yml"), "global:\n  sync:\n    media: true\n")
+    seed_config(@plastic_home, "global:\n  sync:\n    media: true\n")
 
     assert_equal 0, sync.code
     assert_equal [%w[2--beta.md spec.md], %w[store/2--beta/resources/shot.png]], [documents, kept]
   end
 
-  def media(value) = File.write(File.join(@plastic_home, "config.yml"), "global:\n  sync:\n    media: #{value}\n")
+  def media(value) = seed_config(@plastic_home, "global:\n  sync:\n    media: #{value}\n")
 
   def kept_sizes = store_graphs.databases[:references].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
 
@@ -616,11 +618,13 @@ end
 
 # What the first sync of a legacy store removes, when the config asks it to.
 class SyncLegacyCleanupTest < Plastic::TestCase
+  include ConfigHomes
+
   fixtures :legacy
 
   def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
-  def remove_after_import = File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
+  def remove_after_import = seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
 
   def test_the_import_keeps_index_md
     apply

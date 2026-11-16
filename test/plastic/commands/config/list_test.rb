@@ -20,6 +20,8 @@ class ConfigListDefaultsTest < Plastic::TestCase
 end
 
 class ConfigListTest < Plastic::TestCase
+  include ConfigHomes
+
   def list(*words) = plastic("config", "list", *words, table: Plastic::CLI::TABLE)
 
   def lines(result) = result.out.lines.map { |line| line.squeeze(" ").strip }
@@ -37,7 +39,7 @@ class ConfigListTest < Plastic::TestCase
   end
 
   def test_a_value_the_file_sets_is_listed_in_place_of_the_default
-    File.write(File.join(@plastic_home, "config.yml"), "global:\n  statusline: false\n")
+    seed_config(@plastic_home, "global:\n  statusline: false\n")
 
     assert_includes lines(list), "statusline false"
   end

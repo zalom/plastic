@@ -25,7 +25,7 @@ module Plastic
           pass: ->(context) { context.broken.nil? }
 
         step "install Plastic into the picked harnesses", done: ->(context) { !context.installed.nil? },
-          changes: { home: ["Plastic is installed into the Plastic home", "Whether a sync keeps images and videos is written to config.yml"],
+          changes: { home: ["Plastic is installed into the Plastic home", "Whether a sync keeps images and videos is written to the settings rows"],
                      harness: "The instructions and hooks of each picked harness are written" } do |context|
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }

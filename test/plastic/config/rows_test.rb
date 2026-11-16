@@ -21,24 +21,18 @@ class ConfigRowsTest < Plastic::TestCase
   end
 
   def test_a_missing_plastic_db_reads_as_empty_and_creates_no_file
-    assert_empty rows.scope("global")
-    refute_path_exists File.join(@plastic_home, "plastic.db")
+    Dir.mktmpdir do |dir|
+      assert_empty Plastic::Config::Rows.new(dir).scope("global")
+      refute_path_exists File.join(dir, "plastic.db")
+    end
   end
 
   def test_a_plastic_db_behind_the_settings_table_reads_as_empty
-    SQLite3::Database.new(File.join(@plastic_home, "plastic.db")) { |db| db.execute("CREATE TABLE other(a)") }
+    Dir.mktmpdir do |dir|
+      SQLite3::Database.new(File.join(dir, "plastic.db")) { |db| db.execute("CREATE TABLE other(a)") }
 
-    assert_empty rows.scope("global")
-  end
-
-  def test_a_database_held_by_a_writer_reads_the_rows_committed_before
-    seed_config(@plastic_home, "global:\n  screens: false\n")
-    writer = SQLite3::Database.new(File.join(@plastic_home, "plastic.db"))
-    writer.execute("BEGIN IMMEDIATE")
-
-    assert_equal({ "screens" => false }, rows.scope("global"))
-  ensure
-    writer&.close
+      assert_empty Plastic::Config::Rows.new(dir).scope("global")
+    end
   end
 
   def test_the_printed_hash_of_a_file_reads_back

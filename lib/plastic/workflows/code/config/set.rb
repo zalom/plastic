@@ -8,7 +8,7 @@ module Plastic
   module Workflows
     module Code
       module Config
-        # Writes one setting to config.yml: under `global`, or under the
+        # Writes one setting to the settings rows: under `global`, or under the
         # harness's section with --harness.
         class Set < CodeWorkflow
           clear_declarations
@@ -16,7 +16,7 @@ module Plastic
           sets :harness_words, :saved
 
           step "write the setting", done: ->(context) { context.saved },
-            changes: { home: "The setting is written to config.yml in the Plastic home" } do |context|
+            changes: { home: "The setting is written to the settings rows in plastic.db, and config.yml is printed from them" } do |context|
             settings = ConfigSettings.new(context)
             value = checked(settings, context.key, scalar(context.value))
             settings.set(context.key, value)

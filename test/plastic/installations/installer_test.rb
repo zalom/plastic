@@ -68,7 +68,7 @@ class InstallerTest < Plastic::TestCase
     write(File.join(plastic, "config.yml"), "version: 3\nscreens: false\n")
     run_install
 
-    assert_includes File.read(File.join(plastic, "config.yml")), "screens"
+    assert_equal({ "screens" => false }, YAML.safe_load_file(File.join(plastic, "config.yml")).fetch("global"))
   end
 
   def test_the_version_comes_from_the_package_and_the_channel_from_the_version
@@ -81,13 +81,25 @@ class InstallerTest < Plastic::TestCase
     assert_nil installer.installed_version
   end
 
-  def test_a_reinstall_names_the_agent_settings_the_config_file_moves
+  def test_an_update_from_a_home_below_the_settings_rows_names_the_agent_settings_the_config_file_moves
     make_agent_folders(claude_config)
     run_install
+    Plastic::Graph::Database::ConnectionPool.release(@home)
     File.write(File.join(plastic, "config.yml"), "global:\n  agents:\n    models:\n      plastic-enforcer: haiku\n")
+    File.rename(File.join(plastic, "plastic.db"), File.join(plastic, "local.db"))
     _, out = run_install
 
     assert_includes out, "config.yml: the settings for plastic-enforcer now apply to plastic-planner."
+  end
+
+  def test_an_update_imports_the_config_file_into_the_settings_rows_once
+    make_agent_folders(claude_config)
+    write(File.join(plastic, "config.yml"), "global:\n  screens: false\n")
+    run_install
+    write(File.join(plastic, "config.yml"), "global:\n  screens: true\n")
+    run_install
+
+    assert_equal [["global", "screens", "false"]], Plastic::Graph::Database.open_local(plastic).fetch(:local).rows("SELECT scope, key, value FROM settings").map(&:values)
   end
 
   def test_the_installed_agents_are_the_ones_with_a_recorded_version

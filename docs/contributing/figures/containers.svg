@@ -45,7 +45,7 @@
 <ellipse class="box" cx="745.0" cy="214" rx="105.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="745.0" y="241" text-anchor="middle">plastic.db</text>
 <text class="s" x="745.0" y="259" text-anchor="middle">command_runs, sessions,</text>
-<text class="s" x="745.0" y="274" text-anchor="middle">locks</text>
+<text class="s" x="745.0" y="274" text-anchor="middle">locks, settings</text>
 <rect class="box" x="880" y="199" width="250" height="94" rx="8"/><rect x="880" y="199" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="896" y="223">config.yml, projects.yml</text><text class="s" x="896" y="240">[files]</text>
 <text class="s" x="896" y="260">Settings, and the list of</text>

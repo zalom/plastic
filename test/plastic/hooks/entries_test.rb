@@ -3,18 +3,21 @@
 require "minitest/autorun"
 require "tmpdir"
 require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../test_helpers/config_homes"
 require_relative "../../../lib/plastic/config"
 require "fileutils"
 require "json"
 require_relative "../../test_helper"
 
 class EntriesTest < Minitest::Test
+  include ConfigHomes
+
   COMMAND = "/opt/plastic/bin/plastic"
   LAUNCHERS = { statusline: "/opt/plastic/bin/statusline", screens: "/opt/plastic/bin/screens" }.freeze
 
   def config(text = "")
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
+      seed_config(dir, text)
       yield Plastic::Config.new(dir)
     end
   end

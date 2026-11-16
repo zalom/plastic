@@ -61,7 +61,7 @@ module Plastic
         "config" => ["Commands::Config", "Pick which on/off settings are on, on the choice screen"],
         "config list" => ["Commands::Config::List", "List every setting with its value, globally or for one harness"],
         "config get" => ["Commands::Config::Get", "Print the value of one setting"],
-        "config set" => ["Commands::Config::Set", "Write one setting to config.yml, globally or for one harness"]
+        "config set" => ["Commands::Config::Set", "Write one setting to the settings rows, globally or for one harness"]
       },
       "backup" => {
         "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],

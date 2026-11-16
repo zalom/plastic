@@ -147,6 +147,8 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 end
 
 class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
+  include ConfigHomes
+
   include DryRunAssertions
 
   fixtures :legacy
@@ -164,7 +166,7 @@ class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
 
   def test_a_dry_run_with_remove_after_import_on_leaves_every_source_file_and_lists_what_it_lists_with_the_flag_off
     off = listed_paths(preview)
-    File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
+    seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
     before = states
     on = listed_paths(preview)
 

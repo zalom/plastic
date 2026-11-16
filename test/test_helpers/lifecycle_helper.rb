@@ -4,6 +4,8 @@ module Plastic
   class TestCase
     # An intent at each point of the ruled lifecycle, driven through the command line.
     module LifecycleHelper
+      include ConfigHomes
+
       KEY = "works"
       CRITERION = "It works"
       EARLY = "2026-10-05T10:00:00+02:00"
@@ -58,9 +60,9 @@ module Plastic
         intent
       end
 
-      def review_off = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: off\n")
+      def review_off = seed_config(@plastic_home, "review:\n  pull_request: off\n")
 
-      def review_on = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: required\n")
+      def review_on = seed_config(@plastic_home, "review:\n  pull_request: required\n")
     end
   end
 end

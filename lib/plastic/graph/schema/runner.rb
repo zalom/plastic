@@ -37,41 +37,41 @@ module Plastic
 
       def reasons(results) = results.select { |_slug, outcome| outcome.is_a?(String) }
 
-def migrate_home
-  return :current unless File.exist?(former) || File.exist?(current)
+      def migrate_home
+        return :current unless File.exist?(former) || File.exist?(current)
 
-  reason = rename_failure
-  return reason if reason
+        reason = rename_failure
+        return reason if reason
 
-  local = Database.open_local(@home).fetch(:local)
-  return :current if local.version >= SchemaSequences.newest(:home)
+        local = Database.open_local(@home).fetch(:local)
+        return :current if local.version >= SchemaSequences.newest(:home)
 
-  local.migrate(@sequences)
-  :migrated
-rescue SQLite3::Exception, Database::Error => error
-  "it could not be migrated (#{first_line(error)})"
-end
+        local.migrate(@sequences)
+        :migrated
+      rescue SQLite3::Exception, Database::Error => error
+        "it could not be migrated (#{first_line(error)})"
+      end
 
-def former = File.join(@home, "local.db")
+      def former = File.join(@home, "local.db")
 
-def current = File.join(@home, "plastic.db")
+      def current = File.join(@home, "plastic.db")
 
-def rename_failure
-  return unless File.exist?(former) && !File.exist?(current)
+      def rename_failure
+        return unless File.exist?(former) && !File.exist?(current)
 
-  reason = copy_failure
-  return "the copy of its database failed (#{reason})" if reason
+        reason = copy_failure
+        return "the copy of its database failed (#{reason})" if reason
 
-  HomeRename.new(former, current).call
-  nil
-end
+        HomeRename.new(former, current).call
+        nil
+      end
 
-def copy_failure
-  HomeCopy.new(former, File.join(@home, "backups"), @now).call
-  nil
-rescue SQLite3::Exception, SystemCallError => error
-  first_line(error)
-end
+      def copy_failure
+        HomeCopy.new(former, File.join(@home, "backups"), @now).call
+        nil
+      rescue SQLite3::Exception, SystemCallError => error
+        first_line(error)
+      end
 
       def first_line(error) = error.message.lines.first.to_s.strip
 

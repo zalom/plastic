@@ -2,6 +2,7 @@
 
 require "tmpdir"
 require_relative "../config/upgrade"
+require_relative "../config/store"
 require_relative "../installations"
 require_relative "../graph"
 require_relative "../store_layout"
@@ -74,8 +75,15 @@ module Plastic
 
       def prepare(kind)
         Distribution.new(package, tmp_dirs: @tmp_dirs).call(kind)
+        prepare_config_import
         migrate_databases
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
+        Config::Store.new(plastic_home).print_once
+      end
+
+      def prepare_config_import
+        return unless Graph::Database::Local.new(plastic_home).version.to_i < Graph::SchemaSequences.newest(:home)
+
         AdvisorMigration.file(File.join(plastic_home, "config.yml"))
         report_config_upgrade
       end
