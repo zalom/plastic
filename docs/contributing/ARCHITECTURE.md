@@ -82,7 +82,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_auto` is `Workflows::Code::Auto`, in `lib/plastic/workflows/code/auto.rb`. |
 | `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
-| `Hook` | `lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap`, `Hooks::StopGate` | `lib/plastic/hooks/` | The text `hook start` prints and the decision whether `hook stop` blocks a stop. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
