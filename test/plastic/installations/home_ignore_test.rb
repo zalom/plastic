@@ -39,4 +39,11 @@ class InstallationsHomeIgnoreTest < Plastic::TestCase
 
     assert_equal ["*.db", "*.db-*"], File.readlines(file, chomp: true)
   end
+
+  def test_home_ignore_lists_the_journal_and_exists_before_the_first_prompt_is_written
+    ignore.apply
+
+    assert_includes File.readlines(file, chomp: true), "*.db-*"
+    assert File.fnmatch?("*.db-*", "plastic.db-journal")
+  end
 end
