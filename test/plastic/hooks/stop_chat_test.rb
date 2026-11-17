@@ -35,14 +35,20 @@ class StopChatTest < Plastic::TestCase
     assert_empty replies
   end
 
-  def test_a_failed_chat_insert_does_not_change_the_decision_of_the_stop_gate
-    seed_config(@plastic_home, "chat_sync: full\nrunner:\n  stop_hook: true\n")
+  def hold_ready_work
     at = "2026-10-05T10:00:00+02:00"
     store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:nodes, { intent_id: "1", id: "c", state: "claimed", claimed_by: "s-1", claimed_at: at, seen_at: at, updated_at: at })
       batch.put(:nodes, { intent_id: "1", id: "a", state: "open" })
     end
-    store_graphs.databases.fetch(:local).transaction { |batch| batch.add("CREATE TRIGGER refuse BEFORE INSERT ON chat_messages BEGIN SELECT RAISE(ABORT, 'write refused'); END") }
+  end
+
+  def refuse_chat_inserts = store_graphs.databases.fetch(:local).transaction { |batch| batch.add("CREATE TRIGGER refuse BEFORE INSERT ON chat_messages BEGIN SELECT RAISE(ABORT, 'write refused'); END") }
+
+  def test_a_failed_chat_insert_does_not_change_the_decision_of_the_stop_gate
+    seed_config(@plastic_home, "chat_sync: full\nrunner:\n  stop_hook: true\n")
+    hold_ready_work
+    refuse_chat_inserts
     result = stop(JSON.generate(last_assistant_message: "ready", stop_hook_active: false))
 
     assert_equal [0, true, true], [result.code, result.out.include?('"decision":"block"'), result.err.include?("write refused")]

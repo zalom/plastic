@@ -15,7 +15,7 @@ module Plastic
         text = event[:prompt]
         return say("the event carries no prompt") unless text
 
-        ChatRecord.new(home: scope.plastic_home, slug: scope.slug, session_id:, clock: environment.clock).call(role: "user", text:)
+        ChatRecord.new(scope:, session_id:, environment:).call(role: "user", text:)
         nil
       end
 
