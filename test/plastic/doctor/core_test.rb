@@ -134,24 +134,24 @@ class DoctorHomeFilesTest < Plastic::TestCase
     File.write(gitignore, "backups/\n")
     checks
 
-    assert_equal ["backups/", "*.db"], File.readlines(gitignore, chomp: true)
+    assert_equal ["backups/", "*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
   end
 
   def test_a_home_with_no_gitignore_gets_one_with_the_database_line
     checks
 
-    assert_equal ["*.db"], File.readlines(gitignore, chomp: true)
+    assert_equal ["*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
   end
 
   def test_the_database_line_is_added_once
     checks
     checks
 
-    assert_equal ["*.db"], File.readlines(gitignore, chomp: true)
+    assert_equal ["*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
   end
 
   def test_the_gitignore_check_says_what_it_added
-    assert_equal "ok, *.db added", check(".gitignore:").value
+    assert_equal "ok, *.db *.db-* added", check(".gitignore:").value
   end
 
   def test_a_local_db_beside_plastic_db_is_a_finding_that_names_the_file

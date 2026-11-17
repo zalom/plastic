@@ -63,6 +63,13 @@ class InstallerTest < Plastic::TestCase
     assert_includes out, "Hermes: already registered, not re-synced"
   end
 
+  def test_an_install_keeps_the_databases_and_their_side_files_out_of_version_control
+    make_agent_folders(claude_config)
+    run_install
+
+    assert_equal ["*.db", "*.db-*"], File.readlines(File.join(plastic, ".gitignore"), chomp: true)
+  end
+
   def test_a_flat_config_is_moved_into_sections
     make_agent_folders(claude_config)
     write(File.join(plastic, "config.yml"), "version: 3\nscreens: false\n")
