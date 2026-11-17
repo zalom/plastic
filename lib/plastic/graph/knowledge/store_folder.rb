@@ -16,7 +16,7 @@ module Plastic
         INDEX = "store/index.json"
         LEGACY_INDEX = "INDEX.md"
         IGNORE_FILE = ".gitignore"
-        IGNORED = %w[*.db *.db-journal].freeze
+        IGNORED = %w[*.db *.db-journal backups/].freeze
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 

@@ -32,14 +32,14 @@ module BackupHomes
 
   def backup_at(home, time, slug: "alpha", databases: nil)
     local_db = Plastic::Graph.open(home:, store: slug).databases.fetch(:local)
-    target = Plastic::Graph::Knowledge::Backup::Target.new(local_db, File.join(home, "stores", slug), slug, nil)
-    Plastic::Graph::Knowledge::Backup::Publisher.new(target, now: time, databases:).call
+    target = Plastic::Graph::Backup::Target.new(local_db, File.join(home, "stores", slug), slug, nil)
+    Plastic::Graph::Backup::Publisher.new(target, now: time, databases:).call
   end
 
   def backups_dir(home, slug = "alpha") = File.join(home, "stores", slug, "backups")
 
   def folder_names(home, slug = "alpha")
-    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).sort : []
+    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).grep(Plastic::Graph::Backup::FolderName::PATTERN).sort : []
   end
 
   def row_names(home, slug = "alpha")

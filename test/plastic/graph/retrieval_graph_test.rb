@@ -260,6 +260,8 @@ class RetrievalMigrationTest < Plastic::TestCase
     %w[knowledge_graph.db references.db].each { |file| FileUtils.rm_f(store_path(file)) }
     create_legacy_knowledge
     create_legacy_references
+    Plastic::Graph::SchemaRunner.new(home: @plastic_home).call
+    Plastic::Graph::Database::ConnectionPool.disconnect
   end
 
   def create_legacy_knowledge

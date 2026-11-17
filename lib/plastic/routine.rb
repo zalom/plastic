@@ -11,6 +11,7 @@ require_relative "routine_run"
 require_relative "routine/chain"
 require_relative "routine/traversal"
 require_relative "routine/preview"
+require_relative "routine/backup_first"
 require_relative "routine/printing"
 require_relative "routine/graph_report"
 require_relative "workflow"
@@ -31,7 +32,9 @@ module Plastic
   # edges and checks them; Routine::Traversal walks them.
   class Routine < CLI::Command
     extend Preview::Declaration
+    extend BackupFirst::Declaration
     include Preview
+    include BackupFirst
     include Printing
     include GraphReport
 
@@ -67,6 +70,7 @@ module Plastic
 
     def call
       self.class.verify
+      back_up_first
       previewing? ? preview : run_chain
     end
 

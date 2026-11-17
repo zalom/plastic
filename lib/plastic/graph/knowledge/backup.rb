@@ -2,6 +2,7 @@
 
 require "digest"
 require_relative "../record"
+require_relative "../backup"
 
 module Plastic
   module Graph
@@ -17,7 +18,7 @@ module Plastic
         def folder = name.split("/", 2).last
 
         def flag(home_dir)
-          folders = Backup::Folders.new(File.join(home_dir, "stores", store))
+          folders = Graph::Backup::Folders.new(File.join(home_dir, "stores", store))
           return "missing" unless folders.exist?(folder)
 
           (folders.digest(folder) == sha256) ? nil : "changed"
@@ -26,5 +27,3 @@ module Plastic
     end
   end
 end
-
-require_relative "backup/folders"

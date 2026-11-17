@@ -11,7 +11,7 @@ class WorkGraphTest < Plastic::TestCase
     intent = work.write_intent(title: "Alpha")
 
     assert_equal %w[1 Alpha], [intent.intent_id, intent.title]
-    assert_equal "*.db\n*.db-journal\n", folder.read(".gitignore")
+    assert_equal "*.db\n*.db-journal\nbackups/\n", folder.read(".gitignore")
   end
 
   def test_print_intent_prints_the_index_and_the_intent_files

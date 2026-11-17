@@ -5,13 +5,25 @@ require_relative "../../../../lib/plastic/workflows/code/update"
 
 class UpdatePlasticTest < Plastic::TestCase
   include InstallerHelper
+  include BackupHomes
+  include OldLayoutHomes
 
   def update(env: {}, **options)
     facts = { channel: nil }.merge(options)
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
+  def store_versions(home) = user_versions(home).reject { |path, _| path.end_with?("/local.db") }.values.uniq
+
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
+
+  def test_an_update_brings_an_old_layout_home_to_the_newest_layout_after_a_backup_of_each_store
+    home = old_layout(fresh_home)
+    run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
+
+    assert_equal [Plastic::Graph::SchemaSequences.newest(:store)], store_versions(home)
+    assert_equal [1, 1], %w[alpha beta].map { |slug| folder_names(home, slug).size }
+  end
 
   def test_a_newer_package_is_synced_into_the_home
     installed("0.0.1")

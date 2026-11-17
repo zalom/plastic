@@ -16,6 +16,8 @@ module Plastic
         changes(references: "The files kept in the store folder are read into the references database")
         extend CLI::SyncOptions::Up
 
+        backs_up_first
+
         option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
 
         workflow :code_preview_sync do

@@ -2,7 +2,7 @@
 
 require_relative "../backup"
 require_relative "../../../code_workflow"
-require_relative "../../../graph/knowledge/backup/older_than"
+require_relative "../../../graph/backup/older_than"
 
 module Plastic
   module Workflows
@@ -22,7 +22,7 @@ module Plastic
             return purger.failed if context.failed
 
             text = context.older_than
-            cutoff = text && Plastic::Graph::Knowledge::Backup::OlderThan.parse(text)
+            cutoff = text && Plastic::Graph::Backup::OlderThan.parse(text)
             (purger.names(older_than: cutoff) | purger.orphans(older_than: cutoff)).sort
           end
 

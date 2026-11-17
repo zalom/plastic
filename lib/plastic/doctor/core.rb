@@ -6,6 +6,7 @@ require_relative "version_record"
 require_relative "database_check"
 require_relative "retrieval_marker"
 require_relative "instruction_line"
+require_relative "store_backups"
 require_relative "../workflows/installation_health"
 
 module Plastic
@@ -30,17 +31,18 @@ module Plastic
           .judged(InstructionLine.new(file, PLASTIC_LINE).problem)
       end
 
-      def initialize(scope, running:, loader: SQLITE)
+      def initialize(scope, running:, loader: SQLITE, now: Time.now)
         @scope = scope
         @running = running
         @loader = loader
+        @now = now
       end
 
-      def checks = [version, *release, sqlite, machine_database, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }]
+      def checks = [version, *release, sqlite, machine_database, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups]
 
       private
 
-      attr_reader :scope, :running, :loader
+      attr_reader :scope, :running, :loader, :now
 
       def home = scope.plastic_home
 
@@ -69,6 +71,8 @@ module Plastic
         path = File.join(home, "PLASTIC.md")
         Check.new("PLASTIC.md:", path, "plastic install --reinstall").judged(File.file?(path) ? nil : "#{path} is missing")
       end
+
+      def backups = [CLI::Scope::GLOBAL, *scope.projects.keys].map { |slug| StoreBackups.new(File.join(home, "stores", slug), slug, now:).check }
 
       def project(slug, path) = [store(slug, path), Core.agents(slug, path)]
 

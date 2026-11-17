@@ -11,6 +11,7 @@ module Plastic
         writes :work
         prints :intent
         reads :knowledge
+        backs_up_first
 
         workflow :code_prepare_ending do
           on :unverified, next: :agent_check_merge

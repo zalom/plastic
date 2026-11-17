@@ -6,7 +6,7 @@ class CommandTest < Plastic::TestCase
   # A command that prints the title of the intent it names, or stops the
   # way its --stop switch says.
   class Title < Plastic::CLI::Command
-    STOPS = { "refuse" => Refusal, "fail" => Failure }.freeze
+    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
 
     argument :intent_id, label: "ID", text: "the intent"
     option :stop, switch: "--stop KIND", text: "stop with this kind"
@@ -46,10 +46,33 @@ class CommandTest < Plastic::TestCase
     assert_includes result.err, "plastic: refused, stopped"
   end
 
+  def test_a_store_ahead_of_the_code_and_a_store_behind_it_are_both_out_of_step_and_stop_with_exit_three
+    open_intent("Alpha")
+    codes = %w[behind ahead].map { |kind| run_tool("1", "--stop", kind).code }
+
+    assert_equal [[3, 3], [Plastic::Graph::OutOfStep] * 2], [codes, [Plastic::Graph::Behind.superclass, Plastic::Graph::Ahead.superclass]]
+  end
+
   def test_a_failure_exits_one_with_its_line
     open_intent("Alpha")
 
     assert_equal ["plastic: stopped\n", 1], run_tool("1", "--stop", "fail").to_h.values_at(:err, :code)
+  end
+
+  def test_a_database_behind_the_code_is_refused_with_exit_three
+    open_intent("Alpha")
+    result = run_tool("1", "--stop", "behind")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "plastic: refused, stopped"
+  end
+
+  def test_a_store_that_does_not_exist_fails_with_the_project_command_to_make_it
+    open_intent("Alpha")
+    result = run_tool("1", "--stop", "missing")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "does not exist"
   end
 
   def test_help_prints_the_usage_and_every_switch

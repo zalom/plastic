@@ -2,6 +2,7 @@
 
 require_relative "missing_store"
 require_relative "schema"
+require_relative "schema/gate"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
@@ -37,7 +38,7 @@ module Plastic
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
-        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
+        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
       end
 
       # The error to raise for one that came from the file `file`, with the file named.
@@ -53,10 +54,12 @@ module Plastic
 
       attr_reader :path, :written
 
-      def initialize(path, schema, origin: nil)
+      # `track` names the migration sequence and the schema key of a database that is stamped; one without it is built from its schema alone.
+      def initialize(path, schema, origin: nil, track: nil)
         @path = path
         @schema = schema
         @origin = origin
+        @track = track
         @written = Hash.new(0)
       end
 
@@ -111,7 +114,25 @@ module Plastic
       # What the report says of this database: what this call wrote.
       def phrases = [written_phrase].compact
 
+      # Brings the file to the newest version of its sequence. Only the install and the update call this.
+      def migrate(sequences)
+        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key)) }
+        @schema = nil
+      end
+
+      # The stamped version of the file, or nil when it does not exist.
+      def version = File.exist?(path) ? unfenced { open_file.get_first_value("PRAGMA user_version").to_i } : nil
+
       private
+
+      def open_file = ConnectionPool.for(path)
+
+      # Runs the block on the file itself, without the version check, and names the file in an error.
+      def unfenced
+        yield
+      rescue Plastic::Invalid, SQLite3::Exception, SystemCallError => error
+        raise Database.relabeled(file, error)
+      end
 
       def commit(batch) = connected { |connection| connection.atomically { write(connection, batch) } }
 
@@ -139,13 +160,18 @@ module Plastic
         raise Database.relabeled(file, error)
       end
 
-      # The connection, with the schema made on the first call, so a new
-      # folder needs no separate setup step.
+      # The connection, checked on the first call: a new file gets its schema, a file behind its sequence is refused.
       def connection
-        ConnectionPool.for(path).tap do |connection|
-          Schema.prepare(connection, @schema) if @schema
+        open_file.tap do |connection|
+          settle(connection) if @schema
           @schema = nil
         end
+      end
+
+      def settle(connection)
+        return Schema.prepare(connection, @schema) unless @track
+
+        SchemaGate.new(connection, **@track, file:).call
       end
     end
   end

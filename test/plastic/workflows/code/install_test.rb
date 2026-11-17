@@ -5,6 +5,8 @@ require_relative "../../../../lib/plastic/workflows/code/install"
 
 class InstallPlasticTest < Plastic::TestCase
   include InstallerHelper
+  include BackupHomes
+  include OldLayoutHomes
 
   def install(**choices)
     facts = { reinstall: false, force: false }.merge(choices)
@@ -22,6 +24,17 @@ class InstallPlasticTest < Plastic::TestCase
     assert_equal "#{package_version}\n", File.read(File.join(@plastic_home, "VERSION"))
     refute_path_exists manifest
   end
+
+  def test_a_reinstall_over_an_old_layout_home_migrates_the_store_it_backed_up_and_completes_with_the_failed_one_behind
+    home = old_layout(fresh_home)
+    File.write(store_file(home, "work_graph"), "not a database")
+    outcome, context = run_workflow(Plastic::Workflows::Code::Install, reinstall: true, force: false, harness: scoped_harness(env: env_for(home)))
+
+    assert_equal [:done, Plastic::Graph::SchemaSequences.newest(:store), 0], [outcome, *versions_of(home)]
+    assert_match(/\A   migrate: alpha stays behind because it could not be migrated \(.*work_graph\.db.*\); fix the cause and run plastic update\z/, context.printed.grep(/migrate:/).first)
+  end
+
+  def versions_of(home) = [store_file(home, "work_graph", "beta"), store_file(home, "knowledge_graph")].map { |path| user_versions(home).fetch(path) }
 
   def test_an_installed_home_is_refused_without_reinstall
     install

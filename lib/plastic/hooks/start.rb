@@ -3,6 +3,7 @@
 require_relative "../hook"
 require_relative "../graph"
 require_relative "../doctor"
+require_relative "../graph/backup/due"
 require_relative "../harnesses/detection"
 require_relative "recap"
 require_relative "doctor_line"
@@ -15,7 +16,7 @@ module Plastic
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no routine run.
     class Start < Hook
-      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept")
+      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
 
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
 
@@ -25,11 +26,18 @@ module Plastic
       end
 
       def respond(event)
+        back_up_stores
         doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)
         [*recap(event), doctor.line(event[:source])].compact.join("\n")
       end
 
       private
+
+      def back_up_stores
+        [scope.slug, CLI::Scope::GLOBAL].uniq.each do |slug|
+          Graph::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
+        end
+      end
 
       def harness
         @harness ||= Harnesses::Detection.new(event:, env: environment.env, processes: environment.processes, session_id:).harness

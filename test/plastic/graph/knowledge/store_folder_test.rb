@@ -60,7 +60,7 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
     @folder.write(".gitignore", "notes/\n*.db\n")
     2.times { @folder.ignore_databases }
 
-    assert_equal "notes/\n*.db\n*.db-journal\n", @folder.read(".gitignore")
+    assert_equal "notes/\n*.db\n*.db-journal\nbackups/\n", @folder.read(".gitignore")
   end
 
   def test_content_lock_files_are_kept_when_documents_are_read
@@ -73,7 +73,7 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   def test_a_new_ignore_file_lists_both_patterns
     @folder.ignore_databases
 
-    assert_equal "*.db\n*.db-journal\n", @folder.read(".gitignore")
+    assert_equal "*.db\n*.db-journal\nbackups/\n", @folder.read(".gitignore")
   end
 
   def test_the_context_file_of_an_intent_folder_is_a_generated_view

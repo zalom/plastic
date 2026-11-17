@@ -6,7 +6,7 @@ class LocalTest < Plastic::TestCase
   def machine = File.join(@home, "machine")
 
   def home_db_from_before
-    Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local)).transaction do |batch|
+    Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local), track: { sequence: :home, key: :local }).transaction do |batch|
       batch.insert(:routine_runs, { store: "s", tool: "t", subject: "a" })
     end
     Plastic::Graph::Database::ConnectionPool.release(machine)

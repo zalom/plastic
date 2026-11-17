@@ -1,0 +1,51 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+
+class SchemaRunnerHomeTest < Plastic::TestCase
+  include BackupHomes
+  include OldLayoutHomes
+
+  Runner = Plastic::Graph::SchemaRunner
+  NOW = Time.utc(2026, 11, 16, 12, 0, 0)
+
+  def copies(home) = Dir.glob(File.join(home, "backups", "local-*.db"))
+
+  def test_an_old_layout_home_leaves_one_checked_copy_of_local_db_at_version_zero
+    home = old_layout(fresh_home)
+    Runner.new(home:, now: NOW).call
+
+    assert_equal [File.join(home, "backups", "local-20261116120000.db")], copies(home)
+    assert_equal [0, "ok"], [read_value(copies(home).first, "PRAGMA user_version"), read_value(copies(home).first, "PRAGMA quick_check")]
+  end
+
+  def test_a_home_that_is_current_leaves_no_copy
+    home = fresh_home
+    Runner.new(home:, now: NOW).call
+
+    assert_empty copies(home)
+  end
+
+  def test_a_home_whose_migration_fails_gives_its_reason
+    home = old_layout(fresh_home)
+    failing = Plastic::Graph::SchemaSequences::Migration.new(1, ->(_connection, _key) { raise SQLite3::SQLException, "no such table: gone" }, {})
+    report = Runner.new(home:, now: NOW, sequences: { home: [failing], store: [] }).call
+
+    assert_equal "it could not be migrated (local.db: no such table: gone)", report.failed.fetch("home")
+  end
+
+  def test_a_home_whose_copy_fails_gives_its_reason
+    home = old_layout(fresh_home)
+    File.write(File.join(home, "backups"), "a file where the folder should be")
+
+    assert_match(/\Athe copy of its database failed \(.+\)\z/, Runner.new(home:, now: NOW).call.failed.fetch("home"))
+  end
+
+  def test_a_home_whose_copy_cannot_be_made_stays_behind_and_is_reported
+    home = old_layout(fresh_home)
+    File.write(File.join(home, "backups"), "a file where the folder should be")
+    report = Runner.new(home:, now: NOW).call
+
+    assert_equal [0, ["home"]], [user_versions(home).fetch(File.join(home, "local.db")), report.failed.keys]
+  end
+end

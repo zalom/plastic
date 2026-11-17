@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../routine"
-require_relative "../../graph/knowledge/backup/older_than"
+require_relative "../../graph/backup/older_than"
 
 module Plastic
   module Commands
@@ -16,6 +16,7 @@ module Plastic
         writes :work, :knowledge, :references
         prints :index
         previews
+        backs_up_first
 
         workflow :code_archive_intent, next: :noop
 
@@ -35,8 +36,8 @@ module Plastic
         end
 
         def read_date
-          Plastic::Graph::Knowledge::Backup::OlderThan.parse(parsed[:older_than]) if parsed[:older_than]
-        rescue Plastic::Graph::Knowledge::Backup::OlderThan::Unreadable => error
+          Plastic::Graph::Backup::OlderThan.parse(parsed[:older_than]) if parsed[:older_than]
+        rescue Plastic::Graph::Backup::OlderThan::Unreadable => error
           raise CLI::Command::Usage, error.message
         end
       end
