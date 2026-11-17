@@ -126,8 +126,8 @@
 <rect x="290" y="431" width="254" height="83" rx="6" class="lane-code"/>
 <text x="302" y="451" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="302" y="471" class="t" text-anchor="start">Arms delivery on the intent: it</text>
-<text x="302" y="488" class="t" text-anchor="start">goes in progress and takes the</text>
-<text x="302" y="505" class="t" text-anchor="start">lock.</text>
+<text x="302" y="488" class="t" text-anchor="start">goes in progress and names its</text>
+<text x="302" y="505" class="t" text-anchor="start">worktree.</text>
 <rect x="588" y="431" width="222" height="100" rx="6" class="stop-refusal"/>
 <text x="600" y="451" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
 <text x="600" y="471" class="t" text-anchor="start">A check fails or the step</text>

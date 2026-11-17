@@ -85,7 +85,7 @@
 <text x="24" y="34" class="tb" text-anchor="start">One call of plastic intent abandon: its workflows and its endings</text>
 <rect x="290" y="56" width="254" height="83" rx="6" class="lane-code"/>
 <text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="302" y="96" class="t" text-anchor="start">Reads the intent and its lock</text>
+<text x="302" y="96" class="t" text-anchor="start">Reads the intent and its claims</text>
 <text x="302" y="113" class="t" text-anchor="start">and checks that it can be</text>
 <text x="302" y="130" class="t" text-anchor="start">abandoned.</text>
 <rect x="588" y="56" width="222" height="100" rx="6" class="stop-refusal"/>
@@ -124,7 +124,7 @@
 <rect x="423" y="238" width="254" height="66" rx="6" class="lane-code"/>
 <text x="435" y="258" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="435" y="278" class="t" text-anchor="start">Marks the intent abandoned and</text>
-<text x="435" y="295" class="t" text-anchor="start">releases its lock.</text>
+<text x="435" y="295" class="t" text-anchor="start">ends its run of work.</text>
 <path d="M 550 304 L 550 326 L 550 326 L 550 334" class="wire"/>
 <text x="550" y="348" class="k" text-anchor="middle">intent &lt;intent id&gt; is abandoned</text>
 <path d="M 550 358 L 550 372" class="wire"/>

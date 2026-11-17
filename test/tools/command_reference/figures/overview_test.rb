@@ -69,7 +69,7 @@ class CommandReferenceOverviewFigureTest < Minitest::Test
   end
 
   def test_the_workflows_of_intent_end_hold_the_summary_of_the_last_workflow
-    assert_includes drawn_words(page("intent end")), "Closes the intent and releases its lock."
+    assert_includes drawn_words(page("intent end")), "Closes the intent and ends its run of work."
   end
 
   def test_the_workflows_of_intent_end_hold_the_text_of_a_branch

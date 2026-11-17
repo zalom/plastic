@@ -27,7 +27,7 @@ Everything it keeps lives under the Plastic home.
 | `~/.local/share/plastic/` | The install: `active/bin/plastic`, the program; `releases/VERSION/`, one folder for each release; and `download/`, the files `plastic update` fetched. Each release runs on the Ruby that was on the `PATH` at install. `~/.local/bin/plastic` links to the program. |
 | `exe/plastic` | In the home, the launcher the non-release hooks run. |
 | `PLASTIC.md` | The always-on instructions that the harness imports. |
-| `plastic.db` | What belongs to one machine: `command_runs`, `sessions`, `locks`, the `settings` rows and the hash of each file printed from them. |
+| `plastic.db` | What belongs to one machine: `command_runs`, `sessions`, the `settings` rows and the hash of each file printed from them. |
 | `config.yml`, `projects.yml` | The settings, printed from the `settings` rows, and the list of projects from slug to repository. |
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
@@ -88,7 +88,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
-| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, locks, intents, nodes and edges. |
+| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, intents, nodes, runs and edges. |
 | `Graph::RetrievalGraph` | `lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
 | `Graph::Printer` | `lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Knowledge::Sync` | `lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
@@ -128,7 +128,7 @@ it reads every database and writes nothing. The commands below reach them throug
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
-![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
+![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
 
 A node is one unit of work. It moves through `open`, `claimed`, `done`, `failed`,
 `needs_info` and `impeded`, or leaves the graph as `removed`. `Graph::Work::Node::Writer` owns
@@ -162,18 +162,17 @@ text that Plastic prints in the planning hand-off.
 | One spec | `plastic intent rule`, `plastic intent revise` | A ruling, or a new revision of the What and the Why. |
 | Go-ahead | `plastic intent approve` | The approval row. `plastic auto` refuses without it. |
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
-| Work the nodes | `plastic auto`, `plastic node claim`, `plastic node done` | The delivery lock, then each node's findings. |
+| Work the nodes | `plastic auto`, `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
 | Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
 | Close | `plastic intent end` | The completion row. |
 
 ![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
 
-`plastic auto ID` takes the delivery lock and sets the intent in progress. It refuses with exit 3 for
-an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
-row of `plastic.db`, keyed by the store and the intent, and it names the session. A lock is live
-until its session ends, while it was renewed within 1800 seconds, or while its session holds a
-node of the intent claimed within 7200 seconds. `hook stop` renews it. Plastic computes the path
+`plastic auto ID` sets the intent in progress and prints its worktree. It refuses with exit 3 for
+an open decision and a missing go-ahead. It takes no lock. A node claim names the session that
+holds the node and lapses after 900 seconds without a renewal; each command of the session and
+`hook stop` renew it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
@@ -182,7 +181,7 @@ every criterion key of `spec.md` is covered by a done node, the latest verdict i
 is newer than the last node change, and `outcome.md` has a `## Verification` section with a
 `Merged:` line and an `Architecture map:` line. When review by pull request is on (the default is off), the section
 also has a `Pull request:` line, and an `Approved:` line once the owner approves. Closing
-releases the lock and hands the agent the wind-down steps in `Workflows::Agent::Shared::WindDownIntent`.
+hands the agent the wind-down steps in `Workflows::Agent::Shared::WindDownIntent`.
 `plastic intent abandon ID` hands the agent the revert steps in `Workflows::Agent::Intent::Abandon`, then
 closes the intent as abandoned, with the disposition `superseded` when another intent supersedes it, or `cancelled`.
 
@@ -253,7 +252,7 @@ order, and later hooks read it from the session row.
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last savepoint lines, and the note. |
-| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its live locks, and runs the stop gate with the settings of the harness the session row names. |
+| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node claims, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |
 | Message display (Claude Code) | The screens launcher | Paints the screens when the setting `screens` (set with `plastic config set KEY VALUE`) turns them on. |
@@ -316,7 +315,7 @@ is never stored: it is derived on each read as done, dropped, in flight, blocked
 | `plastic backup --store SLUG` | Copies the three databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic backup list --store SLUG` | Lists the backups of a store. |
 | `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
-| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a delivery lock is fresh. |
+| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live. |
 
 A restore never syncs by itself, because a sync can undo it. It ends with
 `next: plastic sync down --project STORE`, which writes the files from the restored rows.

@@ -87,7 +87,7 @@
 <circle cx="44" cy="83" r="8" class="badge"/>
 <text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
 <text x="64" y="86" class="tag tag-muted" text-anchor="start">Hook</text>
-<text x="64" y="106" class="t" text-anchor="start">Stop: stamp the turn, renew locks, run the stop</text>
+<text x="64" y="106" class="t" text-anchor="start">Stop: stamp the turn, renew claims, run the stop</text>
 <text x="64" y="123" class="t" text-anchor="start">gate.</text>
 <path d="M 424 76 L 438 76 L 438 87 L 480 87" class="wire-end"/>
 <path d="M 472 82 L 480 87 L 472 92 Z" class="head"/>

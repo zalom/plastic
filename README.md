@@ -41,7 +41,7 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | Keep the reasons | Appends each ruling to the Insights section of the intent file |
 | Plan the work | Holds the plan as a graph of nodes, and names the nodes ready to claim |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
-| Hand work to agents | Takes the delivery lock, prints the brief an agent starts from, and records each node's report |
+| Hand work to agents | Prints the brief an agent starts from, and records each node's report |
 | Close the work | Closes a delivered intent once its verdict, nodes and outcome allow it, or prints what is missing |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store: SQLite databases, printed to plain Markdown |
@@ -219,9 +219,8 @@ write, never touches the original, and ends with the same call without `--dry-ru
 
 ### Auto teams
 ```bash
-plastic auto 12                        # Take the delivery lock and print the code worktree
+plastic auto 12                        # Set the intent in progress and print the code worktree
 plastic auto my-roadmap                # Deliver the next item of a roadmap
-plastic intent lock status 12          # Show who holds the lock
 plastic intent brief 12                # Print the brief an agent starts from
 ```
 

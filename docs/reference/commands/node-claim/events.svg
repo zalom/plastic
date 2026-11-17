@@ -123,8 +123,8 @@
 <path d="M 472 321 L 480 326 L 472 331 Z" class="head"/>
 <rect x="480" y="295" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="313" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="331" class="t" text-anchor="start">The node was claimed three times and the owner</text>
-<text x="492" y="347" class="t" text-anchor="start">decides.</text>
+<text x="492" y="331" class="t" text-anchor="start">The node ran three times and the owner</text>
+<text x="492" y="347" class="t" text-anchor="start">decides, or another session holds it.</text>
 <path d="M 424 321 L 432 321 L 432 396 L 480 396" class="wire-failure"/>
 <path d="M 472 391 L 480 396 L 472 401 Z" class="head"/>
 <rect x="480" y="365" width="330" height="62" rx="6" class="stop-failure"/>

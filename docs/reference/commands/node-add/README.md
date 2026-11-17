@@ -1,9 +1,9 @@
 # plastic node add
 
-Add a node to an intent's work graph.
+Add a node to an intent's work graph, of kind work, orchestrator or retrieval.
 
 ```sh
-plastic node add ID TITLE --criterion KEY [--input PATH]
+plastic node add ID TITLE --criterion KEY [--kind KIND] [--input PATH]
 ```
 
 | Argument or option | What it gives | Default |
@@ -11,6 +11,7 @@ plastic node add ID TITLE --criterion KEY [--input PATH]
 | `ID` | the intent | |
 | `TITLE` | what the node is for | |
 | `--criterion KEY` | the key of the spec done criterion this node serves |  |
+| `--kind KIND` | orchestrator, work or retrieval; work when left out |  |
 | `--input PATH` | a file the node reads |  |
 
 ## The events of one call, step by step

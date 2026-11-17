@@ -18,12 +18,12 @@ every live node done, every criterion covered, an accepted verdict at or after t
 node change, and `Merged:` and `Architecture map:` bullets under `## Verification` in
 outcome.md. With `review.pull_request` set to `required`, it also needs a
 `Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
-(exit 3), and a live lock of another session is a refusal (exit 3). Anything else that is
+(exit 3), and a live node claim of another session is a refusal (exit 3). Anything else that is
 missing comes back as a handoff with exit 1, and nothing closes. The close does not reindex
 QMD, and Plastic never merges or runs version control.
 
 The completion row holds the judge `verdict` and the evidence built from the rows: each
-criterion key with its done nodes and their findings. The close releases the delivery lock,
+criterion key with its done nodes and their findings. The close,
 prints the intent files, and hands the agent the steps that stop the processes and agents the
 intent started. `plastic intent abandon ID` closes an intent that will not ship, once
 outcome.md holds a `Reverted:` bullet; it writes no completion row.

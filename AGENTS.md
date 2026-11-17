@@ -75,15 +75,14 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 `alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and releases on the `beta` channel on a `-beta.N` version. `main` is everyday use and releases on the `latest` channel on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `bin/release-check` enforces the branch-to-suffix pairing.
 
-### Worktrees and the single-owner lock
-- Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
-  time. Ownership is a session-keyed lock row in the machine's `plastic.db`; liveness is a
-  lease (the stop hook renews the row at each turn end; a lock stays live while it was renewed
-  within the TTL or its session holds a node of the intent claimed within the node limit, and
-  it expires when its session ends, and lives again when that session resumes under the same id); the lock row is the truth of ownership. If you find a live lock owned
-  by another session, back off. `plastic auto ID` refuses a foreign live lock with exit 3;
-  inspect it with `plastic intent lock status ID`. An expired lock is taken over by the next
-  `plastic auto ID`, and `plastic intent end` releases the lock.
+### Worktrees and node claims
+- One session works a node at a time. A node claim, `plastic node claim ID NODE`, names the
+  session that holds it and opens one run of the node. The session renews its claims at every
+  `plastic` command and at the stop hook, and a claim lapses after 15 minutes without a
+  renewal. If a node is claimed by another session, back off. A session that finds a lapsed
+  claim takes it with `plastic node claim`, which closes the old run as `lapsed`. The old
+  holder's next node command exits 3 and changes nothing. `plastic graph show ID` names the
+  holder of each claimed node.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic runs no version control command, so it does not create this worktree:
   at arm time (`plastic auto ID`, the only auto command), it resolves the repo from

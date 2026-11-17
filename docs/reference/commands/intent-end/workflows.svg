@@ -148,8 +148,8 @@
 <path d="M 684 230 L 689 238 L 694 230 Z" class="head"/>
 <rect x="562" y="238" width="254" height="66" rx="6" class="lane-code"/>
 <text x="574" y="258" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="574" y="278" class="t" text-anchor="start">Closes the intent and releases</text>
-<text x="574" y="295" class="t" text-anchor="start">its lock.</text>
+<text x="574" y="278" class="t" text-anchor="start">Closes the intent and ends its</text>
+<text x="574" y="295" class="t" text-anchor="start">run of work.</text>
 <path d="M 689 304 L 689 326 L 689 326 L 689 334" class="wire"/>
 <text x="689" y="348" class="k" text-anchor="middle">intent &lt;intent id&gt; is closed</text>
 <path d="M 689 358 L 689 372" class="wire"/>

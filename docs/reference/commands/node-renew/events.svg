@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 833" width="834" height="833" role="img" xml:space="preserve">
-<title>The workflows of one call of plastic intent lock status, in words</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 358" width="834" height="358" role="img" xml:space="preserve">
+<title>The events of one call of plastic node renew, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -82,70 +82,41 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="24" y="34" class="tb" text-anchor="start">One call of plastic intent lock status: its workflows and its endings</text>
-<rect x="290" y="56" width="254" height="83" rx="6" class="lane-code"/>
-<text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="302" y="96" class="t" text-anchor="start">Prints the lock row of the</text>
-<text x="302" y="113" class="t" text-anchor="start">intent and whether it is still</text>
-<text x="302" y="130" class="t" text-anchor="start">live.</text>
-<rect x="24" y="56" width="222" height="66" rx="6" class="stop-end"/>
-<text x="36" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="96" class="t" text-anchor="start">Intent &lt;intent id&gt; is</text>
-<text x="36" y="113" class="t" text-anchor="start">&lt;status&gt;.</text>
-<rect x="24" y="130" width="222" height="100" rx="6" class="stop-end"/>
-<text x="36" y="150" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="170" class="t" text-anchor="start">Intent &lt;intent id&gt; holds no</text>
-<text x="36" y="187" class="t" text-anchor="start">lock.</text>
-<text x="36" y="204" class="t" text-anchor="start">next: plastic auto &lt;intent</text>
-<text x="36" y="221" class="t" text-anchor="start">id&gt;</text>
-<rect x="24" y="238" width="222" height="117" rx="6" class="stop-end"/>
-<text x="36" y="258" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="278" class="t" text-anchor="start">The lock of intent &lt;intent</text>
-<text x="36" y="295" class="t" text-anchor="start">id&gt; expired, and plastic</text>
-<text x="36" y="312" class="t" text-anchor="start">auto takes it over.</text>
-<text x="36" y="329" class="t" text-anchor="start">next: plastic auto &lt;intent</text>
-<text x="36" y="346" class="t" text-anchor="start">id&gt;</text>
-<rect x="24" y="363" width="222" height="100" rx="6" class="stop-end"/>
-<text x="36" y="383" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="403" class="t" text-anchor="start">A live session holds intent</text>
-<text x="36" y="420" class="t" text-anchor="start">&lt;intent id&gt;.</text>
-<text x="36" y="437" class="t" text-anchor="start">next: plastic intent brief</text>
-<text x="36" y="454" class="t" text-anchor="start">&lt;intent id&gt;</text>
-<path d="M 290 97 L 268 97" class="wire-end"/>
-<path d="M 268 89 L 268 413" class="wire-end"/>
-<path d="M 268 89 L 246 89" class="wire-end"/>
-<path d="M 254 84 L 246 89 L 254 94 Z" class="head"/>
-<path d="M 268 180 L 246 180" class="wire-end"/>
-<path d="M 254 175 L 246 180 L 254 185 Z" class="head"/>
-<path d="M 268 296 L 246 296" class="wire-end"/>
-<path d="M 254 291 L 246 296 L 254 301 Z" class="head"/>
-<path d="M 268 413 L 246 413" class="wire-end"/>
-<path d="M 254 408 L 246 413 L 254 418 Z" class="head"/>
-<rect x="588" y="56" width="222" height="66" rx="6" class="stop-failure"/>
-<text x="600" y="76" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="600" y="96" class="t" text-anchor="start">A check fails. The events</text>
-<text x="600" y="113" class="t" text-anchor="start">below show each check.</text>
-<path d="M 544 97 L 588 97" class="wire-failure"/>
-<path d="M 580 92 L 588 97 L 580 102 Z" class="head"/>
-<path d="M 417 139 L 417 493 L 417 493 L 417 501" class="wire"/>
-<text x="417" y="515" class="k" text-anchor="middle">the agent takes the next step of</text>
-<text x="417" y="529" class="k" text-anchor="middle">the lock</text>
-<path d="M 417 539 L 417 553" class="wire"/>
-<path d="M 412 545 L 417 553 L 422 545 Z" class="head"/>
-<rect x="290" y="553" width="254" height="66" rx="6" class="lane-agent"/>
-<text x="302" y="573" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="302" y="593" class="t" text-anchor="start">Hands the agent the next step of</text>
-<text x="302" y="610" class="t" text-anchor="start">the delivery.</text>
-<path d="M 417 619 L 417 645" class="wire"/>
-<path d="M 412 637 L 417 645 L 422 637 Z" class="head"/>
-<rect x="290" y="645" width="254" height="100" rx="6" class="stop-end"/>
-<text x="302" y="665" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="685" class="t" text-anchor="start">The delivery has a next step</text>
-<text x="302" y="702" class="t" text-anchor="start">for the agent, and the reason</text>
-<text x="302" y="719" class="t" text-anchor="start">names the state of the intent</text>
-<text x="302" y="736" class="t" text-anchor="start">that chose it.</text>
-<rect x="290" y="753" width="254" height="66" rx="6" class="stop-end"/>
-<text x="302" y="773" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="793" class="t" text-anchor="start">The delivery instruction has</text>
-<text x="302" y="810" class="t" text-anchor="start">been handled.</text>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic node renew, from top to bottom</text>
+<rect x="24" y="64" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="83" r="8" class="badge"/>
+<text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
+<text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="106" class="t" text-anchor="start">Find the node.</text>
+<path d="M 424 87 L 480 87" class="wire-refusal"/>
+<path d="M 472 82 L 480 87 L 472 92 Z" class="head"/>
+<rect x="480" y="64" width="330" height="46" rx="6" class="stop-refusal"/>
+<text x="492" y="82" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="100" class="t" text-anchor="start">The node is not claimed by this session.</text>
+<path d="M 64 115 L 64 141" class="wire"/>
+<path d="M 59 133 L 64 141 L 69 133 Z" class="head"/>
+<rect x="24" y="141" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="160" r="8" class="badge"/>
+<text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
+<text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="183" class="t" text-anchor="start">Renew the claim.</text>
+<path d="M 64 192 L 64 218" class="wire"/>
+<path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
+<rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="237" r="8" class="badge"/>
+<text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="260" class="t" text-anchor="start">Say what was renewed.</text>
+<path d="M 424 249 L 480 249" class="wire-end"/>
+<path d="M 472 244 L 480 249 L 472 254 Z" class="head"/>
+<rect x="480" y="218" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="236" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="254" class="t" text-anchor="start">Node &lt;id&gt; is claimed by this session.</text>
+<text x="492" y="270" class="t" text-anchor="start">next: plastic node done &lt;intent id&gt; &lt;id&gt; TEXT</text>
+<rect x="24" y="310" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="322" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="310" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="160" y="322" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="278" y="310" width="14" height="14" rx="3" class="stop-end"/>
+<text x="298" y="322" class="k" text-anchor="start">Ends</text>
 </svg>

@@ -69,7 +69,7 @@ class CommandReferenceChangesTest < Minitest::Test
   end
 
   def test_the_claim_of_a_node_names_its_move_to_needing_information
-    assert_includes page("node claim").changes.map(&:text), "A node claimed three times before moves to needing information, with the question for the owner"
+    assert_includes page("node claim").changes.map(&:text), "A node with three runs moves to needing information, with the question for the owner"
   end
 
   def test_the_rows_of_intent_end_hold_the_change_the_lock_and_the_files

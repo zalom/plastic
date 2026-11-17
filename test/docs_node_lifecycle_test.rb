@@ -34,8 +34,8 @@ class DocsNodeLifecycleTest < Minitest::Test
     %w[add claim done fail ask impede resolve release remove].each { |move| assert_includes body, "plastic node #{move}" }
   end
 
-  def test_the_page_states_how_a_claim_keeps_the_lock_live
-    ["1800 seconds", "7200 seconds", "plastic intent lock status"].each { |term| assert_includes body, term }
+  def test_the_page_states_how_a_claim_stays_live
+    ["900 seconds", "plastic node renew", "lapsed"].each { |term| assert_includes body, term }
   end
 
   def test_the_docs_index_links_the_page
