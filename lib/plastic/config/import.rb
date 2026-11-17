@@ -2,6 +2,7 @@
 
 require "json"
 require "yaml"
+require_relative "import/sync_types_rule"
 
 module Plastic
   class Config
@@ -23,7 +24,7 @@ module Plastic
 
       def rows = scopes.flat_map { |scope, settings| scope_rows(scope, settings) }
 
-      def scope_rows(scope, settings) = flat(settings).map { |key, value| { scope:, key:, value: JSON.generate(value) } }
+      def scope_rows(scope, settings) = flat(SyncTypesRule.new(settings).call).map { |key, value| { scope:, key:, value: JSON.generate(value) } }
 
       def document = File.file?(@path) ? YAML.safe_load_file(@path, aliases: true) : nil
 

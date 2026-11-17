@@ -5,6 +5,7 @@ require_relative "archived_intents"
 require_relative "readability"
 require_relative "second_home"
 require_relative "old_savepoints"
+require_relative "../new_types"
 
 module Plastic
   module Graph
@@ -46,7 +47,7 @@ module Plastic
           # What only a sync up of a store that is not legacy reads: the archived intents, the second home and the files no read can take.
           def reads(entries, folders)
             second_home = SecondHome.new(@folder, @retrieval, folders)
-            { archived: ArchivedIntents.new(@folder, @retrieval).missing.size, second_home:,
+            { archived: ArchivedIntents.new(@folder, @retrieval).missing.size, second_home:, new_types: NewTypes.new(@folder).call,
               unreadable_files: unreadable_entries(entries).merge(second_home.problems) }
           end
 

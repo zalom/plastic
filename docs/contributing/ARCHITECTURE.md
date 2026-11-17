@@ -277,17 +277,20 @@ A plain sync with a conflict writes nothing, exits 3 and lists every conflict. W
 file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
 `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
 
-A sync reads only the kinds of file that `Graph::Knowledge::SyncSelection` selects. Other
-files stay on disk and get no rows.
+A sync reads only the files that `Graph::Knowledge::SyncSelection` selects. Other files stay on
+disk and get no rows.
 
-| Kind | Files of an intent folder | Read |
-| ---- | ------------------------- | ---- |
-| Notes | Every Markdown file outside `references/`, `graph.json`, `context.json` and the legacy plan, checklist and `actions/` files | Always |
-| Images and videos | Image and video files outside `references/` | When `sync.media` is on. `plastic init` offers it picked. |
-| Documents | Every other file outside `references/` | When `sync.documents` is on |
-| References | Every file under `references/` | When `sync.references` is on |
+| Place in an intent folder | Files | Read |
+| ------------------------- | ----- | ---- |
+| Intent root | Every Markdown file, `graph.json`, `context.json`, `work.log` and the legacy plan, checklist and `actions/` files | Always |
+| `resources/output/reports/` and `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
+| `resources/references/` | Every file | When `sync.references` is on |
+| `resources/tmp/` and every other place | Every file | Never |
 
-A file of a kind the settings leave out is not read, even when an earlier sync put it in rows.
+A sync up skips the first file of a type that `sync.types` and `sync.asked` do not name, prints one
+line with the `plastic config set sync.types` command, and adds the type to `sync.asked`.
+
+A file the selection leaves out is not read, even when an earlier sync put it in rows.
 Its rows stay, and nothing on disk is removed.
 
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a

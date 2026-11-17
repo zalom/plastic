@@ -2,6 +2,7 @@
 
 require_relative "sync_words"
 require_relative "sync_refusals"
+require_relative "type_notice"
 
 module Plastic
   module Workflows
@@ -11,6 +12,7 @@ module Plastic
     module SyncSteps
       CHANGES = {
         up: {
+          home: "The file types a sync skipped are recorded in the setting sync.asked, once each",
           work: "The records of the intents whose files changed by hand are rewritten from the files",
           knowledge: "The documents of those intents are rewritten from the files",
           store: "The files of the intents and the index of the store are printed again from the rows"
@@ -48,8 +50,13 @@ module Plastic
 
       # The lines of the apply, and the files it found no row would take: a new plan names them.
       def self.apply(context, direction)
-        context[:lines] = context.work.sync_apply(plan(context, direction))
+        planned = plan(context, direction)
+        context[:lines] = [*context.work.sync_apply(planned), *new_type_lines(context, planned)]
         note_remaining(context, direction)
+      end
+
+      def self.new_type_lines(context, planned)
+        (planned.direction == :up) ? TypeNotice.new(context.settings.config).lines(planned.new_types) : []
       end
 
       def self.note_remaining(context, direction)

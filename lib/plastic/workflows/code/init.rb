@@ -2,6 +2,7 @@
 
 require_relative "../../code_workflow"
 require_relative "../../harnesses"
+require_relative "../../config/sync_types"
 require_relative "../installation"
 require_relative "../../doctor/installation_hooks"
 
@@ -29,12 +30,18 @@ module Plastic
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }
-          context.settings.config.set("sync.media", context.media)
+          Init.sync_media(context)
           context[:installed] = installation.version
           context[:checked] = context.picked.first
         end
 
         outcome :done, offers: "plastic doctor --harness %{checked}", because: "Plastic %{installed} is installed into %{harnesses}"
+
+        def self.sync_media(context)
+          config = context.settings.config
+          types = config.list("sync.types")
+          config.set("sync.types", context.media ? Plastic::Config::SyncTypes.with_media(types) : Plastic::Config::SyncTypes.without_media(types))
+        end
       end
     end
   end

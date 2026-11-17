@@ -18,9 +18,9 @@ module Plastic
         # store whose INDEX.md waits to be imported, `problem` a call that
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
-        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints) do
-          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, **fields) = super
+        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason. `new_types` are the file types a sync up skips and has not told about yet.
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints, :new_types) do
+          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, new_types: [], **fields) = super
         end
 
         # Each entry's action, and what the sync writes.
