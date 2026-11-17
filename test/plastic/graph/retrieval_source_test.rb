@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/retrieval/source"
+require_relative "../../test_helper"
+require_relative "../../../lib/plastic/graph/retrieval_source"
 
 class RetrievalSourceTest < Plastic::TestCase
   def test_the_retrieval_source_reads_the_intents_of_its_store
@@ -11,7 +11,7 @@ class RetrievalSourceTest < Plastic::TestCase
   end
 
   def test_the_retrieval_source_names_its_store_and_origin
-    read = Plastic::Graph::Retrieval::Source.open(home: @plastic_home, store: "global")
+    read = Plastic::Graph::RetrievalSource.open(home: @plastic_home, store: "global")
 
     assert_equal ["global", origin], [read.store, read.origin_id]
   end

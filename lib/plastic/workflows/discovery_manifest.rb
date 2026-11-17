@@ -2,7 +2,7 @@
 
 require_relative "agent/intent/discover"
 require_relative "../graph/retrieval/maintained_store"
-require_relative "../graph/retrieval/source"
+require_relative "../graph/retrieval_source"
 require_relative "discovery_candidates"
 
 module Plastic

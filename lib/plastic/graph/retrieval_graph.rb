@@ -9,6 +9,7 @@ require_relative "knowledge/link"
 require_relative "knowledge/roadmap"
 require_relative "knowledge/archive"
 require_relative "evidence/writer"
+require_relative "retrieval/errors"
 require_relative "retrieval/evidence/integrity"
 require_relative "retrieval/index"
 require_relative "retrieval/reference"
@@ -26,20 +27,6 @@ module Plastic
     # not write. Explicit repair and reindex rebuild derived
     # tables. A selected-source read never runs either operation.
     class RetrievalGraph
-      # Signals that a caller must build the derived retrieval rows first.
-      class MaintenanceRequired < StandardError
-        attr_reader :slug
-
-        def initialize(message = nil, slug: nil)
-          super(message)
-          @slug = slug
-        end
-      end
-
-      # Signals an invalid or unavailable document or passage reference.
-      class MissingReference < StandardError; end
-      # Signals an FTS query that SQLite rejected.
-      class InvalidSearch < StandardError; end
       SEARCH_LIMIT = Retrieval::Search::SEARCH_LIMIT
       extend Forwardable
 
