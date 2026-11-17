@@ -9,7 +9,7 @@ class SchemaHome3Test < Plastic::TestCase
   Sequences = Plastic::Graph::SchemaSequences
   Home3 = Plastic::Graph::SchemaHome3
 
-  PINNED = "d1611043674e0201f6ee9dfae21d0d899b3f19903a77a1d8d317d74197b42d97"
+  PINNED = "8356f44bc3c8e2f93679ae723ccc9ae4c14723065b1121f29b02aa19ad0cc74c"
 
   def migrated_database(config_text)
     dir = Dir.mktmpdir

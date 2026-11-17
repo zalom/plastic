@@ -6,6 +6,7 @@ require "yaml"
 require_relative "rows"
 require_relative "../clock"
 require_relative "../graph/database"
+require_relative "../graph/origin"
 require_relative "../graph/schema/sequences/home_3"
 
 module Plastic
@@ -33,7 +34,7 @@ module Plastic
 
       UPSERT = 'INSERT OR REPLACE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
       IMPORT = 'INSERT OR IGNORE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
-      RECORD = 'INSERT OR REPLACE INTO "printed_files"("path", "sha256", "at") VALUES (:path, :sha256, :at)'
+      RECORD = 'INSERT OR REPLACE INTO "printed"("path", "sha256", "at", "origin_id") VALUES (:path, :sha256, :at, :origin_id)'
 
       def initialize(home)
         @home = home
@@ -56,7 +57,7 @@ module Plastic
       def print
         text = document
         File.write(@path, text)
-        local.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.now) }
+        local.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.now, origin_id: Graph::Origin.new(@home).id) }
       end
 
       def print_once

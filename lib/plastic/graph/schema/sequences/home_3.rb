@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "yaml"
 
 module Plastic
@@ -10,12 +11,12 @@ module Plastic
     # resolved to plain values. Its statements are written out and never call
     # the live schema. The runner holds the write lock around it.
     module SchemaHome3
-      TABLES = { "local" => %w[command_runs sessions locks settings printed_files] }.freeze
+      TABLES = { "local" => %w[command_runs sessions locks settings printed] }.freeze
 
       TEXT = {
         local: <<~SQL
           CREATE TABLE IF NOT EXISTS "settings"("scope" TEXT NOT NULL, "key" TEXT NOT NULL, "value" TEXT NOT NULL, UNIQUE("scope", "key"));
-          CREATE TABLE IF NOT EXISTS "printed_files"("path" TEXT NOT NULL, "sha256" TEXT NOT NULL, "at" TEXT, UNIQUE("path"));
+          CREATE TABLE IF NOT EXISTS "printed"("path" TEXT NOT NULL, "sha256" TEXT NOT NULL, "at" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("path"));
         SQL
       }.freeze
 

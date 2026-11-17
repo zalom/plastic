@@ -27,11 +27,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :scope, :key, :value
   end
 
-  create_table :printed_files, key: %i[path] do |t|
-    t.kept :path, :sha256
-    t.text :at
-  end
-
   create_table :intents, key: %i[intent_id origin_id] do |t|
     t.serial :id
     t.kept :intent_id
@@ -236,7 +231,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :origin_id
   end
 
-  database :local, "plastic.db", %i[command_runs sessions locks settings printed_files]
+  database :local, "plastic.db", %i[command_runs sessions locks settings printed]
   database :work, "work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
     roadmap_edges roadmap_log archives archive_entries approvals verdicts]
   database :knowledge, "knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages
