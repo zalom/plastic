@@ -17,7 +17,7 @@ class NodeAskTest < Plastic::TestCase
     result = cli("node", "ask", "1", "n1", "which way?")
 
     assert_call result, code: 0,
-      out: "node: n1 needs_info\nwrote:  1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node resolve 1 n1 TEXT\nbecause: node n1 is needs_info\n"
+      out: "node: n1 needs_info\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node resolve 1 n1 TEXT\nbecause: node n1 is needs_info\n"
   end
 
   def test_a_question_that_holds_column_names_is_stored_unchanged
