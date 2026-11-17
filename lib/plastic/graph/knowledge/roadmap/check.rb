@@ -26,12 +26,13 @@ module Plastic
           def item_ids = @item_ids ||= items.map(&:item)
 
           def dangling_findings
-            edges.reject { |edge| item_ids.include?(edge.from) && item_ids.include?(edge.to) }
-              .map { |edge| "edge #{edge.from} to #{edge.to} names an item not on roadmap #{@slug}" }
+            edges.map { |edge| [edge.from, edge.to] }
+              .reject { |ends| (ends - item_ids).empty? }
+              .map { |from, to| "edge #{from} to #{to} names an item not on roadmap #{@slug}" }
           end
 
           def loop_findings
-            items.select { |item| loop?(item.item, item.item, []) }.map { |item| "item #{item.item} loops back to itself" }
+            item_ids.select { |name| loop?(name, name, []) }.map { |name| "item #{name} loops back to itself" }
           end
 
           def loop?(start, item, seen)
@@ -43,8 +44,9 @@ module Plastic
           def successors(item) = edges.select { |edge| edge.from == item }.map(&:to)
 
           def missing_intent_findings
-            items.select { |item| item.intent_id && !@retrieval.intent(item.intent_id) }
-              .map { |item| "item #{item.item} names no intent #{item.intent_id}" }
+            items.map { |item| [item.item, item.intent_id] }
+              .select { |_name, intent_id| intent_id && !@retrieval.intent(intent_id) }
+              .map { |name, intent_id| "item #{name} names no intent #{intent_id}" }
           end
         end
       end
