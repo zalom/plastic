@@ -31,7 +31,7 @@ jobs:
       - name: Run the acceptance documents
         env:
           HOME: ${{ runner.temp }}/suite-home
-        run: ruby bin/test --system
+        run: ruby bin/test --end-to-end
       - name: Run the gate on the changed files
         if: github.event_name == 'pull_request'
         env:
