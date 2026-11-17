@@ -14,7 +14,7 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:settings).ddl, table(:printed_files).ddl].join("\n"), Schema.fetch(:local)
+    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:settings).ddl, table(:printed).ddl].join("\n"), Schema.fetch(:local)
     assert_equal %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
       Schema.databases.fetch(:knowledge).last
   end

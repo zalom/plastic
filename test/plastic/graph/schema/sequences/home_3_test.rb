@@ -31,11 +31,11 @@ class SchemaHome3Test < Plastic::TestCase
     refute_match(/Schema\.(fetch|ddl|prepare)/, source)
   end
 
-  def test_the_settings_and_printed_files_tables_are_created
+  def test_the_settings_and_printed_tables_are_created
     names = migrated_database(nil).execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten
 
     assert_includes names, "settings"
-    assert_includes names, "printed_files"
+    assert_includes names, "printed"
   end
 
   def test_the_config_file_is_imported_once_into_the_settings_rows

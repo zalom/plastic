@@ -51,7 +51,7 @@ class DbSchemaTest < Plastic::TestCase
 
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
-      local: ["plastic.db", %i[command_runs sessions locks settings printed_files]],
+      local: ["plastic.db", %i[command_runs sessions locks settings printed]],
       work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
         roadmap_edges roadmap_log archives archive_entries approvals verdicts]],
       knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
