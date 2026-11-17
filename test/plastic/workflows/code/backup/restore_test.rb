@@ -34,4 +34,8 @@ class RestoreBackupChoiceTest < Plastic::TestCase
 
     assert_refused_with_usage restore_call(home, "--store", "alpha", "--timestamp", "20260101100000", "--databases", "references"), "references"
   end
+
+  def test_latest_with_no_done_backup_refuses_and_names_the_store
+    assert_refused_with_usage restore_call(fresh_home, "--store", "alpha", "--latest"), "no done backup of alpha to restore"
+  end
 end

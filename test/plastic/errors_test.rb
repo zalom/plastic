@@ -40,6 +40,12 @@ class ErrorsTest < Plastic::TestCase
     assert_equal ["ArgumentError: bad", "code_a, step"], [error.message, error.source]
   end
 
+  def test_a_failed_error_made_from_a_failed_error_keeps_its_message
+    error = Plastic::Failed.raised(:code_a, "step", Plastic::Failed.new("bad"))
+
+    assert_equal "bad", error.message
+  end
+
   def test_the_boundary_prints_a_failed_error_with_its_next_and_because_lines
     code, out, err = run_stops("failed")
 

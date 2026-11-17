@@ -53,6 +53,13 @@ class ParserTest < Plastic::TestCase
     assert_raises(Plastic::Usage) { parser.parse([" "]) }
   end
 
+  def test_a_missing_required_option_is_a_usage_error
+    required = Command::Option.new(:store, "--store SLUG", "the store", nil, false, true)
+    error = assert_raises(Plastic::Usage) { parser(arguments: [], options: [required]).parse([]) }
+
+    assert_equal "missing --store", error.message
+  end
+
   def test_an_extra_word_is_a_usage_error
     error = assert_raises(Plastic::Usage) { parser.parse(%w[7 8]) }
 

@@ -29,6 +29,15 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
     assert_equal ["First", "New goal"], [batch.title, batch.goal]
   end
 
+  def test_adding_an_item_that_exists_writes_no_second_row_and_adds_its_edges
+    @work.write_batch("plan", 1, fields: fields)
+    item("a")
+    item("b")
+    item("a", needs: "b")
+
+    assert_equal [%w[a b], [%w[b a]]], [@graphs.retrieval.roadmap_items("plan").map(&:item), edges]
+  end
+
   def test_items_take_the_next_position_in_their_batch_and_write_their_edges
     @work.write_batch("plan", 1, fields: fields)
     item("a")
