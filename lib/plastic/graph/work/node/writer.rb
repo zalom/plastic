@@ -23,11 +23,11 @@ module Plastic
           MOVES = {
             remove_node: { to: "removed", from: %w[open] },
             release_node: { to: "open", from: %w[claimed failed], result: "released" },
-            done_node: { to: "done", from: %w[claimed done] },
+            done_node: { to: "done", from: %w[claimed] },
             fail_node: { to: "failed", from: %w[claimed] },
             ask_node: { to: "needs_info", from: %w[claimed] },
             impede_node: { to: "impeded", from: %w[claimed] },
-            resolve_node: { to: "open", from: %w[needs_info impeded] }
+            resolve_node: { to: "open", from: %w[needs_info impeded], stamp: :answered_at }
           }.freeze
 
           CAP_MOVE = { to: "needs_info", from: %w[open] }.freeze
@@ -55,7 +55,7 @@ module Plastic
 
           MOVES.each do |name, move|
             define_method(name) do |intent_id:, id:, by: nil, **fields|
-              moved({ intent_id:, id: }, move, holder: by, set: fields)
+              moved({ intent_id:, id: }, move, holder: by, set: stamped(move, fields))
             end
           end
 
@@ -80,8 +80,16 @@ module Plastic
           private
 
           def capped?(node)
-            node.state == "open" && node.answer.to_s.empty? && @retrieval.runs(node.intent_id).count { |run| run.node_id == node.id } >= RETRY_CAP
+            node.state == "open" && runs_since_answer(node).size >= RETRY_CAP
           end
+
+          # The runs the node had after the owner last answered; all of them when it was never answered.
+          def runs_since_answer(node)
+            runs = @retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
+            node.answered_at ? runs.select { |run| run.started_at > node.answered_at } : runs
+          end
+
+          def stamped(move, fields) = move[:stamp] ? fields.merge(move[:stamp] => Plastic.now(@clock.now)) : fields
 
           def fetched(key) = @retrieval.node(*key.values_at(:intent_id, :id))
 

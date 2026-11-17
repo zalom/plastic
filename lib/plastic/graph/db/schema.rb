@@ -41,7 +41,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.text :kind, :title, :criterion, :state, :input, :output, :question, :answer, :reason, :judge, :verdict, :findings
     t.text :updated_at
     t.kept :origin_id
-    t.text :claimed_by, :claimed_at, :seen_at
+    t.text :claimed_by, :claimed_at, :seen_at, :answered_at
   end
 
   create_table :runs, key: %i[intent_id node_id number origin_id] do |t|

@@ -8,7 +8,7 @@ module Plastic
     module Work
       # One unit of work inside an intent. The harness picks `kind`; `claimed_by` names the session that holds a claimed node.
       # `criterion` is the key of the spec's done criterion the node serves,
-      # `findings` what the work showed, and `seen_at` the last renewal of the claim; each claim is a run.
+      # `findings` what the work showed, `seen_at` the last renewal of the claim, and `answered_at` when the owner last answered; each claim is a run.
       #
       #   open -> claimed -> done
       #                   -> failed -> open
@@ -16,7 +16,7 @@ module Plastic
       #                   -> impeded -> open
       #   open -> removed
       Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :input, :output, :question, :answer,
-        :reason, :judge, :verdict, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at) do
+        :reason, :judge, :verdict, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at) do
         include Record
 
         def refusal(to) = "node #{id} is #{state}; it cannot move to #{to}"
@@ -28,7 +28,13 @@ module Plastic
         def live? = state != "removed"
 
         # A claim the holder has not renewed within the lapse, at `now`.
-        def lapsed?(now) = state == "claimed" && Time.parse(seen_at || claimed_at) < now - Node::LAPSE
+        def lapsed?(now) = state == "claimed" && (last_seen.nil? || last_seen < now - Node::LAPSE)
+
+        # The last renewal of the claim, else its start; nil when the claim has neither.
+        def last_seen
+          stamp = [seen_at, claimed_at].find { |value| !value.to_s.empty? }
+          stamp && Time.parse(stamp)
+        end
 
         def held_by?(session) = state == "claimed" && claimed_by == session
 

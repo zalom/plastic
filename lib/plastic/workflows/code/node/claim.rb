@@ -39,7 +39,7 @@ module Plastic
 
           step "claim the node", done: ->(context) { !context.result.nil? },
             changes: { work: ["The node is claimed by this session", "A node with three runs moves to needing information, with the question for the owner"] } do |context|
-            result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session)
+            result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session, agent: context.agent.to_s)
             context[:result] = result
             context[:node] = node
             context[:problem] = problem_for(context, node)

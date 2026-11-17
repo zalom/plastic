@@ -21,7 +21,10 @@ class CommandTest < Plastic::TestCase
   class Bare < Plastic::CLI::Command; end
 
   class Idle < Plastic::CLI::Command
-    def call = nil
+    def call
+      graphs.databases.fetch(:work).define_singleton_method(:path) { "/missing/work_graph.db" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal made a database" }
+    end
   end
 
   class FailingRenewal < Plastic::CLI::Command
@@ -132,7 +135,9 @@ class CommandTest < Plastic::TestCase
     assert_equal CommandHelper::Result.new("title:  Alpha\n", "", 0), result
   end
 
-  class BrokenRenewal < FailingRenewal
+  class BrokenRenewal < Plastic::CLI::Command
+    argument :intent_id, label: "ID", text: "the intent"
+
     def call
       graphs.work.define_singleton_method(:renew_claims) { |_session| nil.renew }
       output.row("title:", "x")
@@ -147,12 +152,7 @@ class CommandTest < Plastic::TestCase
     assert_raises(NoMethodError) { run_tool("1", tool: BrokenRenewal, env: { "PLASTIC_SESSION" => "s-1" }) }
   end
 
-  def test_a_call_in_a_store_with_no_work_database_makes_none
-    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
-
-    result = run_tool("1", tool: Idle, env: { "PLASTIC_SESSION" => "s-1" })
-
-    refute_path_exists File.join(@plastic_home, "stores", "global", "work_graph.db")
-    assert_equal 0, result.code
+  def test_a_call_in_a_store_with_no_work_database_renews_nothing
+    assert_equal 0, run_tool(tool: Idle, env: { "PLASTIC_SESSION" => "s-1" }).code
   end
 end

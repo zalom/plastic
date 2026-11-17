@@ -3,7 +3,7 @@
 module Plastic
   module Graph
     # Store migration 2, frozen. A node no longer carries who holds it and how
-    # often it was tried: it carries its claim, and each try is one row of the
+    # often it was tried: it carries its claim and the time of the owner's last answer, and each try is one row of the
     # runs table. A node that had a holder gets one run, closed with the state
     # the node was in, and a claimed node keeps its claim and its run open. The
     # count of tries above one is not carried. Its statements are written out
@@ -21,6 +21,7 @@ module Plastic
           ALTER TABLE "nodes" ADD COLUMN "claimed_by" TEXT;
           ALTER TABLE "nodes" ADD COLUMN "claimed_at" TEXT;
           ALTER TABLE "nodes" ADD COLUMN "seen_at" TEXT;
+          ALTER TABLE "nodes" ADD COLUMN "answered_at" TEXT;
           CREATE TABLE IF NOT EXISTS "runs"("intent_id" TEXT NOT NULL, "node_id" TEXT NOT NULL, "number" INTEGER NOT NULL, "agent" TEXT NOT NULL DEFAULT '', "session_id" TEXT NOT NULL DEFAULT '', "started_at" TEXT, "ended_at" TEXT, "result" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("intent_id", "node_id", "number", "origin_id"));
           INSERT INTO "runs"("intent_id", "node_id", "number", "agent", "session_id", "started_at", "ended_at", "result", "origin_id")
             SELECT "intent_id", "id", 1, '', "by", "updated_at",

@@ -9,7 +9,6 @@ module Plastic
       class Renew < Routine
         node_subject
         writes :work
-        prints :intent
 
         workflow :code_renew_node, next: :noop
       end

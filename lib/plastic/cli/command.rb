@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "optparse"
+require "sqlite3"
 require_relative "command/usage"
 require_relative "command/refusal"
 require_relative "command/failure"
@@ -135,16 +136,21 @@ module Plastic
       end
 
       # The graphs of the store the call works on, opened once.
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock))
+      def graphs = (@graphs ||= open_graphs)
 
+      # Renews the claims of this session after the call, in the store the call reached and
+      # only when its work database exists: a renewal never makes one.
       def renew_claims
         session = environment.session
-        return unless @graphs && session
+        return unless session && @scope
 
-        @graphs.work.renew_claims(session) if @graphs.retrieval.claimed_nodes.any? { |node| node.claimed_by == session }
-      rescue
+        opened = @graphs || open_graphs
+        opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:work).path)
+      rescue SQLite3::Exception, Graph::MissingStore, Graph::OutOfStep
         nil
       end
+
+      def open_graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock)
     end
   end
 end

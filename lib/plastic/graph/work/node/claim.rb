@@ -14,14 +14,14 @@ module Plastic
         # both win.
         class Claim
           LAPSED = <<~SQL.strip
-            julianday(COALESCE(NULLIF(seen_at, ''), claimed_at)) < julianday(:cutoff)
+            COALESCE(julianday(COALESCE(NULLIF(seen_at, ''), NULLIF(claimed_at, ''))), 0) < julianday(:cutoff)
           SQL
 
           LAPSE_RUN_SQL = <<~SQL
             UPDATE runs SET ended_at = :now, result = 'lapsed'
             WHERE intent_id = :intent_id AND node_id = :id AND origin_id = :origin AND ended_at IS NULL
               AND EXISTS (SELECT 1 FROM nodes WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin
-                AND state = 'claimed' AND claimed_by = :holder AND #{LAPSED})
+                AND state = 'claimed' AND claimed_by IS :holder AND #{LAPSED})
           SQL
 
           TAKE_SQL = <<~SQL
@@ -40,7 +40,7 @@ module Plastic
           SQL
 
           OPEN_GUARD = "state = 'open'"
-          TAKE_GUARD = "state = 'claimed' AND claimed_by = :holder AND #{LAPSED}".freeze
+          TAKE_GUARD = "state = 'claimed' AND claimed_by IS :holder AND #{LAPSED}".freeze
 
           def initialize(databases, retrieval, clock)
             @databases = databases

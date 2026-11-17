@@ -18,7 +18,7 @@ module Plastic
 
         def parts(id, rows)
           { "approval" => single(rows.approvals(id)), "completion" => single(rows.completions(id)), "verdicts" => plain_all(rows.verdicts(id)),
-            "nodes" => plain_all(rows.nodes(id)), "runs" => plain_all(rows.runs(id)), "edges" => plain_all(rows.edges(id)) }
+            "nodes" => nodes(rows.nodes(id)), "runs" => plain_all(rows.runs(id)), "edges" => plain_all(rows.edges(id)) }
         end
 
         def single(records) = records.first&.then { |row| plain(row) }
@@ -32,6 +32,9 @@ module Plastic
           id = File.basename(File.dirname(path)).split("--", 2).first
           Digest::SHA256.hexdigest(text(id, {}))
         end
+
+        # A node prints without `seen_at`: a renewal changes a row on this machine, never the files.
+        def nodes(records) = records.map { |record| plain(record).except("seen_at") }
 
         def plain_all(records) = records.map { |record| plain(record) }
 

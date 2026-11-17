@@ -32,7 +32,7 @@ class WorkNodeRetryCapTest < Plastic::TestCase
   end
 
   def test_the_cap_counts_only_the_runs_after_the_last_resolve
-    3.times { claim }
+    4.times { claim }
     work.resolve_node(intent_id: "1", id: "n1", answer: "go on")
 
     assert_equal [:claimed, :claimed, :claimed, :capped], Array.new(4) { claim }

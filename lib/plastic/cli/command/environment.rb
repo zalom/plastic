@@ -24,10 +24,17 @@ module Plastic
         def now = clock.now
 
         # PLASTIC_SESSION when it is set, else the session of the innermost
-        # harness; nil when none is set.
+        # harness, else `terminal-` and the login of a person at a terminal; nil when none of these is known.
         def session
           named = env[PLASTIC_SESSION].to_s.strip
-          named.empty? ? Harnesses::Innermost.new(env:, processes:, plastic_home:).session : named
+          return named unless named.empty?
+
+          Harnesses::Innermost.new(env:, processes:, plastic_home:).session || terminal_session
+        end
+
+        def terminal_session
+          login = (env["USER"] || env["LOGNAME"]).to_s.strip
+          login.empty? ? nil : "terminal-#{login}"
         end
 
         def plastic_home = env["PLASTIC_HOME"] || File.join(home, ".plastic")
