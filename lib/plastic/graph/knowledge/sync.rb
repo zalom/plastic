@@ -58,7 +58,11 @@ module Plastic
           lines
         end
 
-        def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
+        def read(paths) = file_reads.call(paths)
+
+        def read_all(paths) = file_reads.read_all(paths)
+
+        def reprint(reads) = file_reads.reprint(reads)
 
         def print_down(plan)
           printer.print(plan.entries_for(:print).map(&:print))
@@ -70,6 +74,10 @@ module Plastic
         def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, @databases, DeclaredPrints.new(@retrieval, kinds, facts).call).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
+
+        private
+
+        def file_reads = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer)
       end
     end
   end

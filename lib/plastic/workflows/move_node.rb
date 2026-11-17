@@ -27,6 +27,8 @@ module Plastic
                        offers: "plastic graph ready %{intent_id}" }
       }.freeze
 
+      RESULT_VERBS = %i[done_node fail_node ask_node impede_node].freeze
+
       CHANGES = {
         release_node: "The node is released and open again",
         done_node: "The node is marked done with its findings",
@@ -76,7 +78,7 @@ module Plastic
       end
 
       def self.run_move(context, verb, shape)
-        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape))
+        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape), **files(context, verb))
         settle(context, node || (verb == :done_node && repeated_done?(context)), shape.fetch(:state))
       end
 
@@ -87,6 +89,8 @@ module Plastic
       end
 
       def self.fields(context, shape) = shape.fetch(:fields).to_h { |name, source| [name, context.public_send(source || name)] }
+
+      def self.files(context, verb) = RESULT_VERBS.include?(verb) ? { files: context.files } : {}
 
       def self.taken?(context)
         node = context.retrieval.node(context.intent_id, context.id)

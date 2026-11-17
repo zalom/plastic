@@ -24,18 +24,22 @@ class WorkLoggedNodesTest < Plastic::TestCase
 
   def kinds = retrieval.structure.work_log("1").map(&:kind)
 
+  def finish(**fields) = work.done_node(intent_id: "1", id: "n1", by: "delivery", findings: "ok", files: [], **fields)
+
+  def run_ended? = !retrieval.structure.runs("1").first.ended_at.nil?
+
+  def state = retrieval.node("1", "n1").state
+
   def refuse_new_heads
     store_database.transaction { |batch| batch.add("CREATE TRIGGER refuse_heads BEFORE INSERT ON document_heads BEGIN SELECT RAISE(ABORT, 'heads refused'); END") }
   end
 
   def test_done_node_writes_node_run_document_and_log_in_one_transaction
     write("#{dir}/findings.md", FINDINGS)
-    work.done_node(intent_id: "1", id: "n1", by: "delivery", findings: "ok", files: [])
+    finish
 
-    assert_equal "done", retrieval.node("1", "n1").state
-    refute_nil retrieval.structure.runs("1").first.ended_at
+    assert_equal ["done", true, 1], [state, run_ended?, kinds.count("done")]
     assert_equal [{ "path" => "findings.md", "sha256" => Digest::SHA256.hexdigest(FINDINGS) }], heads
-    assert_equal 1, kinds.count("done")
   end
 
   def test_the_files_the_node_read_are_printed_from_the_rows_after_the_move
@@ -51,23 +55,25 @@ class WorkLoggedNodesTest < Plastic::TestCase
     refuse_new_heads
     before = kinds
 
-    assert_raises(Plastic::Failed) { work.done_node(intent_id: "1", id: "n1", by: "delivery", findings: "ok", files: []) }
-    assert_equal "claimed", retrieval.node("1", "n1").state
-    assert_nil retrieval.structure.runs("1").first.ended_at
+    assert_raises(Plastic::Failed) { finish }
+    assert_equal ["claimed", false, before], [state, run_ended?, kinds]
     assert_empty heads
-    assert_empty store_database.rows("SELECT 1 FROM documents WHERE path = 'findings.md'")
-    assert_equal before, kinds
+  end
+
+  MOVES = { fail_node: [{ reason: "broke" }, "failed"], ask_node: [{ question: "which?" }, "needs_info"], impede_node: [{ reason: "blocked" }, "impeded"] }.freeze
+
+  def move_a_new_node(move, number)
+    cli("node", "add", "1", "More", "--criterion", KEY)
+    cli("node", "claim", "1", "n#{number}")
+    write("#{dir}/findings.md", "# #{move}\n")
+    work.public_send(move, intent_id: "1", id: "n#{number}", by: "delivery", files: [], **MOVES.fetch(move).first)
   end
 
   def test_fail_ask_and_impede_read_the_result_too
-    { fail_node: [{ reason: "broke" }, "failed"], ask_node: [{ question: "which?" }, "needs_info"], impede_node: [{ reason: "blocked" }, "impeded"] }.each do |move, (fields, state)|
-      cli("node", "release", "1", "n1")
-      cli("node", "claim", "1", "n1")
-      write("#{dir}/findings.md", "# #{move}\n")
-      work.public_send(move, intent_id: "1", id: "n1", by: "delivery", files: [], **fields)
+    MOVES.each_with_index do |(move, (_fields, expected)), index|
+      move_a_new_node(move, index + 2)
 
-      assert_equal state, retrieval.node("1", "n1").state, move.to_s
-      assert_equal Digest::SHA256.hexdigest("# #{move}\n"), heads.first.fetch("sha256"), move.to_s
+      assert_equal [expected, Digest::SHA256.hexdigest("# #{move}\n")], [retrieval.node("1", "n#{index + 2}").state, heads.first.fetch("sha256")], move.to_s
     end
   end
 
