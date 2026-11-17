@@ -30,4 +30,23 @@ class WorkNextOfferTest < Plastic::TestCase
     assert_equal "choose the intent to work on", why
     assert_includes handoff, "plastic status"
   end
+
+  Approvals = Data.define(:approved) do
+    def approval(_id) = approved
+  end
+  Reads = Data.define(:structure)
+
+  def go_ahead(approved) = Plastic::Graph::Work::NextOffer.go_ahead_offer(Reads.new(Approvals.new(approved)), "1")
+
+  def test_an_approved_open_intent_offers_auto
+    assert_equal ["plastic auto 1", "intent 1 is open", nil], go_ahead(true)
+  end
+
+  def test_an_open_intent_before_the_go_ahead_hands_the_owner_the_approve_command
+    command, why, handoff = go_ahead(nil)
+
+    assert_nil command
+    assert_equal "the owner must give the go-ahead for intent 1", why
+    assert_includes handoff, "plastic intent approve 1"
+  end
 end
