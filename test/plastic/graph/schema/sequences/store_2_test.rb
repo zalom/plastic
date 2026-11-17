@@ -58,6 +58,14 @@ class SchemaStore2Test < Plastic::TestCase
     assert_empty node_columns & %w[by retries]
   end
 
+  def test_a_connection_that_returns_rows_by_name_runs_the_migration_too
+    @database.results_as_hash = true
+    migrate
+    @database.results_as_hash = false
+
+    assert_equal [2, [], 4], [@database.get_first_value("PRAGMA user_version"), node_columns & %w[by retries], runs.size]
+  end
+
   def test_a_node_with_a_holder_gets_one_run_that_the_state_closes
     migrate
 
