@@ -71,9 +71,6 @@ module Plastic
           virtual[name] = VirtualTable.new(name:, using:)
         end
 
-        # A trigger on a table, kept apart from the tables: `sql` runs from its timing to END.
-        def create_trigger(name, on:, sql:) = triggers[name] = Trigger.new(name:, on:, sql:)
-
         # A database: its key, its file and the tables it holds, in order.
         def database(key, file, names) = databases[key] = [file, names]
 

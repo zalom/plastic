@@ -65,16 +65,6 @@ class SchemaTest < Plastic::TestCase
       [{ intents: 1 }, { intents: 1, clusters: 2 }, { intents: 1, clusters: 2, nodes: 1 }].map { |counts| Schema.phrase(counts) }
   end
 
-  def test_a_schema_file_keeps_its_triggers_apart_from_its_tables
-    file = Plastic::Graph::SchemaFile.define(version: 1) do
-      create_table(:things, key: []) { |table| table.serial :seq }
-      create_trigger :things_after_insert, on: :things, sql: "AFTER INSERT ON things BEGIN SELECT 1; END"
-    end
-
-    assert_equal %i[things_after_insert], file.triggers.keys
-    assert_equal :things, file.triggers.fetch(:things_after_insert).on
-  end
-
   private
 
   def schema_catalog

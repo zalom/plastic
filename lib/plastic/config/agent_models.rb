@@ -7,7 +7,7 @@ module Plastic
     # TIER_DEFAULTS mirrors the shipped `agents/*.md` frontmatter, so
     # `shipped_model_for` answers `agents.models.<basename>` with the built-in
     # default. The installer does NOT use TIER_DEFAULTS: it applies only genuine
-    # config overrides via `override_map`, so shipped frontmatter with no override
+    # config overrides, so shipped frontmatter with no override
     # passes through unchanged.
     module AgentModels
       # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
@@ -99,26 +99,6 @@ module Plastic
 
         flat = section.reject { |_key, value| value.is_a?(Hash) }
         flat.merge(nested)
-      end
-
-      # Override map for the installer: global overrides overlaid by project
-      # overrides (project wins), scoped to `harness`. Defaults are intentionally
-      # excluded. Unknown agent keys are carried through as-is; install_agents
-      # simply never matches them to a copied file, so they are ignored without
-      # raising.
-      def override_map(project_config: {}, global_config: {}, harness: "claude")
-        models_section(global_config, harness: harness).merge(models_section(project_config, harness: harness))
-      end
-
-      def effort_override_map(project_config: {}, global_config: {}, harness: "claude")
-        efforts_section(global_config, harness).merge(efforts_section(project_config, harness))
-      end
-
-      def efforts_section(config, harness)
-        agents = config.is_a?(Hash) ? config["agents"] : nil
-        efforts = agents.is_a?(Hash) ? agents["efforts"] : nil
-        section = efforts.is_a?(Hash) ? efforts[harness] : nil
-        section.is_a?(Hash) ? section : {}
       end
 
       # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not

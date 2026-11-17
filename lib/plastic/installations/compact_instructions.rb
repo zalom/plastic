@@ -15,10 +15,6 @@ module Plastic
 
         @~/.plastic/PLASTIC.md
       MD
-
-      def self.body_hash
-        Digest::SHA256.hexdigest(BODY)[0, 12]
-      end
     end
   end
 end
