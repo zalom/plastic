@@ -78,8 +78,12 @@ module Plastic
         Distribution.new(package, tmp_dirs: @tmp_dirs).call(kind)
         prepare_config_import
         migrate_databases
-        Doctor::HomeIgnore.new(plastic_home).check
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
+        print_config
+      end
+
+      def print_config
+        Doctor::HomeIgnore.new(plastic_home).check
         line = Config::Store.new(plastic_home).print_once
         puts "   #{line}" if line
       end

@@ -88,6 +88,13 @@ class ConfigStoreTest < Plastic::TestCase
     assert_equal "2026-11-17\n", File.read(path)
   end
 
+  def test_a_config_file_that_is_a_list_is_kept_and_named_as_not_a_mapping
+    File.write(path, "- a\n- b\n")
+
+    assert_equal "config.yml could not be read (it is not a mapping); fix it and run plastic update", store.print_once
+    assert_equal "- a\n- b\n", File.read(path)
+  end
+
   def test_print_once_names_a_file_edited_by_hand_after_the_print
     store.set("global", "screens", false)
     File.write(path, "global:\n  screens: true\n")
