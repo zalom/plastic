@@ -5,7 +5,8 @@ require "yaml"
 require_relative "rows"
 require_relative "../clock"
 require_relative "../cli/command/refusal"
-require_relative "../graph"
+require_relative "../graph/database"
+require_relative "../graph/schema/sequences/home_3"
 
 module Plastic
   class Config

@@ -18,6 +18,17 @@ module Plastic
           assert_path_exists File.join(copy, "stores", "global", "work_graph.db")
         end
       end
+
+      def test_a_home_with_no_machine_database_copies_only_the_store_databases
+        with_home do |home|
+          seed_intents(home, "Alpha")
+          File.delete(File.join(home, "plastic.db"))
+          copy = File.join(File.dirname(home), "copy")
+          copy_into(home, copy)
+
+          assert_equal [false, true], [File.exist?(File.join(copy, "plastic.db")), File.exist?(File.join(copy, "stores", "global", "work_graph.db"))]
+        end
+      end
     end
   end
 end

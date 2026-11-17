@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../graph"
+require_relative "../graph/database"
 
 module Plastic
   class Config
