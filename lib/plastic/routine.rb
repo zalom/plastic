@@ -14,6 +14,7 @@ require_relative "routine/backup_first"
 require_relative "routine/printing"
 require_relative "routine/graph_report"
 require_relative "workflow"
+require_relative "workflows/registry"
 require_relative "graph"
 
 module Plastic

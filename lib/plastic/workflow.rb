@@ -4,7 +4,6 @@ require_relative "invalid"
 require_relative "workflow/outcome"
 require_relative "workflow/key"
 require_relative "workflow/declarations"
-require_relative "workflows/registry"
 
 module Plastic
   # One named piece of a routine: steps that run in order, then outcome lines
@@ -46,7 +45,7 @@ module Plastic
 
       # The workflow class for a key, from a namespace that holds a REGISTRY
       # and the classes.
-      def fetch(key, from: Workflows)
+      def fetch(key, from:)
         path = from::REGISTRY.fetch(key) { raise Invalid, "no workflow #{key} in #{from}::REGISTRY" }
 
         Key.parse(key, path).workflow_in(from)
