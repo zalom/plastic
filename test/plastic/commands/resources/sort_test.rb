@@ -29,4 +29,10 @@ class ResourcesSortCommandTest < Plastic::TestCase
     assert_includes out, "link changed #{INTENT}/spec.md: reviews/r1.md -> resources/output/reports/reviews/r1.md"
     assert_includes out, "link left as it is #{INTENT}/resources/notes.md: missing.md"
   end
+
+  def test_a_second_run_says_there_is_nothing_to_move
+    sort
+
+    assert_includes sort.out, "sorted: nothing to move"
+  end
 end

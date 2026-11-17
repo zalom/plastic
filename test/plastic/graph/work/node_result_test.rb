@@ -21,6 +21,10 @@ class WorkNodeResultTest < Plastic::TestCase
     assert_equal ["#{dir}/a.md", "#{dir}/b.md"], result
   end
 
+  def test_an_intent_with_no_folder_gives_no_file
+    assert_empty Plastic::Graph::Work::NodeResult.new(folder, retrieval).paths("99", [])
+  end
+
   def test_with_files_gives_only_the_named_files
     write("#{dir}/a.md", "# a\n")
     write("#{dir}/b.md", "# b\n")

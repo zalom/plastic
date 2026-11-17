@@ -34,6 +34,12 @@ class ResourcesLinkRewriteTest < Plastic::TestCase
     assert_equal "[ref](../../../references/ref.md)", found.text
   end
 
+  def test_leaves_a_link_between_two_files_that_stay
+    found = rewrite("spec.md", "[self](spec.md#top)")
+
+    assert_equal ["[self](spec.md#top)", []], [found.text, found.unresolved]
+  end
+
   def test_leaves_an_absolute_or_web_link
     text = "[a](https://example.com/x.md) [b](/etc/hosts) [c](mailto:a@b.c) [d](#top) [e](?page=2)"
     found = rewrite("reviews/r1.md", text)
