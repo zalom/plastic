@@ -25,7 +25,7 @@ class PredecessorSessionTest < Plastic::TestCase
 
     lines = predecessor.lines
 
-    assert lines.first.match?(/\Aprevious session s-1 ended .* \(clear\)\z/)
+    assert_match(/\Aprevious session s-1 ended .* \(clear\)\z/, lines.first)
     assert_includes lines, "touched: #{intent_id}"
   end
 
