@@ -9,7 +9,7 @@ class SchemaGateTest < Plastic::TestCase
   Behind = Plastic::Graph::Behind
   Sequences = Plastic::Graph::SchemaSequences
 
-  def store_database(home, key = :work) = Plastic::Graph::Database.open_store(File.join(home, "stores", "alpha"), Plastic::Graph::Origin.new(home)).fetch(key)
+  def store_database(home) = Plastic::Graph::Database.open_store(File.join(home, "stores", "alpha"), Plastic::Graph::Origin.new(home))
 
   def test_a_second_session_that_waited_for_the_lock_finds_the_tables_and_builds_nothing
     connection = SQLite3::Database.new(File.join(Dir.mktmpdir, "a.db"))
@@ -22,7 +22,7 @@ class SchemaGateTest < Plastic::TestCase
   def test_a_new_empty_database_gets_the_declared_schema_and_the_newest_stamp
     root = File.join(Dir.mktmpdir, "stores", "new")
     FileUtils.mkdir_p(root)
-    database = Plastic::Graph::Database.open_store(root, Plastic::Graph::Origin.new(@plastic_home)).fetch(:work)
+    database = Plastic::Graph::Database.open_store(root, Plastic::Graph::Origin.new(@plastic_home))
     database.rows("SELECT 1")
 
     assert_equal Sequences.newest(:store), SQLite3::Database.new(File.join(root, "work_graph.db")).get_first_value("PRAGMA user_version")
@@ -34,12 +34,12 @@ class SchemaGateTest < Plastic::TestCase
     refute_equal layouts.call(fresh_home), layouts.call(old_layout(fresh_home))
   end
 
-  def test_a_database_behind_its_sequence_is_refused_and_no_byte_changes
+  def test_a_database_behind_its_sequence_is_refused_and_no_byte_of_its_files_changes
     home = old_layout(fresh_home)
     before = file_bytes(home)
 
     assert_raises(Behind) { store_database(home).rows("SELECT 1") }
-    assert_equal before, file_bytes(home)
+    assert_equal before, file_bytes(home).slice(*before.keys)
   end
 
   def test_the_refusal_names_the_update_command
