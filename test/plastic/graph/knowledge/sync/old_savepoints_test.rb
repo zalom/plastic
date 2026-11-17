@@ -96,6 +96,7 @@ class SyncOldSavepointsTest < Plastic::TestCase
   def test_removing_the_file_removes_its_printed_row_too
     intent = open_intent
     old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
+
     assert retrieval.printed.key?(old_path(intent))
     sync_down
 

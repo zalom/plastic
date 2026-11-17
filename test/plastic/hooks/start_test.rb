@@ -202,7 +202,7 @@ class StartSessionRowTest < Plastic::TestCase
 
       assert_equal [COMPACT_FIRST, "intent: #{intent.intent_id} Alpha"], lines.first(2)
       assert_equal "next: plastic graph resume", lines.last
-      assert(lines.any? { |line| line.match?(/\A- \S+ - n1 #{session} claimed - - /) }, lines.inspect)
+      refute_empty(lines.grep(/\A- \S+ - n1 #{session} claimed - - /), lines.inspect)
     end
   end
 
@@ -214,7 +214,7 @@ class StartSessionRowTest < Plastic::TestCase
     work.drain_logs
     result = plastic("hook", "start", input: JSON.generate(session_id: session, source: "compact"), env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE)
 
-    assert(result.out.lines.any? { |line| line.include?(" ruled ") }, result.out)
+    refute_empty(result.out.lines.grep(/ ruled /), result.out)
   end
 end
 
