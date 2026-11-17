@@ -3,6 +3,7 @@
 require_relative "invalid"
 require_relative "workflow/outcome"
 require_relative "workflow/key"
+require_relative "workflow/declarations"
 require_relative "workflows/registry"
 
 module Plastic
@@ -21,6 +22,8 @@ module Plastic
   # The class body is the definition. Each call runs on a new instance, so
   # nothing one call finds outlives it.
   class Workflow
+    extend Declarations
+
     class << self
       # The key that the REGISTRY of this class's namespace maps to its class path.
       def key
@@ -32,8 +35,9 @@ module Plastic
       def home
         parts = name.split("::")
         parts.each_index do |index|
-          namespace = Object.const_get(parts.first(index + 1).join("::"))
-          return [namespace, parts.drop(index + 1).join("::")] if namespace.const_defined?(:REGISTRY, false)
+          count = index + 1
+          namespace = Object.const_get(parts.first(count).join("::"))
+          return [namespace, parts.drop(count).join("::")] if namespace.const_defined?(:REGISTRY, false)
         end
         raise Invalid, "#{name} sits in no namespace that holds a REGISTRY"
       end
@@ -48,51 +52,10 @@ module Plastic
         Key.parse(key, path).workflow_in(from)
       end
 
-      # The facts this workflow sets. The routine declares them on the context.
-      def sets(*names) = facts.concat(names)
-
-      def facts = (@facts ||= [])
-
-      def summary(text = nil) = text ? (@summary = text) : @summary
-
-      # One way the workflow ends. `offers:` is the command next: prints and
-      # `because:` the line that says why; both matter only when the outcome
-      # ends the chain. Each lane adds its own rules.
-      def outcome(outcome_name, **options)
-        unknown = options.keys - %i[if offers because stops found_by unreachable words]
-        raise Invalid, "#{name}: outcome #{outcome_name} does not take #{unknown.join(", ")}" if unknown.any?
-
-        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops, :found_by, :unreachable, :words))
-      end
-
-      def outcomes = (@outcomes ||= [])
-
-      # The outcome line that can end the chain on `outcome_name`: the one that
-      # gives its because: line. Nil when no line does.
-      def ending(outcome_name) = outcomes.select(&:because).find { |outcome| outcome.name == outcome_name }
-
-      # The next: and because: lines for an outcome that ends the chain.
-      def closing(outcome_name, ctx)
-        found = ending(outcome_name)
-        raise Invalid, "#{key} ends on #{outcome_name}, and no outcome line gives its because:" unless found
-
-        found.closing(ctx)
-      end
-
-      # Every %{name} this workflow prints. Routine.verify checks them.
-      def templates = outcomes.flat_map(&:templates)
-
       # Wiring faults a class body cannot see until it has loaded.
       def problems = []
 
       def call(ctx) = new(ctx).call
-
-      # Empties the lists the class body fills, so a second load of the class replaces the first.
-      def clear_declarations
-        facts.clear
-        outcomes.clear
-        @summary = nil
-      end
     end
 
     def initialize(ctx)
