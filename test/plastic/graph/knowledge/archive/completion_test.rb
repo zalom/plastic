@@ -11,7 +11,7 @@ class KnowledgeArchiveCompletionTest < Plastic::TestCase
     @intent = open_intent("Target", status: "future")
     @removed = []
     work = store_graphs.databases.fetch(:store)
-    Archive::Capture.new(work, folder, retrieval.origin_id, session: nil, clock: FixedClock::CLOCK).capture(@intent)
+    Archive::Capture.new(work, folder, retrieval.origin_id, Archive::Marking.new(nil, FixedClock::CLOCK)).capture(@intent)
   end
 
   def snapshot(intent_id) = Archive::Snapshot.new(store_graphs.databases.fetch(:store), intent_id, retrieval.origin_id)

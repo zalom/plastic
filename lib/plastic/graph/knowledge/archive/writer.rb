@@ -45,7 +45,7 @@ module Plastic
 
           def remove_printed(dir) = PrintedCleanup.new(@databases, @retrieval).remove(dir)
 
-          def capture = Capture.new(@databases.fetch(:store), @folder, origin_id, session: @collaborators[:session], clock: @collaborators[:clock])
+          def capture = Capture.new(@databases.fetch(:store), @folder, origin_id, Marking.new(@collaborators[:session], @collaborators[:clock]))
 
           def guard = Guard.new(@retrieval)
 

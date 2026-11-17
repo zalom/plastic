@@ -7,28 +7,28 @@ class KnowledgeReaderTest < Plastic::TestCase
 
   Reader = Plastic::Graph::Knowledge::Reader
 
-  def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin, clock: FixedClock::CLOCK)
+  def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin)
 
   def test_a_read_names_its_path_its_database_and_its_line
     write("store/1--alpha/spec.md", "# Spec\n")
-    read = reader.read("store/1--alpha/spec.md")
+    read = reader.read("store/1--alpha/spec.md", FixedClock::STAMP)
 
     assert_equal ["store/1--alpha/spec.md", "read store/1--alpha/spec.md"], [read.path, read.line]
   end
 
   def test_a_folder_with_no_intent_row_is_refused
-    error = assert_raises(Plastic::Invalid) { reader.read("store/7--stray/spec.md") }
+    error = assert_raises(Plastic::Invalid) { reader.read("store/7--stray/spec.md", FixedClock::STAMP) }
 
     assert_equal "store/7--stray has no intent row and no entry in store/index.json; add one or remove the folder", error.message
   end
 
   def test_a_folder_whose_slug_differs_from_the_row_is_refused
-    assert_raises(Plastic::Invalid) { reader.read("store/1--other/spec.md") }
+    assert_raises(Plastic::Invalid) { reader.read("store/1--other/spec.md", FixedClock::STAMP) }
   end
 
   def test_a_kept_print_holds_the_hash_of_the_file_as_it_is
     write("store/1--alpha/savepoint.md", "")
-    print = reader.read("store/1--alpha/savepoint.md").kept_print(folder)
+    print = reader.read("store/1--alpha/savepoint.md", FixedClock::STAMP).kept_print(folder)
 
     assert_equal ["store/1--alpha/savepoint.md", Digest::SHA256.hexdigest(""), nil], print.to_h.values
   end

@@ -18,9 +18,8 @@ module Plastic
 
           def self.form?(text) = Form.form?(text.dup.force_encoding(Encoding::UTF_8))
 
-          def initialize(slug, text, clock:)
+          def initialize(slug, text)
             @slug = slug
-            @clock = clock
             text = text.dup.force_encoding(Encoding::UTF_8)
             raise Invalid, "roadmaps/#{slug}.md is in an older form that this release does not read" unless Form.form?(text)
 
@@ -31,10 +30,10 @@ module Plastic
           end
 
           # The read replaces the rows of this slug that this home's origin wrote, so a line cannot be read twice.
-          def apply(batch)
+          def apply(batch, now)
             remove_rows(batch)
-            batch.put(:roadmaps, header)
-            { batches: :batches, items: :roadmap_items, edges: :roadmap_edges, log: :roadmap_log }.each { |kind, table| batch.put_all(table, rows(kind)) }
+            batch.put(:roadmaps, header.merge(updated_at: now))
+            { batches: :batches, items: :roadmap_items, edges: :roadmap_edges, log: :roadmap_log }.each { |kind, table| batch.put_all(table, rows(kind, now)) }
           end
 
           private
@@ -85,15 +84,17 @@ module Plastic
             raise Invalid, "roadmaps/#{@slug}.md has #{NOUNS.fetch(kind)} record with no #{gone.join(", ")}" if gone.any?
           end
 
-          def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]), updated_at: Plastic.timestamp(@clock.now) }
+          def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]) }
 
-          def rows(kind) = @records[kind].map { |record| send(:"#{kind}_row", record) }
+          def rows(kind, now)
+            stamp = %i[batches items].include?(kind) ? { updated_at: now } : {}
+            @records[kind].map { |record| send(:"#{kind}_row", record).merge(stamp) }
+          end
 
-          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"), updated_at: Plastic.timestamp(@clock.now))
+          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"))
 
           def items_row(record)
-            base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"),
-              updated_at: Plastic.timestamp(@clock.now))
+            base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"))
           end
 
           def edges_row(record) = base(record, "from", "to", "kind")

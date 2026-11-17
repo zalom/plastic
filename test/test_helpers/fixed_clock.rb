@@ -4,6 +4,8 @@
 module FixedClock
   AT = Time.utc(2026, 11, 17, 8, 0, 0)
 
+  STAMP = AT.iso8601
+
   Clock = Struct.new(:now)
 
   CLOCK = Clock.new(AT)

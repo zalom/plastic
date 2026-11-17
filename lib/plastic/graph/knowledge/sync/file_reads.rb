@@ -20,7 +20,8 @@ module Plastic
 
           # One line for each path read. A path the database refuses is left as it is and gets no line.
           def call(paths)
-            reads = paths.map(&reader.method(:read))
+            now = Plastic.timestamp(@retrieval.clock.now)
+            reads = paths.map { |path| reader.read(path, now) }
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)

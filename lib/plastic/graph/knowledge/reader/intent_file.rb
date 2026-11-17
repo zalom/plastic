@@ -2,7 +2,8 @@
 
 require "digest"
 require "json"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../retrieval/evidence/document"
+require_relative "../../retrieval/evidence/rows"
 require_relative "../../retrieval/evidence/text"
 require_relative "../../retrieval/evidence/removal"
 require_relative "../legacy_path"
@@ -25,18 +26,18 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
+          STAMPED = %i[context document legacy].freeze
           KINDS = { "graph.json" => :graph, "context.json" => :context, "work.log" => :work_log, "savepoint.md" => :savepoint }.freeze
 
-          def initialize(file, intent_id, writer:, clock:, retrieval: nil)
+          def initialize(file, intent_id, origin_id:, retrieval: nil)
             @file = file
             @intent_id = intent_id
-            @writer = writer
+            @origin_id = origin_id
             @retrieval = retrieval
-            @clock = clock
           end
 
-          def apply(batch)
-            send(kind, batch)
+          def apply(batch, now)
+            STAMPED.include?(kind) ? send(kind, batch, now:) : send(kind, batch)
             graph_file.apply_work(batch) if kind == :graph
           end
 
@@ -56,15 +57,13 @@ module Plastic
           # identify binary data; invalid UTF-8 stays in the attachment archive.
           def document? = Retrieval::Evidence::Text.classify(@file.rel, @file.bytes) == :text
 
-          def origin_id = @writer.origin_id
-
           def graph(batch) = graph_file.apply(batch)
 
-          def graph_file = GraphFile.new(text, @intent_id, origin_id, @file.path)
+          def graph_file = GraphFile.new(text, @intent_id, @origin_id, @file.path)
 
           # The rows of this home replace the rows of the file; the rows of another origin stay.
-          def context(batch)
-            rows = ContextFile.new(text, @intent_id, @file.path, clock: @clock).rows
+          def context(batch, now:)
+            rows = ContextFile.new(text, @intent_id, @file.path).rows(now)
             ContextFile::TABLES.each_value { |table| batch.remove(table, intent_id: @intent_id) }
             rows.each { |table, row| batch.put(table, row) }
           end
@@ -90,15 +89,16 @@ module Plastic
             { intent_id: @intent_id, at:, kind: "noted", text: said }
           end
 
-          def document(batch)
-            @writer.apply(batch, @intent_id, @file.rel, text)
+          def document(batch, now:)
+            document = Retrieval::Evidence::Document.new(@intent_id, @file.rel, text, now:)
+            Retrieval::Evidence::Rows.new(batch, document, @origin_id).write
           end
 
           # The row replaces the document, head and search rows the path held before it was legacy.
-          def legacy(batch)
+          def legacy(batch, now:)
             rel = @file.rel
-            batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: Plastic.timestamp(@clock.now) })
-            Retrieval::Evidence::Removal.new(batch, origin_id).remove(@intent_id, rel)
+            batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: now })
+            Retrieval::Evidence::Removal.new(batch, @origin_id).remove(@intent_id, rel)
           end
 
           def kept(batch)

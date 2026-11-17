@@ -13,7 +13,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:, clock: FixedClock::CLOCK).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}", FixedClock::STAMP)
     apply_read(read)
   end
 
@@ -145,7 +145,7 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
 
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:, clock: FixedClock::CLOCK).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}", FixedClock::STAMP)
     apply_read(read)
   end
 

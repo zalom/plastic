@@ -89,7 +89,7 @@ module Plastic
       # The file is in the form of this release and reads without a problem: `plastic sync up` turns it into rows.
       def roadmap_file_readable?(slug)
         path = "roadmaps/#{slug}.md"
-        @folder.exist?(path) && Knowledge::Reader::RoadmapFile.new(slug, @folder.read(path), clock: @retrieval.clock) && true
+        @folder.exist?(path) && Knowledge::Reader::RoadmapFile.new(slug, @folder.read(path)) && true
       rescue Invalid
         false
       end

@@ -256,11 +256,11 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     assert_empty node_rows
   end
 
-  def reader = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, retrieval.origin_id, clock: FixedClock::CLOCK)
+  def reader = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, retrieval.origin_id)
 
   def test_the_reader_applies_a_graph_file_it_is_given
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
-    read = reader.read(GRAPH)
+    read = reader.read(GRAPH, FixedClock::STAMP)
     apply_read(read)
 
     assert_equal ["n1"], node_rows.map { |row| row[:id] }

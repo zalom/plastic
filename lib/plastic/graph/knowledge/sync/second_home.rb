@@ -47,7 +47,7 @@ module Plastic
             text = @folder.read(path)
             return "roadmaps/#{slug}.md #{OLDER_FORM}" unless Reader::RoadmapFile.form?(text)
 
-            Reader::RoadmapFile.new(slug, text, clock: @retrieval.clock)
+            Reader::RoadmapFile.new(slug, text)
             nil
           rescue Invalid => error
             error.message
@@ -65,18 +65,18 @@ module Plastic
 
           def unheld?(id) = @retrieval.contexts(id).empty? && @retrieval.discoveries(id).empty?
 
-          def contexts = context_files.select { |path, id| context_file(path, id).problem.nil? && context_file(path, id).rows.any? }.map(&:first)
+          def contexts = context_files.select { |path, id| context_file(path, id).problem.nil? && context_file(path, id).held? }.map(&:first)
 
           def context_problems = context_files.to_h { |path, id| [path, context_file(path, id).problem] }.compact
 
-          def context_file(path, id) = Reader::ContextFile.new(@folder.read(path), id, path, clock: @retrieval.clock)
+          def context_file(path, id) = Reader::ContextFile.new(@folder.read(path), id, path)
 
           def known
             @known ||= [*@retrieval.intents.map(&:intent_id), *Array(@folders&.intents).map(&:intent_id),
               *ArchivedIntents.new(@folder, @retrieval).missing.map { |mark| mark["intent_id"] }]
           end
 
-          def index_file = Reader::IndexFile.new(@folder.read(StoreFolder::INDEX), @retrieval.origin_id, clock: @retrieval.clock)
+          def index_file = Reader::IndexFile.new(@folder.read(StoreFolder::INDEX), @retrieval.origin_id)
 
           def cluster_entries
             return [] unless @folder.exist?(StoreFolder::INDEX) && @retrieval.clusters.empty?

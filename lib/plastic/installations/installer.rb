@@ -28,18 +28,19 @@ module Plastic
     class Installer
       LEDGER_ACTIONS = { install: "install", update: "reinstall" }.freeze
 
-      attr_reader :package_root, :plastic_home, :clock
+      attr_reader :package
 
       def initialize(package_root:, plastic_home:, version: nil, clock: Time, **seams)
-        @package_root = package_root
-        @plastic_home = plastic_home
-        @version = version
-        @clock = clock
+        @package = Package.new(root: package_root, home: plastic_home, version: version || PackageVersion.new(package_root).call, clock:)
         @agents = AgentSet.new(seams.fetch(:agents, AgentSet::DEFAULTS))
         @distribution = seams.except(:agents)
       end
 
-      def version = @version ||= PackageVersion.new(package_root).call
+      def package_root = package.root
+
+      def plastic_home = package.home
+
+      def version = package.version
 
       def agents = @agents.agents
 
@@ -68,8 +69,6 @@ module Plastic
 
       private
 
-      def package = Package.new(package_root, plastic_home, version, clock)
-
       def sync(selected, statusline)
         results = selected.map { |key| AgentRun.new(@agents, package, statusline).call(key) }
         Installations.record(self, results.select { |result| result[:success] }.map { |result| result[:key] })
@@ -86,7 +85,7 @@ module Plastic
 
       def print_config
         Doctor::HomeIgnore.new(plastic_home).check
-        line = Config::Store.new(plastic_home, clock:).print_once
+        line = Config::Store.new(plastic_home, clock: package.clock).print_once
         puts "   #{line}" if line
       end
 
@@ -98,7 +97,7 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home, now: clock.now).call.failed.each do |slug, reason|
+        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now).call.failed.each do |slug, reason|
           puts "   #{Workflows::SchemaMigration.line(slug, reason)}"
         end
       end
@@ -113,7 +112,7 @@ module Plastic
 
       def log(results, action)
         synced = results.filter_map { |result| result[:key] if result[:success] }
-        Ledger.new(plastic_home, clock:).append_run(version, action, synced)
+        Ledger.new(plastic_home, clock: package.clock).append_run(version, action, synced)
       end
     end
   end

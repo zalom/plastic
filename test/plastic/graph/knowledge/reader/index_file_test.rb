@@ -11,9 +11,9 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def entry(**fields) = retrieval.intent("1").index_h.merge(fields.transform_keys(&:to_s))
 
-  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text.dup, origin, clock: FixedClock::CLOCK).apply(batch) }
+  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text.dup, origin).apply(batch, FixedClock::STAMP) }
 
-  def apply_in(dirs, text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text, origin, dirs, clock: FixedClock::CLOCK).apply(batch) }
+  def apply_in(dirs, text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch, FixedClock::STAMP) }
 
   def put_old_cluster = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
@@ -26,14 +26,14 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
   end
 
   def test_an_intent_of_another_origin_is_refused
-    file = IndexFile.new(index([{ "intent_id" => "1", "origin_id" => "beef" }], []), "a1b2", clock: FixedClock::CLOCK)
-    error = assert_raises(Plastic::Invalid) { file.apply(nil) }
+    file = IndexFile.new(index([{ "intent_id" => "1", "origin_id" => "beef" }], []), "a1b2")
+    error = assert_raises(Plastic::Invalid) { file.apply(nil, FixedClock::STAMP) }
 
     assert_equal "store/index.json lists 1 of origin beef; a store holds only its own intents", error.message
   end
 
   def test_an_index_that_is_not_a_json_object_is_refused_with_its_reason
-    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2", clock: FixedClock::CLOCK).apply(nil) }
+    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2").apply(nil, FixedClock::STAMP) }
 
     assert_equal "store/index.json is not a JSON object", error.message
   end
