@@ -11,7 +11,7 @@ module CommandReference
   require "plastic/routine"
 
   %w[snippet source row outcome flow edge own_call call_closure ending reach page locator workflow_reading step_readings gate_reading read_reading step_reading agent_reading outcome_reading flow_reader own_call_reading hook_files file_endings endings changes reasons event_list command_reading model
-    figures/style figures/point figures/anchored figures/box figures/label figures/circle figures/head figures/path figures/frame figures/canvas words page_words places figures/event_row figures/glyphs figures/event_key figures/events figures/plate figures/sides figures/overview
+    figures/style figures/point figures/anchored figures/box figures/label figures/circle figures/head figures/path figures/frame figures/canvas words page_words places figures/stop_box figures/stop_column figures/event_row figures/glyphs figures/event_key figures/events figures/plate figures/sides figures/overview
     markdown/links markdown/page markdown/index
     page_files build disk cli].each do |name|
     require_relative "command_reference/#{name}"
