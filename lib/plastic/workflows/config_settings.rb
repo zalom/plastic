@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../wiring"
-require_relative "../cli/command"
+require_relative "../errors"
 
 module Plastic
   module Workflows
