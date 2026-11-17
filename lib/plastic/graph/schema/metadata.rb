@@ -9,7 +9,8 @@ module Plastic
         "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
         "command_runs" => ["command run", "command runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "runs" => %w[run runs], "edges" => %w[edge edges],
-        "work_log" => ["work log line", "work log lines"], "documents" => %w[document documents],
+        "work_log" => ["work log line", "work log lines"], "work_log_pending" => ["pending work log line", "pending work log lines"],
+        "documents" => %w[document documents],
         "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions],
@@ -25,7 +26,7 @@ module Plastic
       }.freeze
 
       MIGRATIONS = {
-        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked';",
+        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked'; CREATE UNIQUE INDEX IF NOT EXISTS \"work_log_write_id\" ON \"work_log\"(\"origin_id\", \"write_id\") WHERE \"write_id\" IS NOT NULL;",
         knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
       }.freeze
     end

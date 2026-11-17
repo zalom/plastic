@@ -25,6 +25,8 @@ module Plastic
     # The same rows always print the same bytes, so a hash tells whether a
     # file or its rows changed since the last print.
     module Prints
+      WORK_LOG = "work.log"
+
       module_function
 
       def index(retrieval) = IndexPrint.call(retrieval)
@@ -53,9 +55,9 @@ module Plastic
           GraphPrint.call(intent, contents), *ContextPrint.call(intent, contents), *kept_files(retrieval, contents.kept_files(id))]
       end
 
-      # A path held as a legacy row and as a document prints from the legacy row only.
+      # A path held as a legacy row and as a document prints from the legacy row only; work.log prints from the work log lines alone.
       def documents(dir, rows, legacy)
-        held = legacy.map(&:path)
+        held = [*legacy.map(&:path), WORK_LOG]
         text_files(dir, rows.reject { |document| held.include?(document.path) })
       end
 
@@ -72,7 +74,7 @@ module Plastic
       def work_log(intent, lines)
         return [] if lines.empty?
 
-        [Print.text("#{intent.dir}/work.log", :work, lines.map { |line| "#{line.line}\n" }.join)]
+        [Print.text("#{intent.dir}/#{WORK_LOG}", :work, lines.map { |line| "#{line.line}\n" }.join)]
       end
 
       def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", :work, RoadmapPrint.new(retrieval, slug).text)

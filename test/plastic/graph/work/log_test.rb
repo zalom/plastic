@@ -27,6 +27,8 @@ class WorkLogTest < Plastic::TestCase
 
   def lines = graphs.retrieval.work_log("1")
 
+  def open_intent(title = "Alpha") = work.write_intent(title:)
+
   def pending = graphs.databases.fetch(:work).rows("SELECT * FROM work_log_pending ORDER BY rowid")
 
   def rulings = graphs.databases.fetch(:knowledge).rows("SELECT id FROM rulings WHERE intent_id = '1'")
@@ -81,12 +83,19 @@ class WorkLogTest < Plastic::TestCase
     assert_equal %w[s-1 s-a s-b], lines.map(&:session_id)
   end
 
+  def replay(row)
+    columns = %i[write_id intent_id at session_id kind text origin_id]
+    sql = "INSERT INTO work_log_pending(write_id, intent_id, at, phase, node, session_id, kind, path, sha256, text, origin_id) " \
+          "VALUES (:write_id, :intent_id, :at, '', '', :session_id, :kind, '', '', :text, :origin_id)"
+    graphs.databases.fetch(:work).transaction { |batch| batch.add(sql, **row.transform_keys(&:to_sym).slice(*columns)) }
+  end
+
   def test_a_drained_line_keeps_its_own_write_id_and_a_replayed_write_id_adds_nothing
     open_intent
     die_after_commit
     row = pending.first
     work.drain_log("1")
-    graphs.databases.fetch(:work).transaction { |batch| batch.add("INSERT INTO work_log_pending(write_id, intent_id, at, phase, node, session_id, kind, path, sha256, text, origin_id) VALUES (:write_id, :intent_id, :at, '', '', :session_id, :kind, '', '', :text, :origin_id)", **row.transform_keys(&:to_sym).slice(:write_id, :intent_id, :at, :session_id, :kind, :text, :origin_id)) }
+    replay(row)
     work.drain_log("1")
 
     assert_equal [%w[opened ruled], []], [lines.map(&:kind), pending]

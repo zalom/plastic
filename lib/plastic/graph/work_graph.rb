@@ -8,6 +8,7 @@ require_relative "prints"
 require_relative "knowledge/sync/preview"
 require_relative "work/writers"
 require_relative "work/logged_writes"
+require_relative "work/session_intent"
 require_relative "knowledge/intent/noter"
 
 module Plastic
@@ -26,11 +27,11 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
-      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :repair_log, :add_ruling, :add_verdict, :revise_intent,
-        :note_intent, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node
-      def_delegators "@writers.nodes", :add_node, :remove_node, :renew_claims
+      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :drain_log, :drain_logs, :add_ruling, :add_verdict,
+        :revise_intent, :note_intent, :add_node, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
+        :remove_node, :add_edge, :remove_edge
+      def_delegators "@writers.nodes", :renew_claims
       def_delegators "@writers.verdicts", :rounds_left?
-      def_delegators "@writers.edges", :add_edge, :remove_edge
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal
@@ -38,16 +39,13 @@ module Plastic
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       def_delegator "@writers.sync", :hand_edited
-      # The snapshot restores exact bytes; printing live rows would replace them.
-      # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
-      def_delegator "@writers.archives", :restore, :unarchive_intent
 
-      def initialize(databases, folder:, retrieval:, session: nil, clock: Time)
+      def initialize(databases, folder:, retrieval:, session: nil, **seams)
         @databases = databases
         @folder = folder
         @retrieval = retrieval
-        @writers = Work::Writers.new(databases, retrieval, folder, session, clock)
-        @logged = Work::LoggedWrites.new(@writers)
+        @writers = Work::Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
+        @logged = Work::LoggedWrites.new(@writers, **seams.slice(:log))
       end
 
       # A command run is call memory, kept off the report.
@@ -73,12 +71,18 @@ module Plastic
         @writers.sync.printer.print([Prints.index(@retrieval), *Prints.of_intent(@retrieval, intent)])
       end
 
+      # The snapshot restores exact bytes; the work.log it holds lacks the line this call just wrote, so that one file is printed again.
+      # Returns [ok, problem, kind]; kind is :failure, nil on success.
+      def unarchive_intent(intent_id)
+        @logged.unarchive_intent(intent_id).tap { |ok,| reprint_log(intent_id) if ok }
+      end
+
       # Prints a roadmap's file from its rows; returns the paths written.
       def print_roadmap(slug) = @writers.sync.printer.print([Prints.roadmap(@retrieval, slug)])
 
       # Opens a ready item's intent, with its spec held in rows. Returns
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
-      def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers).call(slug, item_id)
+      def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers, @logged).call(slug, item_id)
 
       def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
 
@@ -102,7 +106,7 @@ module Plastic
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
       def archive_intent(intent_id)
         @folder.ignore_databases
-        @writers.archives.archive(intent_id)
+        @logged.archive_intent(intent_id)
       end
 
       # The backups of this store: write, preview, list, purge and restore.
@@ -112,6 +116,16 @@ module Plastic
       end
 
       private
+
+      def reprint_log(intent_id)
+        prints = Prints.of_intent(@retrieval, @retrieval.intent(intent_id)).select { |print| print.path.end_with?("/work.log") }
+        forget_printed(prints.map(&:path))
+        @writers.sync.printer.print(prints)
+      end
+
+      def forget_printed(paths)
+        Schema.store.each { |key| @databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } } }
+      end
 
       def local_db = @databases.fetch(:local)
 

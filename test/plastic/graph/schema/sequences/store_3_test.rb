@@ -9,7 +9,7 @@ class SchemaStore3Test < Plastic::TestCase
   Sequences = Plastic::Graph::SchemaSequences
   Store1 = Plastic::Graph::SchemaStore1
 
-  PINNED = "e4ece976ad1e3ab9db3b66e4e09ee701cc07684c980654587b66eb3e4efa1083"
+  PINNED = "7ea838683226cad5f00fcbf89abae773718cbd1178365071bd281dd25176754d"
 
   SAVEPOINTS = [
     ["1", 1, "2026-10-20T08:00:00+02:00", "Opened: Alpha", "o", nil],

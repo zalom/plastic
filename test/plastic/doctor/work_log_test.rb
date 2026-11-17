@@ -25,7 +25,10 @@ class DoctorWorkLogTest < Plastic::TestCase
   class Died < StandardError; end
 
   class DiesAfterCommit < Plastic::Graph::Work::Log
-    def drain(_intent_id) = raise(Died, "the process died after the owning commit")
+    def drain(intent_id)
+      @calls = @calls.to_i + 1
+      (@calls == 2) ? raise(Died, "the process died after the owning commit") : super
+    end
   end
 
   def leave_pending(intent_id, text)
@@ -35,14 +38,15 @@ class DoctorWorkLogTest < Plastic::TestCase
     assert_raises(Died) { work.add_ruling(intent_id:, text:) }
   end
 
+  def ruled_lines(id) = store_graphs.retrieval.work_log(id)
+
   def test_a_write_that_died_after_its_commit_is_drained_and_the_intent_is_named
     store_graphs.work.write_intent(title: "One")
     store_graphs.work.write_intent(title: "Two")
     leave_pending("2", "kept")
 
     assert_equal "ok, drained 1 work log line: intent 2", check.value
-    assert_equal %w[opened ruled], store_graphs.retrieval.work_log("2").map(&:kind)
-    assert_equal ["s-dead"], store_graphs.retrieval.work_log("2").last(1).map(&:session_id)
+    assert_equal [%w[opened ruled], ["s-dead"]], [ruled_lines("2").map(&:kind), ruled_lines("2").last(1).map(&:session_id)]
   end
 
   def test_a_second_check_adds_nothing
@@ -54,12 +58,16 @@ class DoctorWorkLogTest < Plastic::TestCase
     assert_equal %w[opened ruled], store_graphs.retrieval.work_log("1").map(&:kind)
   end
 
+  def convert_to_old_line
+    work = store_graphs.databases[:work]
+    work.transaction { |batch| batch.remove(:work_log, intent_id: "1") }
+    work.transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+  end
+
   def test_a_converted_store_gets_no_line_from_the_check
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.remove(:work_log, intent_id: "1") }
-    store_graphs.databases[:work].transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+    convert_to_old_line
 
-    assert_equal "ok, every intent has its lines", check.value
-    assert_equal %w[noted], store_graphs.retrieval.work_log("1").map(&:kind)
+    assert_equal ["ok, every intent has its lines", %w[noted]], [check.value, ruled_lines("1").map(&:kind)]
   end
 end
