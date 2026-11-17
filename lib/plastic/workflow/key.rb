@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../plastic"
+require_relative "../inflector"
 require_relative "../invalid"
 
 module Plastic
@@ -15,7 +15,7 @@ module Plastic
         new(name, name.split("_", 2).first, path.split("::"))
       end
 
-      def file = segments.map { |segment| Plastic.snake(segment) }.join("/")
+      def file = segments.map { |segment| Inflector.underscore(segment) }.join("/")
 
       # The workflow class in `namespace`. A class already loaded is used as
       # it is; any other is required from workflows/ first. The key's lane

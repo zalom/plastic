@@ -44,7 +44,7 @@ module Plastic
     end
     private_class_method :loaded?
 
-    def self.file_of(klass) = klass.split("::").map { |part| Plastic.snake(part) }.join("/")
+    def self.file_of(klass) = klass.split("::").map { |part| Plastic::Inflector.underscore(part) }.join("/")
 
     Context = Struct.new(:environment, :table, :topics) do
       def environment_and_table = [environment, table]

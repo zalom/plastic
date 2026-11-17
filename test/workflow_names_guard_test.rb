@@ -130,7 +130,7 @@ class WorkflowNamesTest < Minitest::Test
 
   def registry = Plastic::Workflows::REGISTRY
 
-  def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic.snake(segment) }) + ".rb"
+  def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
   def test_the_registry_holds_the_ninety_five_keys_in_order
     assert_equal 95, MAPPING.size
