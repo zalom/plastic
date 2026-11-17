@@ -9,16 +9,18 @@ class StateTest < Minitest::Test
   end
   Intent = Data.define(:status)
   Edge = Data.define(:from, :to)
-  Reads = Data.define(:items, :edges, :intents) do
-    def roadmap_items(_roadmap) = items
-    def roadmap_edges(_roadmap) = edges
+  Roadmaps = Data.define(:rows, :links) do
+    def items(_roadmap) = rows
+    def edges(_roadmap) = links
+  end
+  Reads = Data.define(:roadmaps, :intents) do
     def intent(intent_id) = intents[intent_id]
   end
 
   def item(name, intent_id: nil, mark: nil, dropped: false) = Item.new("r1", name, intent_id, mark, dropped)
 
   def state(target, items: [target], edges: [], intents: {})
-    Plastic::Graph::Knowledge::Roadmap::State.of(target, Reads.new(items, edges, intents))
+    Plastic::Graph::Knowledge::Roadmap::State.of(target, Reads.new(Roadmaps.new(items, edges), intents))
   end
 
   def test_an_item_whose_intent_is_done_is_done
