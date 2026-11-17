@@ -10,13 +10,17 @@ class SchemaTest < Plastic::TestCase
   def table(name) = Schema.table_named(name)
 
   def test_the_schema_names_each_database_file
-    assert_equal %w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db references.db], %i[local work knowledge retrieval references].map { |key| Schema.file(key) }
+    assert_equal %w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db], %i[local work knowledge retrieval].map { |key| Schema.file(key) }
   end
 
   def test_the_schema_joins_each_database_tables_ddl
     assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:settings).ddl, table(:printed).ddl].join("\n"), Schema.fetch(:local)
-    assert_equal %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed changes],
+    assert_equal %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed changes sqlar],
       Schema.databases.fetch(:knowledge).last
+  end
+
+  def test_a_store_has_a_work_and_a_knowledge_database_and_one_derived_file
+    assert_equal [%i[work knowledge], %i[retrieval]], [Schema.store, Schema.derived]
   end
 
   def test_the_retrieval_database_holds_the_passages_and_the_search_entries
