@@ -55,8 +55,6 @@ module Plastic
       end
 
       def keep_original(status)
-        return if HookRegistry.claude_purge_command?(status["command"])
-
         FileUtils.mkdir_p(@cache)
         Files.write_json(File.join(@cache, "original-statusline.json"), status)
       end
