@@ -11,6 +11,8 @@ module Plastic
       Link = Data.define(:from_ref, :to_ref, :kind, :at, :origin_id) do
         include Record
 
+        def joins?(edge) = [from_ref, to_ref, kind] == edge
+
         def from_intent_id = from_ref.split("/").first
 
         def supersedes_from_another?(intent_id) = kind == "supersedes" && to_ref == intent_id && from_intent_id != intent_id

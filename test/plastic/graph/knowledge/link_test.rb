@@ -16,4 +16,10 @@ class KnowledgeLinkTest < Plastic::TestCase
 
     assert_equal({ from_ref: "1/D2", to_ref: "1/D1", kind: "supersedes", at: STAMP }, Knowledge::Link.supersedes(newer, older))
   end
+
+  def test_a_link_joins_the_ends_and_the_kind_it_was_written_with
+    link = Knowledge::Link.from_h({ from_ref: "1", to_ref: "2", kind: "chain" })
+
+    assert_equal [true, false], [link.joins?(%w[1 2 chain]), link.joins?(%w[1 2 cites])]
+  end
 end
