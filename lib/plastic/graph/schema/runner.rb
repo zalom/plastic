@@ -1,26 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "../database"
-require_relative "../origin"
-require_relative "../backup/writer"
-require_relative "home_copy"
-require_relative "home_rename"
-require_relative "migrator"
-require_relative "migrations"
-require_relative "store_age"
+require_relative "home_migration"
+require_relative "store_migration"
 
 module Plastic
   module Graph
-    # Brings the databases of a home to the newest version of their
-    # sequences. The install and the update run it, and nothing else does.
-    # A store whose files are behind is backed up first, whatever the age of
-    # its newest backup; when that backup fails, the store stays behind and
-    # the run goes on with the other stores.
+    # Brings the databases of a home to the newest version of their sequences. The install and the update run it, and
+    # nothing else does. A store that stays behind does not stop the run: the others go on.
     class SchemaRunner
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason.
-      Report = Data.define(:migrated, :failed)
-
-      REFERENCES = "references.db"
+      Report = Data.define(:migrated, :failed) do
+        def self.of(results)
+          grouped = results.group_by { |_slug, outcome| outcome.is_a?(String) ? :failed : outcome }
+          new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h)
+        end
+      end
 
       # `only` names one store to migrate; the home database is checked either way.
       def initialize(home:, now: Time.now, only: nil)
@@ -30,118 +24,16 @@ module Plastic
       end
 
       def call
-        results = store_slugs.to_h { |slug| [slug, migrate_store(slug)] }
-        results["home"] = migrate_home
-        Report.new(migrated: named(results, :migrated), failed: reasons(results))
+        results = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now).call] }
+        results["home"] = HomeMigration.new(@home, @now).call
+        Report.of(results)
       end
 
       private
 
-      def named(results, result) = results.select { |_slug, outcome| outcome == result }.keys
-
-      def reasons(results) = results.select { |_slug, outcome| outcome.is_a?(String) }
-
-      def migrate_home
-        path = [current, former].find { |file| File.exist?(file) }
-        return :current unless path
-
-        reason = preparation_failure(path)
-        return reason if reason
-
-        local = Database.open_local(@home).fetch(:local)
-        return :current if local.version >= SchemaMigrator::VERSION
-
-        local.migrate
-        :migrated
-      rescue SQLite3::Exception, Database::Error, SystemCallError, HomeRename::Taken => error
-        "it could not be migrated (#{first_line(error)})"
-      end
-
-      def former = File.join(@home, "local.db")
-
-      def current = File.join(@home, "plastic.db")
-
-      def preparation_failure(path)
-        reason = copy_failure(path) if version_of(path) < SchemaMigrator::VERSION
-        return "the copy of its database failed (#{reason})" if reason
-
-        HomeRename.new(former, current).call if path == former
-        nil
-      end
-
-      def version_of(path) = SQLite3::Database.open(path, readonly: true) { |db| db.get_first_value("PRAGMA user_version").to_i }
-
-      def copy_failure(path)
-        HomeCopy.new(path, File.join(@home, "backups"), @now).call
-        nil
-      rescue SQLite3::Exception, SystemCallError, HomeCopy::Exists => error
-        first_line(error)
-      end
-
-      def first_line(error) = error.message.lines.first.to_s.strip
-
       def store_slugs
         folder = File.join(@home, "stores")
         File.directory?(folder) ? Dir.children(folder).sort.select { |name| File.directory?(File.join(folder, name)) && (@only.nil? || name == @only) } : []
-      end
-
-      def migrate_store(slug)
-        root = File.join(@home, "stores", slug)
-        return :current unless behind?(root)
-
-        StoreAge.call(root)
-        reason = backup_failure(slug)
-        reason ? "its backup failed (#{reason})" : migrate_store_files(root, slug)
-      rescue SQLite3::Exception, Database::Error, SystemCallError => error
-        "it could not be migrated (#{first_line(error)})"
-      end
-
-      def behind?(root) = SchemaGate.behind?(knowledge_file(root), [work_file(root)])
-
-      def knowledge_file(root) = File.join(root, Schema.file(:knowledge))
-
-      def work_file(root) = File.join(root, Schema.file(:work))
-
-      def references_file(root) = File.join(root, REFERENCES)
-
-      def migrate_store_files(root, slug)
-        run_migration(root)
-        retire_references(root)
-        Database::ConnectionPool.release(root)
-        vacuum(root)
-        rebuild_search(slug)
-        :migrated
-      rescue SQLite3::Exception, SystemCallError
-        Database::ConnectionPool.release(root)
-        Database::ConnectionPool.remove_created(File.join(root, ""))
-        raise
-      end
-
-      def run_migration(root)
-        connection = Database::ConnectionPool.for(knowledge_file(root), attach: Database::Store.attachments(knowledge_file(root)))
-        connection.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file(root)) ? references_file(root) : ":memory:"])
-        SchemaMigrator.new(connection, SchemaMigrations.path(:store)).call
-      ensure
-        connection&.execute("DETACH DATABASE refs") unless connection&.transaction_active?
-      end
-
-      def retire_references(root)
-        ["", "-wal", "-shm", "-journal"].map { |suffix| references_file(root) + suffix }.select { |file| File.file?(file) }.each { |file| File.delete(file) }
-      end
-
-      def vacuum(root)
-        connection = Database::ConnectionPool.for(knowledge_file(root), attach: Database::Store.attachments(knowledge_file(root)))
-        %w[main work].each { |schema| connection.execute("VACUUM #{schema}") }
-        Database::ConnectionPool.release(root)
-      end
-
-      def rebuild_search(slug) = Graph.open(home: @home, store: slug).retrieval.reindex
-
-      def backup_failure(slug)
-        Backup::Writer.new(File.join(@home, "stores", slug), slug, now: @now, reason: "migration").call
-        nil
-      rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError => error
-        first_line(error)
       end
     end
   end
