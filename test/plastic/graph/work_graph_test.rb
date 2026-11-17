@@ -27,10 +27,11 @@ class WorkGraphTest < Plastic::TestCase
       [work.intent_problem(parent_id: "9"), work.ref_line("ENG-1")]
   end
 
-  def test_the_backups_refuse_a_restore_while_a_live_lock_holds_an_intent
-    work.lock_intent("1", session_id: "s-2", mode: "auto")
+  def test_the_backups_refuse_a_restore_while_a_live_claim_holds_a_node
+    work.add_node(intent_id: "1", title: "Build")
+    work.claim_node(intent_id: "1", id: "n1", by: "s-2")
 
-    assert_predicate work.backups.restorer, :locked?
+    assert_predicate work.backups.restorer, :claimed?
   end
 
   def test_a_sync_plan_applies_through_the_work_graph

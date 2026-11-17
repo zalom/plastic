@@ -6,7 +6,7 @@ module Plastic
   module Graph
     module Work
       class Session
-        # The write side of the home's `sessions` and `locks` tables for one
+        # The write side of the home's `sessions` table for one
         # store. A put names only the columns it sets, so a write keeps the rest.
         class Writer
           def initialize(home, store:)
@@ -31,23 +31,6 @@ module Plastic
 
           # The one prose line of a session; a session with no row gets one.
           def write_note(session_id, text) = put(:sessions, { session_id:, note: text })
-
-          # Writes the lock row of this store, locked and renewed now.
-          def lock_intent(intent_id, session_id:, mode:)
-            now = Plastic.now
-            put(:locks, { store: @store, intent_id:, session_id:, mode:, locked_at: now, renewed_at: now })
-          end
-
-          # Renews every lock row this session names, live or lapsed, and
-          # returns how many: the key is the store and the intent, so a lapsed
-          # row still naming this session was taken by no one else (review A10).
-          def renew_locks(session_id)
-            found = @home.transaction do |batch|
-              batch.add("UPDATE \"locks\" SET \"renewed_at\" = :now WHERE \"session_id\" = :session_id RETURNING session_id",
-                now: Plastic.now, session_id:)
-            end
-            found.sum(&:size)
-          end
 
           private
 

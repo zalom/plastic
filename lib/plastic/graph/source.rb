@@ -6,6 +6,7 @@ require_relative "knowledge/document"
 require_relative "knowledge/legacy_intents_data"
 require_relative "work/savepoint"
 require_relative "work/node"
+require_relative "work/run"
 require_relative "work/edge"
 require_relative "work/approval"
 require_relative "work/verdict"
@@ -40,6 +41,7 @@ module Plastic
       legacy_intents_data: Source.new(Knowledge::LegacyIntentsData, :knowledge, "legacy_intents_data", "*", "intent_id, path"),
       savepoints: Source.new(Work::Savepoint, :work, "savepoints", "*", "intent_id, position"),
       nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, #{NODE_ORDER}"),
+      runs: Source.new(Work::Run, :work, "runs", "*", "intent_id, rtrim(node_id, '0123456789'), length(node_id), node_id, number"),
       edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
       approvals: Source.new(Work::Approval, :work, "approvals", "*", "intent_id"),
       verdicts: Source.new(Work::Verdict, :work, "verdicts", "*", "intent_id, round"),

@@ -23,7 +23,6 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     SQLite3::Database.new(File.join(home, "local.db")).tap do |db|
       db.execute("INSERT INTO routine_runs (store, tool, subject) VALUES ('alpha', 'intent new', '7')")
       db.execute("INSERT INTO sessions (session_id, harness) VALUES ('s-1', 'claude-code')")
-      db.execute("INSERT INTO locks (store, intent_id, session_id) VALUES ('alpha', '7', 's-1')")
     end.close
   end
 
@@ -34,7 +33,7 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     seed_local_rows(home)
     Runner.new(home:, now: NOW).call
 
-    assert_equal [1, 1, 1], %w[command_runs sessions locks].map { |table| rows_of(home, table).size }
+    assert_equal [1, 1], %w[command_runs sessions].map { |table| rows_of(home, table).size }
     assert_equal [true, false], [File.exist?(File.join(home, "plastic.db")), File.exist?(File.join(home, "local.db"))]
   end
 

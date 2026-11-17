@@ -15,22 +15,29 @@ module Plastic
           sets :problem, :id
 
           read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || criterion_problem(context)
+            context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || kind_problem(context) || criterion_problem(context)
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the intent is missing, done or abandoned, or the criterion key is not one of the spec",
+            words: "the intent is missing, done or abandoned, the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
             pass: ->(context) { context.problem.nil? }
 
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|
             node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
-              input: context.input)
+              input: context.input, kind: context.kind || "work")
             context[:id] = node.id
           end
 
           read "say what was added" do |context|
             context.print("node: #{context.id}")
+          end
+
+          def self.kind_problem(context)
+            kind = context.kind
+            return nil if kind.nil? || Plastic::Graph::Work::Node::KINDS.include?(kind)
+
+            "kind #{kind.inspect} is not a node kind; the kinds are: #{Plastic::Graph::Work::Node::KINDS.join(", ")}"
           end
 
           def self.criterion_problem(context)

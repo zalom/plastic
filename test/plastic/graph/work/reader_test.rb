@@ -40,13 +40,11 @@ class WorkReaderTest < Plastic::TestCase
     assert_equal %w[12 a2 n1 n2 n10 node-3], retrieval.nodes("1").map(&:id)
   end
 
-  def test_claims_read_in_node_number_order
+  def test_claimed_nodes_read_in_node_number_order
     plan(*(1..10).map { |number| "Step #{number}" })
     %w[n10 n2].each { |id| @work.claim_node(intent_id: "1", id:, by: "a") }
-    claims = Plastic::Graph::Work::Session::Claims.new(store_graphs.databases, store: "global")
-    lock = Plastic::Graph::Lock.new(store: "global", intent_id: "1", session_id: "a", mode: "auto", locked_at: nil, renewed_at: nil)
 
-    assert_equal %w[n2 n10], claims.call(lock).map(&:id)
+    assert_equal %w[n2 n10], reader.claimed_nodes.map(&:id)
   end
 
   def test_a_node_waits_until_the_node_it_needs_is_done

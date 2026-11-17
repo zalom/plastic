@@ -6,7 +6,7 @@ require_relative "../../../../lib/plastic/graph/work/next_offer"
 
 class WorkNextOfferTest < Plastic::TestCase
   def offer
-    pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1")
+    pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now)
     Plastic::Graph::Work::NextOffer.new(retrieval, pick).call
   end
 

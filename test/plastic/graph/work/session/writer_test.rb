@@ -54,25 +54,6 @@ class WorkSessionWriterTest < Plastic::TestCase
     assert_equal "picked up the review", reader.session("s-9").note
   end
 
-  def test_lock_intent_writes_the_lock_of_this_store_locked_and_renewed_together
-    work.lock_intent("1", session_id: "s-1", mode: "auto")
-    lock = reader.lock("1")
-
-    assert_equal ["plastic", "s-1", "auto", lock.locked_at], [lock.store, lock.session_id, lock.mode, lock.renewed_at]
-  end
-
-  def test_renew_locks_counts_every_lock_the_session_names_in_any_store
-    work.lock_intent("1", session_id: "s-1", mode: "auto")
-    Plastic::Graph.create(home: @plastic_home, store: "other").work.lock_intent("2", session_id: "s-1", mode: "auto")
-    work.lock_intent("3", session_id: "s-2", mode: "auto")
-
-    assert_equal 2, work.renew_locks("s-1")
-  end
-
-  def test_renew_locks_of_a_session_with_no_lock_counts_none
-    assert_equal 0, work.renew_locks("nobody")
-  end
-
   def test_reopening_an_ended_session_clears_its_end
     work.open_session("s-1", harness: "claude-code", directory: "/a")
     work.end_session("s-1", reason: "clear")

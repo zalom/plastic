@@ -9,6 +9,7 @@ module Plastic
 
         def savepoints(intent_id = nil) = read(:savepoints, intent_id)
         def nodes(intent_id = nil) = read(:nodes, intent_id)
+        def runs(intent_id = nil) = read(:runs, intent_id)
         def edges(intent_id = nil) = read(:edges, intent_id)
         def approvals(intent_id = nil) = read(:approvals, intent_id)
         def approval(intent_id) = approvals(intent_id).first

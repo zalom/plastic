@@ -96,17 +96,21 @@ module Plastic
 
       def self.prefixed(values, prefix) = values.to_h { |key, value| [:"#{prefix}_#{key}", value] }
 
+      HOLDER_GUARD = "AND (claimed_by IS NULL OR claimed_by = :holder)"
+
       # An UPDATE that moves a node between states: the row in `from` with
       # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its id.
-      def self.move(to:, from:, set: {})
-        assignments = set({ state: to, updated_at: Plastic.now }.merge(set), "s")
+      # With a `holder`, a node claimed by another session does not move.
+      def self.move(to:, from:, set: {}, holder: nil, now: Time.now)
+        assignments = set({ state: to, updated_at: Plastic.now(now) }.merge(set), "s")
         states = list(from, "f")
         text = <<~SQL
           UPDATE nodes SET #{assignments.sql}
           WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{states.sql})
+          #{HOLDER_GUARD if holder}
           RETURNING id
         SQL
-        Bound.new(text, assignments.values.merge(states.values))
+        Bound.new(text, assignments.values.merge(states.values).merge(holder ? { holder: } : {}))
       end
     end
   end

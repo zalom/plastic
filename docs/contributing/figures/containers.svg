@@ -45,7 +45,7 @@
 <ellipse class="box" cx="745.0" cy="214" rx="105.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="745.0" y="241" text-anchor="middle">plastic.db</text>
 <text class="s" x="745.0" y="259" text-anchor="middle">command_runs, sessions,</text>
-<text class="s" x="745.0" y="274" text-anchor="middle">locks, settings</text>
+<text class="s" x="745.0" y="274" text-anchor="middle">settings</text>
 <rect class="box" x="880" y="199" width="250" height="109" rx="8"/><rect x="880" y="199" width="6" height="109" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="896" y="223">config.yml, projects.yml</text><text class="s" x="896" y="240">[files]</text>
 <text class="s" x="896" y="260">Printed from the settings</text>
@@ -54,7 +54,7 @@
 <path class="box" d="M 40 414 L 40 463 A 125.0 9 0 0 0 290 463 L 290 414 Z"/>
 <ellipse class="box" cx="165.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="165.0" y="441" text-anchor="middle">work_graph.db</text>
-<text class="s" x="165.0" y="459" text-anchor="middle">intents, nodes, edges</text>
+<text class="s" x="165.0" y="459" text-anchor="middle">intents, nodes, runs, edges</text>
 <path class="box" d="M 320 414 L 320 463 A 125.0 9 0 0 0 570 463 L 570 414 Z"/>
 <ellipse class="box" cx="445.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="445.0" y="441" text-anchor="middle">knowledge_graph.db</text>

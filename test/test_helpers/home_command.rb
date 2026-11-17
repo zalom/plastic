@@ -78,7 +78,7 @@ class HomeCommand
   private
 
   def environment(env, input, out, err)
-    Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp") }.merge(env),
+    Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"), "PLASTIC_SESSION" => "s-1" }.merge(env),
       input: StringIO.new(input), out:, err:, home:, directory: home)
   end
 end

@@ -44,10 +44,12 @@ module Plastic
       end
 
       def recap(event)
-        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id)
+        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
         open_session_row(graphs.work)
-        Recap.new(graphs.retrieval, session_id:, source: event[:source], directory:).lines
+        recap_of(graphs.retrieval, event[:source]).lines(now: environment.now)
       end
+
+      def recap_of(retrieval, source) = Recap.new(retrieval, session_id:, source:, directory:)
 
       # The store's databases stay out of its versioning before any read.
       def open_session_row(work)

@@ -8,7 +8,7 @@ module Plastic
   module Graph
     module Work
       module Completion
-        # Commits the acceptance attestation and closure together, then releases the lock.
+        # Commits the acceptance attestation and closure together.
         class Writer
           def initialize(databases, retrieval, folder, session:)
             @databases = databases
@@ -19,22 +19,16 @@ module Plastic
 
           def close(intent_id)
             intent = @retrieval.intent(intent_id)
-            (intent.status == "done") ? retry_close(intent_id) : write_completion(intent_id)
-            release_lock(intent_id)
+            (intent.status == "done") ? raise(Invalid, "intent #{intent_id} is already done") : write_completion(intent_id)
           end
 
           # An open, in progress, parked or future intent ends as abandoned, with no completion row.
           def abandon(intent_id)
             intent = @retrieval.intent(intent_id)
             write_abandon(intent_id) unless intent.status == "abandoned"
-            release_lock(intent_id)
           end
 
           private
-
-          def retry_close(intent_id)
-            raise Invalid, "intent #{intent_id} is already done" unless @retrieval.lock(intent_id)
-          end
 
           def write_abandon(intent_id)
             found = Check.new(@retrieval, intent_id).abandon_problems
@@ -73,18 +67,6 @@ module Plastic
               batch.write(:intents, "UPDATE intents SET status = 'done', disposition = 'delivered', closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress')",
                 now:, intent_id:, origin: @retrieval.origin_id)
-            end
-          end
-
-          def release_lock(intent_id)
-            lock = @retrieval.lock(intent_id)
-            delete_lock(lock) if lock && !(lock.session_id != @session && @retrieval.liveness(lock).live?)
-          end
-
-          def delete_lock(lock)
-            @databases.fetch(:local).transaction do |batch|
-              batch.write(:locks, "DELETE FROM locks WHERE store = :store AND intent_id = :intent_id AND session_id = :session_id AND renewed_at = :renewed_at",
-                store: @retrieval.store, **lock.to_h.slice(:intent_id, :session_id, :renewed_at))
             end
           end
         end

@@ -12,9 +12,9 @@ class StopGateTest < Plastic::TestCase
     put(:work, :nodes, { intent_id:, id: "a", state: "open" })
   end
 
-  def lock_intent(intent_id, mode: "auto", live: true)
+  def claim_node(intent_id, live: true)
     at = live ? STAMP : "2026-10-05T09:00:00+02:00"
-    put(:local, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, locked_at: at, renewed_at: at })
+    put(:work, :nodes, { intent_id:, id: "c", state: "claimed", claimed_by: "s-1", claimed_at: at, seen_at: at, updated_at: at })
   end
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
@@ -22,7 +22,7 @@ class StopGateTest < Plastic::TestCase
   def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1", now: Time.iso8601(STAMP) + 60)
 
   def test_blocks_when_every_condition_holds
-    lock_intent("1")
+    claim_node("1")
     make_ready_node("1")
 
     decision = gate.decision
@@ -32,56 +32,40 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_permits_once_the_harness_reports_the_stop_hook_active
-    lock_intent("1")
+    claim_node("1")
     make_ready_node("1")
 
     assert_nil gate(event: { stop_hook_active: true }).decision
   end
 
   def test_permits_when_the_config_flag_is_off
-    lock_intent("1")
+    claim_node("1")
     make_ready_node("1")
 
     assert_nil gate(stop_hook: false).decision
   end
 
-  def test_permits_when_there_is_no_live_lock
+  def test_permits_when_there_is_no_live_claim
     make_ready_node("1")
 
     assert_nil gate.decision
   end
 
-  def test_permits_when_the_locked_intent_has_no_ready_node
-    lock_intent("1")
+  def test_permits_when_the_claimed_intent_has_no_ready_node
+    claim_node("1")
 
     assert_nil gate.decision
   end
 
-  def test_a_lapsed_lock_does_not_block
-    lock_intent("1", live: false)
+  def test_a_lapsed_claim_does_not_block
+    claim_node("1", live: false)
     make_ready_node("1")
-
-    assert_nil gate.decision
-  end
-
-  def test_a_lapsed_lock_held_by_an_open_node_still_blocks
-    lock_intent("1", live: false)
-    make_ready_node("1")
-    put(:work, :nodes, { intent_id: "1", id: "b", state: "claimed", by: "s-1", updated_at: STAMP })
-
-    assert_equal "block", gate.decision["decision"]
-  end
-
-  def test_a_lock_of_an_ended_session_does_not_block
-    lock_intent("1")
-    make_ready_node("1")
-    put(:local, :sessions, { session_id: "s-1", store: "global", ended_at: STAMP })
 
     assert_nil gate.decision
   end
 
   def test_an_error_while_reading_permits_the_stop
-    broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1")
+    broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1", now: Time.now)
 
     assert_nil broken.decision
   end

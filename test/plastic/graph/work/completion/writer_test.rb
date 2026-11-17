@@ -37,6 +37,15 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_includes evidence.fetch(KEY).to_s, "Acceptance passes for works"
   end
 
+  def test_closing_a_done_intent_again_raises_and_changes_nothing
+    ready
+    writer.close("1")
+
+    error = assert_raises(Plastic::Invalid) { writer.close("1") }
+
+    assert_equal "intent 1 is already done", error.message
+  end
+
   def test_closing_without_the_merge_and_map_records_raises_and_writes_nothing
     ready(records: "")
 
@@ -55,37 +64,12 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_nil retrieval.completion("1")
   end
 
-  def test_closing_releases_the_lock_of_the_closing_session
-    ready
-    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
-    writer.close("1")
-
-    assert_nil retrieval.lock("1")
-  end
-
-  def test_closing_keeps_a_live_lock_another_session_holds
-    ready
-    @graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
-    writer.close("1")
-
-    assert_equal "s-2", retrieval.lock("1").session_id
-  end
-
   def test_abandoning_a_done_intent_changes_nothing
     ready
     writer.close("1")
     writer.abandon("1")
 
     assert_equal %w[done delivered], retrieval.intent("1").to_h.values_at(:status, :disposition)
-  end
-
-  def test_closing_a_done_intent_again_releases_the_lock_it_still_holds
-    ready
-    writer.close("1")
-    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
-    writer.close("1")
-
-    assert_nil retrieval.lock("1")
   end
 
   def test_the_file_evidence_reader_is_gone
@@ -139,31 +123,6 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
     writer.abandon("2")
 
     assert_equal "abandoned", retrieval.intent("2").status
-  end
-
-  def test_abandoning_releases_the_lock_of_the_closing_session
-    dropped
-    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
-    writer.abandon("1")
-
-    assert_nil retrieval.lock("1")
-  end
-
-  def test_abandoning_keeps_a_live_lock_another_session_holds
-    dropped
-    @graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
-    writer.abandon("1")
-
-    assert_equal "s-2", retrieval.lock("1").session_id
-  end
-
-  def test_abandoning_an_abandoned_intent_again_releases_the_lock_it_still_holds
-    dropped
-    writer.abandon("1")
-    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
-    writer.abandon("1")
-
-    assert_nil retrieval.lock("1")
   end
 
   def test_abandoning_without_an_outcome_raises_and_writes_nothing

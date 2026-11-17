@@ -33,13 +33,19 @@ module Plastic
 
     # `harness` holds the session that made the call, or nil when the harness
     # sets none, and the store scope. The write lock is held by a session.
-    def initialize(declared:, facts:, graphs:, harness: Harness.new)
+    def initialize(declared:, facts:, graphs:, harness: Harness.new, clock: Time)
       @facts = Facts.new(declared, facts)
       @graphs = graphs.to_h
       @harness = harness
+      @clock = clock
       @printed = []
       expose_facts
     end
+
+    # The time of this call, from the clock it was given.
+    def now = @clock.now
+
+    attr_reader :clock
 
     def work = @graphs[:work]
 

@@ -20,6 +20,22 @@ class CommandTest < Plastic::TestCase
 
   class Bare < Plastic::CLI::Command; end
 
+  class Idle < Plastic::CLI::Command
+    def call
+      graphs.databases.fetch(:work).define_singleton_method(:path) { "/missing/work_graph.db" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal made a database" }
+    end
+  end
+
+  class FailingRenewal < Plastic::CLI::Command
+    argument :intent_id, label: "ID", text: "the intent"
+
+    def call
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise SQLite3::BusyException, "the database is locked" }
+      output.row("title:", graphs.retrieval.intent(parsed[:intent_id]).title)
+    end
+  end
+
   def run_tool(*argv, tool: Title, env: {})
     out = StringIO.new
     err = StringIO.new
@@ -107,5 +123,36 @@ class CommandTest < Plastic::TestCase
 
     assert_equal 1, result.code
     refute_empty result.err
+  end
+
+  def test_a_renewal_that_fails_never_changes_the_result_of_the_call
+    open_intent("Alpha")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    result = run_tool("1", tool: FailingRenewal, env: { "PLASTIC_SESSION" => "s-1" })
+
+    assert_equal CommandHelper::Result.new("title:  Alpha\n", "", 0), result
+  end
+
+  class BrokenRenewal < Plastic::CLI::Command
+    argument :intent_id, label: "ID", text: "the intent"
+
+    def call
+      graphs.work.define_singleton_method(:renew_claims) { |_session| nil.renew }
+      output.row("title:", "x")
+    end
+  end
+
+  def test_a_renewal_that_is_a_bug_is_not_hidden
+    open_intent("Alpha")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    assert_raises(NoMethodError) { run_tool("1", tool: BrokenRenewal, env: { "PLASTIC_SESSION" => "s-1" }) }
+  end
+
+  def test_a_call_in_a_store_with_no_work_database_renews_nothing
+    assert_equal 0, run_tool(tool: Idle, env: { "PLASTIC_SESSION" => "s-1" }).code
   end
 end

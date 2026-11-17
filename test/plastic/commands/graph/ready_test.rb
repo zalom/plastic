@@ -58,9 +58,9 @@ class GraphReadyTest < Plastic::TestCase
 
   def test_claimed_work_leaves_nothing_ready_and_no_next_line
     two_linked_nodes
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
-    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call("1")
 
@@ -70,9 +70,9 @@ class GraphReadyTest < Plastic::TestCase
 
   def test_claimed_work_says_why_nothing_is_ready
     two_linked_nodes
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
-    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call("1")
 

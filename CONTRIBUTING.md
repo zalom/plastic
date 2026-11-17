@@ -82,8 +82,8 @@ on your machine.
    `lib/plastic/cli/table/work_families.rb`, which `table.rb` adds to the other families.
 2. Add the class in one file under `lib/plastic/commands/`. Each word of the command is a name in
    the class path and a folder in the file path: `intent end` is `Commands::Intent::End` in
-   `intent/end.rb`, and `intent lock status` is `Commands::Intent::Lock::Status` in
-   `intent/lock/status.rb`. A group with no command of its own is a module; `backup` and `config`
+   `intent/end.rb`, and `node renew` is `Commands::Node::Renew` in
+   `node/renew.rb`. A group with no command of its own is a module; `backup` and `config`
    are classes that also hold their subcommands, and a subcommand file requires its parent first.
    Inside `commands/`, write `Plastic::Graph`, never `Graph`, wherever a group name would shadow a
    top-level class. Follow `architecture/status.rb` for the smallest example.

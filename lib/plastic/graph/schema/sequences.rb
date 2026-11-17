@@ -3,7 +3,9 @@
 require_relative "sequences/home_1"
 require_relative "sequences/home_2"
 require_relative "sequences/home_3"
+require_relative "sequences/home_4"
 require_relative "sequences/store_1"
+require_relative "sequences/store_2"
 
 module Plastic
   module Graph
@@ -34,8 +36,10 @@ module Plastic
       SEQUENCES = {
         home: [Migration.new(1, SchemaHome1.method(:apply), SchemaHome1::TABLES),
           Migration.new(2, SchemaHome2.method(:apply), SchemaHome2::TABLES),
-          Migration.new(3, SchemaHome3.method(:apply), SchemaHome3::TABLES)].freeze,
-        store: [Migration.new(1, SchemaStore1.method(:apply), SchemaStore1::TABLES)].freeze
+          Migration.new(3, SchemaHome3.method(:apply), SchemaHome3::TABLES),
+          Migration.new(4, SchemaHome4.method(:apply), SchemaHome4::TABLES)].freeze,
+        store: [Migration.new(1, SchemaStore1.method(:apply), SchemaStore1::TABLES),
+          Migration.new(2, SchemaStore2.method(:apply), SchemaStore2::TABLES)].freeze
       }.freeze
 
       VERSION = "PRAGMA user_version"

@@ -3,7 +3,7 @@
 require_relative "test_helper"
 
 # Retired auto words guard. `plastic auto ID` is the only auto
-# command and the lock is read with `plastic intent lock status ID`, so no
+# command, so no
 # shipped document and no kernel file names `auto start`, `auto lock`, the
 # old `plastic-lock` script or `roadmap start`, which is `roadmap open`. CHANGELOG.md is
 # history and keeps the words it was written with.
@@ -41,6 +41,6 @@ class AutoWordsGuardTest < Minitest::Test
   end
 
   def test_the_detector_leaves_the_new_words_alone
-    refute retired?("run plastic auto 7, then plastic intent lock status 7")
+    refute retired?("run plastic auto 7, then plastic intent brief 7")
   end
 end

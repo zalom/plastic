@@ -16,10 +16,10 @@ module ArchitectureFigures
       home | zone | 10 165 1140 170 | Plastic home | | | |
       instructions | | 30 199 230 | PLASTIC.md | file | agent | | The always-on instructions / the harness imports.
       program | | 330 199 260 | exe/plastic | pointer | code | mono | A launcher that points to / the active program.
-      local | cylinder | 640 205 210 | plastic.db | | | | command_runs, sessions, / locks, settings
+      local | cylinder | 640 205 210 | plastic.db | | | | command_runs, sessions, / settings
       registry | | 880 199 250 | config.yml, projects.yml | files | line | | Printed from the settings / rows, and the list of / projects: slug to repository.
       store | zone | 10 370 1140 390 | A store | | | |
-      work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, edges
+      work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, runs, edges
       knowledge | cylinder | 320 405 250 | knowledge_graph.db | | | | documents, rulings, links
       references | cylinder | 600 405 250 | references.db | | | | sqlar
       backups | | 880 399 250 | backups/ | folder | line | | Copies of the three databases, / one folder for each backup.
@@ -42,7 +42,7 @@ module ArchitectureFigures
     NAMES = [
       ["path", "exe/plastic", "exe/plastic"],
       *%w[plastic.db work_graph.db knowledge_graph.db references.db].map { |name| ["database", name, name] },
-      *%w[command_runs sessions locks intents nodes edges documents rulings links sqlar].map { |name| ["table", name, name] },
+      *%w[command_runs sessions intents nodes runs edges documents rulings links sqlar].map { |name| ["table", name, name] },
       *%w[store/index.json spec.md graph.json savepoint.md outcome.md context.json].map { |name| ["store_file", name, name] },
       ["command", "sync up", "sync up"]
     ].freeze

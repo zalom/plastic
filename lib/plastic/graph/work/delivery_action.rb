@@ -8,7 +8,7 @@ module Plastic
       # The next concrete action for a delivery, or instructions for the harness.
       class DeliveryAction
         def self.worker_clause(node)
-          worker = node.by.to_s
+          worker = node.claimed_by.to_s
           worker.empty? ? "" : " with its worker #{worker}"
         end
 

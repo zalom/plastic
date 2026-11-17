@@ -13,7 +13,7 @@ module SyncSecondHomeAcceptance
   def self.home_command(directory) = KernelCommand.new(directory)
 
   QUERIES = {
-    "nodes with their states" => "SELECT id, state, by, retries, updated_at FROM nodes ORDER BY id",
+    "nodes with their states" => "SELECT id, state, claimed_by, answered_at, updated_at FROM nodes ORDER BY id",
     "edges" => "SELECT \"from\", \"to\", kind FROM edges ORDER BY \"from\", \"to\"",
     "verdicts" => "SELECT round, verdict, findings FROM verdicts ORDER BY round",
     "findings of a node" => "SELECT id, findings FROM nodes ORDER BY id"

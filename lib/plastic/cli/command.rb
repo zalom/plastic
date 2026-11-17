@@ -59,10 +59,16 @@ module Plastic
 
       def answer
         check_scope
-        call
+        call_and_renew
         flush.exit_code
       rescue Scope::BrokenProjects => error
         broken(error)
+      end
+
+      def call_and_renew
+        call
+      ensure
+        renew_claims
       end
 
       def call
@@ -129,7 +135,21 @@ module Plastic
       end
 
       # The graphs of the store the call works on, opened once.
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session))
+      def graphs = (@graphs ||= open_graphs)
+
+      # Renews the claims of this session after the call, in the store the call reached and
+      # only when its work database exists: a renewal never makes one.
+      def renew_claims
+        session = environment.session
+        return unless session && @scope
+
+        opened = @graphs || open_graphs
+        opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:work).path)
+      rescue SQLite3::Exception, Graph::MissingStore, Graph::OutOfStep
+        nil
+      end
+
+      def open_graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock)
     end
   end
 end

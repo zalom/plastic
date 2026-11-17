@@ -11,7 +11,7 @@ class ClaimNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs", input: "spec.md")
   end
 
-  def claim(id = "n1", intent_id: "1") = run_workflow(Plastic::Workflows::Code::Node::Claim, harness: scoped_harness(session: "s-1"), intent_id:, id:)
+  def claim(id = "n1", intent_id: "1") = run_workflow(Plastic::Workflows::Code::Node::Claim, harness: scoped_harness(session: "s-1"), intent_id:, id:, agent: "")
 
   def test_a_claimed_node_prints_its_brief
     outcome, context = claim

@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 
-# A dispatched agent is a stateless node: the main session takes the lock,
+# A dispatched agent is a stateless node: the main session claims the node,
 # claims each node, records each result and closes the intent. No shipped
 # agent file names one of those commands, or another Plastic write, as a step.
 class DispatchedAgentStepsGuardTest < Minitest::Test

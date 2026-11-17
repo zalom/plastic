@@ -12,9 +12,8 @@ module Plastic
           "node #{node.id} is done with no findings" if node.state == "done" && node.findings.to_s.strip.empty?
         end
 
-        def self.retry_finding(node)
-          retries = node.retries
-          "node #{node.id} retried #{retries} times" if retries > 3
+        def self.retry_finding(node, runs)
+          "node #{node.id} retried #{runs} times" if runs > 3 && node.answer.to_s.empty?
         end
 
         def initialize(retrieval, intent_id)
@@ -28,11 +27,13 @@ module Plastic
 
         def live = @live ||= @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
 
+        def run_counts = @run_counts ||= @retrieval.runs(@intent_id).group_by(&:node_id).transform_values(&:size).tap { |counts| counts.default = 0 }
+
         def edges = @edges ||= @retrieval.edges(@intent_id)
 
         def node_findings = live.flat_map { |node| findings_for(node) }
 
-        def findings_for(node) = [Findings.findings_finding(node), edge_finding(node), Findings.retry_finding(node)].compact
+        def findings_for(node) = [Findings.findings_finding(node), edge_finding(node), Findings.retry_finding(node, run_counts[node.id])].compact
 
         def edge_finding(node)
           return nil if live.size < 2 || touches?(node)

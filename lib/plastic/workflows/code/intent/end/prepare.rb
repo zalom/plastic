@@ -33,7 +33,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :refusal,
-              words: "another live session holds the lock of the intent",
+              words: "another live session holds a node claim of the intent",
               pass: ->(context) { context.problem.nil? }
 
             read "check the completion records" do |context|

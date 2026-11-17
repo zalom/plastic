@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../backup"
-require_relative "../lock"
 require_relative "../database"
 require_relative "databases"
 require_relative "integrity"
@@ -13,12 +12,12 @@ module Plastic
   module Graph
     module Backup
       # Replaces the store databases with those of one backup. It refuses
-      # while a delivery lock is fresh, checks every file first, backs up the
+      # while a node claim is live, checks every file first, backs up the
       # current databases, and swaps each file by rename so a failure puts
       # the old ones back.
       class Restorer
-        # A delivery lock of the store is fresh.
-        class Locked < StandardError; end
+        # A node claim of the store is live.
+        class Claimed < StandardError; end
 
         Rejected = Integrity::Rejected
 
@@ -42,10 +41,7 @@ module Plastic
           @now = now
         end
 
-        def locked?
-          rows = @target.local_db.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
-          rows.map { |row| Lock.from_h(row) }.any? { |lock| @retrieval.liveness(lock).live?(@now) }
-        end
+        def claimed? = @retrieval.claimed_nodes.any? { |node| !node.lapsed?(@now) }
 
         # The database names a restore would replace.
         def held_in(timestamp, names: nil)
@@ -57,7 +53,7 @@ module Plastic
 
         # Why a restore of this backup is refused now, or nil.
         def refusal(timestamp, databases: nil)
-          return "an intent of #{@target.slug} holds a fresh delivery lock" if locked?
+          return "an intent of #{@target.slug} has a node with a live claim" if claimed?
 
           status = @target.folders.status(timestamp)
           return "the backup #{timestamp} is #{status}; only a done backup restores" unless status == "done"
@@ -84,7 +80,7 @@ module Plastic
         end
 
         def error_for(message)
-          return Locked if locked?
+          return Claimed if claimed?
 
           message.include?("restore the whole store") ? VersionMismatch : NotDone
         end

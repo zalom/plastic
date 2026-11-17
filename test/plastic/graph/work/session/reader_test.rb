@@ -49,19 +49,6 @@ class WorkSessionReaderTest < Plastic::TestCase
     assert_nil reader.predecessor("s-1")
   end
 
-  def test_locks_of_lists_the_session_locks_in_every_store
-    graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
-    graphs(store: "other").work.lock_intent("2", session_id: "s-1", mode: "auto")
-
-    assert_equal [%w[plastic 1], %w[other 2]].sort, reader.locks_of("s-1").map { |lock| [lock.store, lock.intent_id] }.sort
-  end
-
-  def test_the_lock_of_an_intent_in_another_store_is_not_this_store_lock
-    graphs(store: "other").work.lock_intent("1", session_id: "s-1", mode: "auto")
-
-    assert_nil reader.lock("1")
-  end
-
   def test_command_run_reads_the_run_of_one_tool_on_one_subject
     graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
 

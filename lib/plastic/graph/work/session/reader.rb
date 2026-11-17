@@ -2,15 +2,13 @@
 
 require_relative "../../../command_run"
 require_relative "../session"
-require_relative "../../lock"
 require_relative "touched"
-require_relative "claims"
 
 module Plastic
   module Graph
     module Work
       class Session
-        # The read side of the local database's `sessions`, `locks` and `command_runs`
+        # The read side of the local database's `sessions` and `command_runs`
         # tables for one store, and the savepoint lines a session wrote.
         class Reader
           PREDECESSOR_SQL = <<~SQL
@@ -57,26 +55,12 @@ module Plastic
             row && Session.from_h(row)
           end
 
-          # Every Lock this session holds, any store.
-          def locks_of(session_id)
-            local.rows("SELECT * FROM locks WHERE session_id = :session_id", session_id:).map { |row| Lock.from_h(row) }
-          end
-
-          # The Lock on one intent of this store, or nil.
-          def lock(intent_id)
-            row = local.row("SELECT * FROM locks WHERE store = :store AND intent_id = :intent_id", store: @store, intent_id:)
-            row && Lock.from_h(row)
-          end
-
           # The latest CommandRun of this store whose subject is `intent_id` or
           # whose facts hold it as `intent_id`, by `updated_at`.
           def last_run(intent_id)
             row = local.row(LAST_RUN_SQL, store: @store, intent_id:)
             row && CommandRun.from_row(row, row.fetch("subject"))
           end
-
-          # The Lock::Liveness of `lock`.
-          def liveness(lock) = Lock::Liveness.new(lock, session(lock.session_id)&.ended_at, Claims.new(@databases, store: @store).call(lock))
 
           # Intent ids this session touched, most recent first.
           def touched(session_id) = Touched.new(@databases, store: @store, origin: @origin).call(session_id)

@@ -39,7 +39,7 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :intent, :problem, :moved
+        sets :intent, :problem, :moved, :taken
         intent_steps
         move_steps(verb, shape)
         result_steps(shape)
@@ -53,6 +53,9 @@ module Plastic
       def self.move_steps(verb, shape)
         read("forget a refusal of an earlier call") { |context| forget_refusal(context) }
         step(shape.fetch(:step), done: method(:tried?), changes: { work: CHANGES.fetch(verb) }) { |context| run_move(context, verb, shape) }
+        gate "%{problem}", stops: :refusal,
+          words: "another session took the claim of the node after it lapsed",
+          pass: ->(context) { !context.taken }
         gate "%{problem}", stops: :failure,
           words: "the node is not in the intent, or its state does not allow this move",
           pass: method(:moved?)
@@ -73,17 +76,50 @@ module Plastic
       end
 
       def self.run_move(context, verb, shape)
-        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, **fields(context, shape))
-        context[:problem] = node ? nil : refusal(context, shape.fetch(:state))
+        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape))
+        settle(context, node || repeated_done?(context, verb), shape.fetch(:state))
+      end
+
+      def self.settle(context, moved, state)
+        context[:problem] = moved ? nil : refusal(context, state)
+        context[:taken] = !moved && taken?(context)
         context[:moved] = !context.problem
       end
 
       def self.fields(context, shape) = shape.fetch(:fields).to_h { |name, source| [name, context.public_send(source || name)] }
 
+      def self.taken?(context)
+        node = context.retrieval.node(context.intent_id, context.id)
+        return false if node.nil? || context.session.nil?
+
+        held_by_other?(node, context.session) || finished_by_other?(context, node)
+      end
+
+      def self.held_by_other?(node, session) = node.state == "claimed" && node.claimed_by != session
+
+      def self.finished_by_other?(context, node)
+        finisher = finisher_of(context, node)
+        node.state == "done" && !finisher.nil? && finisher != context.session
+      end
+
+      # The session of the last run of a node: the one that finished it when the node is done.
+      def self.finisher_of(context, node)
+        runs = context.retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
+        runs.max_by(&:number)&.session_id
+      end
+
+      # The holder that finished the node asks again: nothing moves and nothing is written.
+      def self.repeated_done?(context, verb)
+        node = context.retrieval.node(context.intent_id, context.id)
+        verb == :done_node && !node.nil? && node.state == "done" && finisher_of(context, node) == context.session
+      end
+
       def self.refusal(context, state)
         intent_id, id = context.intent_id, context.id
         node = context.retrieval.node(intent_id, id)
-        node ? node.refusal(state) : "no node #{id} in intent #{intent_id}"
+        return "no node #{id} in intent #{intent_id}" unless node
+
+        taken?(context) ? "node #{id} is held by session #{node.claimed_by || finisher_of(context, node)}; its claim was taken" : node.refusal(state)
       end
     end
   end

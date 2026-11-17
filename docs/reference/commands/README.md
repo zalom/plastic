@@ -13,7 +13,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
 | [`plastic rollback`](rollback/README.md) | Switch the active release back to the previous one or to a named installed one |
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |
-| [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: lock the intent and print the worktree |
+| [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: set the intent in progress and print the worktree |
 | [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
 | [`plastic search`](search/README.md) | Search literal indexed passages across selected stores |
@@ -34,7 +34,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |
 | [`plastic intent discover`](intent-discover/README.md) | Record deterministic retrieval candidates for an intent |
 | [`plastic intent context`](intent-context/README.md) | Read or submit selected retrieval context for an intent |
-| [`plastic intent lock status`](intent-lock-status/README.md) | Print the session that holds an intent's lock, and its worktree |
 | [`plastic intent show`](intent-show/README.md) | Print one intent's status, criteria, decisions, rulings and nodes |
 | [`plastic intent brief`](intent-brief/README.md) | Print an intent's goal, criteria, rulings, ready nodes and command usage |
 | [`plastic intent link`](intent-link/README.md) | Write a typed link from an intent to a ref |
@@ -99,9 +98,10 @@ Each page explains one plastic command in six parts: what it does, how to call i
 
 | Command | What it does |
 | --- | --- |
-| [`plastic node add`](node-add/README.md) | Add a node to an intent's work graph |
+| [`plastic node add`](node-add/README.md) | Add a node to an intent's work graph, of kind work, orchestrator or retrieval |
 | [`plastic node remove`](node-remove/README.md) | Remove a node; its edges stay as rows |
-| [`plastic node claim`](node-claim/README.md) | Claim an open node and print its brief |
+| [`plastic node claim`](node-claim/README.md) | Claim an open node, or take a lapsed claim, and print its brief |
+| [`plastic node renew`](node-renew/README.md) | Renew this session's claim on a node so it does not lapse |
 | [`plastic node release`](node-release/README.md) | Release a claimed or failed node back to open |
 | [`plastic node done`](node-done/README.md) | Mark a claimed node done, with its findings as TEXT |
 | [`plastic node fail`](node-fail/README.md) | Mark a claimed node failed, with the reason as TEXT |
@@ -145,5 +145,5 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | Command | What it does |
 | --- | --- |
 | [`plastic hook start`](hook-start/README.md) | SessionStart: name the harness, open the session row, print the state the rows carry |
-| [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew locks, run the stop gate |
+| [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew claims, run the stop gate |
 | [`plastic hook end`](hook-end/README.md) | SessionEnd: set the session's end time and reason |

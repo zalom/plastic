@@ -89,8 +89,8 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
 
@@ -104,8 +104,8 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
 
@@ -119,8 +119,8 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
 

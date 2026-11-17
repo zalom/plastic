@@ -12,7 +12,7 @@ module Plastic
         # Turns the word `plastic auto` was given into the intent to deliver. A
         # word shaped like an intent id is that intent. Any other word is a
         # roadmap slug: its first item in flight that is not parked and not held
-        # by another session's live lock, in batch then item order. With none,
+        # by another session's live claim, in batch then item order. With none,
         # it offers a ready item to start, or says the roadmap is delivered or waits.
         class Pick < CodeWorkflow
           clear_declarations
@@ -58,11 +58,10 @@ module Plastic
 
           def self.free_item(items, context) = items&.find { |item| free?(item.intent_id, context) }
 
-          # Neither parked nor held by another session's live lock.
+          # Neither parked nor holding a node another session claimed.
           def self.free?(intent_id, context)
             retrieval = context.retrieval
-            lock = retrieval.lock(intent_id)
-            held = lock && lock.session_id != context.session && retrieval.liveness(lock).live?
+            held = retrieval.claimed_nodes.any? { |node| node.intent_id == intent_id && node.claimed_by != context.session && !node.lapsed?(context.now) }
             retrieval.intent(intent_id).status != "parked" && !held
           end
 

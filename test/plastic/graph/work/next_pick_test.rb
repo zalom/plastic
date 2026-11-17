@@ -8,7 +8,7 @@ class WorkNextPickTest < Plastic::TestCase
     open_intent("Alpha")
     open_intent("Beta")
 
-    assert_nil Plastic::Graph::Work::NextPick.new(store_graphs.retrieval, "s-1").intent
+    assert_nil Plastic::Graph::Work::NextPick.new(store_graphs.retrieval, "s-1", now: Time.now).intent
   end
 end
 
@@ -18,15 +18,16 @@ class WorkInProgressPickTest < Plastic::TestCase
     open_intent("Beta", status: "in_progress")
     open_intent("Gamma")
 
-    assert_equal "2", Plastic::Graph::Work::NextPick.new(retrieval, "s-1").intent.intent_id
+    assert_equal "2", Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now).intent.intent_id
   end
 end
 
 class WorkClosedIntentPickTest < Plastic::TestCase
-  def test_a_closed_intent_is_not_selected_through_a_leftover_lock
+  def test_a_closed_intent_is_not_selected_through_a_leftover_claim
     intent = open_intent(status: "done")
-    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-1", mode: "auto")
+    store_graphs.work.add_node(intent_id: intent.intent_id, title: "Build")
+    store_graphs.work.claim_node(intent_id: intent.intent_id, id: "n1", by: "s-1")
 
-    assert_nil Plastic::Graph::Work::NextPick.new(retrieval, "s-1").intent
+    assert_nil Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now).intent
   end
 end

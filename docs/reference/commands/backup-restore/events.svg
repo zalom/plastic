@@ -105,8 +105,8 @@
 <path d="M 472 178 L 480 183 L 472 188 Z" class="head"/>
 <rect x="480" y="152" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="170" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="188" class="t" text-anchor="start">An intent of the store holds a fresh delivery</text>
-<text x="492" y="204" class="t" text-anchor="start">lock, or the backup is not done.</text>
+<text x="492" y="188" class="t" text-anchor="start">An intent of the store holds a live node</text>
+<text x="492" y="204" class="t" text-anchor="start">claim, or the backup is not done.</text>
 <path d="M 64 203 L 64 240" class="wire"/>
 <path d="M 59 232 L 64 240 L 69 232 Z" class="head"/>
 <rect x="24" y="240" width="400" height="51" rx="6" class="lane-code"/>

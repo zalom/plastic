@@ -91,7 +91,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
 
   def test_a_claimed_node_with_no_worker_name_never_prints_an_empty_name
     plan("Build")
-    @work.claim_node(intent_id: "1", id: "n1", by: nil)
+    @work.claim_node(intent_id: "1", id: "n1", by: "")
     instructions = action.last
 
     refute_includes instructions, "worker ."

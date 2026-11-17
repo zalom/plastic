@@ -4,7 +4,7 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/fail"
 
 class NodeFailTest < Plastic::TestCase
-  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
+  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
   def setup
     super

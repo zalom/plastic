@@ -45,7 +45,7 @@ class IntentEndTest < Plastic::TestCase
     assert_equal [2, "in_progress"], [cli("intent", "end", "1", "--abandoned").code, retrieval.intent("1").status]
   end
 
-  def test_with_every_row_good_and_review_off_the_intent_closes_delivered_and_releases_the_lock
+  def test_with_every_row_good_and_review_off_the_intent_closes_delivered
     accepted_intent(records: MERGE_RECORDS)
     review_off
 
@@ -53,7 +53,6 @@ class IntentEndTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_equal ["done", "delivered"], retrieval.intent("1").to_h.values_at(:status, :disposition)
-    assert_nil retrieval.lock("1")
   end
 
   def test_the_completion_row_holds_the_verdict_judge_and_the_criteria
@@ -98,10 +97,11 @@ class IntentEndTest < Plastic::TestCase
     assert_match(/^next: plastic next/, result.out)
   end
 
-  def test_a_live_foreign_lock_refuses_the_close
+  def test_a_live_claim_of_another_session_refuses_the_close
     accepted_intent
     review_off
-    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
+    node = store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: node.id, by: "someone-else")
 
     result = finish
 

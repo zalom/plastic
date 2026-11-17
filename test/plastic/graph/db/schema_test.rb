@@ -15,11 +15,10 @@ class DbSchemaTest < Plastic::TestCase
   # The DDL of every table that existed before the schema file, pinned from origin/alpha.
   OLD_DDL = {
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
-    locks: "c0ffe9a67c940055d590e7c8de8211b4bf537750f01e269013befa4e0ca3949d",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "05ef29caf9de8d5569a5920fdd913b6d4ae2625cac5beadbce5a8da45a587107",
+    nodes: "cfa14e4507a75f95cc241d0316046a819ab03b5fad0b179dbacbc2c53936dac8",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     savepoints: "e0ac00f61310e8ed8d5204c5ce7c599b53bee17a3bd57ef84c9717d22a708be9",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
@@ -51,9 +50,9 @@ class DbSchemaTest < Plastic::TestCase
 
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
-      local: ["plastic.db", %i[command_runs sessions locks settings printed]],
+      local: ["plastic.db", %i[command_runs sessions settings printed]],
       work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
-        roadmap_edges roadmap_log archives archive_entries approvals verdicts]],
+        roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]],
       knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
         retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]],
       references: ["references.db", %i[sqlar printed changes]]

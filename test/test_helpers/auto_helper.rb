@@ -29,21 +29,7 @@ module Plastic
 
       def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
 
-      # Whether the lock is live at the moment it was renewed, so the clock never decides.
-      def live_when_renewed?(lock) = retrieval.liveness(lock).live?(Time.iso8601(lock.renewed_at))
-
-      def held_lock(intent_id)
-        lock = retrieval.lock(intent_id)
-        [lock.session_id, live_when_renewed?(lock)]
-      end
-
-      def lock_rows = store_graphs.databases.fetch(:local).rows("SELECT * FROM locks")
-
-      def expire_lock
-        store_graphs.databases.fetch(:local).transaction do |batch|
-          batch.add("UPDATE locks SET renewed_at = '2000-01-01T00:00:00Z'")
-        end
-      end
+      def claim_rows = store_graphs.databases.fetch(:work).rows("SELECT * FROM nodes WHERE state = 'claimed'")
 
       def active_intent
         intent = open_intent
