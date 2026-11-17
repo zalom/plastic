@@ -15,30 +15,33 @@ module Plastic
         @into = into
       end
 
-      def call
-        @into.transaction { |batch| rows.each { |scope, key, value| batch.add(INSERT, scope:, key:, value:) } }
-      end
+      def call = @into.transaction { |batch| add_rows(batch) }
 
       private
 
-      def rows
-        data = File.file?(@path) ? YAML.safe_load_file(@path, aliases: true) : nil
-        return [] unless data.is_a?(Hash)
+      def add_rows(batch) = rows.each { |row| batch.add(INSERT, **row) }
 
-        scopes(data).flat_map { |scope, settings| flat(settings).map { |name, value| [scope, name, JSON.generate(value)] } }
+      def rows = scopes.flat_map { |scope, settings| scope_rows(scope, settings) }
+
+      def scope_rows(scope, settings) = flat(settings).map { |key, value| { scope:, key:, value: JSON.generate(value) } }
+
+      def document
+        File.file?(@path) ? YAML.safe_load_file(@path, aliases: true) : nil
       rescue Psych::Exception
-        []
+        nil
       end
 
-      def scopes(data)
-        harnesses = data["harnesses"].is_a?(Hash) ? data["harnesses"] : {}
-        [["global", data["global"]], *harnesses.to_a].select { |_scope, settings| settings.is_a?(Hash) }
+      def data = document.is_a?(Hash) ? document : {}
+
+      def scopes
+        harnesses = data["harnesses"]
+        [["global", data["global"]], *(harnesses.is_a?(Hash) ? harnesses.to_a : [])].select { |_scope, settings| settings.is_a?(Hash) }
       end
 
       def flat(hash, prefix = nil)
-        hash.each_with_object({}) do |(key, value), entries|
+        hash.flat_map do |key, value|
           name = [prefix, key].compact.join(".")
-          value.is_a?(Hash) ? entries.merge!(flat(value, name)) : entries[name] = value
+          value.is_a?(Hash) ? flat(value, name) : [[name, value]]
         end
       end
     end

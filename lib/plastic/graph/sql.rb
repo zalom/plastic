@@ -24,7 +24,7 @@ module Plastic
 
       def self.name(identifier) = %("#{identifier.to_s.gsub('"', '""')}")
 
-      def self.qualified(schema, identifier) = schema ? "#{schema}.#{name(identifier)}" : name(identifier)
+      def self.qualified(schema, identifier) = [schema, name(identifier)].compact.join(".")
 
       def self.names(list) = list.map { |column| name(column) }.join(", ")
 

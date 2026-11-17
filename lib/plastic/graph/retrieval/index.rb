@@ -27,17 +27,17 @@ module Plastic
         private
 
         def replace(intent_id)
-          revisions = read(REVISIONS_SQL, intent_id).map { |row| Evidence::IntegrityRevision.from_row(row) }
-          documents = read(DOCUMENTS_SQL, intent_id).map { |row| Evidence::IntegrityDocument.from_row(row) }
-          @store.rebuilding do |batch|
-            clear(batch, intent_id)
-            add_rows(batch, revisions.flat_map { |revision| revision.passage_rows(@origin_id) }, documents.flat_map { |document| document.fts_rows(@origin_id) })
-          end
+          inserts = passage_rows(intent_id).map { |row| [PASSAGE_SQL, row] } + entry_rows(intent_id).map { |row| [ENTRY_SQL, row] }
+          @store.rebuilding { |batch| rebuild_into(batch, intent_id, inserts) }
         end
 
-        def add_rows(batch, passages, entries)
-          passages.each { |row| batch.add(PASSAGE_SQL, **row) }
-          entries.each { |row| batch.add(ENTRY_SQL, **row) }
+        def passage_rows(intent_id) = read(REVISIONS_SQL, intent_id).flat_map { |row| Evidence::IntegrityRevision.from_row(row).passage_rows(@origin_id) }
+
+        def entry_rows(intent_id) = read(DOCUMENTS_SQL, intent_id).flat_map { |row| Evidence::IntegrityDocument.from_row(row).fts_rows(@origin_id) }
+
+        def rebuild_into(batch, intent_id, inserts)
+          clear(batch, intent_id)
+          inserts.each { |sql, row| batch.add(sql, **row) }
         end
 
         def read(sql, intent_id)
