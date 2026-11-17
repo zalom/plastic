@@ -106,7 +106,7 @@ class SyncStepsTest < Plastic::TestCase
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply
     context = Plastic::Context.new(declared: DECLARED, facts: { lines: ["read a.md"] }, graphs: {})
-    Plastic::Workflows::SyncSteps.note(context, Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: []))
+    Plastic::Workflows::SyncSteps.note(context, Plan.clean)
 
     assert_nil context.lines
   end

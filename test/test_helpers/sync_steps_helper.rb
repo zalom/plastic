@@ -4,8 +4,11 @@
 module SyncStepsHelper
   DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless lines].freeze
 
+  # A clean plan with one write pending; a test overrides the fields it is about.
+  CLEAN = { failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], unreadable_files: {}, rowless_files: [], new_types: [], direction: :up }.freeze
+
   Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :old_savepoints, :new_types, :direction) do
-    def initialize(unreadable_files: {}, rowless_files: [], old_savepoints: Plastic::Graph::Knowledge::Sync::OldSavepoints.none, new_types: [], direction: :up, **fields) = super
+    def self.clean(**fields) = new(**CLEAN, old_savepoints: Plastic::Graph::Knowledge::Sync::OldSavepoints.none, **fields)
 
     def merging? = merging
   end
@@ -35,7 +38,7 @@ module SyncStepsHelper
   end
 
   def sync_context(plan, options)
-    work = Work.new(Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], **plan))
+    work = Work.new(Plan.clean(**plan))
     facts = { overwrite: false, merge: false }.merge(options)
     harness = Plastic::Context::Harness.new(nil, nil, Settings.new(config: nil))
     [Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: }, harness:), work]
