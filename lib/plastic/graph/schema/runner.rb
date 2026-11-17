@@ -23,11 +23,10 @@ module Plastic
       REFERENCES = "references.db"
 
       # `only` names one store to migrate; the home database is checked either way.
-      def initialize(home:, now: Time.now, sequences: SchemaSequences::SEQUENCES, only: nil)
+      def initialize(home:, now: Time.now, only: nil)
         @home = home
         @only = only
         @now = now
-        @sequences = sequences
       end
 
       def call
@@ -50,9 +49,9 @@ module Plastic
         return reason if reason
 
         local = Database.open_local(@home).fetch(:local)
-        return :current if local.version >= SchemaSequences.newest(:home)
+        return :current if local.version >= SchemaMigrator::VERSION
 
-        local.migrate(@sequences)
+        local.migrate
         :migrated
       rescue SQLite3::Exception, Database::Error, SystemCallError, HomeRename::Taken => error
         "it could not be migrated (#{first_line(error)})"
@@ -63,7 +62,7 @@ module Plastic
       def current = File.join(@home, "plastic.db")
 
       def preparation_failure(path)
-        reason = copy_failure(path) if version_of(path) < SchemaSequences.newest(:home)
+        reason = copy_failure(path) if version_of(path) < SchemaMigrator::VERSION
         return "the copy of its database failed (#{reason})" if reason
 
         HomeRename.new(former, current).call if path == former

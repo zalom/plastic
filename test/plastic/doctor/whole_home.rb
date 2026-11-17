@@ -73,7 +73,7 @@ module WholeHome
     FileUtils.mkdir_p(File.dirname(path))
     connection = SQLite3::Database.new(path)
     schema.prepare(connection, schema.fetch(key))
-    connection.execute("PRAGMA user_version = #{Plastic::Graph::SchemaSequences.newest(:home)}")
+    connection.execute("PRAGMA user_version = #{Plastic::Graph::SchemaMigrator::VERSION}")
   ensure
     connection&.close
   end

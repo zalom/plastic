@@ -62,10 +62,11 @@ class SchemaRunnerHomeTest < Plastic::TestCase
 
   def test_a_home_whose_migration_fails_gives_its_reason
     home = old_layout(fresh_home)
-    failing = Plastic::Graph::SchemaSequences::Migration.new(1, ->(_connection, _key) { raise SQLite3::SQLException, "no such table: gone" }, {})
-    report = Runner.new(home:, now: NOW, sequences: { home: [failing] }).call
+    SQLite3::Database.new(File.join(home, "local.db")).tap { |db| db.execute('CREATE TABLE "command_runs"("store" TEXT)') }.close
+    report = Runner.new(home:, now: NOW).call
 
-    assert_equal "it could not be migrated (plastic.db: no such table: gone)", report.failed.fetch("home")
+    assert_match(/\Ait could not be migrated \(plastic\.db: .*command_runs/, report.failed.fetch("home"))
+    assert_equal 0, read_value(File.join(home, "plastic.db"), "PRAGMA user_version")
   end
 
   def test_a_home_whose_copy_fails_gives_its_reason
@@ -89,11 +90,11 @@ class SchemaRunnerHomeTest < Plastic::TestCase
 
   def test_a_plastic_db_behind_the_newest_version_leaves_one_checked_copy_named_after_it
     home = fresh_home
-    set_version(home, 2)
+    set_version(home, 0)
     Runner.new(home:, now: NOW).call
     copy = Dir.glob(File.join(home, "backups", "plastic-*.db"))
 
-    assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [2, "ok"]], [copy, [read_value(copy.first, "PRAGMA user_version"), read_value(copy.first, "PRAGMA quick_check")]]
+    assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [0, "ok"]], [copy, [read_value(copy.first, "PRAGMA user_version"), read_value(copy.first, "PRAGMA quick_check")]]
   end
 
   def test_a_local_db_already_at_the_newest_version_is_still_renamed_to_plastic_db

@@ -11,6 +11,9 @@ module OldLayoutHomes
 
   OLD_HOME_TABLES = <<~SQL
     ALTER TABLE command_runs RENAME TO routine_runs;
+    DROP TABLE "settings";
+    DROP TABLE "printed";
+    CREATE TABLE "locks"("store" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "session_id" TEXT NOT NULL, "mode" TEXT, "taken_at" TEXT, "renewed_at" TEXT, UNIQUE("store", "intent_id"));
     CREATE TABLE "backups"("name" TEXT NOT NULL, "files" INTEGER, "bytes" INTEGER, "sha256" TEXT, "at" TEXT, "session_id" TEXT, UNIQUE("name"));
   SQL
 
@@ -46,7 +49,6 @@ module OldLayoutHomes
 
   def downgrade(path)
     with_database(path) do |db|
-      db.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'locks' AND type = 'table'")
       db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
       db.execute("PRAGMA user_version = 0")
     end

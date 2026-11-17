@@ -90,7 +90,7 @@ module Plastic
       end
 
       def prepare_config_import
-        return unless Graph::Database::Local.new(plastic_home).version.to_i < Graph::SchemaSequences.newest(:home)
+        return unless Graph::Database::Local.new(plastic_home).version.to_i < Graph::SchemaMigrator::VERSION
 
         AdvisorMigration.file(File.join(plastic_home, "config.yml"))
         report_config_upgrade

@@ -8,7 +8,6 @@ class SchemaRunnerTest < Plastic::TestCase
   include OldLayoutHomes
 
   Runner = Plastic::Graph::SchemaRunner
-  Sequences = Plastic::Graph::SchemaSequences
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
 
   def run_runner(home, **options) = Runner.new(home:, now: NOW, **options).call
@@ -31,7 +30,7 @@ class SchemaRunnerTest < Plastic::TestCase
 
     stamped = versions.group_by { |path, _| File.basename(path) }.transform_values { |pairs| pairs.map(&:last).uniq }
 
-    assert_equal({ "plastic.db" => [Sequences.newest(:home)], "knowledge_graph.db" => [Plastic::Graph::SchemaMigrator::VERSION], "work_graph.db" => [0], "retrieval_graph.db" => [0] }, stamped)
+    assert_equal({ "plastic.db" => [Plastic::Graph::SchemaMigrator::VERSION], "knowledge_graph.db" => [Plastic::Graph::SchemaMigrator::VERSION], "work_graph.db" => [0], "retrieval_graph.db" => [0] }, stamped)
   end
 
   def test_a_backup_of_the_store_is_taken_first_and_says_it_is_the_migration_backup

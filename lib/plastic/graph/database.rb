@@ -4,7 +4,7 @@ require_relative "missing_store"
 require_relative "schema"
 require_relative "schema/gate"
 require_relative "schema/migrator"
-require_relative "schema/sequences"
+require_relative "schema/migrations"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
@@ -54,12 +54,12 @@ module Plastic
 
       attr_reader :path, :written
 
-      # `track` names the migration sequence and the schema key of a database that is stamped; one without it is built from its schema alone.
-      def initialize(path, schema, origin: nil, track: nil)
+      # `key` names the schema of a database that is stamped; one without it is built from its schema alone.
+      def initialize(path, schema, origin: nil, key: nil)
         @path = path
         @schema = schema
         @origin = origin
-        @track = track
+        @key = key
         @unsettled = true
         @written = Hash.new(0)
       end
@@ -67,7 +67,7 @@ module Plastic
       def file = File.basename(path)
 
       # The schema key of a stamped database, or nil for one that is not.
-      def key = @track&.fetch(:key)
+      attr_reader :key
 
       # Rows from one read. `:name` in the SQL takes the value of `name`.
       def rows(sql, **values) = connected { |connection| connection.read(sql, values) }
@@ -121,9 +121,9 @@ module Plastic
       # What the report says of this database: what this call wrote.
       def phrases = [written_phrase].compact
 
-      # Brings the file to the newest version of its sequence. Only the install and the update call this.
-      def migrate(sequences)
-        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key)) }
+      # Brings the home database to the newest version by its SQL file. Only the install and the update call this.
+      def migrate
+        unfenced { SchemaMigrator.new(open_file, SchemaMigrations.path(:home)).call }
         @unsettled = false
       end
 
@@ -179,9 +179,9 @@ module Plastic
       end
 
       def settle(connection)
-        return Schema.prepare(connection, @schema) unless @track
+        return Schema.prepare(connection, @schema) unless @key
 
-        SchemaGate.new(connection, layouts: { nil => @track.fetch(:key) }, newest: SchemaSequences.newest(@track.fetch(:sequence)), file:).call
+        SchemaGate.new(connection, layouts: { nil => @key }, file:).call
       end
     end
   end

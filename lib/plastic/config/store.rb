@@ -3,11 +3,11 @@
 require "digest"
 require "fileutils"
 require "yaml"
+require_relative "import"
 require_relative "rows"
 require_relative "../clock"
 require_relative "../graph/database"
 require_relative "../graph/origin"
-require_relative "../graph/schema/sequences/home_3"
 
 module Plastic
   class Config
@@ -33,7 +33,6 @@ module Plastic
       VERSION = 3
 
       UPSERT = 'INSERT OR REPLACE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
-      IMPORT = 'INSERT OR IGNORE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
       RECORD = 'INSERT OR REPLACE INTO "printed"("path", "sha256", "at", "origin_id") VALUES (:path, :sha256, :at, :origin_id)'
 
       def initialize(home)
@@ -67,7 +66,7 @@ module Plastic
         return format(UNREADABLE, reason) if reason
 
         back_up
-        import
+        Import.new(@path, into: local).call
         print
         nil
       end
@@ -103,11 +102,6 @@ module Plastic
 
         FileUtils.mkdir_p(File.join(@home, "backups"))
         FileUtils.cp(@path, File.join(@home, "backups", "config-#{Time.now.utc.strftime("%Y%m%d%H%M%S")}.yml"))
-      end
-
-      def import
-        rows = Graph::SchemaHome3.rows(@path)
-        local.transaction { |batch| rows.each { |scope, key, value| batch.add(IMPORT, scope:, key:, value:) } }
       end
 
       def local = Graph::Database.open_local(@home).fetch(:local)

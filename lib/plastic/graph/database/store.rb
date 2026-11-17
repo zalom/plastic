@@ -19,7 +19,7 @@ module Plastic
         attr_reader :files
 
         def initialize(root, origin)
-          super(File.join(root, Schema.file(:knowledge)), nil, origin:, track: { sequence: :store, key: :knowledge })
+          super(File.join(root, Schema.file(:knowledge)), nil, origin:, key: :knowledge)
           @files = Store.attachments(path)
         end
 

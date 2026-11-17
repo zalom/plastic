@@ -10,7 +10,7 @@ module Plastic
         FORMER = "local.db"
 
         def initialize(home)
-          super(File.join(home, Schema.file(:local)), Schema.fetch(:local), track: { sequence: :home, key: :local })
+          super(File.join(home, Schema.file(:local)), Schema.fetch(:local), key: :local)
           @former = File.join(home, FORMER)
         end
 

@@ -27,22 +27,21 @@ module Plastic
       def self.holding_tables?(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").positive? }
 
       # `layouts` maps each schema of the connection, nil for a database of one file, to the schema key that builds it; the first is the main file.
-      def initialize(connection, layouts:, file:, newest: SchemaMigrator::VERSION)
+      def initialize(connection, layouts:, file:)
         @connection = connection
         @layouts = layouts
-        @newest = newest
         @file = file
       end
 
       def call
         version = stamped
-        return build_missing_files if version == @newest
+        return build_missing_files if version == SchemaMigrator::VERSION
 
-        raise Ahead, refusal("is newer than this code (version #{version}, code #{@newest})") if version > @newest
+        raise Ahead, refusal("is newer than this code (version #{version}, code #{SchemaMigrator::VERSION})") if version > SchemaMigrator::VERSION
 
         settle(version)
       rescue SQLite3::BusyException
-        raise Behind, refusal("is busy and behind this code (version #{version}, code #{@newest})")
+        raise Behind, refusal("is busy and behind this code (version #{version}, code #{SchemaMigrator::VERSION})")
       end
 
       private
@@ -78,14 +77,14 @@ module Plastic
           next false unless empty?
 
           @layouts.each { |schema, key| @connection.execute_batch(Schema.fetch(key, schema:)) }
-          @connection.execute("#{pragma} = #{@newest}")
+          @connection.execute("#{pragma} = #{SchemaMigrator::VERSION}")
           true
         end
       end
 
       def verify_current(version)
         current = under_write_lock { stamped }
-        raise Behind, refusal("is behind this code (version #{version}, code #{@newest})") unless current == @newest
+        raise Behind, refusal("is behind this code (version #{version}, code #{SchemaMigrator::VERSION})") unless current == SchemaMigrator::VERSION
       end
 
       # A call already inside a transaction holds the write lock or will; a call outside one takes it here.
