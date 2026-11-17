@@ -30,4 +30,8 @@ class KnowledgeFrontMatterTest < Plastic::TestCase
   def test_a_doubled_single_quote_in_a_single_quoted_field_gives_one_quote
     assert_equal "it's done", FrontMatter.fields("---\nintent: 'it''s done'\n---\n")["intent"]
   end
+
+  def test_a_double_quoted_field_that_is_not_a_json_string_gives_its_text_between_the_quotes
+    assert_equal 'C:\\q drive', FrontMatter.fields("---\nintent: \"C:\\q drive\"\n---\n")["intent"]
+  end
 end
