@@ -7,8 +7,12 @@ class PrepareEndingFixture < Plastic::TestCase
   include LifecycleHelper
 
   def prepare(session: "delivery")
-    run_workflow(Plastic::Workflows::Code::Intent::End::Prepare, harness: scoped_harness(session:), graphs: session_graphs(session), intent_id: "1")
+    run_workflow(Plastic::Workflows::Code::Intent::End::Prepare, harness: scoped_harness(session:), graphs: session_graphs(session), settings: FakeSettings.new(values: @review ? { "review.pull_request" => @review } : {}), intent_id: "1")
   end
+
+  def review_on = @review = "required"
+
+  def review_off = @review = "off"
 
   def session_graphs(session) = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 end

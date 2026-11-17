@@ -11,7 +11,7 @@ class ClaudeHooksTest < Plastic::TestCase
 
   def config_with(text) = seed_config(@plastic_home, text)
 
-  def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3")
+  def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3", Plastic::Wiring.settings(@plastic_home))
 
   def settings_path = File.join(@home, ".claude", "settings.json")
 

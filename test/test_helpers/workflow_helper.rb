@@ -28,8 +28,8 @@ module Plastic
       end
 
       # The context of one call against the graphs of the global store.
-      def call_context(declared: [], harness: scoped_harness, graphs: store_graphs, **facts)
-        Plastic::Context.new(declared: (declared + facts.keys).uniq, facts:, graphs:, harness:)
+      def call_context(declared: [], harness: scoped_harness, graphs: store_graphs, settings: Plastic::Wiring.settings(@plastic_home), **facts)
+        Plastic::Context.new(declared: (declared + facts.keys).uniq, facts:, graphs:, harness:, settings:)
       end
 
       # The labelled rows a call printed, as an output keeps them.

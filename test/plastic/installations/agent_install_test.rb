@@ -117,7 +117,7 @@ class CodexInstallTest < Plastic::TestCase
   Installations = Plastic::Installations
 
   def install(root = nil)
-    package = root ? Installations::Package.new(root, plastic, "2.0.3") : shipped_package
+    package = root ? Installations::Package.new(root, plastic, "2.0.3", Plastic::Wiring.settings(plastic)) : shipped_package
     result = nil
     capture_io { result = Installations::CodexInstall.new(package, Installations::AgentRecord.new(codex_config)).call }
     result

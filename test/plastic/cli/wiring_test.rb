@@ -59,4 +59,12 @@ class WiringTest < Plastic::TestCase
     assert Plastic::Wiring.config(@plastic_home).value("screens")
     assert_equal({ "screens" => true }, Plastic::Wiring.rows(@plastic_home).scope("global"))
   end
+
+  def test_the_settings_answer_the_config_of_a_harness_and_the_store_of_the_home
+    seed_config(@plastic_home, "harnesses:\n  claude-code:\n    statusline: true\n")
+    settings = Plastic::Wiring.settings(@plastic_home)
+
+    assert_equal [true, false], [settings.config(harness: "claude-code").flag(["statusline"], default: false), settings.config.flag(["statusline"], default: false)]
+    assert_nil settings.store.problem
+  end
 end

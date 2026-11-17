@@ -48,7 +48,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
   def test_a_failed_live_check_is_a_finding_that_names_the_file_and_the_backup_command
     home = stale_home
     damage_leaf(home)
-    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER, store: Plastic::Wiring.store(@plastic_home)).call("sync up")
     found = check(home, THIRTEEN_HOURS_LATER)
 
     assert_equal ["backups alpha:", "plastic backup --store alpha"], [found.label, found.repair]

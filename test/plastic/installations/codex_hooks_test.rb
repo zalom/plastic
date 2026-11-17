@@ -13,7 +13,7 @@ class CodexHooksTest < Plastic::TestCase
   def merge
     FileUtils.mkdir_p(File.dirname(hooks_path))
     changed = nil
-    out, = capture_io { changed = Plastic::Installations::CodexHooks.new(Plastic::Installations::Package.new(REAL_PACKAGE, @plastic_home, "2.0.3")).merge(hooks_path) }
+    out, = capture_io { changed = Plastic::Installations::CodexHooks.new(Plastic::Installations::Package.new(REAL_PACKAGE, @plastic_home, "2.0.3", Plastic::Wiring.settings(@plastic_home))).merge(hooks_path) }
     [changed, out]
   end
 
