@@ -24,16 +24,13 @@ module Plastic
         missing = LINES - lines
         return false if missing.empty?
 
-        File.write(@file, "#{ensure_newline if File.exist?(@file)}#{missing.join("\n")}\n")
+        File.write(@file, "#{kept_text}#{missing.join("\n")}\n")
         true
       end
 
       def lines = File.file?(@file) ? File.readlines(@file, chomp: true) : []
 
-      def ensure_newline
-        text = File.read(@file)
-        (text.empty? || text.end_with?("\n")) ? text : "#{text}\n"
-      end
+      def kept_text = File.exist?(@file) ? File.read(@file).sub(/(?<=[^\n])\z/, "\n") : ""
     end
   end
 end
