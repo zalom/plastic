@@ -59,6 +59,17 @@ class DatabaseBatchTest < Plastic::TestCase
     assert_equal [["SELECT :a", nil, { a: 1 }], ["DELETE FROM clusters WHERE id = :a", "clusters", { a: 1 }]], batch.statements.map { |entry| [entry.sql, entry.table, entry.values] }
   end
 
+  FakeConnection = Struct.new(:changes) do
+    def read(_sql, _values) = []
+  end
+
+  def test_run_executes_each_statement_and_tells_the_count_the_rows_it_changed
+    counted = []
+    Batch.new.write(:clusters, "DELETE FROM clusters").add("SELECT 1").run(FakeConnection.new(2)) { |table, rows| counted << [table, rows] }
+
+    assert_equal [["clusters", 2]], counted
+  end
+
   def test_apply_adds_the_statements_of_each_read_in_order
     batch = Batch.new.apply([->(b) { b.add("SELECT 1") }, ->(b) { b.add("SELECT 2") }])
 

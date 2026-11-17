@@ -23,6 +23,9 @@ module Plastic
 
         attr_reader :statements
 
+        # Runs each statement on the connection, in order; `count` is told the rows each one changed. The rows RETURNING gives back come back.
+        def run(connection, &count) = statements.filter_map { |entry| entry.execute(connection, &count) }
+
         # `origin` names the installation that writes; the local database has none.
         def initialize(origin: nil)
           @statements = []
