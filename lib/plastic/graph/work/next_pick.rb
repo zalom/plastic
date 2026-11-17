@@ -3,7 +3,7 @@
 module Plastic
   module Graph
     module Work
-      # The intent `plastic next` picks: the one this session holds a live lock
+      # The intent `plastic next` picks: the one this session holds a live claim
       # on in this store, else the only intent in progress, else the only open one.
       class NextPick
         def initialize(retrieval, session)
@@ -18,16 +18,15 @@ module Plastic
 
         def none? = candidates.empty?
 
-        # The intents the pick chooses among: the locked ones, else those in progress, else the open.
+        # The intents the pick chooses among: the claimed ones, else those in progress, else the open.
         def candidates
-          @candidates ||= [locked_intents, by_status("in_progress"), by_status("open")].find { |found| found.any? } || []
+          @candidates ||= [claimed_intents, by_status("in_progress"), by_status("open")].find { |found| found.any? } || []
         end
 
         private
 
-        def locked_intents
-          store = @retrieval.store
-          ids = @retrieval.locks_of(@session).select { |lock| lock.store == store && @retrieval.liveness(lock).live? }.map(&:intent_id)
+        def claimed_intents
+          ids = @retrieval.claimed_nodes.select { |node| node.claimed_by == @session && !node.lapsed?(Time.now) }.map(&:intent_id)
           @retrieval.intents.select { |intent| intent.open? && ids.include?(intent.intent_id) }
         end
 

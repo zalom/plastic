@@ -52,10 +52,15 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     assert_equal [:ready, "b"], [outcome, context.ready_id]
   end
 
+  def hold(intent_id, session)
+    store_graphs.work.add_node(intent_id:, title: "Build")
+    store_graphs.work.claim_node(intent_id:, id: "n1", by: session)
+  end
+
   def test_an_item_held_by_another_live_session_is_skipped
     roadmap
     item("a")
-    store_graphs.work.lock_intent(started("a"), session_id: "s-2", mode: "auto")
+    hold(started("a"), "s-2")
 
     outcome, = pick("r1")
 
@@ -66,7 +71,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     roadmap
     item("a")
     intent_id = started("a")
-    store_graphs.work.lock_intent(intent_id, session_id: "s-1", mode: "auto")
+    hold(intent_id, "s-1")
 
     outcome, context = pick("r1")
 
@@ -86,7 +91,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     roadmap
     item("a")
     item("b", needs: ["a"])
-    store_graphs.work.lock_intent(started("a"), session_id: "s-2", mode: "auto")
+    hold(started("a"), "s-2")
 
     outcome, = pick("r1")
 

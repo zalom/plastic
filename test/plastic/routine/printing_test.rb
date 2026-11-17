@@ -69,14 +69,14 @@ class RoutinePrintingTest < Plastic::TestCase
     assert_equal "# by hand\n", File.read(store_path("#{intent.dir}/intent.md"))
   end
 
-  def test_an_edited_savepoint_refuses_auto_and_writes_no_lock_row
+  def test_an_edited_savepoint_refuses_auto_and_leaves_the_intent_unstarted
     intent = specified
     cli("intent", "approve", "1")
     write("#{intent.dir}/savepoint.md", "by hand\n")
     result = cli("auto", "1")
 
     assert_refused(result, "#{intent.dir}/savepoint.md")
-    assert_empty store_graphs.databases.fetch(:local).rows("SELECT * FROM locks")
+    refute_equal "in_progress", retrieval.intent("1").status
   end
 
   def test_an_edited_outcome_refuses_a_note_and_a_revise

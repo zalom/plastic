@@ -21,7 +21,7 @@ class IntentBriefCaseTest < Plastic::TestCase
       "ruling: D2 Direct mode only", "ready: n2 build it"]
   end
 
-  MAIN_SESSION = ["main session: take the delivery lock with plastic auto 1",
+  MAIN_SESSION = ["main session: set the intent in progress with plastic auto 1",
     "main session: record each ruling with plastic intent rule 1 TEXT",
     "main session: write spec.md and add the work nodes with plastic node add 1 TITLE --criterion KEY",
     "main session: claim each node as you dispatch it with plastic node claim 1 NODE",

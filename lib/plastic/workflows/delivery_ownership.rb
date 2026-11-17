@@ -2,18 +2,18 @@
 
 module Plastic
   module Workflows
-    # Whether another live session holds the delivery lock of the intent.
+    # Whether another session holds a live claim on a node of the intent.
     module DeliveryOwnership
       def self.problem(context, now: Time.now)
-        lock = foreign_lock(context, now)
-        "intent #{context.intent_id} is locked by session #{lock.session_id}" if lock
+        node = foreign_claim(context, now)
+        "intent #{context.intent_id} has node #{node.id} claimed by session #{node.claimed_by}" if node
       end
 
-      # The live lock on the intent at the time given when another session holds it, or nil.
-      def self.foreign_lock(context, now)
-        retrieval = context.retrieval
-        lock = retrieval.lock(context.intent_id)
-        lock if lock && lock.session_id != context.session && retrieval.liveness(lock).live?(now)
+      # A node of the intent that another session holds, its claim not lapsed at the time given, or nil.
+      def self.foreign_claim(context, now)
+        context.retrieval.claimed_nodes.find do |node|
+          node.intent_id == context.intent_id && node.claimed_by != context.session && !node.lapsed?(now)
+        end
       end
     end
   end

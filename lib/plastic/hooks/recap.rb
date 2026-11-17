@@ -15,7 +15,7 @@ module Plastic
         "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       SAVEPOINT_LINES = 5
-      EXPIRED = "intent %<intent_id>s: the lock of this session expired (last renewed %<renewed_at>s); plastic auto %<intent_id>s locks it again"
+      LAPSED = "intent %<intent_id>s: the claim of this session on node %<id>s lapsed (last renewed %<seen_at>s); plastic node claim %<intent_id>s %<id>s takes it again"
 
       def initialize(retrieval, session_id:, source:, directory:)
         @retrieval = retrieval
@@ -25,7 +25,7 @@ module Plastic
       end
 
       # The lines to print, first line first.
-      def lines(now: Time.now) = [first_line, *open_intent_lines, *expired_lock_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
+      def lines(now: Time.now) = [first_line, *open_intent_lines, *lapsed_claim_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
 
       private
 
@@ -38,9 +38,9 @@ module Plastic
           .map { |name, text| "#{name}: #{text}" }
       end
 
-      def expired_lock_lines(now)
-        own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store && unfinished?(lock.intent_id) }
-        own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, **lock.to_h) }
+      def lapsed_claim_lines(now)
+        own = @retrieval.claimed_nodes.select { |node| node.claimed_by == @session_id && unfinished?(node.intent_id) }
+        own.select { |node| node.lapsed?(now) }.map { |node| format(LAPSED, **node.to_h) }
       end
 
       # The intent exists and its work is not over.

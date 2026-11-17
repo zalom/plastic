@@ -16,14 +16,14 @@ class AutoTest < Plastic::TestCase
   include RoadmapHelper
   include AutoHelper
 
-  def test_a_clear_spec_goes_active_and_takes_the_lock
+  def test_a_clear_spec_goes_in_progress_and_takes_no_lock
     intent = clear_intent
 
     id = intent.intent_id
 
     result = call(id)
 
-    assert_equal [0, "in_progress", %w[s-1 auto]], [result.code, retrieval.intent(id).status, retrieval.lock(id).to_h.values_at(:session_id, :mode)]
+    assert_equal [0, "in_progress", []], [result.code, retrieval.intent(id).status, claim_rows]
     assert_includes result.out, "next: plastic intent brief #{id}"
     assert_empty result.err
   end
@@ -47,16 +47,6 @@ class AutoTest < Plastic::TestCase
     assert_equal 1, result.code
     assert_includes result.err, "intent 1 names no done criterion"
     assert_match(/^next: plastic intent spec 1/, result.out)
-  end
-
-  def test_another_sessions_live_lock_refuses_and_is_kept
-    intent = clear_intent
-    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-2", mode: "auto")
-
-    result = call(intent.intent_id)
-
-    assert_equal [3, "s-2"], [result.code, retrieval.lock(intent.intent_id).session_id]
-    assert_includes result.err, "intent 1 is locked by session s-2"
   end
 
   def test_a_done_intent_exits_1_and_offers_plastic_next
@@ -87,17 +77,17 @@ class AutoTest < Plastic::TestCase
 
     result = call(intent.intent_id, env: { "PLASTIC_SESSION" => "" })
 
-    assert_equal [1, []], [result.code, lock_rows]
+    assert_equal [1, []], [result.code, claim_rows]
     assert_includes result.err, "plastic: auto names no session; set PLASTIC_SESSION"
   end
 
-  def test_two_ids_exit_2_and_write_no_lock
+  def test_two_ids_exit_2_and_write_no_claim
     clear_intent
     write_spec(open_intent("Beta"), CLEAR_SPEC)
 
     result = call("1", "2")
 
-    assert_equal [2, [], %w[open open]], [result.code, lock_rows, %w[1 2].map { |id| retrieval.intent(id).status }]
+    assert_equal [2, [], %w[open open]], [result.code, claim_rows, %w[1 2].map { |id| retrieval.intent(id).status }]
     assert_includes result.err, "unexpected 2"
   end
 
@@ -111,28 +101,16 @@ class AutoTest < Plastic::TestCase
   def test_a_missing_intent_fails
     result = call("9")
 
-    assert_equal [1, []], [result.code, lock_rows]
+    assert_equal [1, []], [result.code, claim_rows]
     assert_includes result.err, "no intent 9 in this store"
   end
 
-  def test_an_active_intent_without_a_lock_takes_one
+  def test_an_active_intent_stays_in_progress_and_takes_no_lock
     intent = active_intent
 
     result = call(intent.intent_id)
 
-    lock = retrieval.lock(intent.intent_id)
-
-    assert_equal [0, "s-1", "auto", true], [result.code, lock&.session_id, lock&.mode, lock && live_when_renewed?(lock)]
-  end
-
-  def test_an_expired_foreign_lock_is_taken_over
-    intent = active_intent
-    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-2", mode: "auto")
-    expire_lock
-
-    result = call(intent.intent_id)
-
-    assert_equal [0, "s-1", true], [result.code, *held_lock(intent.intent_id)]
+    assert_equal [0, "in_progress", []], [result.code, retrieval.intent(intent.intent_id).status, claim_rows]
   end
 end
 
@@ -145,13 +123,13 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("start", "1")
 
-    assert_equal [2, [], "open"], [result.code, lock_rows, retrieval.intent("1").status]
+    assert_equal [2, [], "open"], [result.code, claim_rows, retrieval.intent("1").status]
   end
 
   def test_auto_start_alone_reads_start_as_a_roadmap
     result = call("start")
 
-    assert_equal [1, []], [result.code, lock_rows]
+    assert_equal [1, []], [result.code, claim_rows]
     assert_includes result.err, "no roadmap start"
   end
 
@@ -167,18 +145,18 @@ class AutoRoadmapTest < Plastic::TestCase
   def test_an_unknown_roadmap_fails
     result = call("r9")
 
-    assert_equal [1, []], [result.code, lock_rows]
+    assert_equal [1, []], [result.code, claim_rows]
     assert_includes result.err, "no roadmap r9"
   end
 
-  def test_a_roadmap_item_without_a_go_ahead_is_refused_with_no_lock
+  def test_a_roadmap_item_without_a_go_ahead_is_refused_with_no_claim
     roadmap
     item("a")
     intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
 
     result = call("r1")
 
-    assert_equal [3, []], [result.code, lock_rows]
+    assert_equal [3, []], [result.code, claim_rows]
     assert_includes result.err, "plastic intent approve #{intent_id}"
   end
 
@@ -190,7 +168,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [0, "s-1", "in_progress"], [result.code, retrieval.lock(intent_id)&.session_id, retrieval.intent(intent_id).status]
+    assert_equal [0, "in_progress", []], [result.code, retrieval.intent(intent_id).status, claim_rows]
   end
 
   def test_a_roadmap_with_a_ready_item_offers_roadmap_open
@@ -199,7 +177,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [0, [], "next: plastic roadmap open r1 a"], [result.code, lock_rows, next_line(result)]
+    assert_equal [0, [], "next: plastic roadmap open r1 a"], [result.code, claim_rows, next_line(result)]
   end
 
   def test_a_resumed_roadmap_call_never_arms_a_stale_intent
@@ -212,7 +190,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [1, 0, [], "next: plastic roadmap open r1 b"], [failed.code, result.code, lock_rows, next_line(result)]
+    assert_equal [1, 0, [], "next: plastic roadmap open r1 b"], [failed.code, result.code, claim_rows, next_line(result)]
   end
 
   def armed_item
@@ -230,7 +208,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, lock_rows, File.read(store_path(path)), result.err.include?("#{path} changed since its last print on this home"), next_line(result)], result.err
+    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, claim_rows, File.read(store_path(path)), result.err.include?("#{path} changed since its last print on this home"), next_line(result)], result.err
   end
 
   def test_a_roadmap_with_a_ready_item_is_not_refused_for_a_file_of_another_intent
@@ -277,20 +255,20 @@ class AutoSessionTest < Plastic::TestCase
     refute_match(/^next: /, call(ended_session_intent.intent_id).out)
   end
 
-  def test_a_session_that_ended_leaves_the_intent_open_with_no_lock
+  def test_a_session_that_ended_leaves_the_intent_open_with_no_claim
     intent = ended_session_intent
     call(intent.intent_id)
 
-    assert_equal ["open", []], [retrieval.intent(intent.intent_id).status, lock_rows]
+    assert_equal ["open", []], [retrieval.intent(intent.intent_id).status, claim_rows]
   end
 
-  def test_a_session_reopened_after_its_end_locks_the_intent
+  def test_a_session_reopened_after_its_end_arms_the_intent
     intent = ended_session_intent
     store_graphs.work.open_session("s-1", harness: "claude-code", directory: @home)
 
     result = call(intent.intent_id)
 
-    assert_equal [0, "s-1", true], [result.code, *held_lock(intent.intent_id)]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent(intent.intent_id).status]
   end
 end
 
@@ -345,7 +323,7 @@ class AutoWorktreeTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal [0, "s-1"], [result.code, retrieval.lock(intent.intent_id).session_id]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent(intent.intent_id).status]
     assert_includes result.out, "worktree: "
   end
 

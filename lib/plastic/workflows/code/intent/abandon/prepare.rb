@@ -10,9 +10,9 @@ module Plastic
     module Code
       module Intent
         class Abandon
-          # Reads the intent and its lock: a missing or closed intent fails, a foreign live lock refuses, and an outcome without a Reverted line hands over the revert steps.
+          # Reads the intent and its claims: a missing or closed intent fails, a foreign live claim refuses, and an outcome without a Reverted line hands over the revert steps.
           class Prepare < CodeWorkflow
-            summary "Reads the intent and its lock and checks that it can be abandoned."
+            summary "Reads the intent and its claims and checks that it can be abandoned."
             sets :intent, :status, :problem, :intent_folder, :reverted
 
             read "read the intent" do |context|
@@ -31,7 +31,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :refusal,
-              words: "another live session holds the lock of the intent",
+              words: "another live session holds a node claim of the intent",
               pass: ->(context) { context.problem.nil? }
 
             outcome :reverting, if: ->(context) { !context.reverted }, because: "the work of the intent is not reverted yet"

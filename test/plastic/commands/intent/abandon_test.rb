@@ -88,14 +88,6 @@ class IntentAbandonTest < Plastic::TestCase
     assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, retrieval.completion("1")]
   end
 
-  def test_it_releases_the_lock
-    droppable
-    cli("auto", "1")
-    abandon
-
-    assert_nil retrieval.lock("1")
-  end
-
   def test_a_supersedes_link_from_another_intent_gives_superseded
     droppable
     open_intent("Beta")
@@ -130,9 +122,10 @@ class IntentAbandonTest < Plastic::TestCase
     end
   end
 
-  def test_a_live_foreign_lock_refuses_with_exit_3
+  def test_a_live_claim_of_another_session_refuses_with_exit_3
     droppable
-    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "someone-else")
 
     assert_equal [3, "open"], [abandon.code, retrieval.intent("1").status]
   end

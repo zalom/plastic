@@ -31,13 +31,13 @@ module Plastic
     # and makes none: the origin id and the databases appear on the first
     # read or write. `session` names the harness session that made the call,
     # stamped on the rows it writes.
-    def self.open(home:, store:, session: nil)
+    def self.open(home:, store:, session: nil, clock: Time)
       root = Database.store_root(home, store)
       origin = Origin.new(home)
       databases = Database.open_local(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
       folder = Knowledge::StoreFolder.new(root, selection: Knowledge::SyncSelection.of(home))
-      Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:), retrieval:, databases:)
+      Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
     end
 
     # Makes the store folder and its databases, then opens it. The one way

@@ -67,7 +67,7 @@ class NodeClaimTest < Plastic::TestCase
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
   end
 
-  def claim(*args) = plastic("node", "claim", "1", *args, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def test_the_brief_includes_the_last_reason
     open_intent
@@ -175,7 +175,7 @@ class NodeClaimTest < Plastic::TestCase
 end
 
 class NodeClaimRefusalTest < Plastic::TestCase
-  def claim(*args) = plastic("node", "claim", "1", *args, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
@@ -229,7 +229,16 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal [1, ""], [result.code, result.out]
-    assert_includes result.err, "node n1 is claimed; it cannot move to claimed"
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, "node n1 is held by session"
+  end
+
+  def test_a_claim_with_no_session_fails_and_names_the_variable
+    open_intent
+    add_node("a")
+
+    result = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "" }, table: Plastic::CLI::TABLE)
+
+    assert_equal [1, "plastic: node claim names no session; set PLASTIC_SESSION\n"], [result.code, result.err]
   end
 end

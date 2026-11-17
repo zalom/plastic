@@ -59,10 +59,16 @@ module Plastic
 
       def answer
         check_scope
-        call
+        call_and_renew
         flush.exit_code
       rescue Scope::BrokenProjects => error
         broken(error)
+      end
+
+      def call_and_renew
+        call
+      ensure
+        renew_claims
       end
 
       def call
@@ -129,7 +135,16 @@ module Plastic
       end
 
       # The graphs of the store the call works on, opened once.
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session))
+      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock))
+
+      def renew_claims
+        session = environment.session
+        return unless @graphs && session
+
+        @graphs.work.renew_claims(session) if @graphs.retrieval.claimed_nodes.any? { |node| node.claimed_by == session }
+      rescue
+        nil
+      end
     end
   end
 end

@@ -19,7 +19,7 @@ module Plastic
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
         "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
-        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: lock the intent and print the worktree"],
+        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: set the intent in progress and print the worktree"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
         "search" => ["Commands::Search", "Search literal indexed passages across selected stores"]
@@ -37,7 +37,6 @@ module Plastic
         "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md"],
         "intent discover" => ["Commands::Intent::Discover", "Record deterministic retrieval candidates for an intent"],
         "intent context" => ["Commands::Intent::Context", "Read or submit selected retrieval context for an intent"],
-        "intent lock status" => ["Commands::Intent::Lock::Status", "Print the session that holds an intent's lock, and its worktree"],
         "intent show" => ["Commands::Intent::Show", "Print one intent's status, criteria, decisions, rulings and nodes"],
         "intent brief" => ["Commands::Intent::Brief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
         "intent link" => ["Commands::Intent::Link", "Write a typed link from an intent to a ref"],

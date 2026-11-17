@@ -112,9 +112,10 @@ class PrepareEndingTest < PrepareEndingFixture
     assert_includes prepare.first.message, "no intent 1 in this store"
   end
 
-  def test_another_live_session_lock_is_refused
+  def test_another_live_session_claim_is_refused
     accepted_intent
-    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
+    node = store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: node.id, by: "s-2")
 
     assert_kind_of Plastic::Refused, prepare.first
   end

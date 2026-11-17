@@ -9,18 +9,34 @@ class StopRenewsClaimsTest < Plastic::TestCase
 
   START = Time.utc(2026, 11, 17, 8, 0, 0)
 
-  def test_the_stop_hook_renews_the_claims_of_the_session
-    clock = Clock.new(START)
+  def claim_for(session)
+    node = store_graphs.work.add_node(intent_id: "1", title: session, criterion: "it works")
+    store_graphs.work.claim_node(intent_id: "1", id: node.id, by: session)
+  end
+
+  def stop_after(seconds, session)
+    clock = Clock.new(START + seconds)
+    plastic("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE, clock:)
+  end
+
+  def seen_at(id) = retrieval.node("1", id).seen_at
+
+  def setup
+    super
     open_intent
-    store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it works")
-    store_graphs.work.add_node(intent_id: "1", title: "Test", criterion: "it works")
-    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
-    store_graphs.work.claim_node(intent_id: "1", id: "n2", by: "s-2")
-    clock.now = START + 600
+    claim_for("s-1")
+    claim_for("s-2")
+  end
 
-    plastic("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE, clock:)
+  def test_the_stop_hook_renews_the_claim_of_its_session
+    stop_after(600, "s-1")
 
-    refute_equal retrieval.node("1", "n1").seen_at, retrieval.node("1", "n2").seen_at
-    assert_equal "2026-11-17T08:10:00Z", retrieval.node("1", "n1").seen_at
+    assert_equal "2026-11-17T08:10:00Z", seen_at("n1")
+  end
+
+  def test_the_stop_hook_leaves_the_claim_of_another_session
+    stop_after(600, "s-1")
+
+    refute_equal seen_at("n1"), seen_at("n2")
   end
 end

@@ -8,7 +8,7 @@ module Plastic
       module Intent
         # The abandoned close can be retried after the status write but before lock cleanup.
         class Abandon < CodeWorkflow
-          summary "Marks the intent abandoned and releases its lock."
+          summary "Marks the intent abandoned and ends its run of work."
           sets :abandon_ended
 
           read("check cleanup again") { |context| context[:abandon_ended] = false }

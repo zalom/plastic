@@ -21,36 +21,27 @@ class GraphBackupRestorerTest < Plastic::TestCase
 
   def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(Plastic::Graph::Backup::Target.new(local_db, root, "alpha", nil), Plastic::Graph.open(home: @restore_home, store: "alpha").retrieval, now:)
 
-  def lock_intent(renewed_at)
-    local_db.transaction do |batch|
-      batch.put(:locks, { store: "alpha", intent_id: 1, session_id: "s-1", mode: "auto", locked_at: renewed_at, renewed_at: }, statement: :insert)
-    end
+  def claim_node(at)
+    graphs = Plastic::Graph.open(home: @restore_home, store: "alpha", session: "s-1", clock: Struct.new(:now).new(at))
+    graphs.work.add_node(intent_id: "1", title: "Build")
+    graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
   end
 
   def bytes(name) = File.binread(store_file(@restore_home, name))
 
-  def test_a_fresh_delivery_lock_refuses_the_restore
-    lock_intent(at(2026, 6, 1, 11, 50, 0).iso8601)
+  def test_a_live_claim_refuses_the_restore
+    claim_node(at(2026, 6, 1, 11, 50, 0))
     before = bytes("work_graph")
 
-    assert_raises(Restorer::Locked) { restorer.call(STAMP) }
+    assert_raises(Restorer::Claimed) { restorer.call(STAMP) }
     assert_equal before, bytes("work_graph")
   end
 
-  def test_a_lapsed_delivery_lock_does_not_refuse_the_restore
-    lock_intent(at(2026, 6, 1, 9, 0, 0).iso8601)
+  def test_a_lapsed_claim_does_not_refuse_the_restore
+    claim_node(at(2026, 6, 1, 9, 0, 0))
     restorer.call(STAMP)
 
     assert_equal 1, intent_count(@restore_home)
-  end
-
-  def test_a_lapsed_delivery_lock_held_by_an_open_node_refuses_the_restore
-    lock_intent(at(2026, 6, 1, 9, 0, 0).iso8601)
-    Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:work).transaction do |batch|
-      batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-1", updated_at: at(2026, 6, 1, 11, 0, 0).iso8601 })
-    end
-
-    assert_raises(Restorer::Locked) { restorer.call(STAMP) }
   end
 
   def test_a_restore_first_backs_up_the_current_databases
@@ -137,31 +128,31 @@ class GraphBackupRestorerTest < Plastic::TestCase
   end
 end
 
-# A second migration that adds a table, standing in for the next release: a backup restores at its own version and migrates forward.
+# A third migration that adds a table, standing in for the next release: a backup restores at its own version and migrates forward.
 class GraphBackupRestoreForwardTest < Plastic::TestCase
   include BackupHomes
   include OldLayoutHomes
 
   Restorer = Plastic::Graph::Backup::Restorer
   Sequences = Plastic::Graph::SchemaSequences
-  Store1 = Plastic::Graph::SchemaStore1
+  Store2 = Plastic::Graph::SchemaStore2
   STAMP = "20260101100000"
 
   def setup
     super
     @home = fresh_home
     backup_at(@home, at(2026, 1, 1, 10, 0, 0))
-    tables = Store1::TABLES.merge("work_graph" => Store1::TABLES.fetch("work_graph") + ["extra"])
-    second = Sequences::Migration.new(2, ->(connection, key) { connection.execute("CREATE TABLE extra (a)") if key == :work }, tables)
+    tables = Store2::TABLES.merge("work_graph" => Store2::TABLES.fetch("work_graph") + ["extra"])
+    second = Sequences::Migration.new(3, ->(connection, key) { connection.execute("CREATE TABLE extra (a)") if key == :work }, tables)
     @sequences = { home: Sequences::SEQUENCES.fetch(:home), store: [*Sequences::SEQUENCES.fetch(:store), second] }
   end
 
   def root = File.join(@home, "stores", "alpha")
 
-  # The store databases stand at version 2, which the gate of this code refuses, so the restorer gets the local database and a retrieval that only names the store.
+  # The store databases stand at version 3, which the gate of this code refuses, so the restorer gets the local database and a retrieval that only names the store.
   def restorer
     target = Plastic::Graph::Backup::Target.new(Plastic::Graph::Database.open_local(@home).fetch(:local), root, "alpha", nil)
-    Restorer.new(target, Struct.new(:store).new("alpha"), now: at(2026, 6, 1, 12, 0, 0), sequences: @sequences)
+    Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0), sequences: @sequences)
   end
 
   def store_paths = Dir.glob(File.join(root, "*.db")).sort
@@ -179,15 +170,15 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   def store_versions = user_versions(@home).select { |path, _| path.include?("/alpha/") }.values.uniq
 
-  def test_a_backup_at_version_one_restores_after_the_store_moved_to_two_and_migrates_forward_to_equal_rows
+  def test_a_backup_at_version_two_restores_after_the_store_moved_to_three_and_migrates_forward_to_equal_rows
     migrate_store
     migrated = digests
     restorer.call(STAMP)
 
-    assert_equal [1], store_versions
+    assert_equal [2], store_versions
     migrate_store
 
-    assert_equal [migrated, [2]], [digests, store_versions]
+    assert_equal [migrated, [3]], [digests, store_versions]
   end
 
   def test_a_restore_of_one_database_across_a_version_boundary_is_refused_and_names_the_whole_store_restore

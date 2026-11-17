@@ -8,32 +8,35 @@ class WorkflowDeliveryOwnershipTest < Plastic::TestCase
 
   NOW = Time.parse(STAMP)
 
-  def problem(session: "s-1") = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session), now: NOW)
+  def problem(session: "s-1", now: NOW) = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session), now:)
 
-  def lock(session_id, renewed_at: STAMP)
-    row = { store: retrieval.store, intent_id: "1", session_id:, mode: "auto", locked_at: renewed_at, renewed_at: }
-    store_graphs.databases[:local].transaction { |batch| batch.put(:locks, row) }
+  def claim(session_id)
+    open_intent
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: session_id)
   end
 
-  def test_a_live_lock_of_another_session_is_the_problem
-    lock("s-2")
+  def test_a_live_claim_of_another_session_is_the_problem
+    claim("s-2")
 
-    assert_equal "intent 1 is locked by session s-2", problem
+    assert_equal "intent 1 has node n1 claimed by session s-2", problem(now: Time.now)
   end
 
-  def test_a_lock_of_this_session_is_no_problem
-    lock("s-1")
+  def test_a_claim_of_this_session_is_no_problem
+    claim("s-1")
 
-    assert_nil problem
+    assert_nil problem(now: Time.now)
   end
 
-  def test_an_expired_lock_of_another_session_is_no_problem
-    lock("s-2", renewed_at: Plastic.now(NOW - Plastic::Graph::Lock::TTL - 1))
+  def test_a_lapsed_claim_of_another_session_is_no_problem
+    claim("s-2")
 
-    assert_nil problem
+    assert_nil problem(now: Time.now + Plastic::Graph::Work::Node::LAPSE + 60)
   end
 
-  def test_no_lock_is_no_problem
+  def test_no_claim_is_no_problem
+    open_intent
+
     assert_nil problem
   end
 end

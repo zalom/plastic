@@ -37,6 +37,10 @@ class StopTest < Plastic::TestCase
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
+  def claim_node(intent_id, session, at, id: "c#{session}")
+    put(:work, :nodes, { intent_id:, id:, state: "claimed", claimed_by: session, claimed_at: at, seen_at: at, updated_at: at })
+  end
+
   CLAUDE = { "CLAUDE_CODE_SESSION_ID" => "s-1" }.freeze
 
   def start_claude_session = plastic("hook", "start", input: JSON.generate(source: "startup"), env: CLAUDE, table: Plastic::CLI::TABLE)
@@ -54,24 +58,24 @@ class StopTest < Plastic::TestCase
     assert_equal ["claude-code", true, true], session_row
   end
 
-  def test_stop_renews_only_this_sessions_locks
-    old = "2020-01-01T00:00:00+00:00"
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: old, renewed_at: old })
-    put(:local, :locks, { store: "global", intent_id: "2", session_id: "s-2", mode: "auto", locked_at: old, renewed_at: old })
+  def test_stop_renews_only_this_sessions_claims
+    old = "2020-01-01T00:00:00Z"
+    claim_node("1", "s-1", old)
+    claim_node("2", "s-2", old)
 
     call
 
-    refute_equal old, store_graphs.retrieval.lock("1").renewed_at
-    assert_equal old, store_graphs.retrieval.lock("2").renewed_at
+    refute_equal old, store_graphs.retrieval.node("1", "cs-1").seen_at
+    assert_equal old, store_graphs.retrieval.node("2", "cs-2").seen_at
   end
 
-  def test_a_lapsed_lock_still_naming_this_session_is_renewed
-    lapsed = "2026-10-05T09:00:00+02:00"
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: lapsed, renewed_at: lapsed })
+  def test_a_lapsed_claim_still_naming_this_session_is_renewed
+    lapsed = "2026-10-05T09:00:00Z"
+    claim_node("1", "s-1", lapsed)
 
     call
 
-    refute_equal lapsed, store_graphs.retrieval.lock("1").renewed_at
+    refute_equal lapsed, store_graphs.retrieval.node("1", "cs-1").seen_at
   end
 
   def test_a_permit_prints_nothing
@@ -80,7 +84,7 @@ class StopTest < Plastic::TestCase
 
   def test_a_block_prints_the_decision_as_one_json_line
     seed_config(@plastic_home, "runner:\n  stop_hook: true\n")
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
+    claim_node("1", "s-1", STAMP)
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     result = call(input: JSON.generate(stop_hook_active: false))
@@ -90,7 +94,7 @@ class StopTest < Plastic::TestCase
 
   def test_with_no_session_row_the_global_section_turns_the_stop_gate_on
     seed_config(@plastic_home, "global:\n  runner:\n    stop_hook: true\n")
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-9", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
+    claim_node("1", "s-9", STAMP)
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     result = call(env: { "PLASTIC_SESSION" => "s-9" }, input: JSON.generate(stop_hook_active: false))
@@ -111,7 +115,7 @@ class StopTest < Plastic::TestCase
   def test_the_harness_section_of_the_session_row_harness_turns_the_stop_gate_on
     seed_config(@plastic_home, "harnesses:\n  codex:\n    runner:\n      stop_hook: true\n")
     store_graphs.work.open_session("s-1", harness: "codex", directory: @home)
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
+    claim_node("1", "s-1", STAMP)
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     assert_match(/"decision":"block"/, call(input: JSON.generate(stop_hook_active: false)).out)
@@ -120,7 +124,7 @@ class StopTest < Plastic::TestCase
   def test_a_session_row_of_an_unregistered_harness_reads_the_global_section
     seed_config(@plastic_home, "harnesses:\n  codex:\n    runner:\n      stop_hook: true\n")
     store_graphs.work.open_session("s-1", harness: "unknown", directory: @home)
-    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
+    claim_node("1", "s-1", STAMP)
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     assert_call call(input: JSON.generate(stop_hook_active: false)), code: 0, out: ""

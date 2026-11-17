@@ -87,11 +87,11 @@ class SQLTest < Plastic::TestCase
   end
 
   def test_a_move_binds_its_states_and_its_values
-    move = SQL.move(to: "claimed", from: %w[open failed], set: { by: "x", retries: SQL::Raw.new("retries + 1") })
+    move = SQL.move(to: "claimed", from: %w[open failed], set: { claimed_by: "x", seen_at: SQL::Raw.new("updated_at") })
 
-    assert_equal ["claimed", "x", "open", "failed"], move.values.values_at(:s_state, :s_by, :f_0, :f_1)
-    assert_includes move.sql, %("state" = :s_state, "updated_at" = :s_updated_at, "by" = :s_by, "retries" = retries + 1)
-    assert_includes move.sql, "AND state IN (:f_0, :f_1)\nRETURNING id"
+    assert_equal ["claimed", "x", "open", "failed"], move.values.values_at(:s_state, :s_claimed_by, :f_0, :f_1)
+    assert_includes move.sql, %("state" = :s_state, "updated_at" = :s_updated_at, "claimed_by" = :s_claimed_by, "seen_at" = updated_at)
+    assert_includes move.sql, "AND state IN (:f_0, :f_1)\n\nRETURNING id"
   end
 
   def test_the_bind_and_the_literal_are_gone

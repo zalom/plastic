@@ -11,14 +11,14 @@ require_relative "knowledge/intent/noter"
 
 module Plastic
   module Graph
-    # The write side of the graphs: command runs, sessions and locks at the
+    # The write side of the graphs: command runs and sessions at the
     # home, and the rows and printed files of one store. Every write keeps
     # the store's databases out of its versioning. `session` names the
     # harness session this call runs as, nil when the harness sets none.
     class WorkGraph
       extend Forwardable
 
-      def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note, :lock_intent, :renew_locks
+      def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note
       def_delegator "@writers.intents", :activate, :activate_intent
       def_delegator "@writers.intents", :open_problem, :open_intent_problem
       def_delegator "@writers.intents", :problem, :intent_problem
@@ -30,7 +30,7 @@ module Plastic
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :abandon, :abandon_intent
       def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
-        :ask_node, :impede_node, :resolve_node
+        :ask_node, :impede_node, :resolve_node, :renew_claims
       def_delegator "@writers.approvals", :approve, :approve_intent
       def_delegators "@writers.verdicts", :add_verdict, :rounds_left?
       def_delegators "@writers.edges", :add_edge, :remove_edge
@@ -46,11 +46,11 @@ module Plastic
       # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
       def_delegator "@writers.archives", :restore, :unarchive_intent
 
-      def initialize(databases, folder:, retrieval:, session: nil)
+      def initialize(databases, folder:, retrieval:, session: nil, clock: Time)
         @databases = databases
         @folder = folder
         @retrieval = retrieval
-        @writers = Work::Writers.new(databases, retrieval, folder, session)
+        @writers = Work::Writers.new(databases, retrieval, folder, session, clock)
       end
 
       # A command run is call memory, kept off the report.

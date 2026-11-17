@@ -11,7 +11,7 @@ class NodeResolveCaseTest < Plastic::TestCase
 end
 
 class NodeResolveTest < Plastic::TestCase
-  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
+  def cli(*args) = plastic(*args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def setup
     super

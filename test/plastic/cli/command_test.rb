@@ -20,6 +20,15 @@ class CommandTest < Plastic::TestCase
 
   class Bare < Plastic::CLI::Command; end
 
+  class FailingRenewal < Plastic::CLI::Command
+    argument :intent_id, label: "ID", text: "the intent"
+
+    def call
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "the database is locked" }
+      output.row("title:", graphs.retrieval.intent(parsed[:intent_id]).title)
+    end
+  end
+
   def run_tool(*argv, tool: Title, env: {})
     out = StringIO.new
     err = StringIO.new
@@ -107,5 +116,15 @@ class CommandTest < Plastic::TestCase
 
     assert_equal 1, result.code
     refute_empty result.err
+  end
+
+  def test_a_renewal_that_fails_never_changes_the_result_of_the_call
+    open_intent("Alpha")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    result = run_tool("1", tool: FailingRenewal, env: { "PLASTIC_SESSION" => "s-1" })
+
+    assert_equal CommandHelper::Result.new("title:  Alpha\n", "", 0), result
   end
 end

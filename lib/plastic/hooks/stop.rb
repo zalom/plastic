@@ -9,10 +9,10 @@ require_relative "stop_gate"
 
 module Plastic
   module Hooks
-    # Stop: stamps the session's last turn, renews its live locks, then runs
+    # Stop: stamps the session's last turn, renews its node claims, then runs
     # the stop gate.
     class Stop < Hook
-      changes(local: "The last turn of the session is stamped and its live locks are renewed")
+      changes(local: "The last turn of the session is stamped", work: "The node claims of the session are renewed")
 
       def respond(event)
         return no_session unless session_id
@@ -27,12 +27,12 @@ module Plastic
         nil
       end
 
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id))
+      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock))
 
       def stop(event)
         work = graphs.work
         work.stamp_turn(session_id, directory:)
-        work.renew_locks(session_id)
+        work.renew_claims(session_id)
         decision = StopGate.new(event:, stop_hook: stop_hook?, retrieval: graphs.retrieval, session_id:).decision
         decision && JSON.generate(decision)
       end

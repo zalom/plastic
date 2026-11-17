@@ -18,11 +18,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.text :harness, :store, :directory, :started_at, :last_turn_at, :ended_at, :end_reason, :note
   end
 
-  create_table :locks, key: %i[store intent_id] do |t|
-    t.kept :store, :intent_id, :session_id
-    t.text :mode, :locked_at, :renewed_at
-  end
-
   create_table :settings, key: %i[scope key] do |t|
     t.kept :scope, :key, :value
   end
@@ -43,9 +38,17 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
 
   create_table :nodes, key: %i[intent_id id origin_id] do |t|
     t.kept :intent_id, :id
-    t.text :kind, :title, :criterion, :state, :by, :input, :output, :question, :answer, :reason, :judge, :verdict, :findings
-    t.integer :retries
+    t.text :kind, :title, :criterion, :state, :input, :output, :question, :answer, :reason, :judge, :verdict, :findings
     t.text :updated_at
+    t.kept :origin_id
+    t.text :claimed_by, :claimed_at, :seen_at
+  end
+
+  create_table :runs, key: %i[intent_id node_id number origin_id] do |t|
+    t.kept :intent_id, :node_id
+    t.number :number
+    t.blank :agent, :session_id
+    t.text :started_at, :ended_at, :result
     t.kept :origin_id
   end
 
@@ -231,9 +234,9 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :origin_id
   end
 
-  database :local, "plastic.db", %i[command_runs sessions locks settings printed]
+  database :local, "plastic.db", %i[command_runs sessions settings printed]
   database :work, "work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
-    roadmap_edges roadmap_log archives archive_entries approvals verdicts]
+    roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]
   database :knowledge, "knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages
     document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]
   database :references, "references.db", %i[sqlar printed changes]

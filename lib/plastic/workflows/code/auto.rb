@@ -8,13 +8,13 @@ module Plastic
   module Workflows
     module Code
       # Arms delivery on an intent: refuses an open decision, no done
-      # criteria, no go-ahead row, a done or abandoned intent, or another session's live lock;
-      # fails with no session named or a session that ended; otherwise goes in progress and takes the lock,
+      # criteria, no go-ahead row or a done or abandoned intent;
+      # fails with no session named or a session that ended; otherwise goes in progress,
       # then prints the code worktree when the store's project names a repository, and names the
       # worktree to create when its folder is missing.
       class Auto < CodeWorkflow
         clear_declarations
-        summary "Arms delivery on the intent: it goes in progress and takes the lock."
+        summary "Arms delivery on the intent: it goes in progress and names its worktree."
 
         sets :problem, :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing
 
@@ -24,7 +24,7 @@ module Plastic
           id = context.intent_id
           context[:closed_problem] = state_problem(id, context.intent)
           context[:spec_problem] = criterion_problem(id, context)
-          context[:problem] = decision_problem(id, context) || lock_problem(id, context) || approval_problem(id, context)
+          context[:problem] = decision_problem(id, context) || approval_problem(id, context)
         end
 
         def self.session_problem(context)
@@ -52,15 +52,6 @@ module Plastic
           "intent #{id} has an open decision; run plastic intent spec #{id}"
         end
 
-        def self.lock_problem(id, context)
-          retrieval = context.retrieval
-          lock = retrieval.lock(id)
-          holder = lock&.session_id
-          return nil unless lock && holder != context.session && retrieval.liveness(lock).live?
-
-          "intent #{id} is locked by session #{holder}"
-        end
-
         def self.approval_problem(id, context)
           return nil if context.retrieval.approval(id)
 
@@ -77,21 +68,13 @@ module Plastic
         gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
           because: "the spec needs a done criterion", pass: ->(context) { context.spec_problem.nil? }
         gate "%{problem}", stops: :refusal,
-          words: "a decision of the spec is open, another live session holds the lock of the intent, or the intent has no go-ahead",
+          words: "a decision of the spec is open or the intent has no go-ahead",
           pass: ->(context) { context.problem.nil? }
 
-        def self.delivery_started?(context)
-          retrieval = context.retrieval
-          intent_id = context.intent_id
-          lock = retrieval.lock(intent_id)
-          retrieval.intent(intent_id).status == "in_progress" &&
-            lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
-        end
+        def self.delivery_started?(context) = context.retrieval.intent(context.intent_id).status == "in_progress"
 
-        step "lock the intent and go in progress", done: method(:delivery_started?),
-          changes: { work: "The intent goes in progress", local: "The intent is locked to this session" } do |context|
+        step "go in progress", done: method(:delivery_started?), changes: { work: "The intent goes in progress" } do |context|
           context.work.activate_intent(context.intent_id)
-          context.work.lock_intent(context.intent_id, session_id: context.session, mode: "auto")
         end
 
         read "name the code worktree" do |context|

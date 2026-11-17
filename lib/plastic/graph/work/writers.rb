@@ -23,12 +23,12 @@ module Plastic
         extend Forwardable
 
         # The databases, folder, retrieval and session every writer is built on.
-        Scope = Data.define(:databases, :retrieval, :folder, :session)
+        Scope = Data.define(:databases, :retrieval, :folder, :session, :clock)
 
-        def_delegators :@scope, :databases, :retrieval, :folder, :session
+        def_delegators :@scope, :databases, :retrieval, :folder, :session, :clock
 
-        def initialize(databases, retrieval, folder, session)
-          @scope = Scope.new(databases:, retrieval:, folder:, session:)
+        def initialize(databases, retrieval, folder, session, clock = Time)
+          @scope = Scope.new(databases:, retrieval:, folder:, session:, clock:)
           @built = {}
         end
 
@@ -40,7 +40,7 @@ module Plastic
 
         def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval) }
 
-        def nodes = built(:nodes) { Node::Writer.new(databases, retrieval) }
+        def nodes = built(:nodes) { Node::Writer.new(databases, retrieval, clock:) }
 
         def edges = built(:edges) { Edge::Writer.new(databases, retrieval) }
 

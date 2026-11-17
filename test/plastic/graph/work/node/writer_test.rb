@@ -17,26 +17,26 @@ class WorkNodeWriterTest < Plastic::TestCase
     add
     added = add("Test")
 
-    assert_equal ["n2", "open", 0], [added.id, added.state, added.retries]
+    assert_equal ["n2", "open", 0], [added.id, added.state, retrieval.runs("1").size]
   end
 
-  def test_a_claim_moves_an_open_node_and_counts_the_try
+  def test_a_claim_moves_an_open_node_and_opens_a_run
     add
     state, claimed = @work.claim_node(intent_id: "1", id: "n1", by: "executor")
 
-    assert_equal [:claimed, "claimed", "executor", 1], [state, claimed.state, claimed.by, claimed.retries]
+    assert_equal [:claimed, "claimed", "executor", [1]], [state, claimed.state, claimed.claimed_by, retrieval.runs("1").map(&:number)]
   end
 
   def test_a_claim_of_a_missing_node_is_refused_with_no_node
     assert_equal [:refused, nil], @work.claim_node(intent_id: "1", id: "n9", by: "executor")
   end
 
-  def test_a_claim_of_a_claimed_node_is_refused_with_the_node_as_it_stands
+  def test_a_claim_of_a_claimed_node_is_held_with_the_node_as_it_stands
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
     state, current = @work.claim_node(intent_id: "1", id: "n1", by: "b")
 
-    assert_equal [:refused, "a"], [state, current.by]
+    assert_equal [:held, "a"], [state, current.claimed_by]
   end
 
   def test_a_claim_waits_while_a_needed_node_is_not_done
@@ -73,7 +73,7 @@ class WorkNodeWriterTest < Plastic::TestCase
     end
     state, claimed = @work.claim_node(intent_id: "1", id: "n1", by: "a")
 
-    assert_equal [:claimed, 3, nil], [state, claimed.retries, claimed.question]
+    assert_equal [:claimed, 3, nil], [state, retrieval.runs("1").size, claimed.question]
   end
 
   def test_the_question_of_a_capped_node_reads_back_from_the_rows
@@ -91,7 +91,7 @@ class WorkNodeWriterTest < Plastic::TestCase
     add
 
     assert_nil @work.release_node(intent_id: "1", id: "n1")
-    assert_equal ["open", 0], [node("n1").state, node("n1").retries]
+    assert_equal ["open", 0], [node("n1").state, retrieval.runs("1").size]
   end
 
   def test_done_records_the_judge_and_findings
@@ -102,13 +102,13 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal %w[done tests green], [done.state, done.judge, done.findings]
   end
 
-  def test_a_resolution_reopens_a_needs_info_node_with_its_tries_reset
+  def test_a_resolution_reopens_a_needs_info_node_with_its_answer
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
     @work.ask_node(intent_id: "1", id: "n1", question: "which?")
     answered = @work.resolve_node(intent_id: "1", id: "n1", answer: "this one")
 
-    assert_equal ["open", 0, "this one"], [answered.state, answered.retries, answered.answer]
+    assert_equal ["open", "this one"], [answered.state, answered.answer]
   end
 
   def test_only_an_open_node_can_be_removed

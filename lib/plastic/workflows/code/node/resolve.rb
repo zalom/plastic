@@ -6,8 +6,7 @@ module Plastic
   module Workflows
     module Code
       module Node
-        # Reopens a needs_info or impeded node with its resolution and resets its
-        # retries.
+        # Reopens a needs_info or impeded node with its resolution.
         class Resolve < MoveNode
           move :resolve_node
         end

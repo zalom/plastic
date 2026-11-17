@@ -23,8 +23,8 @@ class WorkWritersTest < Plastic::TestCase
   end
 
   def test_the_session_writer_writes_under_the_store_name
-    writers.sessions.lock_intent("1", session_id: "s-1", mode: "auto")
+    writers.sessions.open_session("s-1", harness: "claude-code", directory: "/work")
 
-    assert_equal "global", retrieval.lock("1").store
+    assert_equal "claude-code", retrieval.session("s-1").harness
   end
 end

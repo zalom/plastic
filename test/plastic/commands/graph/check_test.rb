@@ -22,6 +22,14 @@ class GraphCheckTest < Plastic::TestCase
     end
   end
 
+  def add_runs(id, count)
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      (1..count).each do |number|
+        batch.put(:runs, { intent_id: "1", node_id: id, number:, agent: "", session_id: "s-1", started_at: "2026-11-17T01:00:00Z", ended_at: "2026-11-17T01:01:00Z", result: "failed" })
+      end
+    end
+  end
+
   def write_spec(intent, text)
     write("#{intent.dir}/spec.md", text)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
@@ -67,7 +75,7 @@ class GraphCheckTest < Plastic::TestCase
   def test_retries_over_the_cap_is_a_finding
     open_keyed_intent
     add_node("a")
-    update_node("n1", "retries = 4")
+    add_runs("n1", 4)
 
     result = call("1")
 
