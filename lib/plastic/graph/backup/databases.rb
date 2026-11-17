@@ -12,7 +12,10 @@ module Plastic
         # A name that is not a store database.
         class Unknown < StandardError; end
 
-        def self.all = Schema.store.map { |key| Schema.file(key).delete_suffix(".db") }
+        # The file the old layout kept beside the store databases; a backup of an unmigrated store still copies it.
+        LEGACY = %w[references].freeze
+
+        def self.all = [*Schema.store.map { |key| Schema.file(key).delete_suffix(".db") }, *LEGACY]
 
         # The names in the list, each once, or nil when no list was given.
         def self.parse(text)

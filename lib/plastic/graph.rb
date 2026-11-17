@@ -12,7 +12,7 @@ require_relative "graph/work_graph"
 module Plastic
   # The graphs of one store. The home keeps plastic.db, for the command runs of
   # this machine. The store folder keeps work_graph.db, knowledge_graph.db
-  # and references.db, and the files printed from their rows. A writer
+  # and retrieval_graph.db, and the files printed from their rows. A writer
   # writes its rows in one transaction per database; the retrieval graph
   # reads them. The report reads what the call wrote from `wrote`.
   module Graph
@@ -48,7 +48,7 @@ module Plastic
     end
 
     def self.ready(graphs)
-      graphs.databases.values_at(:knowledge, :work, :references, :retrieval, :local).each { |database| database.rows("SELECT 1") }
+      graphs.databases.values_at(:knowledge, :work, :retrieval, :local).each { |database| database.rows("SELECT 1") }
       graphs
     end
   end

@@ -35,10 +35,10 @@ class DeclarationsTest < Plastic::TestCase
     declared = tool do
       reads :work
       writes :knowledge
-      writes :references
+      writes :retrieval
     end
 
-    assert_equal [[:work], %i[knowledge references]], [declared.reads, declared.writes]
+    assert_equal [[:work], %i[knowledge retrieval]], [declared.reads, declared.writes]
   end
 
   def test_an_unknown_graph_is_invalid

@@ -51,9 +51,8 @@ class DbSchemaTest < Plastic::TestCase
       work: ["work_graph.db", %i[nodes edges work_log printed changes roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data
         document_revisions document_heads retrieval_contexts retrieval_discoveries
-        rulings links printed changes]],
-      retrieval: ["retrieval_graph.db", %i[document_passages document_fts]],
-      references: ["references.db", %i[sqlar printed changes]]
+        rulings links printed changes sqlar]],
+      retrieval: ["retrieval_graph.db", %i[document_passages document_fts]]
     }, Schema.databases)
   end
 
@@ -110,6 +109,6 @@ class DbSchemaTest < Plastic::TestCase
   end
 
   def test_a_database_lists_tables_declared_once_and_shared
-    assert_equal %i[work knowledge references], %i[work knowledge references].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
+    assert_equal %i[work knowledge], %i[work knowledge].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
   end
 end

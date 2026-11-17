@@ -107,7 +107,7 @@ class ChangeLogTest < Plastic::TestCase
   end
 
   def test_a_kept_file_logs_its_name_and_not_its_bytes
-    references = store_graphs.databases[:references]
+    references = store_graphs.databases[:knowledge]
     row = { name: "store/1--a/resources/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("ab"),
             intent_id: "1", sha256: "x" }
     references.transaction { |batch| batch.put(:sqlar, row) }

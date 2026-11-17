@@ -54,7 +54,7 @@ class RetrievalGraphTest < Plastic::TestCase
   def test_a_kept_file_reads_without_its_bytes_and_its_bytes_read_by_name
     row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("\x00\xFF".b),
             intent_id: "1", sha256: "h" }
-    put(:references, :sqlar, row)
+    put(:knowledge, :sqlar, row)
 
     assert_equal [["store/1--a/x.bin", "h"]], retrieval.kept_files("1").map { |file| [file.name, file.sha256] }
     assert_equal "\x00\xFF".b, retrieval.kept_file_data("store/1--a/x.bin")
@@ -69,7 +69,7 @@ class RetrievalGraphTest < Plastic::TestCase
 
   def test_searches_indexed_passages_without_matching_an_intent_title
     intent = open_intent("Unrelated")
-    read_research(intent)
+    index_text(intent, "research.txt", "The retrieval evidence stays searchable.\n")
 
     retrieval.repair
 
@@ -315,12 +315,6 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
   end
 
   private
-
-  def read_research(intent)
-    path = "#{intent.dir}/research.txt"
-    write(path, "The retrieval evidence stays searchable.\n")
-    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
-  end
 
   def repair_with_blocked_writer
     isolated_writer.write("1", "repair.md", "repair evidence")

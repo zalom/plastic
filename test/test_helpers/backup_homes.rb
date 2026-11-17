@@ -19,7 +19,7 @@ module BackupHomes
   def seed_store(home, slug)
     graphs = Plastic::Graph.create(home:, store: slug)
     graphs.work.write_intent(title: slug.capitalize)
-    graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+    graphs.databases.values_at(:knowledge, :work).each { |database| database.rows("SELECT 1") }
   end
 
   def at(*parts) = Time.utc(*parts)

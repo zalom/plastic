@@ -11,7 +11,7 @@ require "fileutils"
 # proves the real files stayed as they were. Every test uses a throwaway
 # folder as the real home and another as the job tmp.
 module StoreProofHomes
-  FILES = %w[plastic.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db stores/plastic/references.db].freeze
+  FILES = %w[plastic.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db stores/plastic/retrieval_graph.db].freeze
 
   def setup
     @root = Dir.mktmpdir("store-proof")
@@ -197,12 +197,12 @@ class StoreProofChecksTest < Minitest::Test
   end
 
   def test_a_store_database_that_is_missing_is_skipped_by_name_and_the_proof_passes
-    File.delete(File.join(@real, "stores", "plastic", "references.db"))
+    File.delete(File.join(@real, "stores", "plastic", "retrieval_graph.db"))
     code, out, = run_cli(*proof_args("plastic"))
 
     assert_equal 0, code
-    assert_includes out, "skipped stores/plastic/references.db: missing"
-    refute_path_exists File.join(@job, "plastic_home", "stores", "plastic", "references.db")
+    assert_includes out, "skipped stores/plastic/retrieval_graph.db: missing"
+    refute_path_exists File.join(@job, "plastic_home", "stores", "plastic", "retrieval_graph.db")
   end
 
   def test_a_store_database_at_a_stamp_above_zero_fails_the_proof_whichever_store_holds_it

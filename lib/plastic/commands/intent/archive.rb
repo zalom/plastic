@@ -13,7 +13,7 @@ module Plastic
         subject :intent_id
         argument :intent_id, label: "ID", text: "the intent to archive", optional: true
         option :older_than, switch: "--older-than DATE", text: "archive every intent older than this date or time instead of one"
-        writes :work, :knowledge, :references
+        writes :work, :knowledge
         prints :index
         previews
         backs_up_first

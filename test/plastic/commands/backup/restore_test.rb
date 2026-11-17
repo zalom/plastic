@@ -132,11 +132,11 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_a_preview_lists_the_databases_and_changes_nothing
     home = seeded_home
-    before = [bytes(home, "work_graph", "knowledge_graph", "references"), folder_names(home)]
+    before = [bytes(home, "work_graph", "knowledge_graph"), folder_names(home)]
     result = restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--dry-run")
 
-    assert_call result, code: 0, out: ["preview", "work_graph", "knowledge_graph", "references", FIRST]
-    assert_equal before, [bytes(home, "work_graph", "knowledge_graph", "references"), folder_names(home)]
+    assert_call result, code: 0, out: ["preview", "work_graph", "knowledge_graph", FIRST]
+    assert_equal before, [bytes(home, "work_graph", "knowledge_graph"), folder_names(home)]
   end
 end
 

@@ -60,6 +60,7 @@ module Plastic
           step "bring the restored store to the newest layout", done: ->(context) { !context.migrated.nil? },
             changes: { databases: "The restored databases are migrated to the newest layout" } do |context|
             context[:migrated] = SchemaMigration.bring_current(context, slug: context.store).migrated
+            context.work.backups.rebuild_index
           end
 
           read "say what was replaced" do |context|

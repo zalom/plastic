@@ -297,7 +297,7 @@ class SyncUpSelectionTest < Plastic::TestCase
       .each { |rel, bytes| write("store/2--beta/#{rel}", bytes) }
   end
 
-  def kept = store_graphs.databases[:references].rows("SELECT name FROM sqlar ORDER BY name").map { |row| row["name"] }
+  def kept = store_graphs.databases[:knowledge].rows("SELECT name FROM sqlar ORDER BY name").map { |row| row["name"] }
 
   def documents = store_graphs.databases[:knowledge].rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
 
@@ -318,7 +318,7 @@ class SyncUpSelectionTest < Plastic::TestCase
 
   def media(value) = seed_config(@plastic_home, "global:\n  sync:\n    media: #{value}\n")
 
-  def kept_sizes = store_graphs.databases[:references].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
+  def kept_sizes = store_graphs.databases[:knowledge].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
 
   def test_a_kept_image_is_not_read_again_once_the_media_setting_is_off
     media(true)

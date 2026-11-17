@@ -70,14 +70,14 @@ class StoreDatabaseTest < Plastic::TestCase
   def test_creating_a_store_makes_the_store_files
     Plastic::Graph.create(home: @plastic_home, store: "fresh").work.write_intent(title: "Alpha")
 
-    assert_equal %w[knowledge_graph.db references.db retrieval_graph.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
+    assert_equal %w[knowledge_graph.db retrieval_graph.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
   end
 
   def test_the_databases_sit_in_the_store_folder
     databases = store_graphs.databases
 
     assert_equal File.join(@plastic_home, "plastic.db"), databases[:local].path
-    %i[work knowledge references].zip(%w[work_graph.db knowledge_graph.db references.db]).each do |key, file|
+    %i[work knowledge].zip(%w[work_graph.db knowledge_graph.db]).each do |key, file|
       assert_equal store_path(file), databases[key].path
     end
   end
@@ -96,7 +96,7 @@ class StoreDatabaseTest < Plastic::TestCase
 
   def test_no_store_table_has_a_store_column
     store_graphs.work.write_intent(title: "Alpha")
-    databases = store_graphs.databases.slice(:work, :knowledge, :references).values
+    databases = store_graphs.databases.slice(:work, :knowledge).values
     columns = databases.flat_map do |database|
       tables = database.rows("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
       tables.flat_map { |table| database.rows("SELECT name FROM pragma_table_info(:table)", table: table["name"]) }

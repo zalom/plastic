@@ -16,7 +16,7 @@ class RetrievalReadCliTest < Minitest::Test
       backup = run_cli(home, "backup", "--store", "alpha")
 
       assert_success backup
-      assert_match(%r{backup: alpha/\d{14}, 3 databases}, backup.fetch(:out))
+      assert_match(%r{backup: alpha/\d{14}, 2 databases}, backup.fetch(:out))
     end
   end
 

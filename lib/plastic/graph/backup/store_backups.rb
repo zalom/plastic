@@ -42,7 +42,10 @@ module Plastic
         # The newest folder marked done, or nil.
         def latest_done = folders.names.reverse.find { |name| folders.status(name) == "done" }
 
-        def restore(timestamp, databases: nil) = restorer.call(timestamp, databases:).tap { @retrieval.reindex }
+        def restore(timestamp, databases: nil) = restorer.call(timestamp, databases:)
+
+        # Rebuilds the search rows of every intent from the restored and migrated knowledge file.
+        def rebuild_index = @retrieval.reindex
 
         private
 

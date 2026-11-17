@@ -11,7 +11,7 @@ module Plastic
       MARKS = { legacy: SCHEMA_FILE.legacy.freeze, since: SCHEMA_FILE.since.freeze }.freeze
       TRIGGERS = SCHEMA_FILE.triggers.freeze
       DATABASES = SCHEMA_FILE.databases.freeze
-      STORE = %i[work knowledge references].freeze
+      STORE = %i[work knowledge].freeze
       DERIVED = %i[retrieval].freeze
     end
   end

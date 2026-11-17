@@ -5,7 +5,7 @@ require_relative "../../../../test_helper"
 class KnowledgeLegacyOriginalsTest < Plastic::TestCase
   def originals(counts = Hash.new(0)) = Plastic::Graph::Knowledge::Legacy::Originals.new(store_graphs.databases, counts)
 
-  def kept = store_graphs.databases[:references].rows("SELECT name, intent_id FROM sqlar ORDER BY name").map(&:values)
+  def kept = store_graphs.databases[:knowledge].rows("SELECT name, intent_id FROM sqlar ORDER BY name").map(&:values)
 
   def test_a_rewritten_file_keeps_its_original_bytes_under_its_intent
     counts = Hash.new(0)

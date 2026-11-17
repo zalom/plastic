@@ -76,11 +76,11 @@ class GraphBackupRestorerTest < Plastic::TestCase
   end
 
   def test_a_failed_second_rename_puts_the_first_database_back
-    before = bytes("knowledge_graph")
-    FileUtils.mkdir_p(File.join(root, "references.db.old", "keep"))
+    before = bytes("work_graph")
+    FileUtils.mkdir_p(File.join(root, "knowledge_graph.db.old", "keep"))
 
     assert_raises(SystemCallError) { restorer.call(STAMP) }
-    assert_equal before, bytes("knowledge_graph")
+    assert_equal before, bytes("work_graph")
     assert_equal 2, intent_count(@restore_home)
   end
 
@@ -132,6 +132,7 @@ class GraphBackupRestorerTest < Plastic::TestCase
     backup_at(@restore_home, at(2026, 2, 1, 10, 0, 0))
     open_store.databases.fetch(:retrieval).transaction { |batch| batch.add("DELETE FROM document_passages") }
     store_backups.restore("20260201100000")
+    store_backups.rebuild_index
 
     assert_operator passage_count, :>, 0
   end

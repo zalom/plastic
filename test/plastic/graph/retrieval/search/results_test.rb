@@ -8,7 +8,7 @@ class RetrievalSearchResultsTest < Plastic::TestCase
     super
     open_intent("Shared words")
     row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("\x00".b), intent_id: "1", sha256: "h" }
-    store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
+    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:sqlar, row) }
   end
 
   def results(terms) = Plastic::Graph::Retrieval::Search::Results.new(@plastic_home, terms, excerpt: ->(body) { body }).call(["global"], 5)

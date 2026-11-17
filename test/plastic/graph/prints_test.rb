@@ -99,10 +99,10 @@ class PrintsTest < Plastic::TestCase
   def test_a_kept_file_print_reads_its_bytes_only_to_write
     row = { name: "store/1--one/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("z"), intent_id: "1",
             sha256: "h" }
-    store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
+    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:sqlar, row) }
     print = Plastic::Graph::Prints.kept_files(retrieval, retrieval.kept_files("1")).first
 
-    assert_equal ["store/1--one/x.bin", :references, "h", "z"], [print.path, print.database, print.sha256, print.text]
+    assert_equal ["store/1--one/x.bin", :knowledge, "h", "z"], [print.path, print.database, print.sha256, print.text]
   end
 
   def test_the_store_prints_the_index_first_then_each_intent

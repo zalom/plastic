@@ -47,7 +47,7 @@ module Plastic
           def kind = KINDS.fetch(@file.rel) { text_kind }
 
           def text_kind
-            return %i[references kept] unless document?
+            return %i[knowledge kept] unless document?
 
             LegacyPath.legacy?(@file.rel) ? %i[knowledge legacy] : %i[knowledge document]
           end

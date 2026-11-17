@@ -44,7 +44,7 @@ class SchemaStore6Test < Plastic::TestCase
   def kept = @knowledge.execute("SELECT name, data, sha256 FROM sqlar ORDER BY name").to_h { |row| [row["name"], [row["data"].b, row["sha256"]]] }
 
   def test_the_text_of_the_landed_migration_is_pinned_by_its_digest
-    assert_equal "pending", Digest::SHA256.hexdigest(Migration.texts.join("\n--\n"))
+    assert_equal "cea333abf2a4e25cc1fc09ec1a2a6f9326456cc1e4d8e7e6eeeaa7fcc66de19d", Digest::SHA256.hexdigest(Migration.texts.join("\n--\n"))
   end
 
   def test_the_migration_never_reads_the_live_schema
@@ -76,7 +76,7 @@ class SchemaStore6Test < Plastic::TestCase
     apply
     Migration.retire(knowledge_path, references_path)
 
-    refute File.exist?(references_path)
+    refute_path_exists references_path
   end
 
   def test_the_retire_step_keeps_the_file_when_a_row_differs_in_knowledge
@@ -84,7 +84,7 @@ class SchemaStore6Test < Plastic::TestCase
     @knowledge.execute("UPDATE sqlar SET sha256 = 'other' WHERE name = 'notes/a.md'")
 
     assert_raises(Migration::Mismatch) { Migration.retire(knowledge_path, references_path) }
-    assert File.exist?(references_path)
+    assert_path_exists references_path
   end
 
   def test_the_retire_step_keeps_the_file_when_a_row_is_missing_in_knowledge
@@ -92,13 +92,13 @@ class SchemaStore6Test < Plastic::TestCase
     @knowledge.execute("DELETE FROM sqlar WHERE name = 'notes/b.bin'")
 
     assert_raises(Migration::Mismatch) { Migration.retire(knowledge_path, references_path) }
-    assert File.exist?(references_path)
+    assert_path_exists references_path
   end
 
   def test_a_stop_after_the_copy_leaves_the_references_file_and_the_rerun_copies_again
     assert_raises(IOError) { @knowledge.transaction(:immediate) { apply(between: -> { raise IOError, "killed" }) } }
 
-    assert_equal [0, true], [@knowledge.get_first_value("SELECT count(*) FROM sqlar"), File.exist?(references_path)]
+    assert_equal [5, true], [@knowledge.get_first_value("PRAGMA user_version"), File.exist?(references_path)]
     @knowledge.transaction(:immediate) { apply }
 
     assert_equal FILES.keys, kept.keys

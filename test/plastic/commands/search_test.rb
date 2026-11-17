@@ -17,7 +17,7 @@ module SearchTestSupport
   end
 
   def selected_store_bytes
-    %w[work_graph.db knowledge_graph.db references.db].to_h do |name|
+    %w[work_graph.db knowledge_graph.db].to_h do |name|
       path = store_path(name)
       [name, File.binread(path)]
     end
@@ -64,12 +64,11 @@ module SearchTestAssertionSupport
     assert_match(/unknown source projects: missing/, unknown.err)
   end
 
-  def assert_maintenance_result(result, root, knowledge, references)
+  def assert_maintenance_result(result, root, knowledge)
     assert_equal 1, result.code
     assert_match(/maintenance/, result.out)
     refute_path_exists File.join(root, "work_graph.db")
     assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
-    assert_equal references, File.binread(File.join(root, "references.db"))
   end
 
   def assert_pinned_document(hit, document)
@@ -216,12 +215,11 @@ class SearchScopeTest < Plastic::TestCase
     root = File.join(@plastic_home, "stores", "other")
     Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.archived?("1")
     knowledge = File.binread(File.join(root, "knowledge_graph.db"))
-    references = File.binread(File.join(root, "references.db"))
     File.delete(File.join(root, "work_graph.db"))
 
     result = plastic("search", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 
-    assert_maintenance_result(result, root, knowledge, references)
+    assert_maintenance_result(result, root, knowledge)
   end
 end
 

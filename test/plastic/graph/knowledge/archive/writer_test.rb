@@ -110,9 +110,9 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators)
   end
 
-  def full_disk = @graphs.databases.merge(work: FullDisk.new(@graphs.databases.fetch(:work)))
+  def full_disk = @graphs.databases.merge(knowledge: FullDisk.new(@graphs.databases.fetch(:knowledge)))
 
-  def stuck_printed = @graphs.databases.merge(references: StuckPrinted.new(@graphs.databases.fetch(:references)))
+  def stuck_printed = @graphs.databases.merge(knowledge: StuckPrinted.new(@graphs.databases.fetch(:knowledge)))
 
   def archive_successfully
     assert @writer.archive(@intent.intent_id).first

@@ -10,7 +10,7 @@ module Plastic
         end
 
         def kept_file_data(name)
-          row = databases.fetch(:references).row("SELECT hex(data) AS data FROM sqlar WHERE name = :name", name:)
+          row = databases.fetch(:knowledge).row("SELECT hex(data) AS data FROM sqlar WHERE name = :name", name:)
           [row.fetch("data")].pack("H*")
         end
 

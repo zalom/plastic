@@ -24,7 +24,7 @@ module Plastic
           forget_stop :problem, :kind, :ok, :lines
 
           step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? },
-            changes: { work: "The intent is marked archived", references: "The files of the intent are kept in the references database" } do |context|
+            changes: { work: "The intent is marked archived", knowledge: "The files of the intent are kept in the knowledge database" } do |context|
             if context.older_than
               context[:lines] = ArchiveBefore.new(context).lines
               context[:ok] = true

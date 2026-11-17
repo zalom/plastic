@@ -63,7 +63,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def test_any_other_file_is_kept_whole
-    assert_equal :references, read_in("x.bin", "\x00\xFF".b)
+    assert_equal :knowledge, read_in("x.bin", "\x00\xFF".b)
     file = kept("x.bin")
 
     assert_equal [0o100644, 2, Digest::SHA256.hexdigest("\x00\xFF".b)], [file.mode, file.sz, file.sha256]
@@ -105,7 +105,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def test_a_binary_file_under_actions_stays_a_kept_file
-    assert_equal :references, read_in("actions/data.bin", "\x00\xFF".b)
+    assert_equal :knowledge, read_in("actions/data.bin", "\x00\xFF".b)
     assert_equal [[], true], [legacy_rows, !kept("actions/data.bin").nil?]
   end
 
@@ -120,7 +120,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def test_every_valid_utf8_reference_without_a_nul_is_a_document
-    assert_equal %i[knowledge references knowledge knowledge], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
+    assert_equal %i[knowledge knowledge knowledge knowledge], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
       read_in("notes.txt", "plain text\n"), read_in("data.json", '{"topic":"retrieval"}')]
 
     assert_equal ["data.json", "intent.md", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort

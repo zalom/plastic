@@ -67,7 +67,7 @@ module Plastic
       def kept_files(retrieval, rows)
         rows.map do |kept|
           name = kept.name
-          Print.new(name, :references, kept.sha256, -> { retrieval.kept_file_data(name) })
+          Print.new(name, :knowledge, kept.sha256, -> { retrieval.kept_file_data(name) })
         end
       end
 

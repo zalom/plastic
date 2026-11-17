@@ -66,7 +66,7 @@ class DoctorCoreTest < Plastic::TestCase
   def test_a_store_with_no_folder_names_each_database
     FileUtils.rm_rf(store_dir)
 
-    assert_equal 3, check("store #{SLUG}:").value.scan("is missing").size
+    assert_equal 2, check("store #{SLUG}:").value.scan("is missing").size
   end
 
   def test_a_missing_global_store_names_the_reinstall

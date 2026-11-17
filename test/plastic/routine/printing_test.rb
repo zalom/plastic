@@ -96,7 +96,7 @@ class RoutinePrintingTest < Plastic::TestCase
   end
 
   def keep_file(name, bytes)
-    store_graphs.databases.fetch(:references).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: Digest::SHA256.hexdigest(bytes), origin_id: origin })
     end
     store_graphs.work.print_intent("1")

@@ -50,7 +50,7 @@ module Plastic
       contexts: Source.new(Knowledge::RetrievalContext, :knowledge, "retrieval_contexts", "*", "intent_id"),
       discoveries: Source.new(Knowledge::RetrievalDiscovery, :knowledge, "retrieval_discoveries", "*", "intent_id"),
       rulings: Source.new(Knowledge::Ruling, :knowledge, "rulings", "*", "intent_id, id"),
-      kept_files: Source.new(Knowledge::Archive::KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
+      kept_files: Source.new(Knowledge::Archive::KeptFile, :knowledge, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
         "intent_id, name")
     }.freeze
   end
