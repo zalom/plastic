@@ -41,12 +41,14 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
     assert_equal ["Alpha", ["n1"]], [graphs.retrieval.intent("1").title, graphs.retrieval.nodes("1").map(&:id)]
   end
 
+  def printed_graph = JSON.parse(File.read(Dir.glob(File.join(@plastic_home, "stores", "global", "store", "1--*", "graph.json")).first))
+
   def test_the_graph_file_prints_from_both_files_and_reads_back_into_both
     work.write_intent(title: "Alpha")
     work.approve_intent("1")
     work.add_node(intent_id: "1", id: "n1", kind: "task", title: "First")
     work.print_intent("1")
-    reread = JSON.parse(File.read(Dir.glob(File.join(@plastic_home, "stores", "global", "store", "1--*", "graph.json")).first))
+    reread = printed_graph
 
     assert_equal [true, ["n1"]], [reread.key?("approval"), reread.fetch("nodes").map { |node| node.fetch("id") }]
   end

@@ -104,6 +104,12 @@ class SchemaStore6Test < Plastic::TestCase
     assert_equal FILES.keys, kept.keys
   end
 
+  def test_a_changes_copy_that_differs_from_references_raises
+    @knowledge.execute("CREATE TRIGGER alter_copy AFTER INSERT ON changes BEGIN UPDATE changes SET at = 'altered' WHERE seq = new.seq; END")
+
+    assert_raises(Migration::Mismatch) { apply }
+  end
+
   def test_the_other_files_take_no_part
     work = SQLite3::Database.new(":memory:", results_as_hash: true)
 

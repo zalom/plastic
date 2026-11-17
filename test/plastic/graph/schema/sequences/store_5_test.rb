@@ -79,6 +79,16 @@ class SchemaStore5Test < Plastic::TestCase
     database&.close
   end
 
+  def test_a_copy_that_differs_from_knowledge_raises_and_leaves_the_passages_in_knowledge
+    database = retrieval
+    database.execute_batch(Plastic::Graph::SchemaStore5::TEXT.fetch(:document_passages))
+    database.execute("CREATE TRIGGER alter_copy AFTER INSERT ON document_passages BEGIN UPDATE document_passages SET body = 'altered' WHERE rowid = new.rowid; END")
+    database.close
+
+    assert_raises(Plastic::Graph::SchemaStore5::Mismatch) { apply }
+    assert_includes tables(@knowledge), "document_passages"
+  end
+
   def test_the_other_files_take_no_part
     work = SQLite3::Database.new(":memory:", results_as_hash: true)
 
