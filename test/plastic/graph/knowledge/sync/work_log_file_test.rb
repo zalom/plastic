@@ -56,7 +56,7 @@ class SyncWorkLogFileTest < Plastic::TestCase
     folder.delete(log_path(intent))
     old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
 
-    assert_call sync_down, code: 0
+    assert_call sync_down, code: 0, out: ["removed #{old_path(intent)}"]
     assert_equal [false, true], [folder.exist?(old_path(intent)), folder.exist?(log_path(intent))]
   end
 

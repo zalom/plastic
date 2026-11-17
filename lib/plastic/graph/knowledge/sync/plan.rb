@@ -7,6 +7,7 @@ require_relative "../store_folder"
 require_relative "archived_intents"
 require_relative "readability"
 require_relative "second_home"
+require_relative "old_savepoints"
 
 module Plastic
   module Graph
@@ -17,8 +18,8 @@ module Plastic
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
         # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home) do
-          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, **fields) = super
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints) do
+          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, **fields) = super
         end
 
         # Each entry's action, and what the sync writes.
@@ -31,9 +32,11 @@ module Plastic
             second_home = second_home_of(folder, retrieval, folders, up && !legacy)
             new(resolution:, entries:, legacy: up && legacy,
               problem: down_problem(legacy, up), unreadable: Array(folders&.problems),
-              archived: archived(folder, retrieval, resolution), second_home:,
+              archived: archived(folder, retrieval, resolution), second_home:, old_savepoints: old_savepoints(folder, retrieval, up),
               unreadable_files: unreadable_files_of(Readability.new(folder, retrieval, databases), entries, retrieval, up && !legacy, second_home))
           end
+
+          def self.old_savepoints(folder, retrieval, up) = up ? OldSavepoints.none : OldSavepoints.find(folder, retrieval)
 
           def self.down_problem(legacy, up) = (legacy_problem if legacy && !up)
 
@@ -87,7 +90,7 @@ module Plastic
           def entries_for(action) = actions.select { |_entry, found| found == action }.keys
 
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra + old_savepoints.removable.size
 
           # The reads of a second home that no entry already counts.
           def second_home_extra = second_home.size - (second_home.paths & entries_for(:read).map(&:path)).size
