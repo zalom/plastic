@@ -24,11 +24,11 @@ class RetrievalRepairTest < Plastic::TestCase
       problem(refusal("global"))
   end
 
-  def test_a_global_store_that_lost_a_store_database_names_the_reinstall
-    File.delete(File.join(@plastic_home, "stores", "global", Plastic::Graph::Schema.file(Plastic::Graph::Schema.store.first)))
+  def test_a_global_store_with_no_store_database_names_the_reinstall
+    scope = Plastic::Scope.new(env: { "PLASTIC_HOME" => Dir.mktmpdir }, home: @home, slug: "global", directory: @home)
 
     assert_equal "retrieval maintenance is required before source global can be read; run plastic install --reinstall, then try again",
-      problem(refusal("global"))
+      Plastic::Workflows::RetrievalRepair.new(scope, refusal("global")).problem
   end
 
   def test_an_unregistered_store_names_project_new_with_a_path_placeholder
