@@ -52,12 +52,18 @@ module Plastic
         private
 
         def open_file
-          @retrieval_lost = File.file?(path) && !File.file?(retrieval_path) unless ConnectionPool.connections.key?(path)
+          refuse_behind unless ConnectionPool.connections.key?(path)
           ConnectionPool.for(path, attach: files)
         end
 
+        # ATTACH makes a file for a missing one, so a store that is behind and lacks an attached file is refused before the first ATTACH.
+        def refuse_behind
+          @retrieval_lost = File.file?(path) && !File.file?(retrieval_path)
+          raise Behind, "#{file} is behind this code; run plastic update" if files.values.any? { |attached| !File.file?(attached) } && SchemaGate.behind?(path, files.values)
+        end
+
         def settle(connection)
-          SCHEMAS.each { |key, schema| SchemaGate.new(connection, sequence: :store, key:, file: Schema.file(key), schema:).call }
+          SchemaGate.new(connection, layouts: SCHEMAS.invert, file:).call
         end
       end
     end

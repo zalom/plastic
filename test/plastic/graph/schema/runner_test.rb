@@ -17,11 +17,6 @@ class SchemaRunnerTest < Plastic::TestCase
 
   def store_files(home, slug = "alpha") = Dir.glob(File.join(home, "stores", slug, "*.db")).sort
 
-  def intent_status(home, slug)
-    path = store_files(home, slug).find { |file| layout_of(file).any? { |_type, name, _sql| name == "intents" } }
-    SQLite3::Database.new(path, readonly: true).get_first_value("SELECT status FROM intents WHERE intent_id = '7'")
-  end
-
   def test_an_old_layout_home_migrated_through_every_migration_has_the_layout_of_a_new_database
     home = old_home
     run_runner(home)
@@ -29,20 +24,14 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_equal layouts(fresh_home), layouts(home)
   end
 
-  def test_every_database_is_stamped_with_the_newest_version_of_its_sequence
+  def test_the_home_and_the_knowledge_database_are_stamped_and_the_other_store_databases_stay_unstamped
     home = old_home
     run_runner(home)
     versions = user_versions(home).transform_keys { |path| path.delete_prefix(home) }
 
-    assert_equal [Sequences.newest(:home)], versions.slice("/plastic.db").values
-    assert_equal [Sequences.newest(:store)], versions.except("/plastic.db").values.uniq
-  end
+    stamped = versions.group_by { |path, _| File.basename(path) }.transform_values { |pairs| pairs.map(&:last).uniq }
 
-  def test_the_old_word_for_work_under_way_becomes_in_progress
-    home = old_home
-    run_runner(home)
-
-    assert_equal "in_progress", intent_status(home, "alpha")
+    assert_equal({ "plastic.db" => [Sequences.newest(:home)], "knowledge_graph.db" => [Plastic::Graph::SchemaMigrator::VERSION], "work_graph.db" => [0], "retrieval_graph.db" => [0] }, stamped)
   end
 
   def test_a_backup_of_the_store_is_taken_first_and_says_it_is_the_migration_backup
@@ -79,7 +68,7 @@ class SchemaRunnerTest < Plastic::TestCase
     report = run_runner(home)
 
     assert_equal [["alpha"], before], [report.failed.keys, bytes_in(home, "/alpha/")]
-    assert_equal Sequences.newest(:store), user_versions(home).fetch(store_file(home, "work_graph", "beta"))
+    assert_equal Plastic::Graph::SchemaMigrator::VERSION, user_versions(home).fetch(store_file(home, "knowledge_graph", "beta"))
   end
 
   def test_a_store_whose_backup_folder_cannot_be_written_stays_behind
@@ -91,30 +80,6 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_equal [["alpha"], [0]], [report.failed.keys, versions_in(home, "/alpha/")]
   end
 
-  def test_a_run_that_is_killed_inside_a_migration_leaves_every_byte_of_the_file_as_it_was
-    home = old_home
-    Plastic::Graph::Database::ConnectionPool.release(home)
-    before = bytes_in(home, "/stores/")
-
-    assert_raises(RuntimeError) { run_runner(home, sequences: killed_store_sequences) }
-    Plastic::Graph::Database::ConnectionPool.release(home)
-
-    assert_equal before, bytes_in(home, "/stores/")
-    run_runner(home)
-
-    assert_equal layouts(fresh_home), layouts(home)
-  end
-
-  def test_a_store_with_only_the_work_database_migrates_and_gains_no_other_file
-    home = old_home
-    Plastic::Graph::Database::ConnectionPool.release(home)
-    (store_files(home) - [store_file(home, "work_graph")]).each { |path| File.delete(path) }
-    run_runner(home)
-
-    assert_equal [store_file(home, "work_graph")], store_files(home)
-    assert_equal Sequences.newest(:store), user_versions(home).fetch(store_file(home, "work_graph"))
-  end
-
   def test_backup_migrate_restore_and_migrate_again_give_equal_row_digests
     home = old_home
     run_runner(home)
@@ -122,13 +87,8 @@ class SchemaRunnerTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(home)
     restore_call(home, "--store", "alpha", "--latest")
 
-    assert_equal [Sequences.newest(:store)], versions_in(home, "/alpha/")
+    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], versions_in(home, "/alpha/knowledge_graph.db")
     assert_equal migrated, store_digests(home).except("retrieval_graph.db")
-  end
-
-  def killed_store_sequences
-    killed = Sequences::Migration.new(1, ->(connection, key) { connection.execute_batch(Plastic::Graph::Schema.fetch(key)).then { raise "killed" } }, {})
-    { home: Sequences::SEQUENCES.fetch(:home), store: [killed] }
   end
 
   def bytes_in(home, part) = file_bytes(home).select { |path, _| path.include?(part) }

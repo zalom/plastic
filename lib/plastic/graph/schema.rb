@@ -47,7 +47,6 @@ module Plastic
       def self.derived = SchemaCatalog::DERIVED
       def self.tables = SchemaCatalog::TABLES
       def self.triggers = SchemaCatalog::TRIGGERS
-      def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)
       def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
 
       def self.nouns = SchemaMetadata::NOUNS

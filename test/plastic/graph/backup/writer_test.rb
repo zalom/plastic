@@ -95,7 +95,7 @@ class GraphBackupWriterLogTest < Plastic::TestCase
     writer(home).call
     lines = log_lines(home)
 
-    assert_equal 4, lines.size
+    assert_equal 3, lines.size
     assert(lines.all? { |line| line.match?(TIME) })
   end
 
@@ -139,7 +139,7 @@ class GraphBackupWriterLogTest < Plastic::TestCase
     end
     writer(home, copier:).call
 
-    assert_equal [0, 1, 2], seen
+    assert_equal [0, 1], seen
   end
 
   def test_the_live_sink_receives_each_line_as_it_is_written

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../behind"
-require_relative "../database"
 
 module Plastic
   module Graph

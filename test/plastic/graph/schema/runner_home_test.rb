@@ -63,7 +63,7 @@ class SchemaRunnerHomeTest < Plastic::TestCase
   def test_a_home_whose_migration_fails_gives_its_reason
     home = old_layout(fresh_home)
     failing = Plastic::Graph::SchemaSequences::Migration.new(1, ->(_connection, _key) { raise SQLite3::SQLException, "no such table: gone" }, {})
-    report = Runner.new(home:, now: NOW, sequences: { home: [failing], store: [] }).call
+    report = Runner.new(home:, now: NOW, sequences: { home: [failing] }).call
 
     assert_equal "it could not be migrated (plastic.db: no such table: gone)", report.failed.fetch("home")
   end

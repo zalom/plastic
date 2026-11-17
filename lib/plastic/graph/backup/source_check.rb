@@ -2,12 +2,13 @@
 
 require "sqlite3"
 require_relative "../backup"
+require_relative "../schema"
 
 module Plastic
   module Graph
     module Backup
       # Reads the live store files before a copy: each must pass SQLite's
-      # quick check, and the lowest schema version among them is the
+      # quick check, and the stamp of the knowledge database is the
       # version the backup records. The fingerprint is the size and change
       # time of each file, so an unchanged store can be told apart.
       class SourceCheck
@@ -25,8 +26,12 @@ module Plastic
           @paths = paths
         end
 
-        # The lowest user_version of the files; raises Failed when one file is damaged.
-        def version = @paths.map { |path| inspect_file(path) }.min
+        # The user_version of the knowledge database of the store, which stamps it; raises Failed when one file is damaged.
+        def version
+          stamps = @paths.to_h { |path| [path, inspect_file(path)] }
+          knowledge = File.join(File.dirname(@paths.first), Schema.file(:knowledge))
+          stamps.fetch(knowledge) { File.file?(knowledge) ? inspect_file(knowledge) : stamps.values.min }
+        end
 
         def fingerprint
           @paths.map do |path|

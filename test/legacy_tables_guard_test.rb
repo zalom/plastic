@@ -21,7 +21,6 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/source.rb
     plastic/graph/retrieval/store_reads.rb
   ].map { |path| File.join(KERNEL, path) }.freeze
-  MIGRATIONS = File.join(KERNEL, "plastic/graph/schema/sequences/**/*.rb")
   DECLARATION = /create_table\s+:(\w+)[^\n]*legacy:\s*true/
 
   def self.legacy_names(text) = text.scan(DECLARATION).flatten
@@ -31,7 +30,7 @@ class LegacyTablesGuardTest < Minitest::Test
   def names = self.class.legacy_names(File.read(SCHEMA))
 
   def test_no_kernel_file_outside_the_plumbing_names_a_legacy_table
-    files = Dir.glob(File.join(KERNEL, "**/*.rb")) - PLUMBING - Dir.glob(MIGRATIONS)
+    files = Dir.glob(File.join(KERNEL, "**/*.rb")) - PLUMBING
 
     refute_empty names
     refute_empty files

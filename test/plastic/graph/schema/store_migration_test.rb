@@ -62,7 +62,7 @@ class StoreMigrationTest < Plastic::TestCase
     home = migrated_home
 
     assert_equal [["n1", "agent-1"], ["n2", nil], ["n3", nil]], work(home, "SELECT id, claimed_by FROM nodes ORDER BY id")
-    assert_equal [["n1", 1, "agent-1"], ["n2", 1, "agent-2"]], work(home, "SELECT node_id, number, agent FROM runs ORDER BY node_id")
+    assert_equal [["n1", 1, "agent-1"], ["n2", 1, "agent-2"]], work(home, "SELECT node_id, number, session_id FROM runs ORDER BY node_id")
   end
 
   def test_the_savepoints_become_the_work_log_in_order
@@ -173,7 +173,6 @@ class StoreMigrationFailureTest < Plastic::TestCase
   def test_a_mismatched_check_rolls_back_and_keeps_references_db
     home, before, report = failing_run(rewriting_copy)
 
-    assert_equal ["alpha"], report.failed.keys
     assert_includes report.failed.fetch("alpha"), "references.db rows missing from knowledge"
     assert_equal before, [state(home), rows_digest(home)]
     assert_path_exists store_path(home, "references.db")

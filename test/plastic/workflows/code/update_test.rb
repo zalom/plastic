@@ -13,7 +13,7 @@ class UpdatePlasticTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
-  def store_versions(home) = user_versions(home).reject { |path, _| path.end_with?("/plastic.db") }.values.uniq
+  def store_versions(home) = user_versions(home).select { |path, _| path.end_with?("/knowledge_graph.db") }.values.uniq
 
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
 
@@ -21,7 +21,7 @@ class UpdatePlasticTest < Plastic::TestCase
     home = old_layout(fresh_home)
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
 
-    assert_equal [Plastic::Graph::SchemaSequences.newest(:store)], store_versions(home)
+    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], store_versions(home)
     assert_equal [1, 1], %w[alpha beta].map { |slug| folder_names(home, slug).size }
   end
 

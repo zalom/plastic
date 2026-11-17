@@ -3,6 +3,8 @@
 require_relative "missing_store"
 require_relative "schema"
 require_relative "schema/gate"
+require_relative "schema/migrator"
+require_relative "schema/sequences"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
@@ -38,11 +40,6 @@ module Plastic
 
       # The one database of a store folder: knowledge with work and retrieval attached. `origin` stamps its rows.
       def self.open_store(root, origin) = Store.new(root, origin)
-
-      # The three files of a store folder as separate databases, for the migrations that move rows between them.
-      def self.open_files(root, origin)
-        [*Schema.store, *Schema.derived].to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
-      end
 
       # The error to raise for one that came from the file `file`, with the file named.
       def self.relabeled(file, error)
@@ -125,9 +122,8 @@ module Plastic
       def phrases = [written_phrase].compact
 
       # Brings the file to the newest version of its sequence. Only the install and the update call this.
-      # `siblings` names the path of each other file of the store, by key, for a step that moves rows between files.
-      def migrate(sequences, siblings: {})
-        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key), siblings) }
+      def migrate(sequences)
+        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key)) }
         @unsettled = false
       end
 
@@ -185,7 +181,7 @@ module Plastic
       def settle(connection)
         return Schema.prepare(connection, @schema) unless @track
 
-        SchemaGate.new(connection, **@track, file:).call
+        SchemaGate.new(connection, layouts: { nil => @track.fetch(:key) }, newest: SchemaSequences.newest(@track.fetch(:sequence)), file:).call
       end
     end
   end

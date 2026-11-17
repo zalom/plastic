@@ -1,19 +1,13 @@
 # frozen_string_literal: true
 
 require "sqlite3"
+require_relative "beta_2_store"
 
 # Turns a throwaway home made by BackupHomes into the layout of an older
-# release: every database unstamped, the intents table with the old word for
-# work under way, and the locks table with the old time column.
+# release: each store becomes the beta.2 fixture store, and the home database
+# is unstamped with the tables of local.db.
 module OldLayoutHomes
-  OLD_INTENTS = <<~SQL
-    DROP TABLE intents;
-    CREATE TABLE "intents"("id" INTEGER PRIMARY KEY AUTOINCREMENT, "intent_id" TEXT NOT NULL, "parent_id" TEXT, "ref" TEXT,
-      "origin_id" TEXT NOT NULL, "slug" TEXT NOT NULL, "title" TEXT NOT NULL, "kind" TEXT,
-      "status" TEXT NOT NULL CHECK(status IN ('open', 'active', 'parked', 'future', 'done', 'abandoned')),
-      "disposition" TEXT, "opened_at" TEXT, "closed_at" TEXT, "updated_at" TEXT, UNIQUE("intent_id", "origin_id"));
-    INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('7', 'o-1', 'seven', 'Seven', 'active');
-  SQL
+  include Beta2Store
 
   OLD_HOME_TABLES = <<~SQL
     ALTER TABLE command_runs RENAME TO routine_runs;
@@ -22,8 +16,8 @@ module OldLayoutHomes
 
   def old_layout(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
-    database_files(home).each { |path| downgrade(path) }
-    restore_old_references(home)
+    Dir.glob(File.join(home, "{local.db,plastic.db}")).each { |path| downgrade(path) }
+    old_stores(home)
     File.rename(File.join(home, "plastic.db"), File.join(home, "local.db")) if File.exist?(File.join(home, "plastic.db"))
     home
   end
@@ -44,47 +38,25 @@ module OldLayoutHomes
     end
   end
 
-  LEFTOVERS = { "work_graph.db" => %w[changes printed work_log_write_id], "knowledge_graph.db" => %w[changes work_log_pending] }.freeze
-
-  def layouts(home)
-    database_files(home).to_h do |path|
-      kept = layout_of(path).reject { |_type, name, _sql| LEFTOVERS.fetch(File.basename(path), []).include?(name) }
-      [path.delete_prefix(home), kept.map { |type, name, sql| [type, name, sql.to_s.sub(%(, "write_id" TEXT), "")] }]
-    end
-  end
+  def layouts(home) = database_files(home).to_h { |path| [path.delete_prefix(home), layout_of(path)] }
 
   def file_bytes(home) = database_files(home).to_h { |path| [path, File.binread(path)] }
-
-  MOVED_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries].freeze
-  LAYOUT = Plastic::Graph::SchemaStore1::Layout::TEXT
 
   private
 
   def downgrade(path)
     with_database(path) do |db|
-      restore_old_tables(db, File.basename(path))
       db.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'locks' AND type = 'table'")
       db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
       db.execute("PRAGMA user_version = 0")
     end
   end
 
-  def restore_old_tables(db, name)
-    case name
-    when "work_graph.db" then db.execute_batch(LAYOUT.fetch(:work) + OLD_INTENTS)
-    when "knowledge_graph.db" then restore_old_knowledge(db)
-    end
-  end
-
-  def restore_old_knowledge(db)
-    MOVED_TABLES.each { |table| db.execute("DROP TABLE IF EXISTS \"#{table}\"") }
-    db.execute_batch(LAYOUT.fetch(:knowledge))
-  end
-
-  def restore_old_references(home)
+  def old_stores(home)
+    origin = Plastic::Graph::Origin.new(home).id
     Dir.glob(File.join(home, "stores", "*")).each do |store|
-      FileUtils.rm_f(File.join(store, "retrieval_graph.db"))
-      with_database(File.join(store, "references.db")) { |db| db.execute_batch(LAYOUT.fetch(:references)) }
+      Dir.glob(File.join(store, "*.db*")).each { |file| File.delete(file) }
+      Beta2Store::FILES.each { |file, name| build_beta_2_file(File.join(store, file), name, origin, true) }
     end
   end
 

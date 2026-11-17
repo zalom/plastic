@@ -34,14 +34,18 @@ module Plastic
           raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
         end
 
-        def initialize(target, retrieval, now:, sequences: SchemaSequences::SEQUENCES)
-          @sequences = sequences
+        def initialize(target, retrieval, now:)
           @target = target
           @retrieval = retrieval
           @now = now
         end
 
-        def claimed? = @retrieval.claimed_nodes.any? { |node| !node.lapsed?(@now) }
+        # A store file that cannot be read holds no claim a restore could honour: a restore is what repairs it.
+        def claimed?
+          @retrieval.claimed_nodes.any? { |node| !node.lapsed?(@now) }
+        rescue Database::Error
+          false
+        end
 
         # The database names a restore would replace.
         def held_in(timestamp, names: nil)
@@ -63,8 +67,9 @@ module Plastic
 
         # Returns the folder of the safety backup.
         def call(timestamp, databases: nil)
+          held = held_in(timestamp, names: databases)
           refuse(timestamp, databases)
-          names = verified(timestamp, databases)
+          names = verified(timestamp, held)
           safety = Publisher.new(@target, now: @now, reason: "backup restore").call
           swap(names, timestamp)
           safety.fetch(:name).split("/").last
@@ -94,8 +99,8 @@ module Plastic
           "the backup #{timestamp} is at schema version #{recorded(timestamp)} and the store is at #{live}; restore the whole store, which migrates it forward"
         end
 
-        # The lowest stamp among the live files that can be read; a damaged file is what a restore repairs, so it does not count.
-        def live_version = Databases.all.filter_map { |name| stamp(@target.file(name)) }.min
+        # The stamp of the live knowledge database; a damaged file is what a restore repairs, so it does not count.
+        def live_version = stamp(@target.file("knowledge_graph"))
 
         def stamp(path)
           return unless File.file?(path)
@@ -107,8 +112,8 @@ module Plastic
 
         def source(name, timestamp) = File.join(@target.folders.path(timestamp), "#{name}-#{timestamp}.db")
 
-        def verified(timestamp, databases)
-          held_in(timestamp, names: databases).each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp), migrations: @sequences.fetch(:store)).call }
+        def verified(timestamp, names)
+          names.each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp)).call }
         end
 
         def swap(names, timestamp)

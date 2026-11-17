@@ -5,6 +5,9 @@ require_relative "../origin"
 require_relative "../backup/writer"
 require_relative "home_copy"
 require_relative "home_rename"
+require_relative "migrator"
+require_relative "migrations"
+require_relative "store_age"
 
 module Plastic
   module Graph
@@ -17,8 +20,7 @@ module Plastic
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason.
       Report = Data.define(:migrated, :failed)
 
-      # The files of a store in the order they migrate: knowledge first, so the tables that work copies into exist.
-      ORDER = %i[knowledge work retrieval].freeze
+      REFERENCES = "references.db"
 
       # `only` names one store to migrate; the home database is checked either way.
       def initialize(home:, now: Time.now, sequences: SchemaSequences::SEQUENCES, only: nil)
@@ -84,51 +86,57 @@ module Plastic
         File.directory?(folder) ? Dir.children(folder).sort.select { |name| File.directory?(File.join(folder, name)) && (@only.nil? || name == @only) } : []
       end
 
-      def databases(slug)
-        root = File.join(@home, "stores", slug)
-        Database.open_files(root, Origin.new(@home)).select { |_key, database| File.exist?(database.path) }.values
-      end
-
       def migrate_store(slug)
-        outcome = migrate_store_to_newest(slug)
-        outcome.is_a?(String) ? outcome : retire_references(slug, outcome)
-      rescue SQLite3::Exception, Database::Error, Plastic::Invalid => error
+        root = File.join(@home, "stores", slug)
+        return :current unless behind?(root)
+
+        StoreAge.call(root)
+        reason = backup_failure(slug)
+        reason ? "its backup failed (#{reason})" : migrate_store_files(root, slug)
+      rescue SQLite3::Exception, Database::Error, SystemCallError => error
         "it could not be migrated (#{first_line(error)})"
       end
 
-      def migrate_store_to_newest(slug)
-        files = databases(slug)
-        return :current if files.all? { |database| database.version >= SchemaSequences.newest(:store) }
+      def behind?(root) = SchemaGate.behind?(knowledge_file(root), [work_file(root)])
 
-        reason = backup_failure(slug)
-        reason ? "its backup failed (#{reason})" : migrate_store_files(slug, files)
-      end
+      def knowledge_file(root) = File.join(root, Schema.file(:knowledge))
 
-      # references.db goes only after the knowledge file, stamped with the migration that copied it, answers each of its rows.
-      def retire_references(slug, outcome)
-        root = File.join(@home, "stores", slug)
-        knowledge = File.join(root, Schema.file(:knowledge))
-        SchemaStore6.retire(knowledge, File.join(root, SchemaStore6::FILE)) if File.file?(knowledge) && version_of(knowledge) >= SchemaStore6::STAMP
-        outcome
-      rescue SchemaStore6::Mismatch => error
-        "its references.db was kept (#{first_line(error)})"
-      end
+      def work_file(root) = File.join(root, Schema.file(:work))
 
-      def migrate_store_files(slug, files)
-        migrate_files(files)
-        built = databases(slug).reject { |database| files.map(&:key).include?(database.key) }
-        return :migrated if built.empty?
+      def references_file(root) = File.join(root, REFERENCES)
 
-        migrate_files(databases(slug))
-        files.find { |database| database.key == :knowledge }.vacuum
+      def migrate_store_files(root, slug)
+        run_migration(root)
+        retire_references(root)
+        Database::ConnectionPool.release(root)
+        vacuum(root)
+        rebuild_search(slug)
         :migrated
+      rescue SQLite3::Exception, SystemCallError
+        Database::ConnectionPool.release(root)
+        Database::ConnectionPool.remove_created(File.join(root, ""))
+        raise
       end
 
-      def migrate_files(files)
-        siblings = files.to_h { |database| [database.key, database.path] }
-        files.sort_by { |database| ORDER.index(database.key) || ORDER.size }.each { |database| database.migrate(@sequences, siblings:) }
-        :migrated
+      def run_migration(root)
+        connection = Database::ConnectionPool.for(knowledge_file(root), attach: Database::Store.attachments(knowledge_file(root)))
+        connection.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file(root)) ? references_file(root) : ":memory:"])
+        SchemaMigrator.new(connection, SchemaMigrations.path(:store)).call
+      ensure
+        connection&.execute("DETACH DATABASE refs") unless connection&.transaction_active?
       end
+
+      def retire_references(root)
+        ["", "-wal", "-shm", "-journal"].map { |suffix| references_file(root) + suffix }.select { |file| File.file?(file) }.each { |file| File.delete(file) }
+      end
+
+      def vacuum(root)
+        connection = Database::ConnectionPool.for(knowledge_file(root), attach: Database::Store.attachments(knowledge_file(root)))
+        %w[main work].each { |schema| connection.execute("VACUUM #{schema}") }
+        Database::ConnectionPool.release(root)
+      end
+
+      def rebuild_search(slug) = Graph.open(home: @home, store: slug).retrieval.reindex
 
       def backup_failure(slug)
         Backup::Writer.new(File.join(@home, "stores", slug), slug, now: @now, reason: "migration").call

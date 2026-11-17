@@ -30,7 +30,7 @@ module Plastic
 
         # Attaches each file not yet attached under its schema name, then keeps its schema in a delete journal with full synchronous.
         def attach_all(main, files)
-          pending = files.reject { |schema, _file| attached.include?(schema) }
+          pending = files.except(*attached)
           return if pending.empty?
 
           pending.each { |schema, file| execute("ATTACH DATABASE ? AS #{schema}", [file]).tap { attached << schema } }
@@ -96,7 +96,7 @@ module Plastic
       module ConnectionPool
         # A connection opened plain gains the files of a later call that attaches them, so one connection serves every caller of the path.
         def self.for(path, attach: {})
-          (connections[path] ||= connect(path, attach)).tap { |connection| connection.attach_all(path, attach) unless attach.empty? }
+          (connections[path] ||= connect(path, attach)).tap { |connection| attach_missing(connection, path, attach) }
         end
 
         # The database files this process made, by full path; a file that was on the disk before is not one.
@@ -110,10 +110,21 @@ module Plastic
         end
 
         def self.connect(path, attach)
-          [path, *attach.values].each { |file| created << File.expand_path(file) unless File.exist?(file) }
+          remember_missing([path, *attach.values])
           Connection.open(path, attach:)
         end
         private_class_method :connect
+
+        def self.attach_missing(connection, path, attach)
+          return if attach.empty?
+
+          remember_missing(attach.values)
+          connection.attach_all(path, attach)
+        end
+        private_class_method :attach_missing
+
+        def self.remember_missing(files) = files.each { |file| created << File.expand_path(file) unless File.exist?(file) }
+        private_class_method :remember_missing
 
         # Closes every connection except those of the `keep` paths.
         def self.disconnect(keep: [])

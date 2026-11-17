@@ -144,24 +144,19 @@ class GraphBackupRestorerTest < Plastic::TestCase
   def passage_count = open_store.databases.fetch(:store).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 end
 
-# A migration above the newest that adds a table, standing in for the next release: a backup restores at its own version and migrates forward.
+# A store that moved above the version of a backup: the whole store restores to the backup's version, and one database alone is refused.
 class GraphBackupRestoreForwardTest < Plastic::TestCase
   include BackupHomes
   include OldLayoutHomes
 
   Restorer = Plastic::Graph::Backup::Restorer
-  Sequences = Plastic::Graph::SchemaSequences
-  Newest = Plastic::Graph::SchemaStore3
   STAMP = "20260101100000"
+  ABOVE = Plastic::Graph::SchemaMigrator::VERSION + 1
 
   def setup
     super
     @home = fresh_home
     backup_at(@home, at(2026, 1, 1, 10, 0, 0))
-    @newest = Sequences.newest(:store)
-    tables = Newest::TABLES.merge("work_graph" => Newest::TABLES.fetch("work_graph") + ["extra"])
-    second = Sequences::Migration.new(@newest + 1, ->(connection, key) { connection.execute("CREATE TABLE extra (a)") if key == :work }, tables)
-    @sequences = { home: Sequences::SEQUENCES.fetch(:home), store: [*Sequences::SEQUENCES.fetch(:store), second] }
   end
 
   def root = File.join(@home, "stores", "alpha")
@@ -169,37 +164,27 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
   # The store databases stand above the newest version, which the gate of this code refuses, so the restorer gets the local database and a retrieval that only names the store.
   def restorer
     target = Plastic::Graph::Backup::Target.new(Plastic::Graph::Database.open_local(@home).fetch(:local), root, "alpha", nil)
-    Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0), sequences: @sequences)
+    Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0))
   end
 
-  def store_paths = Dir.glob(File.join(root, "*.db")).sort
+  def store_paths = Dir.glob(File.join(root, "{work_graph,knowledge_graph}.db")).sort
 
-  def migrate_store
-    store_paths.each do |path|
-      key = Plastic::Graph::Schema.store.find { |candidate| Plastic::Graph::Schema.file(candidate) == File.basename(path) }
-      db = SQLite3::Database.new(path)
-      Sequences.migrate(db, @sequences.fetch(:store), key)
-      db.close
-    end
+  def move_above
+    Plastic::Graph::Database::ConnectionPool.release(root)
+    store_paths.each { |path| SQLite3::Database.open(path) { |db| db.execute("PRAGMA user_version = #{ABOVE}") } }
   end
 
-  def digests = store_paths.to_h { |path| [File.basename(path), row_digest(path)] }
+  def store_versions = [user_versions(@home).fetch(File.join(root, "knowledge_graph.db"))]
 
-  def store_versions = user_versions(@home).select { |path, _| path.include?("/alpha/") && File.basename(path) != Plastic::Graph::Schema.file(:retrieval) }.values.uniq
-
-  def test_a_backup_at_the_newest_version_restores_after_the_store_moved_above_it_and_migrates_forward_to_equal_rows
-    migrate_store
-    migrated = digests
+  def test_a_whole_store_restore_after_the_store_moved_above_brings_every_database_to_the_backup_version
+    move_above
     restorer.call(STAMP)
 
-    assert_equal [@newest], store_versions
-    migrate_store
-
-    assert_equal [migrated, [@newest + 1]], [digests, store_versions]
+    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], store_versions
   end
 
   def test_a_restore_of_one_database_across_a_version_boundary_is_refused_and_names_the_whole_store_restore
-    migrate_store
+    move_above
     before = File.binread(File.join(root, "work_graph.db"))
     error = assert_raises(Restorer::VersionMismatch) { restorer.call(STAMP, databases: %w[work_graph]) }
 
@@ -208,7 +193,7 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
   end
 
   def test_the_refusal_for_a_listed_database_across_a_version_boundary_is_given_before_the_restore
-    migrate_store
+    move_above
 
     assert_includes restorer.refusal(STAMP, databases: %w[work_graph]), "restore the whole store"
   end

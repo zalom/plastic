@@ -78,7 +78,6 @@ class DbSchemaTest < Plastic::TestCase
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy
-    assert_equal %i[legacy_intents_data], Schema.legacy_tables
     assert_equal %i[intent_id path origin_id], Schema.table_named(:legacy_intents_data).key
   end
 

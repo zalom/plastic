@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../test_helpers/beta_2_store"
 
 class GraphBackupIntegrityTest < Plastic::TestCase
   include BackupHomes
@@ -15,7 +16,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_sound_backup_file_passes
     home = fresh_home
 
-    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::SchemaSequences.newest(:store)).call
+    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::SchemaMigrator::VERSION).call
   end
 
   def test_a_file_that_is_not_a_database_is_rejected
@@ -50,11 +51,10 @@ class GraphBackupIntegrityTest < Plastic::TestCase
     assert_includes error.message, "fails the integrity check"
   end
 
-  def test_a_backup_without_the_new_table_restores
+  def test_a_beta_2_backup_file_passes_at_version_zero
     path = File.join(Dir.mktmpdir, "knowledge_graph-1.db")
     database = SQLite3::Database.new(path)
-    database.execute_batch(Plastic::Graph::SchemaStore1::Layout::TEXT.fetch(:knowledge))
-    database.execute("DROP TABLE legacy_intents_data")
+    database.execute_batch(File.read(File.join(Beta2Store::FOLDER, "knowledge_layout.sql")))
     database.close
 
     assert_nil Integrity.new(path, "knowledge_graph", version: 0).call
@@ -72,28 +72,33 @@ end
 class GraphBackupIntegrityVersionTest < Plastic::TestCase
   Integrity = Plastic::Graph::Backup::Integrity
 
-  def file_without(*tables)
+  def work_file_without(*tables)
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     db = SQLite3::Database.new(path)
-    db.execute_batch(Plastic::Graph::SchemaStore1::Layout::TEXT.fetch(:work))
-    %w[approvals verdicts].each { |table| db.execute("CREATE TABLE IF NOT EXISTS #{table} (intent_id TEXT)") }
+    db.execute_batch(File.read(File.join(Beta2Store::FOLDER, "work_layout.sql")))
     tables.each { |table| db.execute("DROP TABLE #{table}") }
     db.close
     path
   end
 
-  def test_a_version_zero_backup_without_the_later_tables_passes
-    assert_nil Integrity.new(file_without("approvals", "verdicts"), "work_graph", version: 0).call
+  def test_a_version_zero_backup_holding_every_table_of_beta_2_passes
+    assert_nil Integrity.new(work_file_without, "work_graph", version: 0).call
   end
 
-  def test_a_version_one_backup_without_a_table_of_version_one_is_rejected
-    error = assert_raises(Integrity::Rejected) { Integrity.new(file_without("approvals"), "work_graph", version: 1).call }
+  def test_a_version_zero_backup_without_a_table_of_beta_2_is_rejected
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without("savepoints"), "work_graph", version: 0).call }
 
-    assert_includes error.message, "lacks the tables approvals"
+    assert_includes error.message, "lacks the tables savepoints"
+  end
+
+  def test_a_version_one_backup_of_the_beta_2_layout_is_rejected_for_the_tables_it_lacks
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 1).call }
+
+    assert_includes error.message, "lacks the tables work_log"
   end
 
   def test_a_version_above_the_newest_is_rejected
-    error = assert_raises(Integrity::Rejected) { Integrity.new(file_without, "work_graph", version: 99).call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 99).call }
 
     assert_includes error.message, "newer than this code"
   end
