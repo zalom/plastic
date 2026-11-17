@@ -49,7 +49,7 @@ module Plastic
 
         # The database names a restore would replace.
         def held_in(timestamp, names: nil)
-          held = held_names(timestamp)
+          held = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
           chosen = Array(names)
           self.class.require_held(timestamp, chosen - held)
           chosen.empty? ? held : chosen
@@ -71,13 +71,11 @@ module Plastic
           refuse(timestamp, databases)
           names = verified(timestamp, held)
           safety = Publisher.new(@target, now: @now, reason: "backup restore").call
-          swap(names, timestamp)
+          swap(names.map { |name| replacement(name, timestamp) })
           safety.fetch(:name).split("/").last
         end
 
         private
-
-        def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
 
         def refuse(timestamp, databases)
           message = refusal(timestamp, databases:)
@@ -116,9 +114,11 @@ module Plastic
           names.each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp)).call }
         end
 
-        def swap(names, timestamp)
+        def replacement(name, timestamp) = Replacement.new(source(name, timestamp), @target.file(name))
+
+        def swap(replacements)
           Database::ConnectionPool.release(@target.root)
-          Replacement.apply_all(names.map { |name| Replacement.new(source(name, timestamp), @target.file(name)) })
+          Replacement.apply_all(replacements)
         end
       end
     end

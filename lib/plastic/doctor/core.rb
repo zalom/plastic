@@ -97,10 +97,8 @@ module Plastic
 
       def store(slug, path)
         Check.new("store #{slug}:", "#{STORE.size} databases, every table present", "plastic project new #{slug} #{Shellwords.escape(path)}")
-          .judged(store_problem(File.join(home, "stores", slug)))
+          .judged(Core.store_problem(File.join(home, "stores", slug)))
       end
-
-      def store_problem(folder) = Core.store_problem(folder)
     end
   end
 end
