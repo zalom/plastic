@@ -84,6 +84,9 @@ module Plastic
       code_backup_purge: "Code::Backup::Purge",
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
+      # Resources: the files of a store moved into the resources layout.
+      code_preview_sort_resources: "Code::Resources::Sort::Preview",
+      code_sort_resources: "Code::Resources::Sort",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
