@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "anchored"
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # A dashed frame around a group of cards.

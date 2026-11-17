@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "palette"
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # One row of a Matrix: a step with its commands, and what it does to each graph.

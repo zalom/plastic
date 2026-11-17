@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "anchored"
+require_relative "palette"
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # A database drawn as a cylinder.

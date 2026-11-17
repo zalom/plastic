@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "palette"
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # A glyph for writes, reads or prints, followed by a few words.
