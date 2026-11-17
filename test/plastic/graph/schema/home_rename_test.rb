@@ -23,10 +23,10 @@ class SchemaHomeRenameTest < Plastic::TestCase
 
   def test_the_file_and_its_wal_files_take_the_new_name
     database("local.db")
-    %w[-wal -shm].each { |suffix| File.write(file("local.db#{suffix}"), suffix) }
+    %w[-journal -wal -shm].each { |suffix| File.write(file("local.db#{suffix}"), suffix) }
     Rename.new(file("local.db"), file("plastic.db")).call
 
-    assert_equal %w[plastic.db plastic.db-shm plastic.db-wal], Dir.children(@scratch).sort
+    assert_equal %w[plastic.db plastic.db-journal plastic.db-shm plastic.db-wal], Dir.children(@scratch).sort
   end
 
   def test_the_rows_stay_with_the_renamed_file

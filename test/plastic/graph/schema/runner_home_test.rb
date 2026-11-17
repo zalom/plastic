@@ -83,4 +83,35 @@ class SchemaRunnerHomeTest < Plastic::TestCase
 
     assert_equal [0, ["home"]], [user_versions(home).fetch(File.join(home, "local.db")), report.failed.keys]
   end
+
+  def set_version(home, number)
+    SQLite3::Database.new(File.join(home, "plastic.db")).tap { |db| db.execute("PRAGMA user_version = #{number}") }.close
+  end
+
+  def test_a_plastic_db_behind_the_newest_version_leaves_one_checked_copy_named_after_it
+    home = fresh_home
+    set_version(home, 2)
+    Runner.new(home:, now: NOW).call
+    copy = Dir.glob(File.join(home, "backups", "plastic-*.db"))
+
+    assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [2, "ok"]], [copy, [read_value(copy.first, "PRAGMA user_version"), read_value(copy.first, "PRAGMA quick_check")]]
+  end
+
+  def test_a_plastic_db_at_the_newest_version_leaves_no_copy
+    home = fresh_home
+    Runner.new(home:, now: NOW).call
+
+    assert_empty Dir.glob(File.join(home, "backups", "plastic-*.db"))
+  end
+
+  def test_a_home_folder_that_refuses_the_rename_gives_a_reason_and_the_run_goes_on
+    home = old_layout(fresh_home)
+    FileUtils.mkdir_p(File.join(home, "backups"))
+    File.chmod(0o555, home)
+    report = Runner.new(home:, now: NOW).call
+
+    assert_match(/\Ait could not be migrated \(.+\)\z/, report.failed.fetch("home"))
+  ensure
+    File.chmod(0o755, home)
+  end
 end
