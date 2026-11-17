@@ -104,6 +104,26 @@ class StoreMigrationTest < Plastic::TestCase
     refute_path_exists store_path(home, "references.db")
   end
 
+  ABSENT_BETA_2_TABLES = %w[approvals verdicts archives archive_entries clusters completions printed changes savepoints].freeze
+
+def test_a_store_that_lacks_one_beta_2_work_table_still_migrates
+  migrated = ABSENT_BETA_2_TABLES.to_h do |table|
+    home = beta_2_home
+    read_file(store_path(home, "work_graph.db"), %(DROP TABLE "#{table}"), readonly: false)
+    [table, Runner.new(home:, now: NOW).call.migrated]
+  end
+
+  assert_equal ABSENT_BETA_2_TABLES.to_h { |table| [table, ["alpha"]] }, migrated
+end
+
+def test_a_store_without_a_knowledge_file_migrates_and_keeps_its_work_rows
+  home = beta_2_home
+  File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
+  report = Runner.new(home:, now: NOW).call
+
+  assert_equal [["alpha"], {}, 2], [report.migrated, report.failed, knowledge(home, "SELECT count(*) FROM intents").flatten.first]
+end
+
   def test_a_second_run_changes_nothing
     home = migrated_home
     before = beta_2_files(home).except(*Dir.glob(File.join(store_root(home), "backups", "**", "*")))
