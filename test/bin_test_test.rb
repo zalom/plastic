@@ -65,10 +65,10 @@ class BinTestTest < Minitest::Test
     assert_match(/\A\d+ runs, \d+ assertions, \d+ failures, \d+ errors, \d+ skips\z/, lines.first)
   end
 
-  def test_end_to_end_layer_selects_the_varar_runner
+  def test_e2e_layer_selects_the_varar_runner
     write_test("a_test", GREEN)
     write_test("varar_test", GREEN)
-    out, _err, status = run_bin_test("--end-to-end", "--list")
+    out, _err, status = run_bin_test("--e2e", "--list")
 
     assert_predicate status, :success?
     assert_equal "test/varar_test.rb", out.strip
