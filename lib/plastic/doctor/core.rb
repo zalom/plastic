@@ -7,7 +7,7 @@ require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
 require_relative "home_ignore"
-require_relative "../config"
+require_relative "../wiring"
 require_relative "../workflows/installation_health"
 
 module Plastic
@@ -73,7 +73,7 @@ module Plastic
       end
 
       def config_file
-        line = Config::Store.new(home).problem
+        line = Wiring.store(home).problem
         return Check.ok("config.yml:", "matches the settings rows") unless line
 
         Check.finding("config.yml:", line, Config::Store::REPAIR)

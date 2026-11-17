@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../errors"
-require_relative "../config"
+require_relative "../wiring"
 
 module Plastic
   module Workflows
@@ -24,7 +24,7 @@ module Plastic
 
       def configured
         values = context.source_projects
-        values.empty? ? Plastic::Config.new(context.scope.plastic_home).source_projects : values
+        values.empty? ? Plastic::Wiring.config(context.scope.plastic_home).source_projects : values
       end
 
       def validate(selected)

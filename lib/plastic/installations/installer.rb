@@ -2,7 +2,7 @@
 
 require "tmpdir"
 require_relative "../config/upgrade"
-require_relative "../config/store"
+require_relative "../wiring"
 require_relative "../doctor/home_ignore"
 require_relative "../installations"
 require_relative "../graph"
@@ -85,7 +85,7 @@ module Plastic
 
       def print_config
         Doctor::HomeIgnore.new(plastic_home).check
-        line = Config::Store.new(plastic_home, clock: package.clock).print_once
+        line = Wiring.store(plastic_home, clock: package.clock).print_once
         puts "   #{line}" if line
       end
 

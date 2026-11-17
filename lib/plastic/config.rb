@@ -16,10 +16,9 @@ module Plastic
     TRUE_VALUES = [true, "true"].freeze
     FALSE_VALUES = [false, "false"].freeze
 
-    def initialize(plastic_home, harness: nil, clock: Time)
-      @home = plastic_home
-      @clock = clock
-      @rows = Rows.new(plastic_home)
+    def initialize(plastic_home, database:, harness: nil, clock: Time)
+      @store = Store.new(plastic_home, database:, clock:)
+      @rows = Rows.new(database)
       @harness = harness && Harnesses.fetch(harness).name
     end
 
@@ -48,7 +47,7 @@ module Plastic
 
     def entries = Config.flattened(settings)
 
-    def set(key, value) = Store.new(@home, clock: @clock).set(@harness || "global", key, value)
+    def set(key, value) = @store.set(@harness || "global", key, value)
 
     def self.merged(base, over)
       base.merge(over) { |_key, old, new| (old.is_a?(Hash) && new.is_a?(Hash)) ? merged(old, new) : new }

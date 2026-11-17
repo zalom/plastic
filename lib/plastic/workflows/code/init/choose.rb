@@ -5,7 +5,7 @@ require_relative "../../../answer"
 require_relative "../init"
 require_relative "../../../code_workflow"
 require_relative "../../../harnesses"
-require_relative "../../../config"
+require_relative "../../../wiring"
 
 module Plastic
   module Workflows
@@ -31,7 +31,7 @@ module Plastic
           end
 
           # Picked until the setting sync.media turns the sync of images and videos off.
-          def self.media?(scope) = !Plastic::Config::FALSE_VALUES.include?(Plastic::Config.new(scope.plastic_home).overrides.dig("sync", "media"))
+          def self.media?(scope) = !Plastic::Config::FALSE_VALUES.include?(Plastic::Wiring.config(scope.plastic_home).overrides.dig("sync", "media"))
 
           read "find the installed harnesses and read the person's answer" do |context|
             choices = Choose.choices(context.scope)

@@ -100,7 +100,7 @@ module Plastic
       def printed = @writers.sync.printer.written
 
       def preview_sync(options, direction: :up)
-        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).preview
+        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).preview(@folder.sync)
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.

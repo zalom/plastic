@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../wiring"
 require_relative "../config/layout"
 
 module Plastic
@@ -19,14 +19,14 @@ module Plastic
 
       def efforts(harness: "claude") = overrides(harness, "efforts")
 
-      def advisor? = Config.new(@home).flag(%w[advisor enabled], default: true)
+      def advisor? = Wiring.config(@home).flag(%w[advisor enabled], default: true)
 
-      def statusline? = Config.new(@home).flag(["statusline"], default: false)
+      def statusline? = Wiring.config(@home).flag(["statusline"], default: false)
 
       private
 
       def overrides(harness, part)
-        config = Config.new(@home, harness: SECTIONS.fetch(harness, harness))
+        config = Wiring.config(@home, harness: SECTIONS.fetch(harness, harness))
         Config::Layout.within(config.overrides, "agents", part).reject { |_agent, value| value.is_a?(Hash) }
       end
     end

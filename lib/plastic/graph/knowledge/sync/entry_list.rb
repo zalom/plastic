@@ -22,7 +22,7 @@ module Plastic
             printed = @retrieval.printed
             paths = printed.keys
             prints = prints_of(paths)
-            selected = (prints.keys | on_disk | paths).select { |path| @folder.selection.selects?(path) }
+            selected = (prints.keys | on_disk | paths).select { |path| @folder.sync.selection.selects?(path) }
             selected.sort.map { |path| entry(path, printed[path], prints) }
           end
 

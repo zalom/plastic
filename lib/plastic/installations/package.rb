@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../wiring"
 require_relative "../hooks/entries"
 require_relative "choices"
 require_relative "hook_launcher"
@@ -20,7 +20,7 @@ module Plastic
       # names. They are written before the registry's groups, because the
       # entries treat the old check-update launcher as stale.
       def entries
-        Hooks::Entries.new(command: launcher.command, config: Config.new(home), launchers: {}, former: launcher.former)
+        Hooks::Entries.new(command: launcher.command, config: Wiring.config(home), launchers: {}, former: launcher.former)
       end
     end
   end

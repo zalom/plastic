@@ -2,6 +2,7 @@
 
 require_relative "../hook"
 require_relative "../graph"
+require_relative "../wiring"
 require_relative "../doctor"
 require_relative "../graph/backup/due"
 require_relative "../harnesses/detection"
@@ -44,7 +45,7 @@ module Plastic
       end
 
       def recap(event)
-        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
+        graphs = Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
         open_session_row(graphs.work)
         recap_of(graphs.retrieval, event[:source]).lines(now: environment.now)
       end

@@ -2,6 +2,7 @@
 
 require "optparse"
 require_relative "command/environment"
+require_relative "../wiring"
 require_relative "command/help"
 require_relative "declarations"
 require_relative "../errors"
@@ -149,7 +150,7 @@ module Plastic
         nil
       end
 
-      def open_graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock)
+      def open_graphs = Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock)
     end
   end
 end

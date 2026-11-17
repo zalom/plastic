@@ -6,8 +6,6 @@ require "yaml"
 require_relative "import"
 require_relative "rows"
 require_relative "../clock"
-require_relative "../graph/database"
-require_relative "../graph/origin"
 
 module Plastic
   class Config
@@ -35,29 +33,24 @@ module Plastic
       UPSERT = 'INSERT OR REPLACE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
       RECORD = 'INSERT OR REPLACE INTO "printed"("path", "sha256", "at", "origin_id") VALUES (:path, :sha256, :at, :origin_id)'
 
-      def initialize(home, clock: Time)
+      def initialize(home, database:, clock: Time)
         @home = home
+        @database = database
         @clock = clock
         @path = File.join(home, FILE)
-        @rows = Rows.new(home)
+        @rows = Rows.new(database)
       end
 
       def set(scope, key, value)
         refuse_hand_edit
-        local.transaction { |batch| batch.add(UPSERT, scope:, key:, value: JSON.generate(value)) }
+        @database.transaction { |batch| batch.add(UPSERT, scope:, key:, value: JSON.generate(value)) }
         print
-      end
-
-      # Copies the settings rows of another home into this one, and prints nothing.
-      def copy_rows_from(other)
-        rows = Rows.new(other).all
-        local.transaction { |batch| rows.each { |scope, key, value| batch.add(UPSERT, scope:, key:, value:) } }
       end
 
       def print
         text = document
         File.write(@path, text)
-        local.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.timestamp(@clock.now), origin_id: Graph::Origin.new(@home).id) }
+        @database.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.timestamp(@clock.now), origin_id: @database.origin_id) }
       end
 
       def print_once
@@ -67,7 +60,7 @@ module Plastic
         return format(UNREADABLE, reason) if reason
 
         back_up
-        Import.new(@path, into: local).call
+        Import.new(@path, into: @database).call
         print
         nil
       end
@@ -104,8 +97,6 @@ module Plastic
         FileUtils.mkdir_p(File.join(@home, "backups"))
         FileUtils.cp(@path, File.join(@home, "backups", "config-#{@clock.now.utc.strftime("%Y%m%d%H%M%S")}.yml"))
       end
-
-      def local = Graph::Database.open_local(@home).fetch(:local)
 
       def refuse_hand_edit
         line = edited_line

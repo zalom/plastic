@@ -2,6 +2,7 @@
 
 require_relative "../hook"
 require_relative "../graph"
+require_relative "../wiring"
 
 module Plastic
   module Hooks
@@ -12,7 +13,7 @@ module Plastic
       def respond(event)
         return no_session unless session_id
 
-        Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])
+        Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])
         nil
       end
 

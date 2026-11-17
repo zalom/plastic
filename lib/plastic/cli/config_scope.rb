@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../wiring"
 
 module Plastic
   class CLI
@@ -16,7 +16,7 @@ module Plastic
 
       private
 
-      def config = (@config ||= Plastic::Config.new(scope.plastic_home, harness: parsed[:harness], clock: environment.clock))
+      def config = (@config ||= Plastic::Wiring.config(scope.plastic_home, harness: parsed[:harness], clock: environment.clock))
 
       def harness_words = parsed[:harness].then { |name| name ? " --harness #{name}" : "" }
     end

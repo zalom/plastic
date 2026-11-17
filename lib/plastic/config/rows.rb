@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 require "json"
-require "sqlite3"
-require_relative "../graph/database"
-require_relative "../graph/behind"
 
 module Plastic
   class Config
@@ -11,11 +8,8 @@ module Plastic
     # busy, or not at the version of the settings table reads as no rows: a
     # broken home never stops a hook or a command.
     class Rows
-      FILE = "plastic.db"
-
-      def initialize(plastic_home)
-        @home = plastic_home
-        @path = File.join(plastic_home, FILE)
+      def initialize(database)
+        @database = database
       end
 
       # The settings of one scope as a nested hash.
@@ -29,20 +23,13 @@ module Plastic
       # The hash recorded when the file was last printed, or nil.
       def printed(file) = read("SELECT sha256 FROM printed WHERE path = :path", path: file).dig(0, 0)
 
-      # Every row as [scope, key, JSON value].
-      def all = read("SELECT scope, key, value FROM settings ORDER BY scope, key")
-
       # Every scope that holds a row.
       def scopes = read("SELECT DISTINCT scope FROM settings").flatten
 
       private
 
       def read(sql, **binds)
-        return [] unless File.file?(@path)
-
-        Graph::Database.open_local(@home).fetch(:local).rows(sql, **binds).map(&:values)
-      rescue SQLite3::Exception, Graph::Database::Error, Graph::OutOfStep
-        []
+        @database.rows(sql, **binds).map(&:values)
       end
     end
   end

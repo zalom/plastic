@@ -41,7 +41,7 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_intent_files_list_every_kept_file_of_every_intent_folder
-    folder = StoreFolder.new(@root, selection: Plastic::Graph::Knowledge::SyncSelection.all)
+    folder = StoreFolder.new(@root, sync: Plastic::Graph::Knowledge::SyncSettings.new(selection: Plastic::Graph::Knowledge::SyncSelection.all, remove_after_import: false))
     %w[store/1--a/spec.md store/1--a/.hidden store/1--a/delivery.lock store/1--a/.DS_Store store/2--b/x/y.bin
       store/notes.md].each { |rel| folder.write(rel, "x") }
 
@@ -64,7 +64,7 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_content_lock_files_are_kept_when_documents_are_read
-    folder = StoreFolder.new(@root, selection: Plastic::Graph::Knowledge::SyncSelection.new(%w[documents]))
+    folder = StoreFolder.new(@root, sync: Plastic::Graph::Knowledge::SyncSettings.new(selection: Plastic::Graph::Knowledge::SyncSelection.new(%w[documents]), remove_after_import: false))
     folder.write("store/1--a/Gemfile.lock", "dependency versions")
 
     assert_includes folder.intent_files, "store/1--a/Gemfile.lock"

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../wiring"
 require_relative "../cli/command"
 
 module Plastic
@@ -19,7 +19,7 @@ module Plastic
 
       def set(key, value) = config.set(key, value)
 
-      def problem = Plastic::Config::Store.new(@context.scope.plastic_home).problem
+      def problem = Plastic::Wiring.store(@context.scope.plastic_home).problem
 
       def current(key)
         entries.fetch(key) { raise Usage, "no setting #{key}; plastic config list names them" }
@@ -29,7 +29,7 @@ module Plastic
 
       private
 
-      def config = (@config ||= Plastic::Config.new(@context.scope.plastic_home, harness: @context.harness, clock: @context.clock))
+      def config = (@config ||= Plastic::Wiring.config(@context.scope.plastic_home, harness: @context.harness, clock: @context.clock))
     end
   end
 end

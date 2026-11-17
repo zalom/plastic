@@ -4,7 +4,7 @@ require "digest"
 require "fileutils"
 require_relative "front_matter"
 require_relative "intent"
-require_relative "sync_selection"
+require_relative "sync_settings"
 
 module Plastic
   module Graph
@@ -20,16 +20,16 @@ module Plastic
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
-        attr_reader :root, :selection
+        attr_reader :root, :sync
 
         # The event log an older release kept beside the roadmap at this path.
         def self.roadmap_log(path) = path.sub(/\.md\z/, ".savepoint.md")
 
         def self.roadmap_log?(path) = path.end_with?(".savepoint.md")
 
-        def initialize(root, selection: SyncSelection.none)
+        def initialize(root, sync: SyncSettings.none)
           @root = root
-          @selection = selection
+          @sync = sync
         end
 
         def path(rel) = File.join(root, rel)
@@ -77,7 +77,7 @@ module Plastic
         def intent_files = intent_dirs.flat_map { |dir| files(dir) }
 
         def files(dir)
-          selected = Dir.glob("**/*", File::FNM_DOTMATCH, base: path(dir)).select { |rel| @selection.read?(rel) }
+          selected = Dir.glob("**/*", File::FNM_DOTMATCH, base: path(dir)).select { |rel| @sync.selection.read?(rel) }
           selected.map { |rel| "#{dir}/#{rel}" }.select { |rel| kept?(rel) }.sort
         end
 

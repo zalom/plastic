@@ -9,7 +9,7 @@ module ConfigHomes
     local = Plastic::Graph::Database.open_local(home).fetch(:local)
     local.migrate
     local.transaction { |batch| batch.add('DELETE FROM "settings"') }
-    Plastic::Config::Store.new(home).print_once
+    Plastic::Wiring.store(home).print_once
   end
 
   def setting_rows(home) = Plastic::Graph::Database.open_local(home).fetch(:local).rows("SELECT scope, key, value FROM settings ORDER BY scope, key").map(&:values)

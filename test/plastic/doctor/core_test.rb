@@ -148,7 +148,7 @@ class DoctorHomeFilesTest < Plastic::TestCase
   end
 
   def test_a_config_file_edited_by_hand_after_the_print_is_a_finding_with_the_refusal_line
-    Plastic::Config::Store.new(@plastic_home).set("global", "screens", false)
+    Plastic::Wiring.store(@plastic_home).set("global", "screens", false)
     File.write(File.join(@plastic_home, "config.yml"), "x: 1\n")
     found = check("config.yml:")
 
@@ -157,7 +157,7 @@ class DoctorHomeFilesTest < Plastic::TestCase
   end
 
   def test_a_config_file_printed_from_the_settings_is_ok
-    Plastic::Config::Store.new(@plastic_home).set("global", "screens", false)
+    Plastic::Wiring.store(@plastic_home).set("global", "screens", false)
 
     assert_match(/\Aok, /, check("config.yml:").value)
   end

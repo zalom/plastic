@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "../hook"
-require_relative "../config"
+require_relative "../wiring"
 require_relative "../graph"
 require_relative "../harnesses"
 require_relative "stop_gate"
@@ -27,7 +27,7 @@ module Plastic
         nil
       end
 
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock))
+      def graphs = (@graphs ||= Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock))
 
       def stop(event)
         work = graphs.work
@@ -37,7 +37,7 @@ module Plastic
         decision && JSON.generate(decision)
       end
 
-      def stop_hook? = Config.new(scope.plastic_home, harness: harness).flag(%w[runner stop_hook], default: false)
+      def stop_hook? = Wiring.config(scope.plastic_home, harness: harness).flag(%w[runner stop_hook], default: false)
 
       def harness = graphs.retrieval.session(session_id).harness.then { |name| name if Harnesses.registered?(name) }
     end

@@ -2,7 +2,7 @@
 
 require_relative "../end"
 require_relative "../../../../code_workflow"
-require_relative "../../../../config"
+require_relative "../../../../wiring"
 require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
 require_relative "../../../delivery_ownership"
@@ -87,7 +87,7 @@ module Plastic
             end
 
             def self.review_required?(context)
-              Plastic::Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
+              Plastic::Wiring.config(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
             def self.pull_request_problems(check)

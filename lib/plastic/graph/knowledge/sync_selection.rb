@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../../config"
 require_relative "legacy_path"
 
 module Plastic
@@ -18,11 +17,6 @@ module Plastic
         INTENT_FILE = %r{\Astore/[^/]*--[^/]*/(.+)\z}
         MEDIA = %w[.png .jpg .jpeg .gif .webp .svg .avif .heic .bmp .ico .tif .tiff
           .mp4 .mov .webm .m4v .avi .mkv].freeze
-
-        def self.of(home)
-          config = Config.new(home)
-          new(OPTIONAL.select { |kind| config.flag(["sync", kind], default: false) })
-        end
 
         def self.none = new([])
 

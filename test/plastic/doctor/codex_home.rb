@@ -24,7 +24,7 @@ module CodexHome
   end
 
   def codex_hooks
-    entries = Plastic::Hooks::Entries.new(command: codex_launcher, config: Plastic::Config.new(@plastic_home), launchers: {})
+    entries = Plastic::Hooks::Entries.new(command: codex_launcher, config: Plastic::Wiring.config(@plastic_home), launchers: {})
     write(codex_hooks_path, JSON.generate(entries.codex({})))
   end
 

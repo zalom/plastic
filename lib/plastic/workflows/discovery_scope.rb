@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../wiring"
 
 module Plastic
   module Workflows
@@ -25,7 +25,7 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        (values.empty? ? Plastic::Config.new(@context.scope.plastic_home).source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
+        (values.empty? ? Plastic::Wiring.config(@context.scope.plastic_home).source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
       end
 
       def validate(selected)
