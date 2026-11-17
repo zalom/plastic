@@ -90,6 +90,13 @@ class StoreProofTest < Minitest::Test
     assert_equal [["ok"]], SQLite3::Database.new(copy).execute("PRAGMA quick_check")
   end
 
+  def test_a_home_not_yet_migrated_has_its_local_db_copied_under_that_name
+    File.rename(File.join(@real, "plastic.db"), File.join(@real, "local.db"))
+    code, = run_cli(*proof_args("plastic"))
+
+    assert_equal [0, true, false], [code, File.exist?(File.join(@job, "plastic_home", "local.db")), File.exist?(File.join(@job, "plastic_home", "plastic.db"))]
+  end
+
   def test_the_real_files_keep_their_bytes_after_the_copy
     before = FILES.to_h { |file| [file, File.binread(File.join(@real, file))] }
     run_cli(*proof_args("plastic"))
