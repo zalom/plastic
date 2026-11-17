@@ -50,9 +50,8 @@ module Plastic
         end
       end
 
-      def work_rows(table) = store_graphs.databases.fetch(KNOWLEDGE_TABLES.include?(table) ? :knowledge : :work).rows("SELECT * FROM #{table}")
+      def work_rows(table) = store_graphs.databases.fetch(:store).rows("SELECT * FROM #{table}")
 
-      KNOWLEDGE_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries].freeze
 
       def accepted_intent(keys = { KEY => CRITERION }, **specified_options)
         intent = specified(keys, **specified_options)

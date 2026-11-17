@@ -8,14 +8,14 @@ class RetrievalArchiveReadsTest < Plastic::TestCase
     @intent = open_intent
   end
 
-  def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def keep(name, bytes)
-    put(:knowledge, :sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: "h" })
+    put(:sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: "h" })
   end
 
   def test_a_reference_into_an_archived_intent_is_archived
-    put(:knowledge, :archives, { intent_id: "1", at: STAMP })
+    put(:archives, { intent_id: "1", at: STAMP })
 
     assert retrieval.archived_reference?(retrieval.reference("1", @intent.file).fetch(:uri))
   end

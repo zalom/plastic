@@ -3,14 +3,14 @@
 require_relative "../../../test_helper"
 
 class RetrievalStructureReadsTest < Plastic::TestCase
-  def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
-  def link(from_ref, to_ref, **row) = put(:knowledge, :links, { from_ref:, to_ref:, kind: "chain", at: STAMP, **row })
+  def link(from_ref, to_ref, **row) = put(:links, { from_ref:, to_ref:, kind: "chain", at: STAMP, **row })
 
   def test_nodes_and_edges_read_for_one_intent
-    put(:work, :nodes, { intent_id: "1", id: "n1", kind: "build" })
-    put(:work, :nodes, { intent_id: "2", id: "n2", kind: "build" })
-    put(:work, :edges, { intent_id: "1", from: "n1", to: "n3", kind: "needs" })
+    put(:nodes, { intent_id: "1", id: "n1", kind: "build" })
+    put(:nodes, { intent_id: "2", id: "n2", kind: "build" })
+    put(:edges, { intent_id: "1", from: "n1", to: "n3", kind: "needs" })
 
     assert_equal [["n1"], ["n3"]], [retrieval.nodes("1").map(&:id), retrieval.edges("1").map(&:to)]
   end

@@ -9,15 +9,15 @@ class StopGateTest < Plastic::TestCase
   def retrieval = store_graphs.retrieval
 
   def make_ready_node(intent_id)
-    put(:work, :nodes, { intent_id:, id: "a", state: "open" })
+    put(:nodes, { intent_id:, id: "a", state: "open" })
   end
 
   def claim_node(intent_id, live: true)
     at = live ? STAMP : "2026-10-05T09:00:00+02:00"
-    put(:work, :nodes, { intent_id:, id: "c", state: "claimed", claimed_by: "s-1", claimed_at: at, seen_at: at, updated_at: at })
+    put(:nodes, { intent_id:, id: "c", state: "claimed", claimed_by: "s-1", claimed_at: at, seen_at: at, updated_at: at })
   end
 
-  def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1", now: Time.iso8601(STAMP) + 60)
 
