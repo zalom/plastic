@@ -13,7 +13,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:, clock: FixedClock::CLOCK).read("#{DIR}/#{rel}")
     apply_read(read)
   end
 
@@ -84,7 +84,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def read_over_an_old_document
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", "plan.md", "old plan\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "plan.md", "old plan\n")
     read_in("plan.md", "new plan\n")
   end
 
@@ -145,7 +145,7 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
 
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:, clock: FixedClock::CLOCK).read("#{DIR}/#{rel}")
     apply_read(read)
   end
 

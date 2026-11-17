@@ -32,7 +32,7 @@ module Plastic
           .judged(InstructionLine.new(file, PLASTIC_LINE).problem)
       end
 
-      def initialize(scope, running:, loader: SQLITE, now: Time.now)
+      def initialize(scope, running:, now:, loader: SQLITE)
         @scope = scope
         @running = running
         @loader = loader

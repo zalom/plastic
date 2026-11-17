@@ -41,7 +41,7 @@ module Plastic
 
           # `fields` may name the ref, the kind, the status and the reason; a field left out or nil takes its default.
           def write(title:, parent_id: nil, **fields)
-            now = Plastic.now
+            now = Plastic.timestamp(@retrieval.clock.now)
             values = DEFAULTS.merge(fields.compact)
             intent = Intent.from_h(slug: Intent.slug_for(title), **values, intent_id: next_id(parent_id), parent_id:,
               title:, opened_at: now, updated_at: now)
@@ -62,7 +62,7 @@ module Plastic
           # race with a status that moved to done or abandoned since the check.
           def activate(intent_id)
             @databases.fetch(:store).transaction do |batch|
-              batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
+              batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
             end
           end
 
@@ -88,7 +88,7 @@ module Plastic
           def write_document(intent)
             origin_id = @retrieval.origin_id
             document = intent.document(origin_id)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:store), origin_id).write(*document.values_at(:intent_id, :path, :body))
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), origin_id, clock: @retrieval.clock).write(*document.values_at(:intent_id, :path, :body))
           end
 
           def next_id(parent_id)

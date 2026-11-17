@@ -12,10 +12,11 @@ module Plastic
       class Archive
         # Adds searchable text from a durable archive snapshot to retrieval evidence.
         class SnapshotIndex
-          def initialize(database, origin_id)
+          def initialize(database, origin_id, clock:)
             @database = database
             @origin_id = origin_id
             @classifier = Retrieval::Evidence::Text
+            @clock = clock
           end
 
           def index(intent_id, entries)
@@ -26,7 +27,7 @@ module Plastic
 
           attr_reader :classifier, :database, :origin_id
 
-          def writer = Retrieval::Evidence::Writer.new(database, origin_id)
+          def writer = Retrieval::Evidence::Writer.new(database, origin_id, clock: @clock)
 
           def index_file(intent_id, entry)
             path, data = entry.values_at(:path, :data)
@@ -39,7 +40,7 @@ module Plastic
           # A plan, checklist or action file is old data: it is kept whole and never searched.
           def legacy(intent_id, path, text)
             database.transaction do |batch|
-              batch.put(:legacy_intents_data, { intent_id:, path:, body: text, updated_at: Plastic.now })
+              batch.put(:legacy_intents_data, { intent_id:, path:, body: text, updated_at: Plastic.timestamp(@clock.now) })
               Retrieval::Evidence::Removal.new(batch, origin_id).remove(intent_id, path)
             end
           end

@@ -19,10 +19,10 @@ module Plastic
       FOLDERS = %i[dir home_dir].freeze
       INSTALLER = "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh |"
 
-      def self.of(context) = for_scope(context.scope)
+      def self.of(context) = for_scope(context.scope, clock: context.clock)
 
-      def self.for_scope(scope)
-        new(package_root: package_root(scope), plastic_home: scope.plastic_home,
+      def self.for_scope(scope, clock: Time)
+        new(package_root: package_root(scope), plastic_home: scope.plastic_home, clock:,
           agents: Installations::AgentSet::DEFAULTS.map { |agent| rehome(agent, scope.home) })
       end
 

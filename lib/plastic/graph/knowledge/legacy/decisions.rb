@@ -10,6 +10,10 @@ module Plastic
         class Decisions
           RULING_ID = /\A\*{0,2}D(\d+)\b/
 
+          def initialize(clock:)
+            @clock = clock
+          end
+
           def read_decisions(dirs, originals)
             dirs.map do |dir|
               main, spec = ["#{File.basename(dir)}.md", "spec.md"].map { |name| text_of(originals["#{dir}/#{name}"]) }
@@ -42,7 +46,7 @@ module Plastic
           def write_rulings(databases, intent_id, bullets, counts)
             database = databases.fetch(:store)
             bullets.each do |id, text|
-              row = { intent_id:, id:, text:, supersedes: nil, at: Plastic.now, session_id: @session }
+              row = { intent_id:, id:, text:, supersedes: nil, at: Plastic.timestamp(@clock.now), session_id: @session }
               database.transaction { |batch| batch.put(:rulings, row, statement: :insert) }
               counts[:rulings] += 1
             end
@@ -56,7 +60,7 @@ module Plastic
           def write_links(databases, intent_id, refs, kind, counts)
             database = databases.fetch(:store)
             refs.each do |ref|
-              row = { from_ref: intent_id, to_ref: ref, kind:, at: Plastic.now }
+              row = { from_ref: intent_id, to_ref: ref, kind:, at: Plastic.timestamp(@clock.now) }
               database.transaction { |batch| batch.put(:links, row, statement: :insert) }
               counts[:links] += 1
             end

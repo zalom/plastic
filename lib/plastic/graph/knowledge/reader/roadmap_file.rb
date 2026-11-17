@@ -18,8 +18,9 @@ module Plastic
 
           def self.form?(text) = Form.form?(text.dup.force_encoding(Encoding::UTF_8))
 
-          def initialize(slug, text)
+          def initialize(slug, text, clock:)
             @slug = slug
+            @clock = clock
             text = text.dup.force_encoding(Encoding::UTF_8)
             raise Invalid, "roadmaps/#{slug}.md is in an older form that this release does not read" unless Form.form?(text)
 
@@ -84,15 +85,15 @@ module Plastic
             raise Invalid, "roadmaps/#{@slug}.md has #{NOUNS.fetch(kind)} record with no #{gone.join(", ")}" if gone.any?
           end
 
-          def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]), updated_at: Plastic.now }
+          def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]), updated_at: Plastic.timestamp(@clock.now) }
 
           def rows(kind) = @records[kind].map { |record| send(:"#{kind}_row", record) }
 
-          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"), updated_at: Plastic.now)
+          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"), updated_at: Plastic.timestamp(@clock.now))
 
           def items_row(record)
             base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"),
-              updated_at: Plastic.now)
+              updated_at: Plastic.timestamp(@clock.now))
           end
 
           def edges_row(record) = base(record, "from", "to", "kind")

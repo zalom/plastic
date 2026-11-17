@@ -15,7 +15,7 @@ module Plastic
     class Distribution
       LAUNCHER_FOLDERS = %w[hooks bin exe].freeze
 
-      def initialize(package, tmp_dirs:)
+      def initialize(package, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
         @package = package
         @home = package.home
         @tmp_dirs = tmp_dirs
@@ -55,7 +55,7 @@ module Plastic
 
       def record
         listed = [*files.values, "VERSION"].map { |path| File.join(@home, path) }.select { |path| File.exist?(path) }
-        @manifest.write(listed)
+        @manifest.write(listed, @package.clock.now)
         listed
       end
 

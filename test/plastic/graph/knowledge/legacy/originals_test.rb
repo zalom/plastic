@@ -3,7 +3,7 @@
 require_relative "../../../../test_helper"
 
 class KnowledgeLegacyOriginalsTest < Plastic::TestCase
-  def originals(counts = Hash.new(0)) = Plastic::Graph::Knowledge::Legacy::Originals.new(store_graphs.databases, counts)
+  def originals(counts = Hash.new(0)) = Plastic::Graph::Knowledge::Legacy::Originals.new(store_graphs.databases, counts, clock: FixedClock::CLOCK)
 
   def kept = store_graphs.databases.fetch(:store).rows("SELECT name, intent_id FROM sqlar ORDER BY name").map(&:values)
 

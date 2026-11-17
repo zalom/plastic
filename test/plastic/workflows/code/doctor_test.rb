@@ -95,7 +95,7 @@ class CheckHealthTest < Plastic::TestCase
     write_evidence(SLUG)
     derived(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
     harness = scoped_harness(session: "s-1", env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING), "CLAUDE_CODE_SESSION_ID" => "s-1" })
-    Plastic::Doctor.failing(harness.scope, harness: "claude-code")
+    Plastic::Doctor.failing(harness.scope, harness: "claude-code", now: FixedClock::AT)
 
     assert_equal 0, search_rows(SLUG)
   end
@@ -108,7 +108,7 @@ class CheckHealthTest < Plastic::TestCase
 
   def write_evidence(store)
     origin_id = Plastic::Graph::Origin.new(@plastic_home).id
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge(store), origin_id).write("1", "plan.md", "Doctor evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge(store), origin_id, clock: FixedClock::CLOCK).write("1", "plan.md", "Doctor evidence\n")
     Plastic::Graph::Retrieval::Index.new(knowledge(store), origin_id).rebuild
   end
 

@@ -95,12 +95,14 @@ module Plastic
           body = parts[:body]
           top = store.row(TOP_SQL, intent_id:).fetch("top")
           store.transaction do |batch|
-            batch.put(:work_log, { intent_id:, position: top + 1, at: Plastic.now, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:, path: parts.fetch(:path, ""),
+            batch.put(:work_log, { intent_id:, position: top + 1, at: stamp, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:, path: parts.fetch(:path, ""),
                                    sha256: body ? Digest::SHA256.hexdigest(body) : "", text:, origin_id: @writers.retrieval.origin_id })
           end
         end
 
         def store = @writers.databases.fetch(:store)
+
+        def stamp = Plastic.timestamp(@writers.clock.now)
 
         def logged(intent_id, kind, wording)
           recorded { yield.tap { |moved,| moved && line(intent_id, kind, wording) } }

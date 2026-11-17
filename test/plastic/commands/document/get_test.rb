@@ -20,7 +20,7 @@ class DocumentGetTest < Plastic::TestCase
   end
 
   def test_prints_a_historical_qualified_document_as_structured_json
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
     writer.write("1", "plan.md", "second")
@@ -100,7 +100,7 @@ class DocumentGetTest < Plastic::TestCase
 
   def write_document(store, intent_id, path, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write(intent_id, path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write(intent_id, path, body)
     graphs.retrieval.repair
     graphs.retrieval.reference(intent_id, path).fetch(:uri)
   end

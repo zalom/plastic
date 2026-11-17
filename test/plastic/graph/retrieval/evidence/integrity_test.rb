@@ -9,7 +9,7 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   def setup
     super
     @calls = 0
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Integrity evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Integrity evidence\n")
     reindex
   end
 

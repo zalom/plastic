@@ -11,7 +11,7 @@ class DoctorCoreTest < Plastic::TestCase
     whole_home
   end
 
-  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:).checks
+  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:, now: FixedClock::AT).checks
 
   def check(label, **options) = checks(**options).find { |item| item.label == label }
 
@@ -110,7 +110,7 @@ class DoctorHomeFilesTest < Plastic::TestCase
     whole_home
   end
 
-  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }).checks
+  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT).checks
 
   def check(label) = checks.find { |item| item.label == label }
 

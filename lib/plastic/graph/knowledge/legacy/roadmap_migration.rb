@@ -24,7 +24,7 @@ module Plastic
             slug = File.basename(path, ".md")
             original_bytes = File.binread(path)
             write(slug, path, result)
-            Originals.new(@graphs.databases, @counts).keep_roadmap_original(@root, slug, original_bytes)
+            Originals.new(@graphs.databases, @counts, clock: @graphs.retrieval.clock).keep_roadmap_original(@root, slug, original_bytes)
             count(result)
           end
 

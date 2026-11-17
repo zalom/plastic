@@ -10,9 +10,10 @@ module Plastic
         class Originals
           INTENT = %r{\Astore/(.*?)(?:--|/)}
 
-          def initialize(databases, counts)
+          def initialize(databases, counts, clock:)
             @databases = databases
             @counts = counts
+            @clock = clock
           end
 
           def keep_changed_originals(folder, originals)
@@ -20,7 +21,7 @@ module Plastic
           end
 
           def keep_original(path, bytes, intent_id)
-            row = { name: "originals/#{path}", mode: 0o644, mtime: Time.now.to_i, sz: bytes.bytesize,
+            row = { name: "originals/#{path}", mode: 0o644, mtime: @clock.now.to_i, sz: bytes.bytesize,
                     data: SQLite3::Blob.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
             @databases.fetch(:store).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
             @counts[:kept] += 1

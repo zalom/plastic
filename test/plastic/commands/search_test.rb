@@ -11,7 +11,7 @@ module SearchTestSupport
 
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", path, body)
     graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end
@@ -96,7 +96,7 @@ module SearchTestAssertionSupport
 
   def historical_document
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "evidence.md", "first evidence")
     graphs.retrieval.repair
     hit = sole(graphs.retrieval.search("evidence"))

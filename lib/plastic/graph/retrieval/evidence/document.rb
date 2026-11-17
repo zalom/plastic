@@ -12,7 +12,7 @@ module Plastic
           # Stores immutable computed fields for one document write.
           Record = Data.define(:intent_id, :path, :body, :revision, :extraction, :passages, :now)
 
-          def initialize(intent_id, path, body, now: Plastic.now)
+          def initialize(intent_id, path, body, now:)
             extraction = Evidence::Text.extract_with_lines(path, body)
             @record = Record.new(intent_id, path, body, Digest::SHA256.hexdigest(body), extraction, Evidence::Text.passages(extraction), now)
           end

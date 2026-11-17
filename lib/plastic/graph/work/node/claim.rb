@@ -66,7 +66,7 @@ module Plastic
 
           def win_claim(node, by:, agent:, now:, lapsed:)
             key = { intent_id: node.intent_id, id: node.id, origin: @retrieval.origin_id }
-            values = { by:, agent:, now: Plastic.now(now), cutoff: Plastic.now(now - Node::LAPSE) }
+            values = { by:, agent:, now: Plastic.timestamp(now), cutoff: Plastic.timestamp(now - Node::LAPSE) }
             values = values.merge(holder: node.claimed_by) if lapsed
             rows = @databases.fetch(:store).transaction do |batch|
               batch.add(LAPSE_RUN_SQL, **key, **values) if lapsed

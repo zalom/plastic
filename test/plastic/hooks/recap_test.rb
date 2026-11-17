@@ -83,7 +83,7 @@ class RecapTest < Plastic::TestCase
 
   def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
     intent_id = opened.work.write_intent(title: "Beta").intent_id
-    run = Plastic::CommandRun.fresh("intent show", intent_id).with(status: "finished", next_command: "plastic next")
+    run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
     opened.work.save_command_run(run)
 
     assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"

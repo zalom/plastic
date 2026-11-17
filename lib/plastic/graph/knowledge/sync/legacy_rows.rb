@@ -43,7 +43,7 @@ module Plastic
           end
 
           def write(parsed)
-            now = Plastic.now
+            now = Plastic.timestamp(@retrieval.clock.now)
             rows = parsed.entries.map { |entry| entry.row(FrontMatter.new(@folder).read(entry.dir), now) }
             @databases.fetch(:store).transaction do |batch|
               batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))

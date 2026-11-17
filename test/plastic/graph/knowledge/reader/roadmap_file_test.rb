@@ -108,7 +108,7 @@ class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
     work.transaction do |batch|
       %i[roadmaps batches roadmap_items].each { |table| batch.remove(table, **{ ((table == :roadmaps) ? :slug : :roadmap) => "plan" }) }
     end
-    work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch) }
+    work.transaction { |batch| RoadmapFile.new("plan", text, clock: FixedClock::CLOCK).apply(batch) }
   end
 
   def test_an_item_with_no_done_lines_reads_back_with_the_empty_done_the_writer_stores
@@ -130,13 +130,13 @@ class KnowledgeReaderRoadmapFileRefusedTest < Plastic::TestCase
   include RoadmapFileHelper
 
   def test_a_file_in_another_form_is_refused_as_an_older_form
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "# Plan\n\n## Goal\n\nShip\n") }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "# Plan\n\n## Goal\n\nShip\n", clock: FixedClock::CLOCK) }
 
     assert_includes error.message, "older form"
   end
 
   def test_a_file_with_an_unknown_form_line_is_refused_as_an_older_form
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "<!-- plastic roadmap form 9 -->\n") }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "<!-- plastic roadmap form 9 -->\n", clock: FixedClock::CLOCK) }
 
     assert_includes error.message, "older form"
   end
@@ -150,28 +150,28 @@ class KnowledgeReaderRoadmapFileRefusedTest < Plastic::TestCase
 
   def test_a_head_with_no_title_is_refused_naming_the_missing_field
     seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^title: .*\n/, "")) }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^title: .*\n/, ""), clock: FixedClock::CLOCK) }
 
     assert_equal "roadmaps/plan.md has a head record with no title", error.message
   end
 
   def test_an_item_with_no_position_is_refused_naming_an_item
     seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  position: 1\n  title: Hello — world — ready", "  title: Hello")) }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  position: 1\n  title: Hello — world — ready", "  title: Hello"), clock: FixedClock::CLOCK) }
 
     assert_equal "roadmaps/plan.md has an item record with no position", error.message
   end
 
   def test_an_edge_with_no_kind_is_refused_naming_an_edge
     seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  kind: after\n", "")) }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  kind: after\n", ""), clock: FixedClock::CLOCK) }
 
     assert_equal "roadmaps/plan.md has an edge record with no kind", error.message
   end
 
   def test_a_log_line_with_no_text_is_refused_naming_a_log_line
     seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^  text: .*\n?\z/, "")) }
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^  text: .*\n?\z/, ""), clock: FixedClock::CLOCK) }
 
     assert_equal "roadmaps/plan.md has a log line record with no text", error.message
   end

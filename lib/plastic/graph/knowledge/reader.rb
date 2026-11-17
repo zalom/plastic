@@ -30,16 +30,17 @@ module Plastic
         # The reader of the intents of the rows.
         def self.of(folder, retrieval, **options)
           known = retrieval.intents.to_h { |intent| [intent.intent_id, intent] }
-          new(folder, known, retrieval.origin_id, retrieval:, **options)
+          new(folder, known, retrieval.origin_id, retrieval:, clock: retrieval.clock, **options)
         end
 
         # `intents` maps each known intent id to its intent: from the rows and
         # from the store/index.json on disk.
-        def initialize(folder, intents, origin_id, retrieval: nil)
+        def initialize(folder, intents, origin_id, clock:, retrieval: nil)
           @folder = folder
           @intents = intents
           @retrieval = retrieval
-          @writer = Retrieval::Evidence::Writer.new(nil, origin_id)
+          @clock = clock
+          @writer = Retrieval::Evidence::Writer.new(nil, origin_id, clock:)
         end
 
         def read(path)
@@ -50,18 +51,18 @@ module Plastic
         private
 
         def file_of(path)
-          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs, @intents) if path == StoreFolder::INDEX
+          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs, @intents, clock: @clock) if path == StoreFolder::INDEX
           return part_file(path) if Prints::Parts.path?(path)
-          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
+          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path), clock: @clock) if StoreFolder.roadmap?(path)
 
           intent_file(path)
         end
 
         def part_file(path)
           index = @folder.read(StoreFolder::INDEX)
-          return ClusterFile.new(index, @writer.origin_id) if Prints::ClusterPart.path?(path)
+          return ClusterFile.new(index, @writer.origin_id, clock: @clock) if Prints::ClusterPart.path?(path)
 
-          LinkFile.new(index, @writer.origin_id, printed?(path))
+          LinkFile.new(index, @writer.origin_id, printed?(path), clock: @clock)
         end
 
         # A part with a printed row has a last print to judge a removal against.
@@ -77,7 +78,7 @@ module Plastic
 
         def intent_file_of(intent, path)
           file = FolderFile.new(@folder, path, path.delete_prefix("#{intent.dir}/"))
-          IntentFile.new(file, intent.intent_id, retrieval: @retrieval, writer: @writer)
+          IntentFile.new(file, intent.intent_id, retrieval: @retrieval, writer: @writer, clock: @clock)
         end
       end
     end

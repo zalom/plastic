@@ -6,8 +6,8 @@ class GraphTest < Plastic::TestCase
   def graphs(store = "plastic") = Plastic::Graph.create(home: @plastic_home, store:)
 
   def closed_run(subject = "7")
-    Plastic::CommandRun.fresh("intent end", subject).advance(:code_a, :code_b)
-      .close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7", list: [1, 2] })
+    Plastic::CommandRun.fresh("intent end", subject, FixedClock::AT).advance(:code_a, :code_b, FixedClock::AT)
+      .close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7", list: [1, 2] }, FixedClock::AT)
   end
 
   def test_a_saved_command_run_reads_back_the_same
@@ -24,9 +24,9 @@ class GraphTest < Plastic::TestCase
   end
 
   def test_a_second_save_updates_the_one_row
-    run = Plastic::CommandRun.fresh("intent end", "7")
+    run = Plastic::CommandRun.fresh("intent end", "7", FixedClock::AT)
     graphs.work.save_command_run(run)
-    graphs.work.save_command_run(run.advance(:code_a, :code_b))
+    graphs.work.save_command_run(run.advance(:code_a, :code_b, FixedClock::AT))
 
     assert_equal :code_b, graphs.retrieval.command_run("intent end", "7").at
   end

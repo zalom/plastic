@@ -23,7 +23,7 @@ module Plastic
         # The last print recorded these bytes.
         def recorded?(recorded) = recorded[path] == sha256
 
-        def printed_row = { path:, sha256:, at: Plastic.now }
+        def printed_row(time) = { path:, sha256:, at: Plastic.timestamp(time) }
       end
     end
   end

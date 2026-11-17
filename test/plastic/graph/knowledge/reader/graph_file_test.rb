@@ -256,7 +256,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     assert_empty node_rows
   end
 
-  def reader = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, retrieval.origin_id)
+  def reader = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, retrieval.origin_id, clock: FixedClock::CLOCK)
 
   def test_the_reader_applies_a_graph_file_it_is_given
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))

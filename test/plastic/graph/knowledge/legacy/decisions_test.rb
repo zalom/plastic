@@ -5,7 +5,7 @@ require_relative "../../../../test_helper"
 class KnowledgeLegacyDecisionsTest < Plastic::TestCase
   DIR = "store/4--alpha"
 
-  def decisions = Plastic::Graph::Knowledge::Legacy::Decisions.new
+  def decisions = Plastic::Graph::Knowledge::Legacy::Decisions.new(clock: FixedClock::CLOCK)
 
   def read(originals) = decisions.read_decisions([DIR], originals).first
 

@@ -9,7 +9,7 @@ class RetrievalEvidenceIntegritySourcesTest < Plastic::TestCase
 
   def setup
     super
-    Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Body\n")
+    Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Body\n")
   end
 
   def in_transaction(sql)

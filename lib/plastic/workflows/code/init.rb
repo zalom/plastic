@@ -30,7 +30,7 @@ module Plastic
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }
-          Plastic::Config.new(context.scope.plastic_home).set("sync.media", context.media)
+          Plastic::Config.new(context.scope.plastic_home, clock: context.clock).set("sync.media", context.media)
           context[:installed] = installation.version
           context[:checked] = context.picked.first
         end

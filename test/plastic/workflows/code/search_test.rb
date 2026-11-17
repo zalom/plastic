@@ -12,7 +12,7 @@ class WorkflowSearchTest < Plastic::TestCase
 
   def test_the_found_passages_are_printed_as_results
     open_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", "evidence.md", "falcon wings")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", "falcon wings")
     retrieval.repair
 
     outcome, context = search([])

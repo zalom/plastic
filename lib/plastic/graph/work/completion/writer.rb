@@ -40,7 +40,7 @@ module Plastic
             @databases.fetch(:store).transaction do |batch|
               batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, reason = NULL, closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress', 'parked', 'future')",
-                now: Plastic.now, intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
+                now: Plastic.timestamp(@retrieval.clock.now), intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
             end
           end
 
@@ -62,7 +62,7 @@ module Plastic
 
           def completion_row(intent_id, check)
             criteria = check.criteria
-            { intent_id:, at: Plastic.now, session_id: @session, judge: "verdict", criteria:,
+            { intent_id:, at: Plastic.timestamp(@retrieval.clock.now), session_id: @session, judge: "verdict", criteria:,
               evidence: Evidence.new(@retrieval, intent_id).by_criterion(criteria.keys), outcome_sha256: check.outcome_hash }
           end
 

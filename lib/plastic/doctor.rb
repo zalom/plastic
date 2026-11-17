@@ -40,16 +40,16 @@ module Plastic
       end
     end
 
-    def self.checks(scope, kind, running:)
-      Core.new(scope, running:).checks + harness_checks(scope, kind, running:)
+    def self.checks(scope, kind, running:, now:)
+      Core.new(scope, running:, now:).checks + harness_checks(scope, kind, running:)
     end
 
     def self.harness_checks(scope, kind, running:) = kind ? kind.new(scope, running:).checks : []
 
-    def self.check(scope, harness:)
-      checks(scope, kind(harness), running: Workflows::Installation.running(scope))
+    def self.check(scope, harness:, now:)
+      checks(scope, kind(harness), running: Workflows::Installation.running(scope), now:)
     end
 
-    def self.failing(scope, harness:) = check(scope, harness:).select(&:repair)
+    def self.failing(scope, harness:, now:) = check(scope, harness:, now:).select(&:repair)
   end
 end

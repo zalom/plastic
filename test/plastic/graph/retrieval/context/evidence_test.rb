@@ -14,7 +14,7 @@ class RetrievalContextEvidenceTest < Plastic::TestCase
     Plastic::Graph::Retrieval::Context::Evidence.new(document:, reference:, retrieval:).state
   end
 
-  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", @intent.file, "changed")
+  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", @intent.file, "changed")
 
   def archive = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
 

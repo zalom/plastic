@@ -5,7 +5,7 @@ require_relative "../../test_helper"
 class TraversalTest < Plastic::TestCase
   def traverse(routine, facts)
     ctx = Plastic::Context.new(declared: routine.chain.facts + facts.keys, facts:, graphs: {})
-    run = Plastic::CommandRun.fresh("kernel test", "ada")
+    run = Plastic::CommandRun.fresh("kernel test", "ada", FixedClock::AT)
     Plastic::Routine::Traversal.new(routine.chain, ctx, run) { |saved| store_graphs.work.save_command_run(saved) }.call { |value| value }
   end
 

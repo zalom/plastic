@@ -9,7 +9,9 @@ module Plastic
   module Installations
     # The package an install copies from, the Plastic home it installs for and
     # the version it carries.
-    Package = Data.define(:root, :home, :version) do
+    Package = Data.define(:root, :home, :version, :clock) do
+      def initialize(root:, home:, version:, clock: Time) = super
+
       def launcher = HookLauncher.new(root, home)
 
       def choices = Choices.new(home)

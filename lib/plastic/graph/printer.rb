@@ -25,7 +25,7 @@ module Plastic
       def record(prints)
         recorded = @retrieval.printed
         fresh = with_part(prints).reject { |print| print.recorded?(recorded) }
-        record_in(fresh.map(&:printed_row)) unless fresh.empty?
+        record_in(fresh.map { |print| print.printed_row(@retrieval.clock.now) }) unless fresh.empty?
       end
 
       private

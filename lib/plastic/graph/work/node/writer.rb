@@ -48,7 +48,7 @@ module Plastic
 
           def add_node(intent_id:, **fields)
             id = next_id(intent_id)
-            row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.now(@clock.now) }.merge(fields)
+            row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
             @databases.fetch(:store).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
             @retrieval.node(intent_id, id)
           end
@@ -70,7 +70,7 @@ module Plastic
           end
 
           def renew_claims(session)
-            now = Plastic.now(@clock.now)
+            now = Plastic.timestamp(@clock.now)
             @databases.fetch(:store).transaction do |batch|
               batch.add("UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin",
                 now:, session:, origin: @retrieval.origin_id)
@@ -89,7 +89,7 @@ module Plastic
             node.answered_at ? runs.select { |run| run.started_at > node.answered_at } : runs
           end
 
-          def stamped(move, fields) = move[:stamp] ? fields.merge(move[:stamp] => Plastic.now(@clock.now)) : fields
+          def stamped(move, fields) = move[:stamp] ? fields.merge(move[:stamp] => Plastic.timestamp(@clock.now)) : fields
 
           def fetched(key) = @retrieval.node(*key.values_at(:intent_id, :id))
 
@@ -111,7 +111,7 @@ module Plastic
           def close_run(batch, key, move, holder, now)
             states = SQL.list(move.fetch(:from), "r")
             sql = format(CLOSE_RUN_SQL, states: states.sql, guard: holder ? SQL::HOLDER_GUARD : "")
-            batch.add(sql, **states.values, **key, **(holder ? { holder: } : {}), ended_at: Plastic.now(now),
+            batch.add(sql, **states.values, **key, **(holder ? { holder: } : {}), ended_at: Plastic.timestamp(now),
               result: move.fetch(:result, move.fetch(:to)), origin: @retrieval.origin_id)
           end
 

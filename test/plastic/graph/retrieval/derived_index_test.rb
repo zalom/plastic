@@ -25,7 +25,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
     graphs.work.write_intent(title: "Alpha needle")
     doctor
     before = passages
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "notes.md", "a second needle document")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "notes.md", "a second needle document")
 
     assert_equal before, passages
   end
@@ -54,7 +54,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
   def test_a_hit_whose_hash_is_not_the_current_head_is_dropped
     graphs.work.write_intent(title: "Alpha needle")
     end_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "notes.md", "another body")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "notes.md", "another body")
 
     stale_the_entries
 

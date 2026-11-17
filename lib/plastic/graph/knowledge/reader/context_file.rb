@@ -11,10 +11,11 @@ module Plastic
         class ContextFile
           TABLES = { "discovery" => :retrieval_discoveries, "context" => :retrieval_contexts }.freeze
 
-          def initialize(text, intent_id, path)
+          def initialize(text, intent_id, path, clock:)
             @text = text
             @intent_id = intent_id
             @path = path
+            @clock = clock
           end
 
           # Why the file cannot be read, or nil when it can.
@@ -45,7 +46,7 @@ module Plastic
             raise Invalid, "#{@path} is not JSON"
           end
 
-          def row(part) = { intent_id: @intent_id, data: JSON.pretty_generate(part), updated_at: Plastic.now }
+          def row(part) = { intent_id: @intent_id, data: JSON.pretty_generate(part), updated_at: Plastic.timestamp(@clock.now) }
         end
       end
     end

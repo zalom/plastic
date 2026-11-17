@@ -13,7 +13,7 @@ class RetrievalGraphTest < Plastic::TestCase
   def index_text(intent, name, body)
     path = "#{intent.dir}/#{name}"
     write(path, body)
-    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:, clock: FixedClock::CLOCK).read(path))
   end
 
   def test_the_origin_id_is_the_installation_id
@@ -161,7 +161,7 @@ class RetrievalReadTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK)
 
   def historical_reference
     writer.write("1", historical_path, "first body")
@@ -265,7 +265,7 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
     assert_equal [[1, 1]], store_database.rows("SELECT line_start, line_end FROM document_passages").map(&:values)
   end
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK)
   def repair = retrieval.repair
 
   def concurrent_writer
@@ -368,7 +368,7 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
   def acquired = @pipes.fetch(2)
   def acquired_writer = @pipes.fetch(3)
   def isolated = (@isolated ||= Plastic::Graph::Database.open_store(File.join(@home, "isolated"), Plastic::Graph::Origin.new(@plastic_home)))
-  def isolated_writer = Plastic::Graph::Retrieval::Evidence::Writer.new(isolated, origin)
+  def isolated_writer = Plastic::Graph::Retrieval::Evidence::Writer.new(isolated, origin, clock: FixedClock::CLOCK)
 end
 
 class RetrievalRepairTest < Plastic::TestCase
@@ -389,7 +389,7 @@ class RetrievalRepairTest < Plastic::TestCase
   private
 
   def index_current_document
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "repair.md", "repair evidence")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "repair.md", "repair evidence")
     reindex
   end
 

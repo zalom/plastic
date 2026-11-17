@@ -35,8 +35,8 @@ module Plastic
     # The run in one phrase: the tool, its status, when, and the next command it printed.
     def summary = [tool, status, updated_at].join(" ") + Array(next_command).map { |command| ", next: #{command}" }.join
 
-    def self.fresh(tool, subject)
-      now = Plastic.now
+    def self.fresh(tool, subject, time)
+      now = Plastic.timestamp(time)
       new(tool:, subject:, at: nil, finished: [], status: "running", facts: {},
         next_command: nil, because: nil, exit_code: nil, started_at: now, updated_at: now)
     end
@@ -80,10 +80,10 @@ module Plastic
     def key = [tool, subject].compact.join(" ")
 
     # A workflow finished and the chain moves on.
-    def advance(from, to) = with(finished: finished | [from], at: to, status: "running", updated_at: Plastic.now)
+    def advance(from, to, time) = with(finished: finished | [from], at: to, status: "running", updated_at: Plastic.timestamp(time))
 
     # The call ends. `value` is Finished, HandedOff, Failed or Refused, and it
     # names the status and the lines the command run keeps.
-    def close(value, facts) = with(facts:, updated_at: Plastic.now, **value.record)
+    def close(value, facts, time) = with(facts:, updated_at: Plastic.timestamp(time), **value.record)
   end
 end

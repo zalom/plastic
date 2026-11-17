@@ -9,7 +9,7 @@ class KnowledgeReaderClusterFileTest < Plastic::TestCase
 
   def index(clusters) = JSON.generate({ "intents" => [], "clusters" => clusters })
 
-  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| ClusterFile.new(text.dup, origin).apply(batch) }
+  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| ClusterFile.new(text.dup, origin, clock: FixedClock::CLOCK).apply(batch) }
 
   def put(name, origin_id: nil)
     row = { name:, intent_id: "1" }

@@ -10,14 +10,14 @@ module Plastic
     # behind because its backup failed.
     module SchemaMigration
       def self.bring_current(context, slug: nil)
-        report = Graph::SchemaRunner.new(home: context.scope.plastic_home, only: slug).call
+        report = Graph::SchemaRunner.new(home: context.scope.plastic_home, now: context.now, only: slug).call
         report.failed.each { |store, reason| context.print(line(store, reason)) }
         import_config(context) unless slug
         report
       end
 
       def self.import_config(context)
-        line = Config::Store.new(context.scope.plastic_home).print_once
+        line = Config::Store.new(context.scope.plastic_home, clock: context.clock).print_once
         context.print(line) if line
       end
 

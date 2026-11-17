@@ -6,7 +6,7 @@ require_relative "../../../../lib/plastic/commands/intent/discover"
 module DiscoveryDocuments
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", "evidence.md", body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", body)
     graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end

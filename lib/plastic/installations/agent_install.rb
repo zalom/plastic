@@ -22,7 +22,7 @@ module Plastic
         files = copy
         files << @record.write_version(@package.version)
         extra = integrate
-        @record.manifest.write(files)
+        @record.manifest.write(files, @package.clock.now)
         { agent: @record.name, success: true, files: files.size }.merge(extra)
       end
 

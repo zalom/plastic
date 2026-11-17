@@ -51,17 +51,18 @@ module Plastic
       SEARCH_LIMIT = Retrieval::Search::SEARCH_LIMIT
       extend Forwardable
 
-      attr_reader :store
+      attr_reader :store, :clock
 
       def_delegators :sessions, :command_run, :session, :previous_session, :predecessor, :last_run, :touched
       def_delegators :work, :ready_nodes, :claimed_nodes, :node, :rulings, :links, :every_link
       def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :repair, :reindex, :search_index_report
       def_delegators "evidence.references", :reference, :search_reference
 
-      def initialize(databases, store:, origin:)
+      def initialize(databases, store:, origin:, clock:)
         @databases = databases
         @store = store
         @origin = origin
+        @clock = clock
       end
 
       def origin_id = @origin.id

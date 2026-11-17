@@ -17,7 +17,7 @@ class LazyCommandDispatchTest < Minitest::Test
     global.work.write_intent(title: "Selected")
     other = Plastic::Graph.create(home: ARGV.fetch(0), store: "other")
     other.databases.each_value { |database| database.rows("SELECT 1") }
-    Plastic::Graph::Retrieval::Evidence::Writer.new(other.databases.fetch(:store), other.retrieval.origin_id).write("1", "evidence.md", "selected evidence")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(other.databases.fetch(:store), other.retrieval.origin_id, clock: other.retrieval.clock).write("1", "evidence.md", "selected evidence")
     other.retrieval.repair
   RUBY
 

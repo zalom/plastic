@@ -18,11 +18,11 @@ module Plastic
         # Commits a full directory snapshot before removal, and restores that
         # snapshot before clearing the archived marker.
         class Writer
-          def initialize(databases, retrieval, folder, session: nil, files: FileSystem.new)
+          def initialize(databases, retrieval, folder, clock:, **collaborators)
             @databases = databases
             @retrieval = retrieval
             @folder = folder
-            @collaborators = { session:, files: }
+            @collaborators = { session: nil, files: FileSystem.new, clock: }.merge(collaborators)
           end
 
           # Returns [ok, problem, kind]; kind is :failure, :unfinished or :refusal, nil on success.
@@ -45,14 +45,14 @@ module Plastic
 
           def remove_printed(dir) = PrintedCleanup.new(@databases, @retrieval).remove(dir)
 
-          def capture = Capture.new(@databases.fetch(:store), @folder, origin_id, session: @collaborators[:session])
+          def capture = Capture.new(@databases.fetch(:store), @folder, origin_id, session: @collaborators[:session], clock: @collaborators[:clock])
 
           def guard = Guard.new(@retrieval)
 
           def archive_operation = Operation.new(@retrieval, guard, capture, completion)
 
           def completion
-            Completion.new(SnapshotIndex.new(@databases.fetch(:store), origin_id), @folder,
+            Completion.new(SnapshotIndex.new(@databases.fetch(:store), origin_id, clock: @collaborators[:clock]), @folder,
               snapshot: method(:snapshot), remove_printed: method(:remove_printed))
           end
 

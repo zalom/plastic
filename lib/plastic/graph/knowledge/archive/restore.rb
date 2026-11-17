@@ -40,7 +40,7 @@ module Plastic
           def mark_restored(intent_id)
             database.transaction do |batch|
               batch.write(:archives, "UPDATE archives SET restored_at = :now WHERE origin_id = :origin AND intent_id = :intent_id",
-                now: Plastic.now, origin: retrieval.origin_id, intent_id:)
+                now: Plastic.timestamp(@retrieval.clock.now), origin: retrieval.origin_id, intent_id:)
             end
           end
         end

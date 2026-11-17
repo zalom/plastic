@@ -7,7 +7,7 @@ class KnowledgeReaderTest < Plastic::TestCase
 
   Reader = Plastic::Graph::Knowledge::Reader
 
-  def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin)
+  def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin, clock: FixedClock::CLOCK)
 
   def test_a_read_names_its_path_its_database_and_its_line
     write("store/1--alpha/spec.md", "# Spec\n")

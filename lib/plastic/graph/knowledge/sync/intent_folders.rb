@@ -16,6 +16,7 @@ module Plastic
         class IntentFolders
           def initialize(folder, retrieval)
             @store = folder
+            @clock = retrieval.clock
             @rowed = retrieval.intents.to_h { |intent| [intent.intent_id, intent.dir] }
             @folders = folders_in(folder)
           end
@@ -42,7 +43,7 @@ module Plastic
 
           def folders_in(folder)
             listed = listed_in
-            folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder, listed[dir]) }
+            folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder, listed[dir], clock: @clock) }
           end
 
           def listed_in

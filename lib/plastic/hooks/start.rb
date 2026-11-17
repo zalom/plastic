@@ -18,9 +18,7 @@ module Plastic
     class Start < Hook
       changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
 
-      FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
-
-      def initialize(argv, health: FAILING_CHECKS, **rest)
+      def initialize(argv, health: method(:failing_checks), **rest)
         super(argv, **rest)
         @health = health
       end
@@ -32,6 +30,8 @@ module Plastic
       end
 
       private
+
+      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, now: environment.now)
 
       def back_up_stores
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|

@@ -23,14 +23,15 @@ module Plastic
             )
           SQL
 
-          def initialize(databases, retrieval, session: nil)
+          def initialize(databases, retrieval, clock:, session: nil)
             @databases = databases
             @retrieval = retrieval
             @session = session
+            @clock = clock
           end
 
           def create_roadmap(slug, title:, goal:)
-            @databases.fetch(:store).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.now).merge(title:, goal:), statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.timestamp(@clock.now)).merge(title:, goal:), statement: :insert) }
             @retrieval.roadmap(slug)
           end
 
@@ -38,7 +39,7 @@ module Plastic
           # first time it is named. A field left out keeps the batch's word for
           # it, and a new batch with no title is called "Batch N".
           def write_batch(slug, position, fields:)
-            now = Plastic.now
+            now = Plastic.timestamp(@clock.now)
             kept = fields.over(find_batch(slug, position), "Batch #{position}")
             @databases.fetch(:store).transaction do |batch|
               batch.put(:roadmaps, roadmap_row(slug, now), statement: :insert) unless @retrieval.roadmap(slug)
@@ -62,7 +63,7 @@ module Plastic
           end
 
           def drop_item(slug, item)
-            now = Plastic.now
+            now = Plastic.timestamp(@clock.now)
             changed(:roadmap_items) do |batch|
               batch.write(:roadmap_items, "UPDATE roadmap_items SET mark = 'dropped', updated_at = :now " \
                 "WHERE origin_id = :origin AND roadmap = :roadmap AND item = :item", now:, origin: origin_id, roadmap: slug, item:)
@@ -75,7 +76,7 @@ module Plastic
 
           # Records the intent an item was opened as.
           def open_item(slug, item, intent_id)
-            now = Plastic.now
+            now = Plastic.timestamp(@clock.now)
             changed(:roadmap_items) do |batch|
               batch.write(:roadmap_items, "UPDATE roadmap_items SET intent_id = :intent_id, updated_at = :now " \
                 "WHERE origin_id = :origin AND roadmap = :roadmap AND item = :item",
@@ -84,7 +85,7 @@ module Plastic
           end
 
           def add_log(slug, text)
-            now = Plastic.now
+            now = Plastic.timestamp(@clock.now)
             row = { roadmap: slug, position: next_log_position(slug), at: now, text:, session_id: @session }
             @databases.fetch(:store).transaction { |batch| batch.put(:roadmap_log, row, statement: :insert) }
             @retrieval.roadmap_log(slug).last
@@ -110,10 +111,9 @@ module Plastic
           end
 
           def write_item(slug, item, batch_position, fields, needs)
-            now = Plastic.now
             existing = @retrieval.roadmap_items(slug).any? { |row| row.item == item }
             @databases.fetch(:store).transaction do |batch|
-              batch.put(:roadmap_items, item_row(slug, item, batch_position, fields, now), statement: :insert) unless existing
+              batch.put(:roadmap_items, item_row(slug, item, batch_position, fields, Plastic.timestamp(@clock.now)), statement: :insert) unless existing
               Array(needs).each { |from| batch.put(:roadmap_edges, { roadmap: slug, from:, to: item, kind: "after" }, statement: :insert) }
             end
             [@retrieval.roadmap_items(slug).find { |row| row.item == item }, nil, nil]

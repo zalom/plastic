@@ -17,7 +17,7 @@ module Plastic
       end
 
       # `only` names one store to migrate; the home database is checked either way.
-      def initialize(home:, now: Time.now, only: nil)
+      def initialize(home:, now:, only: nil)
         @home = home
         @only = only
         @now = now

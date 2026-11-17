@@ -16,7 +16,7 @@ class RetrievalEvidenceRemovalTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK)
   def current_rows = store_database.rows("SELECT * FROM document_heads WHERE path = 'plan.md'") + store_database.rows("SELECT * FROM document_fts WHERE path = 'plan.md'")
 
   def immutable_rows

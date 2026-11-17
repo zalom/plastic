@@ -107,7 +107,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
   private
 
   def writer(databases: @graphs.databases, **collaborators)
-    Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators)
+    Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators, clock: FixedClock::CLOCK)
   end
 
   def full_disk = @graphs.databases.merge(store: FullDisk.new(@graphs.databases.fetch(:store)))

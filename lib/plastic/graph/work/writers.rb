@@ -34,29 +34,29 @@ module Plastic
 
         def completions = built(:completions) { Completion::Writer.new(databases, retrieval, folder, session:) }
 
-        def sessions = built(:sessions) { Session::Writer.new(databases.fetch(:local), store: retrieval.store) }
+        def sessions = built(:sessions) { Session::Writer.new(databases.fetch(:local), store: retrieval.store, clock:) }
 
         def intents = built(:intents) { Knowledge::Intent::Writer.new(databases, retrieval, folder, session:) }
 
-        def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval) }
+        def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval, clock:) }
 
         def nodes = built(:nodes) { Node::Writer.new(databases, retrieval, clock:) }
 
         def edges = built(:edges) { Edge::Writer.new(databases, retrieval) }
 
-        def approvals = built(:approvals) { Approval::Writer.new(databases, retrieval, session:) }
+        def approvals = built(:approvals) { Approval::Writer.new(databases, retrieval, session:, clock:) }
 
-        def verdicts = built(:verdicts) { Verdict::Writer.new(databases, retrieval, session:) }
+        def verdicts = built(:verdicts) { Verdict::Writer.new(databases, retrieval, session:, clock:) }
 
-        def rulings = built(:rulings) { Knowledge::Ruling::Writer.new(databases, retrieval, session:) }
+        def rulings = built(:rulings) { Knowledge::Ruling::Writer.new(databases, retrieval, session:, clock:) }
 
-        def links = built(:links) { Knowledge::Link::Writer.new(databases, retrieval) }
+        def links = built(:links) { Knowledge::Link::Writer.new(databases, retrieval, clock:) }
 
-        def roadmaps = built(:roadmaps) { Knowledge::Roadmap::Writer.new(databases, retrieval, session:) }
+        def roadmaps = built(:roadmaps) { Knowledge::Roadmap::Writer.new(databases, retrieval, session:, clock:) }
 
         def sync = built(:sync) { Knowledge::Sync.new(folder:, retrieval:, databases:) }
 
-        def archives = built(:archives) { Knowledge::Archive::Writer.new(databases, retrieval, folder, session:) }
+        def archives = built(:archives) { Knowledge::Archive::Writer.new(databases, retrieval, folder, session:, clock:) }
 
         private
 

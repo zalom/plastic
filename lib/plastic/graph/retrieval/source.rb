@@ -10,11 +10,11 @@ module Plastic
     module Retrieval
       # Opens only the databases and read graph that document retrieval needs.
       module Source
-        def self.open(home:, store:)
+        def self.open(home:, store:, clock: Time)
           origin = Origin.new(home)
           root = Database.store_root(home, store)
           databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
-          RetrievalGraph.new(databases, store:, origin:)
+          RetrievalGraph.new(databases, store:, origin:, clock:)
         end
       end
     end

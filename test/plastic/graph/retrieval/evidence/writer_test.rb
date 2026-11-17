@@ -16,7 +16,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
   end
 
   def test_keeps_separate_revision_membership_for_identical_bodies_at_distinct_identities
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK)
     writer.write("1", "first.md", "shared evidence")
     writer.write("2", "second.md", "shared evidence")
     writer.remove("1", "first.md")
@@ -26,7 +26,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
   end
 
   def test_a_removed_and_added_document_has_exactly_its_new_search_rows
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK)
     writer.write("1", "plan.md", "first evidence")
     writer.remove("1", "plan.md")
     writer.write("1", "plan.md", "again evidence")
@@ -54,7 +54,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
 
   def test_a_document_removed_leaves_no_search_row
     write_evidence("first evidence")
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).remove("1", "plan.md")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).remove("1", "plan.md")
     reindex
 
     assert_empty rows("document_fts", "body")
@@ -62,7 +62,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
 
   private
 
-  def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", body)
+  def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", body)
 
   def assert_immutable_rows
     assert_equal ["first evidence", "second evidence"], rows("document_revisions", "body").sort

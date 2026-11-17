@@ -23,7 +23,7 @@ class TransactionTest < Plastic::TestCase
 
   def written(name)
     path = write(hermes("skills", name), "new\n")
-    record.manifest.write([path])
+    record.manifest.write([path], FixedClock::AT)
     { agent: "Hermes", success: true, files: 1 }
   end
 
@@ -44,7 +44,7 @@ class TransactionTest < Plastic::TestCase
   def test_a_file_the_new_install_dropped_is_pruned_and_counted
     make_agent_folders(hermes_config)
     old = write(hermes("skills", "old.md"), "old\n")
-    record.manifest.write([old])
+    record.manifest.write([old], FixedClock::AT)
     result = run_with { written("a.md") }
 
     refute_path_exists old
@@ -69,7 +69,7 @@ class TransactionTest < Plastic::TestCase
   def test_a_failed_check_with_a_prior_record_restores_the_files_it_listed
     make_agent_folders(hermes_config)
     kept = write(hermes("skills", "kept.md"), "before\n")
-    record.manifest.write([kept])
+    record.manifest.write([kept], FixedClock::AT)
     result = run_with(verified: false) do
       File.write(kept, "after\n")
       { agent: "Hermes", success: true, files: 1 }

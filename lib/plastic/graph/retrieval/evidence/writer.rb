@@ -12,18 +12,19 @@ module Plastic
         class Writer
           attr_reader :origin_id
 
-          def initialize(database, origin_id)
+          def initialize(database, origin_id, clock:)
             @database = database
             @origin_id = origin_id
+            @clock = clock
           end
 
           def write(intent_id, path, body)
-            document = Evidence::Document.new(intent_id, path, body)
+            document = Evidence::Document.new(intent_id, path, body, now: Plastic.timestamp(@clock.now))
             @database.transaction { |batch| apply_document(batch, document) }
           end
 
-          def apply(batch, ...)
-            document = Evidence::Document.new(...)
+          def apply(batch, intent_id, path, body)
+            document = Evidence::Document.new(intent_id, path, body, now: Plastic.timestamp(@clock.now))
             apply_document(batch, document)
           end
 

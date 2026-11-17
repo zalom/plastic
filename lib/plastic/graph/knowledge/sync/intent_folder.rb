@@ -14,10 +14,11 @@ module Plastic
         class IntentFolder
           attr_reader :dir
 
-          def initialize(dir, folder, listed = nil)
+          def initialize(dir, folder, listed = nil, clock:)
             @dir = dir
             @folder = folder
             @listed = listed
+            @clock = clock
           end
 
           def number = File.basename(dir).split("--", 2).first
@@ -37,11 +38,12 @@ module Plastic
           end
 
           def intent
-            return Intent.from_h(Reader::IndexFile.intent_row(@listed)) if @listed
+            now = Plastic.timestamp(@clock.now)
+            return Intent.from_h(Reader::IndexFile.intent_row(@listed, now)) if @listed
 
             front = intent_file.front
             entry = Legacy::Index::Entry.new(front["id"], front["intent"], dir, "open", nil, nil, nil)
-            Intent.from_h(entry.row(front, Plastic.now))
+            Intent.from_h(entry.row(front, now))
           end
 
           private

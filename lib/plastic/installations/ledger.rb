@@ -9,12 +9,13 @@ module Plastic
     # The record of installs and updates: one JSON row for each, in
     # versions.json of the Plastic home.
     class Ledger
-      def initialize(home)
+      def initialize(home, clock: Time)
         @path = File.join(home, "versions.json")
+        @clock = clock
       end
 
       def append(version, action, harness: nil)
-        row = { version:, action:, at: Plastic.now }
+        row = { version:, action:, at: Plastic.timestamp(@clock.now) }
         row[:harness] = harness if harness
         FileUtils.mkdir_p(File.dirname(@path))
         File.write(@path, "#{JSON.generate(row)}\n", mode: "a")

@@ -7,7 +7,7 @@ class KnowledgeReaderContextFileTest < Plastic::TestCase
   ContextFile = Plastic::Graph::Knowledge::Reader::ContextFile
   PATH = "store/1--alpha/context.json"
 
-  def file(text, intent_id = "1") = ContextFile.new(text, intent_id, PATH)
+  def file(text, intent_id = "1") = ContextFile.new(text, intent_id, PATH, clock: FixedClock::CLOCK)
 
   def test_a_json_list_is_not_a_context_file
     assert_equal "#{PATH} is not a JSON object", file("[1]").problem

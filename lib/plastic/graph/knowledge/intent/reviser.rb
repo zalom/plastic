@@ -16,9 +16,10 @@ module Plastic
             WHERE intent_id = :intent_id AND origin_id = :origin AND status NOT IN ('done', 'abandoned')
           SQL
 
-          def initialize(databases, retrieval)
+          def initialize(databases, retrieval, clock:)
             @databases = databases
             @retrieval = retrieval
+            @clock = clock
           end
 
           # The change, or nil when the intent has no file row.
@@ -31,7 +32,7 @@ module Plastic
           # Writes the change and returns the qualified references of the old and the new revision.
           def write(change)
             key = key_of(change.intent)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id).write(*key, change.body)
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id, clock: @clock).write(*key, change.body)
             write_title(key.first, change.line)
             [change.history, uri(key)]
           end
@@ -46,7 +47,7 @@ module Plastic
 
           def write_title(intent_id, title)
             @databases.fetch(:store).transaction do |batch|
-              batch.write(:intents, TITLE_SQL, title:, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
+              batch.write(:intents, TITLE_SQL, title:, intent_id:, origin: @retrieval.origin_id, now: Plastic.timestamp(@clock.now))
             end
           end
         end

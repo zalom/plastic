@@ -12,7 +12,7 @@ class KnowledgeArchiveRestoreTest < Plastic::TestCase
     @graphs = store_graphs
   end
 
-  def writer = Archive::Writer.new(@graphs.databases, @graphs.retrieval, folder)
+  def writer = Archive::Writer.new(@graphs.databases, @graphs.retrieval, folder, clock: FixedClock::CLOCK)
 
   def snapshot(intent_id) = Archive::Snapshot.new(@graphs.databases.fetch(:store), intent_id, @graphs.retrieval.origin_id)
 

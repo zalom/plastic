@@ -9,7 +9,7 @@ class KnowledgeArchiveLocationTest < Plastic::TestCase
     @intent = open_intent("Location", status: "future")
     graphs = store_graphs
     @database = graphs.databases.fetch(:store)
-    @writer = Plastic::Graph::Knowledge::Archive::Writer.new(graphs.databases, graphs.retrieval, folder, session: "archive-test")
+    @writer = Plastic::Graph::Knowledge::Archive::Writer.new(graphs.databases, graphs.retrieval, folder, session: "archive-test", clock: FixedClock::CLOCK)
   end
 
   def test_archive_refuses_an_intent_path_with_parent_traversal

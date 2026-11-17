@@ -68,7 +68,7 @@ class PrintsTest < Plastic::TestCase
     sha = Digest::SHA256.hexdigest("x\n")
 
     assert_equal [sha, "x\n", true, false], [print.sha256, print.text, print.recorded?({ "a.md" => sha }), print.recorded?({})]
-    assert_equal %i[path sha256 at], print.printed_row.keys
+    assert_equal %i[path sha256 at], print.printed_row(FixedClock::AT).keys
   end
 
   def test_a_print_is_level_once_written

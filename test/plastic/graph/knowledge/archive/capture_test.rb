@@ -11,7 +11,7 @@ class KnowledgeArchiveCaptureTest < Plastic::TestCase
     @intent = open_intent("Target", status: "future")
   end
 
-  def capture = Archive::Capture.new(store_graphs.databases.fetch(:store), folder, retrieval.origin_id, session: "s-1")
+  def capture = Archive::Capture.new(store_graphs.databases.fetch(:store), folder, retrieval.origin_id, session: "s-1", clock: FixedClock::CLOCK)
 
   def test_capture_keeps_the_snapshot_and_marks_the_intent_archived
     capture.capture(@intent)

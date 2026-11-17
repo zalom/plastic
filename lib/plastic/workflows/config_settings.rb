@@ -29,7 +29,7 @@ module Plastic
 
       private
 
-      def config = (@config ||= Plastic::Config.new(@context.scope.plastic_home, harness: @context.harness))
+      def config = (@config ||= Plastic::Config.new(@context.scope.plastic_home, harness: @context.harness, clock: @context.clock))
     end
   end
 end

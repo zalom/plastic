@@ -14,14 +14,15 @@ module Plastic
         class IndexFile
           # `dirs` are the intent folders on disk. An entry with no folder is broken data and gets no row; nil keeps every entry.
           # `rows` are the intents of this home by intent id, for an index that another home printed.
-          def initialize(text, origin_id, dirs = nil, rows = {})
+          def initialize(text, origin_id, dirs = nil, rows = {}, clock:)
             @data = JSON.parse(text.force_encoding(Encoding::UTF_8))
             @origin_id = origin_id
             @dirs = dirs
             @rows = rows
+            @clock = clock
           end
 
-          def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
+          def self.intent_row(entry, updated_at) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at:)
 
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
@@ -32,7 +33,7 @@ module Plastic
 
           private
 
-          def intents = foreign? ? crossing : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry) }
+          def intents = foreign? ? crossing : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry, Plastic.timestamp(@clock.now)) }
 
           def foreign? = !object["origin_id"].nil? && object["origin_id"] != @origin_id
 
@@ -44,8 +45,10 @@ module Plastic
             return unless row&.origin_id == @origin_id
 
             fields = Intent::CROSSING_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]))
-            row.new_row.merge(fields, updated_at: Plastic.now) unless fields.all? { |field, value| row.public_send(field) == value }
+            row.new_row.merge(fields, updated_at: stamp) unless fields.all? { |field, value| row.public_send(field) == value }
           end
+
+          def stamp = Plastic.timestamp(@clock.now)
 
           def housed(entries) = @dirs ? entries.select { |entry| housed?(entry["intent_id"]) } : entries
 

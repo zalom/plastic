@@ -28,14 +28,15 @@ module Plastic
     class Installer
       LEDGER_ACTIONS = { install: "install", update: "reinstall" }.freeze
 
-      attr_reader :package_root, :plastic_home
+      attr_reader :package_root, :plastic_home, :clock
 
-      def initialize(package_root:, plastic_home:, version: nil, agents: AgentSet::DEFAULTS, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
+      def initialize(package_root:, plastic_home:, version: nil, clock: Time, **seams)
         @package_root = package_root
         @plastic_home = plastic_home
         @version = version
-        @agents = AgentSet.new(agents)
-        @tmp_dirs = tmp_dirs
+        @clock = clock
+        @agents = AgentSet.new(seams.fetch(:agents, AgentSet::DEFAULTS))
+        @distribution = seams.except(:agents)
       end
 
       def version = @version ||= PackageVersion.new(package_root).call
@@ -67,7 +68,7 @@ module Plastic
 
       private
 
-      def package = Package.new(package_root, plastic_home, version)
+      def package = Package.new(package_root, plastic_home, version, clock)
 
       def sync(selected, statusline)
         results = selected.map { |key| AgentRun.new(@agents, package, statusline).call(key) }
@@ -76,7 +77,7 @@ module Plastic
       end
 
       def prepare(kind)
-        Distribution.new(package, tmp_dirs: @tmp_dirs).call(kind)
+        Distribution.new(package, **@distribution).call(kind)
         prepare_config_import
         migrate_databases
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
@@ -85,7 +86,7 @@ module Plastic
 
       def print_config
         Doctor::HomeIgnore.new(plastic_home).check
-        line = Config::Store.new(plastic_home).print_once
+        line = Config::Store.new(plastic_home, clock:).print_once
         puts "   #{line}" if line
       end
 
@@ -97,7 +98,7 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home).call.failed.each do |slug, reason|
+        Graph::SchemaRunner.new(home: plastic_home, now: clock.now).call.failed.each do |slug, reason|
           puts "   #{Workflows::SchemaMigration.line(slug, reason)}"
         end
       end
@@ -112,7 +113,7 @@ module Plastic
 
       def log(results, action)
         synced = results.filter_map { |result| result[:key] if result[:success] }
-        Ledger.new(plastic_home).append_run(version, action, synced)
+        Ledger.new(plastic_home, clock:).append_run(version, action, synced)
       end
     end
   end

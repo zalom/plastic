@@ -110,7 +110,7 @@ module Plastic
     # The open command run for this tool and subject, or a new one.
     def open_command_run
       found = graphs.retrieval.command_run(words, subject) if keeps_command_run?
-      found&.open? ? found : CommandRun.fresh(words, subject)
+      found&.open? ? found : CommandRun.fresh(words, subject, environment.now)
     end
 
     # The subject arguments of this call, joined, or nil when none is set.

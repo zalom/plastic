@@ -9,15 +9,16 @@ module Plastic
         # Writes the next judge round of an intent. Returns the new row, or
         # nil when both rounds are already used.
         class Writer
-          def initialize(databases, retrieval, session: nil)
+          def initialize(databases, retrieval, clock:, session: nil)
             @databases = databases
             @retrieval = retrieval
             @session = session
+            @clock = clock
           end
 
-          def add_verdict(intent_id:, at: Plastic.now, **fields)
+          def add_verdict(intent_id:, **fields)
             round = @retrieval.verdicts(intent_id).size + 1
-            insert({ intent_id:, round:, at:, session_id: @session, **fields }) unless round > Verdict::ROUNDS
+            insert({ intent_id:, round:, at: Plastic.timestamp(@clock.now), session_id: @session, **fields }) unless round > Verdict::ROUNDS
           end
 
           def rounds_left?(intent_id) = @retrieval.verdicts(intent_id).size < Verdict::ROUNDS

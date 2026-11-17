@@ -44,7 +44,7 @@ class DocumentBatchTest < Plastic::TestCase
 
   def write_document(store, intent_id, path, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write(intent_id, path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write(intent_id, path, body)
     graphs.retrieval.repair
     graphs.retrieval.reference(intent_id, path).fetch(:uri)
   end

@@ -24,9 +24,9 @@ module Plastic
 
           private
 
-          def write_decisions(decisions) = Decisions.new.write_decisions(@graphs.databases, decisions, @counts)
+          def write_decisions(decisions) = Decisions.new(clock: @graphs.retrieval.clock).write_decisions(@graphs.databases, decisions, @counts)
 
-          def keep_originals(originals) = Originals.new(@graphs.databases, @counts).keep_changed_originals(@folder, originals)
+          def keep_originals(originals) = Originals.new(@graphs.databases, @counts, clock: @graphs.retrieval.clock).keep_changed_originals(@folder, originals)
         end
       end
     end

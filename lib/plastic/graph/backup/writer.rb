@@ -68,11 +68,13 @@ module Plastic
 
         def folders = (@folders ||= Folders.new(@root))
 
+        def stamp = Plastic.timestamp(@now)
+
         # The lowest version of the live files; each check is recorded for the doctor.
         def verified(check)
-          check.version.tap { folders.write_check(at: Plastic.now(@now), verdict: "passed") }
+          check.version.tap { folders.write_check(at: stamp, verdict: "passed") }
         rescue SourceCheck::Unreadable => error
-          folders.write_check(at: Plastic.now(@now), verdict: "failed", file: File.basename(error.path), reason: error.message)
+          folders.write_check(at: stamp, verdict: "failed", file: File.basename(error.path), reason: error.message)
           raise
         end
 
@@ -107,7 +109,7 @@ module Plastic
 
         def row(folder)
           { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),
-            sha256: folders.digest(folder), at: Plastic.now(@now) }
+            sha256: folders.digest(folder), at: stamp }
         end
       end
     end

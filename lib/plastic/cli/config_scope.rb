@@ -16,7 +16,7 @@ module Plastic
 
       private
 
-      def config = (@config ||= Plastic::Config.new(scope.plastic_home, harness: parsed[:harness]))
+      def config = (@config ||= Plastic::Config.new(scope.plastic_home, harness: parsed[:harness], clock: environment.clock))
 
       def harness_words = parsed[:harness].then { |name| name ? " --harness #{name}" : "" }
     end

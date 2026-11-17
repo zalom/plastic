@@ -35,8 +35,9 @@ module Plastic
       UPSERT = 'INSERT OR REPLACE INTO "settings"("scope", "key", "value") VALUES (:scope, :key, :value)'
       RECORD = 'INSERT OR REPLACE INTO "printed"("path", "sha256", "at", "origin_id") VALUES (:path, :sha256, :at, :origin_id)'
 
-      def initialize(home)
+      def initialize(home, clock: Time)
         @home = home
+        @clock = clock
         @path = File.join(home, FILE)
         @rows = Rows.new(home)
       end
@@ -56,7 +57,7 @@ module Plastic
       def print
         text = document
         File.write(@path, text)
-        local.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.now, origin_id: Graph::Origin.new(@home).id) }
+        local.transaction { |batch| batch.add(RECORD, path: FILE, sha256: Digest::SHA256.hexdigest(text), at: Plastic.timestamp(@clock.now), origin_id: Graph::Origin.new(@home).id) }
       end
 
       def print_once
@@ -101,7 +102,7 @@ module Plastic
         return unless File.file?(@path)
 
         FileUtils.mkdir_p(File.join(@home, "backups"))
-        FileUtils.cp(@path, File.join(@home, "backups", "config-#{Time.now.utc.strftime("%Y%m%d%H%M%S")}.yml"))
+        FileUtils.cp(@path, File.join(@home, "backups", "config-#{@clock.now.utc.strftime("%Y%m%d%H%M%S")}.yml"))
       end
 
       def local = Graph::Database.open_local(@home).fetch(:local)

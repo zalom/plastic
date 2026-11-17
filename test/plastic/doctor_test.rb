@@ -65,26 +65,26 @@ class DoctorTest < Plastic::TestCase
   end
 
   def test_a_registered_harness_that_declares_no_doctor_gets_the_core_checks_alone
-    checks = Plastic::Doctor.check(scope, harness: "hermes")
+    checks = Plastic::Doctor.check(scope, harness: "hermes", now: FixedClock::AT)
 
-    assert_equal Plastic::Doctor::Core.new(scope, running: RUNNING).checks.map(&:label), checks.map(&:label)
+    assert_equal Plastic::Doctor::Core.new(scope, running: RUNNING, now: FixedClock::AT).checks.map(&:label), checks.map(&:label)
   end
 
   def test_a_module_passed_beside_claude_code_is_found_by_name
     kind = Plastic::Doctor.kind("other", Plastic::Doctor::HARNESSES.merge("other" => Other))
-    checks = Plastic::Doctor.checks(scope, kind, running: RUNNING)
+    checks = Plastic::Doctor.checks(scope, kind, running: RUNNING, now: FixedClock::AT)
 
     assert_equal ["other:", "ok, #{RUNNING}"], checks.last.to_a.first(2)
   end
 
   def test_the_core_checks_come_first_for_every_harness
-    checks = Plastic::Doctor.checks(scope, Plastic::Doctor.kind("claude-code"), running: RUNNING)
+    checks = Plastic::Doctor.checks(scope, Plastic::Doctor.kind("claude-code"), running: RUNNING, now: FixedClock::AT)
 
     assert_equal "version:", checks.first.label
   end
 
   def test_a_broken_home_names_repair_commands_and_never_plastic_next
-    repairs = Plastic::Doctor.check(scope, harness: "claude-code").filter_map(&:repair).uniq
+    repairs = Plastic::Doctor.check(scope, harness: "claude-code", now: FixedClock::AT).filter_map(&:repair).uniq
 
     refute_empty repairs
     refute(repairs.any? { |repair| repair.include?("plastic next") })

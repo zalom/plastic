@@ -6,7 +6,7 @@ require_relative "../../../../../lib/plastic/graph/knowledge/archive/writer"
 class KnowledgeArchiveSnapshotIndexTest < Plastic::TestCase
   def index(entries)
     graphs = store_graphs
-    Plastic::Graph::Knowledge::Archive::SnapshotIndex.new(graphs.databases.fetch(:store), graphs.retrieval.origin_id).index("1", entries)
+    Plastic::Graph::Knowledge::Archive::SnapshotIndex.new(graphs.databases.fetch(:store), graphs.retrieval.origin_id, clock: FixedClock::CLOCK).index("1", entries)
   end
 
   def entry(path, kind: "file", data: "# Notes\n") = { path:, kind:, data: data&.b }

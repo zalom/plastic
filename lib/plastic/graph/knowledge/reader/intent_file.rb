@@ -27,11 +27,12 @@ module Plastic
           KEPT_MODE = 0o100644
           KINDS = { "graph.json" => :graph, "context.json" => :context, "work.log" => :work_log, "savepoint.md" => :savepoint }.freeze
 
-          def initialize(file, intent_id, writer:, retrieval: nil)
+          def initialize(file, intent_id, writer:, clock:, retrieval: nil)
             @file = file
             @intent_id = intent_id
             @writer = writer
             @retrieval = retrieval
+            @clock = clock
           end
 
           def apply(batch)
@@ -63,7 +64,7 @@ module Plastic
 
           # The rows of this home replace the rows of the file; the rows of another origin stay.
           def context(batch)
-            rows = ContextFile.new(text, @intent_id, @file.path).rows
+            rows = ContextFile.new(text, @intent_id, @file.path, clock: @clock).rows
             ContextFile::TABLES.each_value { |table| batch.remove(table, intent_id: @intent_id) }
             rows.each { |table, row| batch.put(table, row) }
           end
@@ -96,7 +97,7 @@ module Plastic
           # The row replaces the document, head and search rows the path held before it was legacy.
           def legacy(batch)
             rel = @file.rel
-            batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: Plastic.now })
+            batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: Plastic.timestamp(@clock.now) })
             Retrieval::Evidence::Removal.new(batch, origin_id).remove(@intent_id, rel)
           end
 

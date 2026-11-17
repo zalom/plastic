@@ -10,9 +10,10 @@ module Plastic
         # another, an intent id, a ruling ref such as `1/D1`, or a ref with a
         # store prefix such as `global:25`, kept as written.
         class Writer
-          def initialize(databases, retrieval)
+          def initialize(databases, retrieval, clock:)
             @databases = databases
             @retrieval = retrieval
+            @clock = clock
           end
 
           # Why `id` cannot link to `target`, or nil: a missing id or a local
@@ -33,7 +34,7 @@ module Plastic
 
           def add_link(from_ref:, to_ref:, kind:)
             @databases.fetch(:store).transaction do |batch|
-              batch.put(:links, { from_ref:, to_ref:, kind:, at: Plastic.now }, statement: :insert)
+              batch.put(:links, { from_ref:, to_ref:, kind:, at: Plastic.timestamp(@clock.now) }, statement: :insert)
             end
             true
           end

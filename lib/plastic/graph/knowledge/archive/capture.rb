@@ -8,11 +8,12 @@ module Plastic
       class Archive
         # Persists an intent directory snapshot before any archive removal begins.
         class Capture
-          def initialize(database, folder, origin_id, session:)
+          def initialize(database, folder, origin_id, session:, clock:)
             @database = database
             @folder = folder
             @origin_id = origin_id
             @session = session
+            @clock = clock
           end
 
           def capture(intent)
@@ -33,7 +34,7 @@ module Plastic
             end
           end
 
-          def archive_row(intent) = { intent_id: intent.intent_id, at: Plastic.now, restored_at: nil, session_id: session }
+          def archive_row(intent) = { intent_id: intent.intent_id, at: Plastic.timestamp(@clock.now), restored_at: nil, session_id: session }
 
           def root(intent) = Location.root(folder, intent)
 
