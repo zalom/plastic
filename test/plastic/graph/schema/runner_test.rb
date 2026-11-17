@@ -17,15 +17,6 @@ class SchemaRunnerTest < Plastic::TestCase
 
   def store_files(home, slug = "alpha") = Dir.glob(File.join(home, "stores", slug, "*.db")).sort
 
-  LEFTOVERS = { "work_graph.db" => %w[changes printed work_log_write_id], "knowledge_graph.db" => %w[changes work_log_pending] }.freeze
-
-  def layouts(home)
-    database_files(home).to_h do |path|
-      kept = layout_of(path).reject { |_type, name, _sql| LEFTOVERS.fetch(File.basename(path), []).include?(name) }
-      [path.delete_prefix(home), kept.map { |type, name, sql| [type, name, sql.to_s.sub(%(, "write_id" TEXT), "")] }]
-    end
-  end
-
   def intent_status(home, slug)
     path = store_files(home, slug).find { |file| layout_of(file).any? { |_type, name, _sql| name == "intents" } }
     SQLite3::Database.new(path, readonly: true).get_first_value("SELECT status FROM intents WHERE intent_id = '7'")

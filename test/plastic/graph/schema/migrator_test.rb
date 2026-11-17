@@ -2,6 +2,7 @@
 
 require "tmpdir"
 require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/schema/migrator"
 
 class SchemaMigratorTest < Plastic::TestCase
   Migrator = Plastic::Graph::SchemaMigrator

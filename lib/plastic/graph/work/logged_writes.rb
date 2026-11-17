@@ -91,11 +91,11 @@ module Plastic
 
         def recorded(&) = store.atomically(&)
 
-        def line(intent_id, kind, text, node: "", path: "", body: nil)
+        def line(intent_id, kind, text, **parts)
           top = store.row(TOP_SQL, intent_id:).fetch("top")
           store.transaction do |batch|
-            batch.put(:work_log, { intent_id:, position: top + 1, at: Plastic.now, phase: "", node:, session_id: @writers.session, kind:, path:,
-                                   sha256: body ? Digest::SHA256.hexdigest(body) : "", text:, origin_id: @writers.retrieval.origin_id })
+            batch.put(:work_log, { intent_id:, position: top + 1, at: Plastic.now, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:, path: parts.fetch(:path, ""),
+                                   sha256: parts[:body] ? Digest::SHA256.hexdigest(parts[:body]) : "", text:, origin_id: @writers.retrieval.origin_id })
           end
         end
 
