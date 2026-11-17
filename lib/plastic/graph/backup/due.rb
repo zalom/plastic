@@ -30,7 +30,7 @@ module Plastic
         end
 
         def call(reason)
-          return Result.new(:missing, nil, nil) unless File.directory?(@root)
+          return Result.new(:missing, nil, nil) if Dir.glob(File.join(@root, "*.db")).empty?
           return Result.new(:fresh, nil, nil) unless stale?
 
           row = Writer.new(@root, @slug, now: @now, automatic: true, reason:).call

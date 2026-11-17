@@ -59,6 +59,13 @@ class GraphBackupDueTest < Plastic::TestCase
 
     assert_equal :missing, due(home, SEEDED, slug: "nowhere").call("session start").status
   end
+
+  def test_a_store_folder_with_no_database_takes_none
+    home = fresh_home
+    FileUtils.mkdir_p(File.join(home, "stores", "bare"))
+
+    assert_equal :missing, due(home, SEEDED, slug: "bare").call("session start").status
+  end
 end
 
 # The purge of backups older than three days runs after an automatic backup is taken.

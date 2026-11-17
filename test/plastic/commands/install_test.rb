@@ -86,6 +86,7 @@ end
 
 class InstallReinstallHarnessesTest < Plastic::TestCase
   include InstallerHelper
+  include OwnHome
 
   def test_a_reinstall_syncs_the_installed_harnesses
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
@@ -110,6 +111,7 @@ end
 
 class InstallReinstallRecordTest < Plastic::TestCase
   include InstallerHelper
+  include OwnHome
 
   def test_a_reinstall_writes_the_record_of_a_harness_installed_before_records
     claude_folder
@@ -123,6 +125,7 @@ end
 
 class InstallReinstallTest < Plastic::TestCase
   include InstallerHelper
+  include OwnHome
 
   def test_a_reinstall_that_changes_nothing_reports_no_removed_hook_and_makes_no_offer
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
