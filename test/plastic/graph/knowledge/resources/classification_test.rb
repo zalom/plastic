@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/knowledge/resources/classification"
 
 class ResourcesClassificationTest < Plastic::TestCase
   Classification = Plastic::Graph::Knowledge::Resources::Classification

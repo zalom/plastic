@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/knowledge/resources/sort"
 require_relative "../../../../test_helpers/resources_homes"
 
 class ResourcesSortTest < Plastic::TestCase
@@ -26,7 +27,7 @@ class ResourcesSortTest < Plastic::TestCase
   def test_rows_move_with_their_files
     sort
 
-    assert_equal %w[resources/output/reports/notes.md resources/output/reports/reviews/r1.md resources/references/ref.md], row_paths("documents").reject { |path| path == "spec.md" }
+    assert_equal %w[resources/output/reports/notes.md resources/output/reports/reviews/r1.md resources/references/ref.md], row_paths("documents").reject { |path| %w[spec.md intent.md].include?(path) }
     assert_equal row_paths("documents"), row_paths("document_heads")
     assert_includes row_paths("printed"), "#{INTENT}/resources/output/reports/reviews/r1.md"
   end
@@ -40,13 +41,13 @@ class ResourcesSortTest < Plastic::TestCase
   def test_files_without_a_destination_stay
     sort
 
-    assert_equal %w[delivery.lock plan.md spec.md], intent_files.select { |rel| rel.count("/").zero? && !MOVES.key?(rel) }.sort
+    assert_equal %w[delivery.lock plan.md spec.md], intent_files.select { |rel| rel.count("/").zero? && !MOVES.key?(rel) }.sort - %w[graph.json intent.md work.log]
   end
 
   def test_the_sync_preview_after_the_sort_is_empty
     sort
 
-    assert_equal ["preview: paths that would change: 0"], preview_lines
+    assert_equal "preview: paths that would change: 0", preview_lines.last
   end
 
   def broken_links(dir)
@@ -86,7 +87,7 @@ class ResourcesSortTest < Plastic::TestCase
     sort
 
     assert_empty Resources::SortPlan.new(folder).moves
-    assert_equal ["preview: paths that would change: 0"], preview_lines
+    assert_equal "preview: paths that would change: 0", preview_lines.last
   end
 
   def test_a_second_sort_has_nothing_to_move

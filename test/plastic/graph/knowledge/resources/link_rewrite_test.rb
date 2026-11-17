@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/knowledge/resources/link_rewrite"
 
 class ResourcesLinkRewriteTest < Plastic::TestCase
   LinkRewrite = Plastic::Graph::Knowledge::Resources::LinkRewrite

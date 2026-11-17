@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/knowledge/resources/sort"
 require_relative "../../../../test_helpers/resources_homes"
 
 class ResourcesSortPlanTest < Plastic::TestCase

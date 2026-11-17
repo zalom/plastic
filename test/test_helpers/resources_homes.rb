@@ -34,10 +34,10 @@ module ResourcesHomes
   def hold_rows(rel, body)
     sha = Digest::SHA256.hexdigest(body)
     store_database.transaction do |batch|
-      batch.put(:documents, { intent_id: "1", path: rel, body:, updated_at: STAMP })
-      batch.put(:document_heads, { intent_id: "1", path: rel, sha256: sha, updated_at: STAMP })
-      batch.put(:document_revisions, { sha256: sha, intent_id: "1", path: rel, body:, created_at: STAMP })
-      batch.put(:printed, { path: "#{INTENT}/#{rel}", sha256: sha, at: STAMP })
+      batch.put(:documents, { intent_id: "1", path: rel, body:, updated_at: Plastic::TestCase::STAMP })
+      batch.put(:document_heads, { intent_id: "1", path: rel, sha256: sha, updated_at: Plastic::TestCase::STAMP })
+      batch.put(:document_revisions, { sha256: sha, intent_id: "1", path: rel, body:, created_at: Plastic::TestCase::STAMP })
+      batch.put(:printed, { path: "#{INTENT}/#{rel}", sha256: sha, at: Plastic::TestCase::STAMP })
     end
   end
 
