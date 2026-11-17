@@ -5,9 +5,9 @@ require_relative "check"
 module Plastic
   module Doctor
     # The home keeps its databases out of version control: this adds the
-    # `*.db` line to the home's .gitignore when it is missing, once.
+    # `*.db` and `*.db-*` lines (the databases and their journal, wal and shm files) to the home's .gitignore when they are missing, once.
     class HomeIgnore
-      LINE = "*.db"
+      LINES = ["*.db", "*.db-*"].freeze
 
       def initialize(home)
         @file = File.join(home, ".gitignore")
@@ -15,15 +15,16 @@ module Plastic
 
       def check
         added = add
-        Check.ok(".gitignore:", added ? "#{LINE} added" : "#{LINE} listed")
+        Check.ok(".gitignore:", "#{LINES.join(" ")} #{added ? "added" : "listed"}")
       end
 
       private
 
       def add
-        return false if lines.include?(LINE)
+        missing = LINES - lines
+        return false if missing.empty?
 
-        File.write(@file, "#{ensure_newline if File.exist?(@file)}#{LINE}\n")
+        File.write(@file, "#{ensure_newline if File.exist?(@file)}#{missing.join("\n")}\n")
         true
       end
 
