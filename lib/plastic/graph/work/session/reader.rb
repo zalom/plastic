@@ -9,7 +9,7 @@ module Plastic
     module Work
       class Session
         # The read side of the local database's `sessions` and `command_runs`
-        # tables for one store, and the savepoint lines a session wrote.
+        # tables for one store, and the work log lines a session wrote.
         class Reader
           PREDECESSOR_SQL = <<~SQL
             SELECT * FROM sessions

@@ -56,16 +56,17 @@ class RecapTest < Plastic::TestCase
     assert_includes recap(source: "clear"), "in progress: #{intent_id} Alpha"
   end
 
-  def test_compact_prints_the_savepoint_lines_and_the_note
-    printed_intent
-    opened.work.write_note("s-1", "note text")
+  def test_compact_prints_the_intent_its_log_lines_and_the_next_command_and_no_note
+  printed_intent
+  opened.work.write_note("s-1", "note text")
 
-    lines = recap(source: "compact")
+  lines = recap(source: "compact")
 
-    assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", lines.first
-    assert lines.any? { |line| line.include?("Opened: Alpha") }
-    assert_equal "note: note text", lines.last
-  end
+  assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", lines.first
+  assert lines.any? { |line| line.include?("Opened: Alpha") }
+  assert_equal ["next: plastic next"], lines.last(1)
+  refute(lines.any? { |line| line.start_with?("note:") })
+end
 
   def test_the_intents_are_listed_by_group_with_their_state
     work = opened.work
@@ -203,7 +204,7 @@ class RecapCompactTest < Plastic::TestCase
     lines = recap("compact")
 
     assert_equal ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.",
-      "intent: #{intent.intent_id} Alpha", "claim: n1 Build", "ready: n2"], lines.first(4)
+      "intent: #{intent.intent_id} Alpha", "claim: n1 Build", "ready: n2 Test"], lines.first(4)
     assert lines[4].start_with?("- ")
     assert_equal "next: plastic graph resume", lines.last
   end

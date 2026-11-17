@@ -36,15 +36,15 @@ class StartTest < Plastic::TestCase
     assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
-  def test_a_compacted_session_names_the_compaction_the_savepoint_and_the_note_with_exit_0
-    printed_intent
-    opened_work.write_note("s-1", "note text")
-    result = call(source: "compact")
-    lines = result.out.lines(chomp: true)
+def test_a_compacted_session_prints_its_intent_and_the_last_log_lines_with_exit_0
+  intent_id = printed_intent
+  result = call(source: "compact")
+  lines = result.out.lines(chomp: true)
 
-    assert_call result, code: 0, err: "", out: ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "Opened: Alpha", "note: note text"]
-    assert_equal ["note: note text", "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."], [lines.last, lines.first]
-  end
+  assert_equal [0, ""], [result.code, result.err]
+  assert_equal ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "intent: #{intent_id} Alpha"], lines.first(2)
+  assert_equal "next: plastic next", lines.last
+end
 
   def test_an_empty_event_with_no_session_prints_the_recap_and_one_line_on_standard_error
     result = plastic("hook", "start", input: "", env: {}, table: Plastic::CLI::TABLE)

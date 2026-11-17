@@ -5,7 +5,7 @@ module Plastic
     module Work
       class Session
         # Intent ids one session touched, most recent first: command runs of
-        # the store with the session id, and savepoint lines with the session
+        # the store with the session id, and work log lines with the session
         # id (review A6: a line sync up rewrote from the file carries no
         # session, so it never counts here).
         class Touched
@@ -16,7 +16,7 @@ module Plastic
             FROM command_runs WHERE store = :store AND session_id = :session_id
           SQL
 
-          SAVES_SQL = "SELECT at, intent_id FROM savepoints WHERE origin_id = :origin AND session_id = :session_id"
+          SAVES_SQL = "SELECT at, intent_id FROM work_log WHERE origin_id = :origin AND session_id = :session_id"
 
           def self.latest_first(rows)
             pairs = rows.filter_map { |row| row.values_at("at", "intent_id") if row["intent_id"] }

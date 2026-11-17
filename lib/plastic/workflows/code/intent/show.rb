@@ -9,7 +9,7 @@ module Plastic
     module Code
       module Intent
         # Prints one intent's status, criteria count, open decisions, rulings,
-        # nodes and last savepoint lines; refuses an unknown id.
+        # nodes and last work log lines; refuses an unknown id.
         class Show < CodeWorkflow
           clear_declarations
 
@@ -26,7 +26,7 @@ module Plastic
             print_spec(context)
             print_rulings(context)
             print_nodes(context)
-            print_savepoints(context)
+            print_log(context)
           end
 
           def self.print_spec(context)
@@ -43,8 +43,8 @@ module Plastic
             context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
           end
 
-          def self.print_savepoints(context)
-            context.retrieval.savepoints(context.intent_id).last(3).each { |savepoint| context.print("savepoint: #{savepoint.line}") }
+          def self.print_log(context)
+            context.retrieval.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.line}") }
           end
 
           outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is shown"
