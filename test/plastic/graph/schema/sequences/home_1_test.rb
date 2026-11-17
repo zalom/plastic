@@ -11,7 +11,7 @@ class SchemaHome1Test < Plastic::TestCase
 
   PINNED = "f183f41fb12cac387148aa5f0fc4698e6b88f400bf2b2ff361210a44946eba67"
 
-  def migrate(database) = Sequences.migrate(database, Sequences::SEQUENCES.fetch(:home), :local)
+  def migrate(database) = Sequences.migrate(database, Sequences::SEQUENCES.fetch(:home).first(1), :local)
 
   def test_the_text_of_the_landed_migration_is_pinned_by_its_digest
     assert_equal PINNED, Digest::SHA256.hexdigest(Home1.texts.join("\n--\n"))
