@@ -161,6 +161,14 @@ class DoctorHomeFilesTest < Plastic::TestCase
     assert_equal ["#{File.join(@plastic_home, "local.db")} is left beside plastic.db", "move local.db out of #{@plastic_home}; plastic update keeps a copy of it in backups/"], [found.value, found.repair]
   end
 
+  def test_a_local_db_with_no_plastic_db_is_a_finding_that_names_plastic_update
+    File.write(File.join(@plastic_home, "local.db"), "not migrated")
+    File.delete(File.join(@plastic_home, "plastic.db"))
+    found = check("local.db:")
+
+    assert_equal ["#{File.join(@plastic_home, "local.db")} is not migrated", "plastic update"], [found.value, found.repair]
+  end
+
   def test_a_home_with_no_local_db_has_no_local_db_check
     assert_nil check("local.db:")
   end
