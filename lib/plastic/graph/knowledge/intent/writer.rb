@@ -9,8 +9,8 @@ module Plastic
   module Graph
     module Knowledge
       class Intent
-        # Writes one new intent: its row, its first savepoint line and its own
-        # file, each in the transaction of the database that owns it. The id is
+        # Writes one new intent: its row and its own file, each in
+        # the transaction of the database that owns it. The id is
         # the next free Luhmann id, a root or the next child of `parent_id`.
         class Writer
           def initialize(databases, retrieval, folder, session: nil)
@@ -81,7 +81,6 @@ module Plastic
           def write_rows(intent)
             @databases.fetch(:work).transaction do |batch|
               batch.put(:intents, intent.new_row, statement: :insert)
-              batch.put(:savepoints, intent.first_savepoint(@session))
             end
             write_document(intent)
           end

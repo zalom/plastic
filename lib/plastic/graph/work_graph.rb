@@ -7,6 +7,7 @@ require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
 require_relative "work/writers"
+require_relative "work/logged_writes"
 require_relative "knowledge/intent/noter"
 
 module Plastic
@@ -24,17 +25,12 @@ module Plastic
       def_delegator "@writers.intents", :problem, :intent_problem
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
-      def_delegator "@writers.revisions", :write, :revise_intent
       def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
-      def_delegator :noter, :write, :note_intent
-      def_delegator "@writers.completions", :close, :close_intent
-      def_delegator "@writers.completions", :abandon, :abandon_intent
-      def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
-        :ask_node, :impede_node, :resolve_node, :renew_claims
-      def_delegator "@writers.approvals", :approve, :approve_intent
-      def_delegators "@writers.verdicts", :add_verdict, :rounds_left?
+      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :repair_log, :add_ruling, :add_verdict, :revise_intent,
+        :note_intent, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node
+      def_delegators "@writers.nodes", :add_node, :remove_node, :renew_claims
+      def_delegators "@writers.verdicts", :rounds_left?
       def_delegators "@writers.edges", :add_edge, :remove_edge
-      def_delegators "@writers.rulings", :add_ruling
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal
@@ -51,6 +47,7 @@ module Plastic
         @folder = folder
         @retrieval = retrieval
         @writers = Work::Writers.new(databases, retrieval, folder, session, clock)
+        @logged = Work::LoggedWrites.new(@writers)
       end
 
       # A command run is call memory, kept off the report.
@@ -66,7 +63,7 @@ module Plastic
 
       def write_intent(**intent)
         @folder.ignore_databases
-        @writers.intents.write(**intent)
+        @logged.write_intent(**intent)
       end
 
       # Prints store/index.json and every file of one intent; returns the paths written.
@@ -97,8 +94,6 @@ module Plastic
 
       # The paths this call printed, relative to the store folder.
       def printed = @writers.sync.printer.written
-
-      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
 
       def preview_sync(options, direction: :up)
         Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).preview

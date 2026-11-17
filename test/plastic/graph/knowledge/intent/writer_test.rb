@@ -65,17 +65,10 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     assert_equal first.opened_at, first.updated_at
   end
 
-  def test_write_adds_the_first_savepoint_line_and_the_own_file
+  def test_write_adds_the_own_file_and_no_log_line
     writer.write(title: "Alpha")
 
-    assert_equal ["Opened: Alpha"], retrieval.savepoints("1").map(&:text)
-    assert_equal ["intent.md"], retrieval.documents("1").map(&:path)
-  end
-
-  def test_write_carries_the_session_onto_the_first_savepoint_line
-    writer(session: "s-1").write(title: "Alpha")
-
-    assert_equal "s-1", retrieval.savepoints("1").first.session_id
+    assert_equal [["intent.md"], []], [retrieval.documents("1").map(&:path), retrieval.work_log("1")]
   end
 
   def test_the_ref_line_says_what_a_ref_names

@@ -50,9 +50,10 @@ class WorkLogTest < Plastic::TestCase
 
   def test_abandoning_appends_an_abandoned_line
     intent
+    work.note_intent(work_intent, "note", "why it ends")
     work.abandon_intent("1")
 
-    assert_equal %w[opened abandoned], kinds
+    assert_equal %w[opened noted abandoned], kinds
   end
 
   def test_a_note_appends_a_line_with_the_path_and_the_full_hash_of_the_document
@@ -119,11 +120,12 @@ class WorkLogTest < Plastic::TestCase
 
   def test_the_next_write_adds_the_missing_closing_line_once
     intent
+    work.note_intent(work_intent, "note", "why it ends")
     work.abandon_intent("1")
-    graphs.databases.fetch(:work).transaction { |batch| batch.remove(:work_log, intent_id: "1", position: 2) }
+    graphs.databases.fetch(:work).transaction { |batch| batch.remove(:work_log, intent_id: "1", position: 3) }
     work.repair_log("1")
 
-    assert_equal %w[opened abandoned], kinds
+    assert_equal %w[opened noted abandoned], kinds
   end
 
   def test_an_intent_converted_from_savepoints_is_not_given_an_opened_line
