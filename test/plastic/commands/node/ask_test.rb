@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 
 class NodeAskTest < Plastic::TestCase
-  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
+  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
   def setup
     super

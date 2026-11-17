@@ -4,11 +4,11 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/delivery_ownership"
 
 class WorkflowDeliveryOwnershipTest < Plastic::TestCase
-  Context = Data.define(:retrieval, :intent_id, :session)
+  Context = Data.define(:retrieval, :intent_id, :session, :now)
 
   NOW = Time.parse(STAMP)
 
-  def problem(session: "s-1", now: NOW) = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session), now:)
+  def problem(session: "s-1", now: NOW) = Plastic::Workflows::DeliveryOwnership.problem(Context.new(retrieval, "1", session, now))
 
   def claim(session_id)
     open_intent

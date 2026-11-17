@@ -120,7 +120,7 @@ class SchemaStore1IntentsTest < Plastic::TestCase
   def test_the_migration_stamps_the_database_with_its_number
     migrate
 
-    assert_equal 1, @database.get_first_value("PRAGMA user_version")
+    assert_equal Sequences.newest(:store), @database.get_first_value("PRAGMA user_version")
   end
 end
 

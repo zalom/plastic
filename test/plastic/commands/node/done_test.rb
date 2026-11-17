@@ -69,12 +69,12 @@ class NodeDoneTest < Plastic::TestCase
     assert_equal "claimed", retrieval.node("1", "n1").state
   end
 
-  def test_a_second_call_replaces_the_findings_of_a_done_node
+  def test_a_second_call_by_the_holder_exits_zero_and_keeps_the_findings_of_the_first
     cli("node", "done", "1", "n1", "first")
 
     result = cli("node", "done", "1", "n1", "Rechecked the target")
 
     assert_call result, code: 0, out: ["node: n1 done"]
-    assert_equal ["done", "Rechecked the target"], retrieval.node("1", "n1").to_h.values_at(:state, :findings)
+    assert_equal ["done", "first"], retrieval.node("1", "n1").to_h.values_at(:state, :findings)
   end
 end

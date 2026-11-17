@@ -18,7 +18,7 @@ class DbSchemaTest < Plastic::TestCase
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "d5c82f9714320c781d69260aa9b4fcf26fa8c6da596cf2f357ccac31f549460e",
+    nodes: "cfa14e4507a75f95cc241d0316046a819ab03b5fad0b179dbacbc2c53936dac8",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     savepoints: "e0ac00f61310e8ed8d5204c5ce7c599b53bee17a3bd57ef84c9717d22a708be9",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",

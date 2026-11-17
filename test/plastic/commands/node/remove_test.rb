@@ -24,14 +24,14 @@ class NodeRemoveCaseTest < Plastic::TestCase
 end
 
 class NodeRemoveTest < Plastic::TestCase
-  def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
+  def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
-  def remove(*args) = plastic("node", "remove", *args, table: Plastic::CLI::TABLE)
+  def remove(*args) = plastic("node", "remove", *args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
   def test_removing_a_claimed_node_exits_1
     open_keyed_intent
     add_node("a")
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = remove("1", "n1")
 
