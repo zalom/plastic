@@ -30,7 +30,7 @@ module Plastic
           knowledge: "The documents of those intents are rewritten from the files",
           store: "The files of the intents and the index of the store are printed again from the rows"
         },
-        down: { store: "The files of the intents whose records changed are rewritten in the store folder" }
+        down: { store: "The files of the intents whose records changed are rewritten in the store folder, and a savepoint.md that matches its print is removed for work.log" }
       }.freeze
 
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \

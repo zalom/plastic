@@ -76,7 +76,7 @@
 <text class="s" x="336" y="661">printed from the rows.</text>
 <rect class="box" x="600" y="585" width="530" height="94" rx="8"/><rect x="600" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="616" y="609">ID--slug/</text><text class="s" x="616" y="626">[intent folder]</text>
-<text class="s" x="616" y="646">spec.md, graph.json, savepoint.md,</text>
+<text class="s" x="616" y="646">spec.md, graph.json, work.log,</text>
 <text class="s" x="616" y="661">outcome.md and context.json, printed from the rows.</text>
 <path class="flow" d="M 260 91.0 L 330 91.0" stroke-dasharray="4 3" marker-end="url(#containers-arrow)"/>
 <text class="al" x="295" y="84" text-anchor="middle">points to</text>

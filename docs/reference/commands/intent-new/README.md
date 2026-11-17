@@ -26,7 +26,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The intent is written with its first savepoint | the work graph database, in the store folder | goes with the store |
+| The intent is written with its first work log line | the work graph database, in the store folder | goes with the store |
 | The spec document of the intent is created | the knowledge graph database, in the store folder | goes with the store |
 | A source link from the new intent to the intent it grows out of is added | the knowledge graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |

@@ -21,7 +21,7 @@ module Plastic
 
         # A read file and the print that keeps it.
         class Read
-          # A file whose rows print nothing, such as an empty savepoint.md, keeps its own hash.
+          # A file whose rows print nothing, such as an empty work.log, keeps its own hash.
           def line = "read #{path}"
 
           def kept_print(folder) = Prints::Print.new(path, database, folder.digest(path), nil)

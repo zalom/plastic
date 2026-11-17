@@ -45,7 +45,7 @@
 <text class="s" x="46" y="601">Prints the rows as files.</text>
 <rect class="box" x="490" y="540" width="650" height="63" rx="8"/><rect x="490" y="540" width="6" height="63" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="506" y="564">Files in the store folder</text>
-<text class="s" x="506" y="585">spec.md, graph.json, savepoint.md, outcome.md</text>
+<text class="s" x="506" y="585">spec.md, graph.json, work.log, outcome.md</text>
 <path class="flow" d="M 196.5 99 L 196.5 129 L 195.0 129 L 195.0 160" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="195" y="149" text-anchor="middle">writes</text>
 <path class="flow" d="M 660.6798 99 L 660.6798 129 L 655.0 129 L 655.0 160" marker-end="url(#graphs-arrow)"/>

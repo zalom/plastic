@@ -16,7 +16,7 @@ module ArchitectureFigures
       knowledge_db | cylinder | 490 300 650 | knowledge_graph.db | | | | documents, rulings, links, document_heads
       reader | | 30 420 1110 | Graph::RetrievalGraph | class | line | mono | The read side: it reads the rows of every graph and writes nothing.
       printer | | 30 540 330 | Graph::Printer | class | line | mono | Prints the rows as files.
-      files | | 490 540 650 | Files in the store folder | | line | | spec.md, graph.json, savepoint.md, outcome.md
+      files | | 490 540 650 | Files in the store folder | | line | | spec.md, graph.json, work.log, outcome.md
     TABLE
     ARROWS = [
       ["writer.bottom@0.15", "work.top", ["writes"]],

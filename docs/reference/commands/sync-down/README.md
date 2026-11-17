@@ -28,7 +28,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The files of the intents whose records changed are rewritten in the store folder | the store folder | goes with the store |
+| The files of the intents whose records changed are rewritten in the store folder, and a savepoint.md that matches its print is removed for work.log | the store folder | goes with the store |
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 

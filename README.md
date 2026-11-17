@@ -63,7 +63,7 @@ from the original intention through decisions, a plan of dependent nodes, and de
 | What | What is the intention? | `intent.md` |
 | Why | What context, evidence, and decisions shape it? | `spec.md`, `context.json` |
 | How | What is the plan? | `graph.json` |
-| Exec | What happened, and what was delivered? | `savepoint.md`, `outcome.md` |
+| Exec | What happened, and what was delivered? | `work.log`, `outcome.md` |
 
 `graph.json` prints the nodes and the edges between them. Plastic reads the node states and the
 edges to determine which work is ready, and `plastic graph ready ID` lists the nodes ready to
@@ -162,7 +162,7 @@ An intent moves through the phases below: the go-ahead, the nodes, the judge, th
 Plastic follows four rules:
 
 1. **Commands print state and rules.** The judgment stays with you and the agent.
-2. **The savepoint is append-only.** `savepoint.md` holds one line for each step, so a new
+2. **The work log is append-only.** `work.log` holds one line for each step, so a new
    session resumes from the last line.
 3. **Status is derived.** Plastic reads what is ready from the node rows and their edges.
 4. **Nothing leaves the machine.** Plastic makes no model call and sends none of your files anywhere.

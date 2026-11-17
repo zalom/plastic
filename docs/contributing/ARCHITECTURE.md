@@ -34,14 +34,14 @@ Everything it keeps lives under the Plastic home.
 | `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
 | `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
-| `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `savepoint.md`, `outcome.md` and `context.json`, printed from the rows. |
+| `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
 
 A store keeps its rows in three SQLite databases. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `savepoints`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
+| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `work_log`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
 | `knowledge_graph.db` | `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, and the search tables of the retrieval graph |
 | `references.db` | `sqlar` |
 
@@ -124,7 +124,7 @@ it reads every database and writes nothing. The commands below reach them throug
 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
-| Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, savepoints, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
+| Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, the work log, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
@@ -251,7 +251,7 @@ order, and later hooks read it from the session row.
 
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
-| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last savepoint lines, and the note. |
+| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last work log lines, and the note. |
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node claims, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |

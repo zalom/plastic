@@ -25,7 +25,7 @@ module ArchitectureFigures
       backups | | 880 399 250 | backups/ | folder | line | | Copies of the three databases, / one folder for each backup.
       index | | 40 585 250 | store/index.json | file | line | mono | Every intent, in order.
       roadmaps | | 320 585 250 | roadmaps/ | folder | line | | One file for each roadmap, / printed from the rows.
-      folder | | 600 585 530 | ID--slug/ | intent folder | line | | spec.md, graph.json, savepoint.md, / outcome.md and context.json, printed from the rows.
+      folder | | 600 585 530 | ID--slug/ | intent folder | line | | spec.md, graph.json, work.log, / outcome.md and context.json, printed from the rows.
     TABLE
     ARROWS = [
       ["launcher.right", "active.left", ["points to"], true],
@@ -43,7 +43,7 @@ module ArchitectureFigures
       ["path", "exe/plastic", "exe/plastic"],
       *%w[plastic.db work_graph.db knowledge_graph.db references.db].map { |name| ["database", name, name] },
       *%w[command_runs sessions intents nodes runs edges documents rulings links sqlar].map { |name| ["table", name, name] },
-      *%w[store/index.json spec.md graph.json savepoint.md outcome.md context.json].map { |name| ["store_file", name, name] },
+      *%w[store/index.json spec.md graph.json work.log outcome.md context.json].map { |name| ["store_file", name, name] },
       ["command", "sync up", "sync up"]
     ].freeze
 
