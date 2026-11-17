@@ -9,6 +9,7 @@ module Plastic
     module Defaults
       GLOBAL = {
         "statusline" => false,
+        "chat_sync" => "user_only",
         "screens" => true,
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },
