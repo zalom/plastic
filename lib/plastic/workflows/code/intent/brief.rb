@@ -4,17 +4,6 @@ require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/spec"
 require_relative "../../../graph/work/main_session"
 require_relative "../../lines"
-require_relative "../../../commands/node/add"
-require_relative "../../../commands/node/remove"
-require_relative "../../../commands/node/claim"
-require_relative "../../../commands/node/release"
-require_relative "../../../commands/node/done"
-require_relative "../../../commands/node/fail"
-require_relative "../../../commands/node/ask"
-require_relative "../../../commands/node/impede"
-require_relative "../../../commands/node/resolve"
-require_relative "../../../commands/edge/add"
-require_relative "../../../commands/edge/remove"
 
 module Plastic
   module Workflows
