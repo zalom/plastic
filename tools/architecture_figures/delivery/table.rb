@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../diagram"
-
 module ArchitectureFigures
   module Delivery
     # What each step does to the three graphs, as a table. See docs/contributing/ARCHITECTURE.md.

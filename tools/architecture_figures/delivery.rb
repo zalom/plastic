@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "diagram"
 require_relative "delivery/phases"
 require_relative "delivery/table"
 
