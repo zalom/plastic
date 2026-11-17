@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command/usage"
+require_relative "../errors"
 require_relative "../cli/scope"
 require_relative "../graph"
 require_relative "../graph/retrieval/maintained_store"
@@ -40,7 +40,7 @@ module Plastic
         number = Integer(passage, exception: false).to_i
         return number if number.positive?
 
-        raise CLI::Command::Usage, "passage must be a positive integer"
+        raise Usage, "passage must be a positive integer"
       end
 
       def require_source(slug)

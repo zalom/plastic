@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../failed"
+require_relative "../errors"
 require_relative "../finished"
 require_relative "../handed_off"
 
@@ -12,7 +12,7 @@ module Plastic
 
       # Refuses a call that prints when a file it would print was changed by hand,
       # before any row is written.
-      def hand_edit_failure(ctx)
+      def refuse_hand_edits(ctx)
         kinds = self.class.prints
         return if kinds.empty? || parsed[:dry_run]
 
@@ -27,11 +27,11 @@ module Plastic
       def refusal(path, reason)
         return unreadable_refusal(path, reason) if reason
 
-        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it")
+        raise Failed.new(Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it", source: "print, files")
       end
 
       def unreadable_refusal(path, reason)
-        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again")
+        raise Failed.new(Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again", source: "print, files")
       end
 
       def walk(command_run, ctx)
@@ -41,8 +41,10 @@ module Plastic
       def printing(value, ctx)
         print_files(ctx) if print_due?(value)
         value
+      rescue Usage, Failed, Refused
+        raise
       rescue => error
-        Failed.raised(:print, "files", error)
+        raise Failed.raised(:print, "files", error)
       end
 
       def print_due?(value)

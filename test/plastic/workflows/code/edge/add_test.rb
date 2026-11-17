@@ -20,16 +20,16 @@ class AddEdgeTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_with_no_edge
-    outcome, = add("n1", "n2", intent_id: "9")
+    error = assert_raises(Plastic::Failed) { add("n1", "n2", intent_id: "9") }
 
-    assert_equal "code_add_edge, gate: no intent 9 in this store", outcome.message
+    assert_equal "no intent 9 in this store", error.message
     assert_empty retrieval.edges
   end
 
   def test_a_self_edge_fails_with_no_edge
-    outcome, = add("n1", "n1")
+    error = assert_raises(Plastic::Failed) { add("n1", "n1") }
 
-    assert_equal "code_add_edge, gate: edge n1 to n1 would loop or names a missing node", outcome.message
+    assert_equal "edge n1 to n1 would loop or names a missing node", error.message
     assert_empty retrieval.edges("1")
   end
 

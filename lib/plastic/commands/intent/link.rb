@@ -18,7 +18,7 @@ module Plastic
         prints :intent
 
         def call
-          raise CLI::Command::Usage, "KIND takes #{Plastic::Graph::Knowledge::Link::KINDS.join(", ")}" unless Plastic::Graph::Knowledge::Link::KINDS.include?(parsed[:kind])
+          raise Usage, "KIND takes #{Plastic::Graph::Knowledge::Link::KINDS.join(", ")}" unless Plastic::Graph::Knowledge::Link::KINDS.include?(parsed[:kind])
 
           super
         end

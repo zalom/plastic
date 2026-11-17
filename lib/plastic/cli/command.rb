@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 require "optparse"
-require_relative "command/usage"
-require_relative "command/refusal"
-require_relative "command/failure"
 require_relative "command/environment"
 require_relative "command/help"
 require_relative "declarations"
+require_relative "../errors"
 require_relative "../graph/missing_store"
 require_relative "../graph/behind"
 require_relative "text_output"
@@ -53,7 +51,7 @@ module Plastic
         return help if @argv.intersect?(%w[--help -h])
 
         answer
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure, Graph::MissingStore, Graph::OutOfStep => error
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refused, Failed, Graph::MissingStore, Graph::OutOfStep => error
         settle(error)
       end
 
@@ -96,10 +94,10 @@ module Plastic
       def settle(error)
         message = error.message
         case error
-        when Refusal, Failure then stop(error)
+        when Refused, Failed then stop(error)
         when Graph::OutOfStep
-          stop(Refusal.new(message, next_command: error.next_command))
-        when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command(scope.projects[error.store])))
+          stop(Refused.new(message, next_command: error.next_command))
+        when Graph::MissingStore then stop(Failed.new(message, next_command: error.next_command(scope.projects[error.store])))
         else
           output.usage(message, usage_line)
           USAGE
@@ -108,10 +106,12 @@ module Plastic
 
       def stop(error)
         output.flush_rows(scope.named_slug) unless output.json?
-        error.report(output)
+        tell(error)
         flush
         error.exit_code
       end
+
+      def tell(error) = error.tell(output, Offer.from(error))
 
       def broken(error)
         output.flush unless output.json?

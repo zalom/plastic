@@ -21,9 +21,9 @@ class LogRoadmapTest < Plastic::TestCase
   end
 
   def test_an_unknown_roadmap_fails_with_no_line
-    outcome, = log("r9")
+    error = assert_raises(Plastic::Failed) { log("r9") }
 
-    assert_equal "code_log_roadmap, gate: no roadmap r9", outcome.message
+    assert_equal "no roadmap r9", error.message
     assert_empty retrieval.roadmap_log("r9")
   end
 end

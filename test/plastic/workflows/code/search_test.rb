@@ -21,8 +21,8 @@ class WorkflowSearchTest < Plastic::TestCase
   end
 
   def test_a_store_without_its_databases_fails_the_call
-    outcome, = search(["empty"])
+    error = assert_raises(Plastic::Failed) { search(["empty"]) }
 
-    assert_equal "code_search, gate: retrieval maintenance is required before source empty can be read; run plastic project new empty PATH, then try again", outcome.message
+    assert_equal "retrieval maintenance is required before source empty can be read; run plastic project new empty PATH, then try again", error.message
   end
 end

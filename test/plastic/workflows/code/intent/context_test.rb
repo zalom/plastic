@@ -51,7 +51,7 @@ class SubmitContextTest < Plastic::TestCase
   def test_a_submission_that_stops_at_a_gate_saves_nothing
     discovered
 
-    submit(EMPTY.merge("evidence" => [@reference.sub("intent.md", "missing.md")]))
+    assert_raises(Plastic::Failed) { submit(EMPTY.merge("evidence" => [@reference.sub("intent.md", "missing.md")])) }
 
     assert_nil stored("data")
   end
@@ -66,18 +66,18 @@ class SubmitContextTest < Plastic::TestCase
   def test_a_submission_that_is_not_json_is_a_usage_error
     discovered
 
-    assert_raises(Plastic::CLI::Command::Usage) { submit("not json") }
+    assert_raises(Plastic::Usage) { submit("not json") }
   end
 
   def test_a_submission_missing_a_category_is_a_usage_error
     discovered
 
-    error = assert_raises(Plastic::CLI::Command::Usage) { submit({ "evidence" => [] }) }
+    error = assert_raises(Plastic::Usage) { submit({ "evidence" => [] }) }
 
     assert_includes error.message, "needs the arrays evidence, facts, interpretations, gaps and rulings"
   end
 
   def test_a_submission_without_a_discovery_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { submit(EMPTY.merge("evidence" => [])) }
+    assert_raises(Plastic::Usage) { submit(EMPTY.merge("evidence" => [])) }
   end
 end

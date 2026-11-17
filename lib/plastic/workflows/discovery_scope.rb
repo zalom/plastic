@@ -30,7 +30,7 @@ module Plastic
 
       def validate(selected)
         unknown = selected - (known_stores | ["global"])
-        raise CLI::Command::Failure, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
+        raise Failed, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
       end
 
       def known_stores

@@ -33,9 +33,7 @@ class CloseIntentTest < Plastic::TestCase
   def test_an_intent_with_problems_fails_with_no_completion
     open_intent
 
-    outcome, = close
-
-    assert_kind_of Plastic::Failed, outcome
+    assert_raises(Plastic::Failed) { close }
     assert_nil retrieval.completion("1")
   end
 end

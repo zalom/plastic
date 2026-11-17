@@ -10,16 +10,22 @@ class CodeWorkflowGateTest < Plastic::TestCase
   end
 
   def test_a_refusal_gate_ends_the_call_with_its_filled_reason
-    assert_equal Plastic::Refused.new(:code_hold, "ada is held"), gate(:refusal, false).call(context, Flows::Hold)
+    error = assert_raises(Plastic::Refused) { gate(:refusal, false).call(context, Flows::Hold) }
+
+    assert_equal ["ada is held", "code_hold, gate"], [error.message, error.source]
   end
 
   def test_a_failure_gate_ends_the_call_as_a_failed_gate
-    assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held"), gate(:failure, false).call(context, Flows::Hold)
+    error = assert_raises(Plastic::Failed) { gate(:failure, false).call(context, Flows::Hold) }
+
+    assert_equal ["ada is held", "code_hold, gate"], [error.message, error.source]
   end
 
   def test_a_gate_with_a_because_line_ends_the_call_with_it
     held = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops: :failure, pass: ->(_c) { false }, offers: nil, because: "%{name} waits")
 
-    assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held", nil, "ada waits"), held.call(context, Flows::Hold)
+    error = assert_raises(Plastic::Failed) { held.call(context, Flows::Hold) }
+
+    assert_equal ["ada is held", "ada waits"], [error.message, error.because]
   end
 end

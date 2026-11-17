@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "cli/command/usage"
+require_relative "errors"
 require_relative "harnesses/harness"
 
 module Plastic
@@ -41,7 +41,7 @@ module Plastic
 
     def self.fetch(name)
       REGISTRY.find { |harness| harness.name == name } or
-        raise CLI::Command::Usage, "no harness #{name}; the registered harnesses are #{names.join(", ")}"
+        raise Usage, "no harness #{name}; the registered harnesses are #{names.join(", ")}"
     end
   end
 end

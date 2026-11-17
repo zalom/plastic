@@ -21,9 +21,9 @@ class AddRoadmapItemTest < Plastic::TestCase
   end
 
   def test_a_missing_batch_fails_with_no_item
-    outcome, = add("a")
+    error = assert_raises(Plastic::Failed) { add("a") }
 
-    assert_equal "code_add_roadmap_item, gate: no batch 1 on roadmap r1", outcome.message
+    assert_equal "no batch 1 on roadmap r1", error.message
     assert_empty retrieval.roadmap_items("r1")
   end
 
@@ -32,9 +32,7 @@ class AddRoadmapItemTest < Plastic::TestCase
     add("a")
     add("b", needs: ["a"])
 
-    outcome, = add("a", needs: ["b"])
-
-    assert_kind_of Plastic::Refused, outcome
+    assert_raises(Plastic::Refused) { add("a", needs: ["b"]) }
     assert_equal 1, retrieval.roadmap_edges("r1").size
   end
 end

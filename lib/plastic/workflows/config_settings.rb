@@ -22,7 +22,7 @@ module Plastic
       def problem = Plastic::Config::Store.new(@context.scope.plastic_home).problem
 
       def current(key)
-        entries.fetch(key) { raise CLI::Command::Usage, "no setting #{key}; plastic config list names them" }
+        entries.fetch(key) { raise Usage, "no setting #{key}; plastic config list names them" }
       end
 
       def harness_words = @context.harness.then { |name| name ? " --harness #{name}" : "" }

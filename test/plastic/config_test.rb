@@ -118,6 +118,6 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_an_unregistered_harness_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { Plastic::Config.new(@plastic_home, harness: "cursor") }
+    assert_raises(Plastic::Usage) { Plastic::Config.new(@plastic_home, harness: "cursor") }
   end
 end

@@ -47,11 +47,11 @@ class WorkflowSearchScopeTest < Plastic::TestCase
   def test_an_unknown_project_in_the_config_key_is_a_usage_error
     configure("missing")
 
-    assert_equal "unknown source projects: missing", assert_raises(Plastic::CLI::Command::Usage) { sources([]) }.message
+    assert_equal "unknown source projects: missing", assert_raises(Plastic::Usage) { sources([]) }.message
   end
 
   def test_an_unknown_project_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { sources(%w[missing]) }
+    error = assert_raises(Plastic::Usage) { sources(%w[missing]) }
 
     assert_equal "unknown source projects: missing", error.message
   end

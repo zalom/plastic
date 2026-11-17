@@ -19,7 +19,7 @@ class ReadContextTest < Plastic::TestCase
   def test_an_intent_with_no_saved_context_fails_the_call
     open_intent
 
-    assert_equal "code_read_context, gate: no retrieval context for intent 1", read_context.first.message
+    assert_equal "no retrieval context for intent 1", assert_raises(Plastic::Failed) { read_context }.message
   end
 
   def test_a_saved_context_is_read_after_the_derived_retrieval_file_is_lost

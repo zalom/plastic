@@ -24,6 +24,9 @@ module Plastic
         printed = yield(value)
         keep(printed) unless printed.equal?(value)
         printed
+      rescue Failed, Refused => error
+        keep(error)
+        raise
       end
 
       private

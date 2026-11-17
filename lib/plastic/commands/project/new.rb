@@ -33,7 +33,7 @@ module Plastic
 
         def checked_path
           path = File.expand_path(parsed[:path], environment.directory)
-          raise CLI::Command::Failure, "#{path} is not a directory" unless File.directory?(path)
+          raise Failed, "#{path} is not a directory" unless File.directory?(path)
 
           path
         end
@@ -41,7 +41,7 @@ module Plastic
         def register(slug, path)
           known = scope.projects[slug]
           return if known && CLI::ProjectsFile.same_folder?(known, path)
-          raise CLI::Command::Refusal, "#{slug} is registered at #{known}, not at #{path}; edit projects.yml to move it" if known
+          raise Refused, "#{slug} is registered at #{known}, not at #{path}; edit projects.yml to move it" if known
 
           CLI::ProjectsFile.new(File.join(scope.plastic_home, "projects.yml")).add(slug, path)
         end

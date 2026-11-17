@@ -77,7 +77,7 @@ class HarnessesTest < Plastic::TestCase
   end
 
   def test_an_unregistered_name_is_a_usage_error_naming_the_registered_ones
-    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Harnesses.fetch("cursor") }
+    error = assert_raises(Plastic::Usage) { Plastic::Harnesses.fetch("cursor") }
 
     assert_equal "no harness cursor; the registered harnesses are claude-code, codex, hermes", error.message
   end

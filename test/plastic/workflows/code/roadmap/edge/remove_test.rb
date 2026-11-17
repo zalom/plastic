@@ -23,9 +23,9 @@ class WorkflowRemoveRoadmapEdgeTest < Plastic::TestCase
   end
 
   def test_a_missing_edge_fails_and_keeps_the_others
-    outcome, = remove("z")
+    error = assert_raises(Plastic::Failed) { remove("z") }
 
-    assert_equal "code_remove_roadmap_edge, gate: no edge z to b on roadmap r1", outcome.message
+    assert_equal "no edge z to b on roadmap r1", error.message
     assert_equal 1, retrieval.roadmap_edges("r1").size
   end
 end

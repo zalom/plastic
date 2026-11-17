@@ -25,8 +25,8 @@ class WorkflowShowVersionTest < Plastic::TestCase
   end
 
   def test_a_package_with_no_version_source_fails_the_call
-    outcome, = show(FileUtils.mkdir_p(File.join(@home, "empty")).first)
+    error = assert_raises(Plastic::Failed) { show(FileUtils.mkdir_p(File.join(@home, "empty")).first) }
 
-    assert_equal "code_show_version, gate: the running package has no VERSION file and no package.json", outcome.message
+    assert_equal "the running package has no VERSION file and no package.json", error.message
   end
 end

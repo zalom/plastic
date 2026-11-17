@@ -4,8 +4,7 @@ require_relative "cli/command"
 require_relative "invalid"
 require_relative "finished"
 require_relative "handed_off"
-require_relative "failed"
-require_relative "refused"
+require_relative "errors"
 require_relative "context"
 require_relative "command_run"
 require_relative "routine/chain"
@@ -78,7 +77,10 @@ module Plastic
 
     def finish(command_run)
       ctx = context(command_run)
-      report(hand_edit_failure(ctx) || walk(command_run, ctx), ctx)
+      report(ctx) do
+        refuse_hand_edits(ctx)
+        walk(command_run, ctx)
+      end
     end
 
     # A resumed command run brings back what its workflows found; this call's
@@ -92,13 +94,17 @@ module Plastic
     # The printed lines and rows go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what
     # it wrote: the rows, one phrase per database, and the files it
-    # printed. The end value prints its own last lines and gives the exit code.
+    # printed. The end value prints its own last lines and gives the exit code;
+    # an error that stopped the call is raised after the lines above it.
     #
     #   wrote: 1 intent and 1 ledger line in work_graph.db
-    def report(value, ctx)
+    def report(ctx)
+      value = nil
+      value = yield
+    ensure
       ctx.print_to(output)
       report_graphs if touches_graphs?
-      @exit_code = value.report(output)
+      @exit_code = value.report(output) if value
     end
 
     # The open command run for this tool and subject, or a new one.

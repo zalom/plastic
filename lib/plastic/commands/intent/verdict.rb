@@ -22,7 +22,7 @@ module Plastic
         workflow :code_record_verdict, next: :noop
 
         def call(*)
-          raise CLI::Command::Usage, "the verdict takes accept or revise" unless VERDICTS.include?(parsed[:verdict])
+          raise Usage, "the verdict takes accept or revise" unless VERDICTS.include?(parsed[:verdict])
 
           super
         end

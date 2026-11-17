@@ -22,6 +22,6 @@ class WorkflowFailNodeTest < Plastic::TestCase
   end
 
   def test_an_open_node_cannot_fail
-    assert_equal "code_fail_node, gate: node n1 is open; it cannot move to failed", fail_node.first.message
+    assert_equal "node n1 is open; it cannot move to failed", assert_raises(Plastic::Failed) { fail_node }.message
   end
 end

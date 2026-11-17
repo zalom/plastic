@@ -24,13 +24,13 @@ class OpenRoadmapItemTest < Plastic::TestCase
   def test_a_blocked_item_is_refused_with_no_intent
     item("b", needs: ["a"])
 
-    outcome, = start("b")
+    error = assert_raises(Plastic::Refused) { start("b") }
 
-    assert_equal [Plastic::Refused, "item b is blocked, not ready"], [outcome.class, outcome.message]
+    assert_equal [Plastic::Refused, "item b is blocked, not ready"], [error.class, error.message]
     assert_nil retrieval.intent("1")
   end
 
   def test_an_unknown_item_fails_the_call
-    assert_equal "code_open_roadmap_item, gate: no item z on roadmap r1", start("z").first.message
+    assert_equal "no item z on roadmap r1", assert_raises(Plastic::Failed) { start("z") }.message
   end
 end

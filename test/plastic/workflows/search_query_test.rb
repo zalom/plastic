@@ -22,13 +22,13 @@ class SearchQueryTest < Plastic::TestCase
   end
 
   def test_a_limit_out_of_range_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { rows(limit: "0") }
+    error = assert_raises(Plastic::Usage) { rows(limit: "0") }
 
     assert_equal "search limit must be between 1 and 100", error.message
   end
 
   def test_a_limit_that_is_not_a_number_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { rows(limit: "many") }
+    error = assert_raises(Plastic::Usage) { rows(limit: "many") }
 
     assert_equal "search limit must be an integer", error.message
   end

@@ -3,8 +3,8 @@
 module CommandReference
   # The endings one source file spells out: raised errors, next: lines and stop decisions.
   class FileEndings
-    RAISES = { "Usage" => [2, "Usage error"], "Refusal" => [3, "Refused"], "Failure" => [1, "Failed"] }.freeze
-    RAISE_LINE = /\braise (?:CLI::)?(?:Command::)?(Usage|Refusal|Failure)\b(?:, "(.*)")?/
+    RAISES = { "Usage" => [2, "Usage error"], "Refused" => [3, "Refused"], "Failed" => [1, "Failed"] }.freeze
+    RAISE_LINE = /\braise (?:Plastic::)?(Usage|Refused|Failed)\b(?:, "(.*)")?/
     NEXT_LINE = /\bnext_step\((?:"([^"]+)"|[^,)]+)/
     OFFERS = "Offers the next command"
     INTERPOLATION = /\#\{([^}]*)\}/

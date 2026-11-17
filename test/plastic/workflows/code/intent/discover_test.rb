@@ -44,9 +44,9 @@ class DiscoverRetrievalTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_with_no_discovery
-    outcome, = discover("9")
+    error = assert_raises(Plastic::Failed) { discover("9") }
 
-    assert_equal "code_discover_retrieval, gate: no intent 9 in owning store", outcome.message
+    assert_equal "no intent 9 in owning store", error.message
     assert_nil saved_discovery
   end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command/usage"
+require_relative "../errors"
 require_relative "../config"
 
 module Plastic
@@ -31,7 +31,7 @@ module Plastic
         unknown = selected - context.scope.known_slugs
         return if unknown.empty?
 
-        raise CLI::Command::Usage, "unknown source projects: #{unknown.join(", ")}"
+        raise Usage, "unknown source projects: #{unknown.join(", ")}"
       end
     end
   end

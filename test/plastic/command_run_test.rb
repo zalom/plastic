@@ -52,19 +52,19 @@ class CommandRunTest < Plastic::TestCase
   end
 
   def test_closing_on_a_failure_keeps_the_message_as_because
-    run = fresh.close(Plastic::Failed.new(:code_a, "step", "broke"), {})
+    run = fresh.close(Plastic::Failed.new("broke", source: "code_a, step"), {})
 
-    assert_equal ["failed", nil, "code_a, step: broke", 1], [run.status, run.next_command, run.because, run.exit_code]
+    assert_equal ["failed", nil, "broke", 1], [run.status, run.next_command, run.because, run.exit_code]
   end
 
   def test_closing_on_a_failure_with_a_because_line_keeps_that_line
-    run = fresh.close(Plastic::Failed.new(:code_a, "gate", "broke", nil, "the rule"), {})
+    run = fresh.close(Plastic::Failed.new("broke", because: "the rule", source: "code_a, gate"), {})
 
     assert_equal ["failed", "the rule", 1], [run.status, run.because, run.exit_code]
   end
 
   def test_closing_on_a_refusal_is_refused
-    run = fresh.close(Plastic::Refused.new(:code_a, "owner"), {})
+    run = fresh.close(Plastic::Refused.new("owner"), {})
 
     assert_equal ["refused", "owner", 3], [run.status, run.because, run.exit_code]
   end

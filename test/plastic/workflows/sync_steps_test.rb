@@ -39,35 +39,35 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def test_a_failure_stops_before_the_apply
-    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { failure: "INDEX.md waits" })
+    error, _printed, calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { failure: "INDEX.md waits" })
 
-    assert_equal [Plastic::Failed, "code_sync_up, gate: INDEX.md waits", false], [outcome.class, outcome.message, calls.include?([:apply])]
+    assert_equal [Plastic::Failed, "INDEX.md waits", false], [error.class, error.message, calls.include?([:apply])]
   end
 
   def test_a_plain_sync_up_with_conflicts_is_refused_before_it_writes_and_ends_on_the_last_path
-    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md b.md] })
+    error, _printed, calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Refused, plan: { conflicts: %w[a.md b.md] })
 
-    assert_equal [Plastic::Refused, UP_PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
-    assert_equal "b.md", outcome.message.split.last
+    assert_equal [Plastic::Refused, UP_PLAIN, false], [error.class, error.message, calls.include?([:apply])]
+    assert_equal "b.md", error.message.split.last
   end
 
   def test_a_plain_sync_down_with_conflicts_is_refused_before_it_writes_and_ends_on_the_last_path
-    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md b.md] })
+    error, _printed, calls = stop_sync(Plastic::Workflows::Code::Sync::Down, Plastic::Refused, plan: { conflicts: %w[a.md b.md] })
 
-    assert_equal [Plastic::Refused, DOWN_PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
-    assert_equal "b.md", outcome.message.split.last
+    assert_equal [Plastic::Refused, DOWN_PLAIN, false], [error.class, error.message, calls.include?([:apply])]
+    assert_equal "b.md", error.message.split.last
   end
 
   def test_a_sync_up_merge_applies_then_refuses_on_the_conflicts_left
-    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md], merging: true })
+    error, printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Refused, plan: { conflicts: %w[a.md], merging: true })
 
-    assert_equal [Plastic::Refused, UP_LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
+    assert_equal [Plastic::Refused, UP_LEFT, ["read a.md"]], [error.class, error.message, printed]
   end
 
   def test_a_sync_down_merge_applies_then_refuses_on_the_conflicts_left
-    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md], merging: true })
+    error, printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Down, Plastic::Refused, plan: { conflicts: %w[a.md], merging: true })
 
-    assert_equal [Plastic::Refused, DOWN_LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
+    assert_equal [Plastic::Refused, DOWN_LEFT, ["read a.md"]], [error.class, error.message, printed]
   end
 
   def test_each_direction_names_what_it_settles
@@ -121,44 +121,42 @@ class SyncStepsFilesTest < Plastic::TestCase
 
   def test_an_unreadable_graph_file_is_listed_and_stops_the_sync_with_the_overwrite
     files = { "store/1--alpha/graph.json" => "junk" }
-    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
+    error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files })
 
-    assert_instance_of Plastic::Failed, outcome
-    assert_includes outcome.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json"
-    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
+    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json"
+    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", error.next_command
   end
 
   def test_a_file_this_home_holds_no_rows_for_is_listed_with_no_command_to_run_here
     files = { "roadmaps/old.md" => "roadmaps/old.md is in an older form that this release does not read" }
-    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files, rowless_files: files.keys })
+    error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files, rowless_files: files.keys })
 
-    assert_instance_of Plastic::Failed, outcome
-    assert_includes outcome.message, ROWLESS
-    assert_nil outcome.next_command
+    assert_includes error.message, ROWLESS
+    assert_nil error.next_command
   end
 
   def test_a_file_this_home_holds_no_rows_for_is_offered_no_overwrite
     files = { "roadmaps/old.md" => "older" }
-    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files, rowless_files: files.keys })
+    error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files, rowless_files: files.keys })
 
-    refute_includes outcome.message, "--overwrite"
+    refute_includes error.message, "--overwrite"
   end
 
   def test_a_file_with_rows_here_keeps_its_command_when_another_file_has_none
     files = { "roadmaps/old.md" => "older", "store/1--alpha/graph.json" => "junk" }
-    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files, rowless_files: %w[roadmaps/old.md] })
+    error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files, rowless_files: %w[roadmaps/old.md] })
 
-    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
-    assert_includes outcome.message, "roadmaps/old.md: older; the home that holds the rows prints the file again"
+    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", error.next_command
+    assert_includes error.message, "roadmaps/old.md: older; the home that holds the rows prints the file again"
   end
 
   def test_each_unreadable_file_is_listed_with_its_own_overwrite
     files = { "store/1--alpha/graph.json" => "junk", "store/2--beta/graph.json" => "junk too" }
-    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
+    error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files })
 
-    assert_includes outcome.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json\n"
-    assert_includes outcome.message, "store/2--beta/graph.json: junk too; run plastic sync down --overwrite store/2--beta/graph.json"
-    refute_includes outcome.message, "with the command below"
+    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json\n"
+    assert_includes error.message, "store/2--beta/graph.json: junk too; run plastic sync down --overwrite store/2--beta/graph.json"
+    refute_includes error.message, "with the command below"
   end
 
   def plan_gate_words(workflow) = workflow.steps.grep(Plastic::CodeWorkflow::Gate).find { |gate| gate.reason == "%{failure}" }.words

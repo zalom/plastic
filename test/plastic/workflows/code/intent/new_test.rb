@@ -22,6 +22,8 @@ class WriteIntentTest < Plastic::TestCase
 
     def write_intent(**intent) = (@calls << [:write, intent]) && Written.new("1a")
 
+    def add_link(**link) = (@calls << [:link, link])
+
     def ref_line(ref) = "ref: #{ref}, in words"
   end
 
@@ -36,11 +38,21 @@ class WriteIntentTest < Plastic::TestCase
     def intent(id) = (id if @ids.include?(id))
   end
 
-  def run_flow(problem: nil, retrieval: Retrieval.new, **facts)
+  def flow_context(problem, retrieval, facts)
     work = Work.new(problem)
     context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", status: "open", kind: "work" }.merge(facts),
       graphs: { work:, retrieval: })
+    [context, work]
+  end
+
+  def run_flow(problem: nil, retrieval: Retrieval.new, **facts)
+    context, work = flow_context(problem, retrieval, facts)
     [WriteIntent.call(context), context.printed, work.calls]
+  end
+
+  def stop_flow(problem: nil, retrieval: Retrieval.new, **facts)
+    context, work = flow_context(problem, retrieval, facts)
+    [assert_raises(Plastic::Failed) { WriteIntent.call(context) }, context.printed, work.calls]
   end
 
   def test_the_intent_is_written_then_named
@@ -61,16 +73,16 @@ class WriteIntentTest < Plastic::TestCase
   end
 
   def test_a_problem_fails_the_call_before_any_write
-    outcome, printed, calls = run_flow(problem: "no intent 9 in this store to be the parent")
+    error, printed, calls = stop_flow(problem: "no intent 9 in this store to be the parent")
 
-    assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to be the parent"], [outcome.class, outcome.message]
+    assert_equal "no intent 9 in this store to be the parent", error.message
     assert_equal [[], [:problem]], [printed, calls.map(&:first)]
   end
 
   def test_an_after_that_names_no_intent_fails_the_call
-    outcome, = run_flow(after: "9")
+    error = stop_flow(after: "9").first
 
-    assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to link after"], [outcome.class, outcome.message]
+    assert_equal [Plastic::Failed, "no intent 9 in this store to link after"], [error.class, error.message]
   end
 
   def test_an_after_that_names_an_intent_passes_the_check_and_writes

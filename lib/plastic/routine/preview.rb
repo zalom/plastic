@@ -33,11 +33,7 @@ module Plastic
 
       private
 
-      def run_chain
-        finish(open_command_run)
-      rescue Graph::Database::Error => error
-        raise CLI::Command::Failure, error.message
-      end
+      def run_chain = finish(open_command_run)
 
       def previewing? = self.class.previews? && parsed[:dry_run]
 
@@ -45,13 +41,13 @@ module Plastic
         Graph::DisposableCopy.new(scope.plastic_home, scope.slug).within { |copy| preview_in(copy) }
       rescue Graph::DisposableCopy::Refused => error
         output.raw(PreviewOutput::CLOSING)
-        raise CLI::Command::Refusal, error.message
+        raise Refused, error.message
       end
 
       def preview_in(copy)
         enter(copy)
         run_shown(copy)
-      rescue CLI::Command::Refusal, CLI::Command::Failure => error
+      rescue Refused, Failed => error
         raise error.rebuilt(copy.original(error.message))
       ensure
         leave

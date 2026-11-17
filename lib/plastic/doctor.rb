@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "cli/command/usage"
+require_relative "errors"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
@@ -18,7 +18,7 @@ module Plastic
     def self.harness(scope, session:)
       row = recorded(scope, session)
       [row, detected(scope, session)].find { |name| Harnesses.registered?(name) } or
-        raise CLI::Command::Usage, "#{row ? unregistered(session, row) : "no harness names this call"}; " \
+        raise Usage, "#{row ? unregistered(session, row) : "no harness names this call"}; " \
                                    "name one with --harness: #{HARNESSES.keys.join(", ")}"
     end
 
@@ -36,7 +36,7 @@ module Plastic
 
     def self.kind(name, harnesses = HARNESSES)
       harnesses.fetch(name) do
-        raise CLI::Command::Usage, "no harness #{name}; the registered harnesses are #{harnesses.keys.join(", ")}"
+        raise Usage, "no harness #{name}; the registered harnesses are #{harnesses.keys.join(", ")}"
       end
     end
 

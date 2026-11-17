@@ -31,10 +31,19 @@ module SyncStepsHelper
     end
   end
 
-  def run_sync(flow, plan: {}, **options)
+  def sync_context(plan, options)
     work = Work.new(Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], **plan))
     facts = { overwrite: false, merge: false }.merge(options)
-    context = Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: })
+    [Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: }), work]
+  end
+
+  def run_sync(flow, plan: {}, **options)
+    context, work = sync_context(plan, options)
     [flow.call(context), context.printed, work.calls]
+  end
+
+  def stop_sync(flow, kind, plan: {}, **options)
+    context, work = sync_context(plan, options)
+    [assert_raises(kind) { flow.call(context) }, context.printed, work.calls]
   end
 end

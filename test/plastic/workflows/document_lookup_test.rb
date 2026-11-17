@@ -20,7 +20,7 @@ class DocumentLookupTest < Plastic::TestCase
   end
 
   def test_a_passage_that_is_not_a_number_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { lookup.selected(@reference, "first") }
+    error = assert_raises(Plastic::Usage) { lookup.selected(@reference, "first") }
 
     assert_equal "passage must be a positive integer", error.message
   end

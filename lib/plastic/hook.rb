@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "cli/command"
-require_relative "failed"
+require_relative "errors"
 require_relative "graph/missing_store"
 
 module Plastic

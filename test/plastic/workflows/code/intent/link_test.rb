@@ -20,25 +20,19 @@ class AddLinkTest < Plastic::TestCase
   end
 
   def test_a_missing_target_fails_with_no_link
-    outcome, = link("9")
-
-    assert_kind_of Plastic::Failed, outcome
+    assert_raises(Plastic::Failed) { link("9") }
     assert_empty retrieval.links("1")
   end
 
   def test_a_self_link_is_refused
-    outcome, = link("1")
-
-    assert_kind_of Plastic::Refused, outcome
+    assert_raises(Plastic::Refused) { link("1") }
     assert_empty retrieval.links("1")
   end
 
   def test_a_repeated_link_is_refused_with_one_row_left
     link("2")
 
-    outcome, = link("2")
-
-    assert_kind_of Plastic::Refused, outcome
+    assert_raises(Plastic::Refused) { link("2") }
     assert_equal 1, retrieval.links("1").size
   end
 end

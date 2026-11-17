@@ -31,8 +31,8 @@ module Plastic
           read "validate the submitted context" do |context|
             submission(context)
           rescue Errno::ENOENT, JSON::ParserError => error
-            raise CLI::Command::Usage, error.message
-          rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, CLI::Command::Failure => error
+            raise Usage, error.message
+          rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, Failed => error
             context[:problem] = RetrievalRepair.new(context.scope, error).problem
           end
 

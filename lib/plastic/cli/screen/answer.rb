@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "outcomes"
-require_relative "../command/usage"
+require_relative "../../errors"
 
 module Plastic
   class CLI
@@ -15,7 +15,7 @@ module Plastic
 
         # The numbers of an answer such as `1, 2`; anything else is a usage error that says the grammar.
         def self.numbers(answer)
-          raise Command::Usage, "unknown answer #{answer.inspect}; #{GRAMMAR}" unless answer.match?(NUMBERS)
+          raise Usage, "unknown answer #{answer.inspect}; #{GRAMMAR}" unless answer.match?(NUMBERS)
 
           answer.split(",").map(&:to_i)
         end
@@ -46,7 +46,7 @@ module Plastic
 
         def picked(numbers)
           unknown = numbers.find { |number| number.zero? || number > @labels.size }
-          raise Command::Usage, "no choice #{unknown}; the choices are #{valid}" if unknown
+          raise Usage, "no choice #{unknown}; the choices are #{valid}" if unknown
 
           @labels.select.with_index(1) { |_label, number| numbers.include?(number) }
         end

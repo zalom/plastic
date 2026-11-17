@@ -22,6 +22,6 @@ class WorkflowRemoveNodeTest < Plastic::TestCase
   def test_a_claimed_node_cannot_be_removed
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
 
-    assert_equal "code_remove_node, gate: node n1 is claimed; it cannot move to removed", remove.first.message
+    assert_equal "node n1 is claimed; it cannot move to removed", assert_raises(Plastic::Failed) { remove }.message
   end
 end

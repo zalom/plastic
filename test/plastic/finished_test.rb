@@ -9,9 +9,9 @@ class FinishedTest < Plastic::TestCase
   end
 
   def test_a_closing_line_with_a_hole_fails_the_call
-    failed = Plastic::Finished.closing(Flows::Hole, :done, context(declared: %i[missing], facts: {}))
+    error = assert_raises(Plastic::Failed) { Plastic::Finished.closing(Flows::Hole, :done, context(declared: %i[missing], facts: {})) }
 
-    assert_equal [:code_hole, "closing"], [failed.workflow, failed.step]
+    assert_equal "code_hole, closing", error.source
   end
 
   def test_report_offers_the_next_command_and_exits_zero

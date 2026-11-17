@@ -10,7 +10,7 @@ class ScreenAnswerTest < Plastic::TestCase
 
   def answer(text) = Screen::Answer.new(choices).call(text)
 
-  def refusal(text) = assert_raises(Plastic::CLI::Command::Usage) { answer(text) }.message
+  def refusal(text) = assert_raises(Plastic::Usage) { answer(text) }.message
 
   def test_numbers_pick_those_items_in_list_order
     assert_equal Screen::Chosen.new(labels: %w[claude cursor]), answer(" 3, 1 ")

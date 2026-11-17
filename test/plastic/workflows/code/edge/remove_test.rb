@@ -23,14 +23,14 @@ class WorkflowRemoveEdgeTest < Plastic::TestCase
   end
 
   def test_a_missing_edge_fails_and_keeps_the_others
-    outcome, = remove("n9")
+    error = assert_raises(Plastic::Failed) { remove("n9") }
 
-    assert_equal "code_remove_edge, gate: no edge n9 to n2 in intent 1", outcome.message
+    assert_equal "no edge n9 to n2 in intent 1", error.message
     assert_equal 1, retrieval.edges("1").size
   end
 
   def test_a_failed_removal_is_tried_again_on_the_next_call
-    _outcome, context = remove("n9")
+    context = stop_workflow(Plastic::Workflows::Code::Edge::Remove, intent_id: "1", from: "n9", to: "n2").last
     context[:from] = "n1"
 
     assert_equal :done, Plastic::Workflows::Code::Edge::Remove.call(context)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../errors"
 require_relative "missing_store"
 require_relative "schema"
 require_relative "schema/gate"
@@ -21,7 +22,7 @@ module Plastic
     # the counts on its `wrote:` line.
     class Database
       # A statement failed, or the file cannot be opened.
-      class Error < StandardError; end
+      class Error < Failed; end
 
       # Ends a dry run, which takes its statements back.
       class Undone < StandardError; end

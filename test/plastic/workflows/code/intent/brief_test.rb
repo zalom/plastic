@@ -66,6 +66,6 @@ class ShowBriefTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_show_brief, gate: no intent 9 in this store", brief("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { brief("9") }.message
   end
 end

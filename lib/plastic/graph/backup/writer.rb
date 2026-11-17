@@ -54,7 +54,7 @@ module Plastic
           return release(folder) if @automatic && unchanged?(check, folder)
 
           write(folder, extra(check, version))
-        rescue SourceCheck::Failed => error
+        rescue SourceCheck::Unreadable => error
           release(folder)
           raise Error, error.message
         end
@@ -71,7 +71,7 @@ module Plastic
         # The lowest version of the live files; each check is recorded for the doctor.
         def verified(check)
           check.version.tap { folders.write_check(at: Plastic.now(@now), verdict: "passed") }
-        rescue SourceCheck::Failed => error
+        rescue SourceCheck::Unreadable => error
           folders.write_check(at: Plastic.now(@now), verdict: "failed", file: File.basename(error.path), reason: error.message)
           raise
         end

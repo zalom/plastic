@@ -44,17 +44,17 @@ class ParserTest < Plastic::TestCase
   end
 
   def test_a_missing_argument_is_a_usage_error
-    error = assert_raises(Command::Usage) { parser.parse([]) }
+    error = assert_raises(Plastic::Usage) { parser.parse([]) }
 
     assert_equal "missing ID", error.message
   end
 
   def test_a_blank_argument_counts_as_missing
-    assert_raises(Command::Usage) { parser.parse([" "]) }
+    assert_raises(Plastic::Usage) { parser.parse([" "]) }
   end
 
   def test_an_extra_word_is_a_usage_error
-    error = assert_raises(Command::Usage) { parser.parse(%w[7 8]) }
+    error = assert_raises(Plastic::Usage) { parser.parse(%w[7 8]) }
 
     assert_equal "unexpected 8", error.message
   end

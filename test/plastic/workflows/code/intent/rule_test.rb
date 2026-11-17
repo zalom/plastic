@@ -16,17 +16,17 @@ class AddRulingTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_with_no_ruling
-    outcome, = rule(intent_id: "9")
+    error = assert_raises(Plastic::Failed) { rule(intent_id: "9") }
 
-    assert_equal "code_add_ruling, gate: no intent 9 in this store", outcome.message
+    assert_equal "no intent 9 in this store", error.message
   end
 
   def test_superseding_a_missing_ruling_fails_with_no_ruling
     open_intent
 
-    outcome, = rule(supersedes: "D7")
+    error = assert_raises(Plastic::Failed) { rule(supersedes: "D7") }
 
-    assert_equal "code_add_ruling, gate: no ruling D7 in intent 1", outcome.message
+    assert_equal "no ruling D7 in intent 1", error.message
     assert_empty retrieval.rulings("1")
   end
 end

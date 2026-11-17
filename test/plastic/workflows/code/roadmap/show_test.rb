@@ -28,6 +28,6 @@ class WorkflowShowRoadmapTest < Plastic::TestCase
   end
 
   def test_an_unknown_roadmap_fails_the_call
-    assert_equal "code_show_roadmap, gate: no roadmap r9", show(slug: "r9").first.message
+    assert_equal "no roadmap r9", assert_raises(Plastic::Failed) { show(slug: "r9") }.message
   end
 end

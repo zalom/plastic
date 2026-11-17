@@ -49,7 +49,7 @@ class ErrorsTest < Plastic::TestCase
   def test_the_boundary_prints_a_refused_error_with_its_next_and_because_lines
     code, out, err = run_stops("refused")
 
-    assert_equal [3, "plastic: refused, stopped\n", "next: plastic next\nbecause: the rule\n"], [code, err, out]
+    assert_equal [3, true, "next: plastic next\nbecause: the rule\n"], [code, err.start_with?("plastic: refused, stopped\n"), out]
   end
 
   def test_the_boundary_prints_a_usage_error_with_the_usage_line

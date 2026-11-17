@@ -24,12 +24,10 @@ class GetDocumentTest < Plastic::TestCase
   end
 
   def test_a_passage_that_is_not_a_positive_number_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { get(@reference, passage: "0") }
+    assert_raises(Plastic::Usage) { get(@reference, passage: "0") }
   end
 
   def test_a_missing_document_fails_the_call
-    outcome, = get("plastic://global/1/missing.md")
-
-    assert_kind_of Plastic::Failed, outcome
+    assert_raises(Plastic::Failed) { get("plastic://global/1/missing.md") }
   end
 end

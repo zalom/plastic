@@ -25,14 +25,12 @@ class BatchDocumentsTest < Plastic::TestCase
   def test_a_missing_document_fails_the_call
     write_document("a.md", "first")
 
-    outcome, = fetch("plastic://global/1/missing.md")
-
-    assert_kind_of Plastic::Failed, outcome
+    assert_raises(Plastic::Failed) { fetch("plastic://global/1/missing.md") }
   end
 
   def test_an_unknown_store_fails_the_call
-    outcome, = fetch("plastic://nowhere/1/a.md")
+    error = assert_raises(Plastic::Failed) { fetch("plastic://nowhere/1/a.md") }
 
-    assert_equal "code_batch_documents, gate: no project named \"nowhere\"", outcome.message
+    assert_equal "no project named \"nowhere\"", error.message
   end
 end

@@ -38,7 +38,7 @@ class DiscoveryScopeTest < Plastic::TestCase
   end
 
   def test_an_unknown_source_fails_the_call
-    error = assert_raises(Plastic::CLI::Command::Failure) { resolve(%w[missing]) }
+    error = assert_raises(Plastic::Failed) { resolve(%w[missing]) }
 
     assert_equal "unknown source projects: missing", error.message
   end
@@ -46,6 +46,6 @@ class DiscoveryScopeTest < Plastic::TestCase
   def test_a_file_named_like_a_store_is_not_a_store
     File.write(File.join(store("x").first, "..", "loose"), "")
 
-    assert_raises(Plastic::CLI::Command::Failure) { resolve(%w[loose]) }
+    assert_raises(Plastic::Failed) { resolve(%w[loose]) }
   end
 end
