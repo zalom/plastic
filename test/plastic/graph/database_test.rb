@@ -373,7 +373,7 @@ class DatabaseWriteLogTest < Plastic::TestCase
   end
 
   def test_the_change_row_of_a_put_holds_the_key_as_json_data_and_no_row
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:knowledge)
     work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
     row = work.row("SELECT \"key\", \"row\" FROM changes WHERE \"table\" = 'clusters'")
 
@@ -381,7 +381,7 @@ class DatabaseWriteLogTest < Plastic::TestCase
   end
 
   def test_the_counts_ignore_writes_that_changed_no_row
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:knowledge)
     2.times { work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) } }
     work.transaction { |batch| batch.remove(:clusters, name: "missing", intent_id: "1") }
 
@@ -389,7 +389,7 @@ class DatabaseWriteLogTest < Plastic::TestCase
   end
 
   def test_a_log_then_a_remove_counts_the_remove_only
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:knowledge)
     work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
     work.transaction { |batch| batch.remove(:clusters, name: "C", intent_id: "1") }
 

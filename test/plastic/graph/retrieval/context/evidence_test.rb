@@ -16,7 +16,7 @@ class RetrievalContextEvidenceTest < Plastic::TestCase
 
   def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases[:knowledge], origin).write("1", @intent.file, "changed")
 
-  def archive = store_graphs.databases[:work].transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
+  def archive = store_graphs.databases[:knowledge].transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
 
   def test_a_reference_to_the_current_revision_is_fresh
     assert_equal({ "uri" => @reference, "state" => "fresh", "archived" => false }, state)

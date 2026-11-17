@@ -11,7 +11,7 @@ class IntentUnarchiveTest < Plastic::TestCase
   def restore_call(*args) = plastic("intent", "unarchive", *args, table: Plastic::CLI::TABLE)
 
   def mark_done(intent)
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id)
     end
   end

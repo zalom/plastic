@@ -23,10 +23,10 @@ class DoctorDatabaseCheckTest < Plastic::TestCase
 
   def test_each_missing_table_is_named
     database(path, :work)
-    drop_table(path, "intents")
+    drop_table(path, "edges")
     drop_table(path, "nodes")
 
-    assert_equal "work_graph.db lacks the tables intents, nodes", problem
+    assert_equal "work_graph.db lacks the tables nodes, edges", problem
   end
 
   def test_a_database_lacking_only_a_new_table_passes_with_a_note

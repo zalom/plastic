@@ -102,10 +102,10 @@ class GraphBackupRestorerTest < Plastic::TestCase
   end
 
   def test_a_restore_of_a_listed_database_replaces_only_that_database
-    before = bytes("knowledge_graph")
-    restorer.call(STAMP, databases: %w[work_graph])
+    before = bytes("work_graph")
+    restorer.call(STAMP, databases: %w[knowledge_graph])
 
-    assert_equal [1, before], [intent_count(@restore_home), bytes("knowledge_graph")]
+    assert_equal [1, before], [intent_count(@restore_home), bytes("work_graph")]
   end
 
   def test_a_database_the_backup_does_not_hold_is_refused

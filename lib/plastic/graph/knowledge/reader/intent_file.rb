@@ -25,7 +25,7 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[knowledge context], "work.log" => %i[work work_log],
+          KINDS = { "graph.json" => %i[knowledge graph], "context.json" => %i[knowledge context], "work.log" => %i[work work_log],
                     "savepoint.md" => %i[work savepoint] }.freeze
 
           def initialize(file, intent_id, writer:, retrieval: nil)
@@ -38,6 +38,9 @@ module Plastic
           def database = kind.first
 
           def apply(batch) = send(kind.last, batch)
+
+          # The rows of the file that live in the other database, by database.
+          def beside = (kind.last == :graph) ? { work: graph_file.method(:apply_work) } : {}
 
           private
 
@@ -57,7 +60,9 @@ module Plastic
 
           def origin_id = @writer.origin_id
 
-          def graph(batch) = GraphFile.new(text, @intent_id, origin_id, @file.path).apply(batch)
+          def graph(batch) = graph_file.apply(batch)
+
+          def graph_file = GraphFile.new(text, @intent_id, origin_id, @file.path)
 
           # The rows of this home replace the rows of the file; the rows of another origin stay.
           def context(batch)

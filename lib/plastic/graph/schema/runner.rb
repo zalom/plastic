@@ -17,6 +17,9 @@ module Plastic
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason.
       Report = Data.define(:migrated, :failed)
 
+      # The files of a store in the order they migrate: knowledge first, so the tables that work copies into exist.
+      ORDER = %i[knowledge work retrieval references].freeze
+
       # `only` names one store to migrate; the home database is checked either way.
       def initialize(home:, now: Time.now, sequences: SchemaSequences::SEQUENCES, only: nil)
         @home = home
@@ -89,13 +92,17 @@ module Plastic
       def migrate_store(slug)
         files = databases(slug)
         return :current if files.all? { |database| database.version >= SchemaSequences.newest(:store) }
-        reason = backup_failure(slug)
-        return "its backup failed (#{reason})" if reason
 
-        files.each { |database| database.migrate(@sequences) }
-        :migrated
-      rescue SQLite3::Exception, Database::Error => error
+        reason = backup_failure(slug)
+        reason ? "its backup failed (#{reason})" : migrate_files(files)
+      rescue SQLite3::Exception, Database::Error, Plastic::Invalid => error
         "it could not be migrated (#{first_line(error)})"
+      end
+
+      def migrate_files(files)
+        siblings = files.to_h { |database| [database.key, database.path] }
+        files.sort_by { |database| ORDER.index(database.key) || ORDER.size }.each { |database| database.migrate(@sequences, siblings:) }
+        :migrated
       end
 
       def backup_failure(slug)

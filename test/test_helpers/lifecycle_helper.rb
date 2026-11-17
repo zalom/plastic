@@ -44,13 +44,15 @@ module Plastic
       end
 
       def put_verdict(round, verdict, at, findings: "Checked against the spec")
-        store_graphs.databases.fetch(:work).transaction do |batch|
+        store_graphs.databases.fetch(:knowledge).transaction do |batch|
           batch.add("INSERT INTO verdicts(intent_id, round, origin_id, verdict, findings, at, session_id) VALUES (:intent_id, :round, :origin, :verdict, :findings, :at, :session)",
             intent_id: "1", round:, origin:, verdict:, findings:, at:, session: "delivery")
         end
       end
 
-      def work_rows(table) = store_graphs.databases.fetch(:work).rows("SELECT * FROM #{table}")
+      def work_rows(table) = store_graphs.databases.fetch(KNOWLEDGE_TABLES.include?(table) ? :knowledge : :work).rows("SELECT * FROM #{table}")
+
+      KNOWLEDGE_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries work_log_pending].freeze
 
       def accepted_intent(keys = { KEY => CRITERION }, **specified_options)
         intent = specified(keys, **specified_options)

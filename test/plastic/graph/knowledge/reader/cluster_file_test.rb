@@ -9,14 +9,14 @@ class KnowledgeReaderClusterFileTest < Plastic::TestCase
 
   def index(clusters) = JSON.generate({ "intents" => [], "clusters" => clusters })
 
-  def apply(text) = store_graphs.databases[:work].transaction { |batch| ClusterFile.new(text.dup, origin).apply(batch) }
+  def apply(text) = store_graphs.databases[:knowledge].transaction { |batch| ClusterFile.new(text.dup, origin).apply(batch) }
 
   def put(name, origin_id: nil)
     row = { name:, intent_id: "1" }
-    store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, origin_id ? row.merge(origin_id:) : row) }
+    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:clusters, origin_id ? row.merge(origin_id:) : row) }
   end
 
-  def names(origin_id) = store_graphs.databases[:work].rows("SELECT name FROM clusters WHERE origin_id = :origin ORDER BY name", origin: origin_id).map { |row| row["name"] }
+  def names(origin_id) = store_graphs.databases[:knowledge].rows("SELECT name FROM clusters WHERE origin_id = :origin ORDER BY name", origin: origin_id).map { |row| row["name"] }
 
   def test_a_hand_edit_replaces_the_clusters_of_this_home
     put("Old")

@@ -36,8 +36,8 @@ class RoadmapNextTest < Plastic::TestCase
 
   def mark_done(item)
     intent = open_intent("Item #{item}")
+    knowledge.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id) }
     store_graphs.databases.fetch(:work).transaction do |batch|
-      batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id)
       batch.write(:roadmap_items, "UPDATE roadmap_items SET intent_id = :id WHERE roadmap = 'r1' AND item = :item",
         id: intent.intent_id, item:)
     end

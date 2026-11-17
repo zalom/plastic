@@ -26,23 +26,21 @@ module Plastic
         end
 
         # Runs the block, which writes the owning rows and stages their lines, as one commit.
-        def atomically(&) = work.atomically { @databases.fetch(:knowledge).atomically(&) }
+        def atomically(&) = knowledge.atomically { work.atomically(&) }
 
         # `parts` may name the node, the path and the body of the document the line hashes.
         def stage(intent_id, kind, text, **parts)
           row = { write_id: SecureRandom.uuid, intent_id:, at: Plastic.now, phase: "", node: "", session_id: @session, kind:, path: "", text:,
                   origin_id: @retrieval.origin_id, **parts.slice(:node, :path), sha256: hash_of(parts[:body]) }
-          work.transaction { |batch| batch.add(STAGE_SQL, **row) }
+          knowledge.transaction { |batch| batch.add(STAGE_SQL, **row) }
         end
 
         # Turns the pending rows of one intent into lines; returns how many lines it added.
         def drain(intent_id)
           added = 0
-          work.immediate_transaction do |batch, connection|
+          knowledge.immediate_transaction do |batch, connection|
             owed = connection.read(OWED_SQL, { intent_id: })
-            rows = line_rows(connection, owed)
-            batch.put_all(:work_log, rows)
-            added = rows.size
+            added = append(owed)
             owed.each { |row| batch.add(FORGET_SQL, write_id: row.fetch("write_id")) }
           end
           added
@@ -50,7 +48,7 @@ module Plastic
 
         # Drains every intent that owes lines; returns the lines added, by intent id.
         def drain_all
-          work.rows(OWING_SQL).map { |row| row.fetch("intent_id") }.to_h { |intent_id| [intent_id, drain(intent_id)] }
+          knowledge.rows(OWING_SQL).map { |row| row.fetch("intent_id") }.to_h { |intent_id| [intent_id, drain(intent_id)] }
         end
 
         private
@@ -59,13 +57,21 @@ module Plastic
 
         def hash_of(body) = body ? Digest::SHA256.hexdigest(body) : ""
 
-        def line_rows(connection, owed)
-          fresh = owed.reject { |row| written?(connection, row) }
-          top = fresh.empty? ? 0 : connection.read(TOP_SQL, { intent_id: fresh.first.fetch("intent_id") }).first.fetch("top")
+        def knowledge = @databases.fetch(:knowledge)
+
+        def append(owed)
+          rows = line_rows(owed)
+          work.transaction { |batch| batch.put_all(:work_log, rows) }
+          rows.size
+        end
+
+        def line_rows(owed)
+          fresh = owed.reject { |row| written?(row) }
+          top = fresh.empty? ? 0 : work.row(TOP_SQL, intent_id: fresh.first.fetch("intent_id")).fetch("top")
           fresh.each_with_index.map { |row, index| row.transform_keys(&:to_sym).merge(position: top + index + 1) }
         end
 
-        def written?(connection, row) = connection.read(WRITTEN_SQL, { origin_id: row.fetch("origin_id"), write_id: row.fetch("write_id") }).any?
+        def written?(row) = work.rows(WRITTEN_SQL, origin_id: row.fetch("origin_id"), write_id: row.fetch("write_id")).any?
       end
     end
   end

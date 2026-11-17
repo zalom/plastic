@@ -65,6 +65,9 @@ module Plastic
 
       def file = File.basename(path)
 
+      # The schema key of a stamped database, or nil for one that is not.
+      def key = @track&.fetch(:key)
+
       # Rows from one read. `:name` in the SQL takes the value of `name`.
       def rows(sql, **values) = connected { |connection| connection.read(sql, values) }
 
@@ -118,8 +121,9 @@ module Plastic
       def phrases = [written_phrase].compact
 
       # Brings the file to the newest version of its sequence. Only the install and the update call this.
-      def migrate(sequences)
-        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key)) }
+      # `siblings` names the path of each other file of the store, by key, for a step that moves rows between files.
+      def migrate(sequences, siblings: {})
+        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key), siblings) }
         @schema = nil
       end
 

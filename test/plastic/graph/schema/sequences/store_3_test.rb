@@ -27,7 +27,7 @@ class SchemaStore3Test < Plastic::TestCase
     SAVEPOINTS.each { |row| @database.execute("INSERT INTO savepoints (intent_id, position, at, text, origin_id, session_id) VALUES (?, ?, ?, ?, ?, ?)", row) }
   end
 
-  def migrate = Sequences.migrate(@database, Sequences::SEQUENCES.fetch(:store), :work)
+  def migrate = Sequences.migrate(@database, Sequences::SEQUENCES.fetch(:store).first(3), :work)
 
   def log = @database.execute("SELECT intent_id, position, at, kind, session_id, phase, node, path, sha256, text FROM work_log ORDER BY intent_id, position")
 
@@ -115,13 +115,14 @@ class SchemaStore3Test < Plastic::TestCase
     @database.execute(insert, [13, nil])
   end
 
-  def test_a_migrated_work_database_has_the_pending_table_and_the_index_of_a_new_one
+  def test_a_migrated_work_database_has_the_pending_table_and_the_write_id_index_of_a_new_one
     migrate
     fresh = SQLite3::Database.new(":memory:")
     fresh.execute_batch(Plastic::Graph::Schema.fetch(:work))
-    sql = ->(database) { database.execute("SELECT name, sql FROM sqlite_master WHERE name IN ('work_log_pending', 'work_log_write_id') ORDER BY name") }
+    sql = ->(database) { database.execute("SELECT name, sql FROM sqlite_master WHERE name = 'work_log_write_id'") }
 
     assert_equal sql.call(fresh), sql.call(@database)
-    assert_equal 2, sql.call(@database).size
+    assert_equal 1, sql.call(@database).size
+    assert_includes tables, "work_log_pending"
   end
 end

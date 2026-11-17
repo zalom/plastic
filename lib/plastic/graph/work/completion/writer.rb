@@ -34,7 +34,7 @@ module Plastic
             found = Check.new(@retrieval, intent_id).abandon_problems
             raise Invalid, found.join(" ") if found.any?
 
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:knowledge).transaction do |batch|
               batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, reason = NULL, closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress', 'parked', 'future')",
                 now: Plastic.now, intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
@@ -62,7 +62,7 @@ module Plastic
 
           def commit_completion(row)
             intent_id, now = row.values_at(:intent_id, :at)
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:knowledge).transaction do |batch|
               batch.put(:completions, row, statement: :insert)
               batch.write(:intents, "UPDATE intents SET status = 'done', disposition = 'delivered', closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress')",

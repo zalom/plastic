@@ -17,7 +17,7 @@ class KnowledgeReaderTest < Plastic::TestCase
   end
 
   def test_index_json_reads_into_the_work_graph
-    assert_equal :work, reader.read("store/index.json").database
+    assert_equal :knowledge, reader.read("store/index.json").database
   end
 
   def test_a_folder_with_no_intent_row_is_refused

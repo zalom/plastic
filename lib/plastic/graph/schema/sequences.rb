@@ -7,6 +7,7 @@ require_relative "sequences/home_4"
 require_relative "sequences/store_1"
 require_relative "sequences/store_2"
 require_relative "sequences/store_3"
+require_relative "sequences/store_4"
 
 module Plastic
   module Graph
@@ -41,7 +42,8 @@ module Plastic
           Migration.new(4, SchemaHome4.method(:apply), SchemaHome4::TABLES)].freeze,
         store: [Migration.new(1, SchemaStore1.method(:apply), SchemaStore1::TABLES),
           Migration.new(2, SchemaStore2.method(:apply), SchemaStore2::TABLES),
-          Migration.new(3, SchemaStore3.method(:apply), SchemaStore3::TABLES)].freeze
+          Migration.new(3, SchemaStore3.method(:apply), SchemaStore3::TABLES),
+          Migration.new(4, SchemaStore4.method(:apply), SchemaStore4::TABLES)].freeze
       }.freeze
 
       VERSION = "PRAGMA user_version"
@@ -62,18 +64,19 @@ module Plastic
       # Runs the migrations above the stamped version in order. Each one commits
       # with its stamp inside one immediate transaction, after the stamp is read
       # again under the lock, so a second runner waits and finds the work done.
-      def migrate(connection, migrations, key)
+      # `siblings` names the other files of the store, by key, for a step that moves rows between files.
+      def migrate(connection, migrations, key, siblings = {})
         migrations.each do |migration|
           next if stamped(connection) >= migration.number
 
-          connection.transaction(:immediate) { apply_once(connection, migration, key) }
+          connection.transaction(:immediate) { apply_once(connection, migration, key, siblings) }
         end
       end
 
-      def apply_once(connection, migration, key)
+      def apply_once(connection, migration, key, siblings)
         return if stamped(connection) >= migration.number
 
-        migration.apply.call(connection, key)
+        (migration.apply.arity == 2) ? migration.apply.call(connection, key) : migration.apply.call(connection, key, siblings)
         connection.execute("#{VERSION} = #{migration.number}")
       end
 

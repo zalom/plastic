@@ -644,7 +644,7 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
 
   def close_intent(home, intent_id)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(TwoHomesStatusHelper::CLOSED)
-    database_of(home, :work).transaction { |batch| batch.put(:intents, row) }
+    database_of(home, :knowledge).transaction { |batch| batch.put(:intents, row) }
     call_in(home, "sync", "down")
   end
 end

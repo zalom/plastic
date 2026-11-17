@@ -29,7 +29,7 @@ class ArchiveIntentTest < Plastic::TestCase
 
   def dated(title, status:, opened: "2026-01-01T00:00:00Z", closed: nil)
     intent = open_intent(title:, status: "future")
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = :status, opened_at = :opened, closed_at = :closed WHERE intent_id = :id",
         id: intent.intent_id, status:, opened:, closed:)
     end

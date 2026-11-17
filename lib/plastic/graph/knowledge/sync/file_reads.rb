@@ -56,6 +56,7 @@ module Plastic
           def commit(key, group)
             applies = group.map(&:apply)
             @databases.fetch(key).transaction { |batch| batch.apply(applies) }
+            group.each { |read| read.beside.each { |other, apply| @databases.fetch(other).transaction { |batch| apply.call(batch) } } }
           end
 
           # A roadmap file read into rows is printed again from them, so the file holds the form the rows print.

@@ -23,7 +23,7 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
 
   def read_in = Plastic::Graph::Knowledge::Sync::ArchivedIntents.new(folder, retrieval).write_to(store_graphs.databases)
 
-  def work_rows(sql) = store_graphs.databases.fetch(:work).rows(sql)
+  def work_rows(sql) = store_graphs.databases.fetch(:knowledge).rows(sql)
 
   def test_an_archive_entry_with_no_intent_row_inserts_the_intent_the_archive_and_the_completion
     write_index
@@ -58,7 +58,7 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
 
   def test_an_intent_that_already_has_a_row_keeps_its_row_and_gains_nothing
     open_intent("Mine")
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET intent_id = '2', slug = 'mine'") }
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "UPDATE intents SET intent_id = '2', slug = 'mine'") }
     write_index
     read_in
 
@@ -69,7 +69,7 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
   def test_a_restored_archive_row_survives_a_read
     write_index
     read_in
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:archives, "UPDATE archives SET restored_at = '2026-11-01T00:00:00Z'") }
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.write(:archives, "UPDATE archives SET restored_at = '2026-11-01T00:00:00Z'") }
     read_in
 
     assert_equal [["2026-11-01T00:00:00Z"]], work_rows("SELECT restored_at FROM archives").map(&:values)

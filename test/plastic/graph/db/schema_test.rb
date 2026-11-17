@@ -50,10 +50,10 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed]],
-      work: ["work_graph.db", %i[intents clusters nodes edges work_log work_log_pending completions printed changes roadmaps batches roadmap_items
-        roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]],
-      knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
-        retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]],
+      work: ["work_graph.db", %i[nodes edges work_log printed changes roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
+      knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data
+        document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries
+        rulings links printed changes]],
       references: ["references.db", %i[sqlar printed changes]]
     }, Schema.databases)
   end

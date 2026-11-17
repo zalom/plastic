@@ -45,7 +45,7 @@ module Plastic
           def uri(key) = @retrieval.reference(*key).fetch(:uri)
 
           def write_title(intent_id, title)
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:knowledge).transaction do |batch|
               batch.write(:intents, TITLE_SQL, title:, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
             end
           end

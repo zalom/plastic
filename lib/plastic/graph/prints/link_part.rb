@@ -18,7 +18,7 @@ module Plastic
 
         def path?(path) = path == PATH
 
-        def call(retrieval) = Part.new(PATH, :work, digest(IndexPrint.links(retrieval.every_link)), nil)
+        def call(retrieval) = Part.new(PATH, :knowledge, digest(IndexPrint.links(retrieval.every_link)), nil)
 
         def digest(links) = Digest::SHA256.hexdigest(JSON.generate(keys(links)))
 

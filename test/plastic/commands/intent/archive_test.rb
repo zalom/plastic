@@ -23,7 +23,7 @@ class IntentArchiveTest < Plastic::TestCase
   def call(*args) = plastic("intent", "archive", *args, table: Plastic::CLI::TABLE)
 
   def mark_done(intent)
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id)
     end
   end
@@ -136,7 +136,7 @@ class IntentArchiveTest < Plastic::TestCase
 
   def test_a_date_archives_the_done_intent_closed_before_it
     intent = open_intent("Old")
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done', closed_at = '2026-01-10T00:00:00Z' WHERE intent_id = :id", id: intent.intent_id)
     end
 
@@ -350,8 +350,8 @@ class ArchiveReadFidelityTest < Plastic::TestCase
 
   def archive_read_state(intent)
     work = store_graphs.databases.fetch(:work)
-    archive_rows = work.rows("SELECT * FROM archives WHERE intent_id = :id ORDER BY intent_id", id: intent.intent_id)
-    entry_rows = work.rows("SELECT * FROM archive_entries WHERE intent_id = :id ORDER BY path", id: intent.intent_id)
+    archive_rows = knowledge.rows("SELECT * FROM archives WHERE intent_id = :id ORDER BY intent_id", id: intent.intent_id)
+    entry_rows = knowledge.rows("SELECT * FROM archive_entries WHERE intent_id = :id ORDER BY path", id: intent.intent_id)
     changes = { work: work.rows("SELECT * FROM changes ORDER BY seq"),
                 knowledge: store_graphs.databases.fetch(:knowledge).rows("SELECT * FROM changes ORDER BY seq") }
     { archive_rows:, entry_rows:, changes:, filesystem: filesystem_state(intent) }

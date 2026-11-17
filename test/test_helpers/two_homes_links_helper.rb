@@ -38,7 +38,7 @@ module TwoHomesLinksHelper
 
   def printed_part?(home) = home_graphs(home).retrieval.printed.key?(PART)
 
-  def forget_part(home) = database_of(home, :work).transaction { |batch| batch.remove(:printed, path: PART) }
+  def forget_part(home) = database_of(home, :knowledge).transaction { |batch| batch.remove(:printed, path: PART) }
 
   def write_links_part(home, links)
     data = JSON.parse(read_file(home, FILE))

@@ -17,7 +17,7 @@ module Plastic
       # that owns the file's rows, so the reads of one call commit together.
       class Reader
         # One file's read: the database it writes and the statements it adds.
-        Read = Data.define(:path, :database, :apply)
+        Read = Data.define(:path, :database, :apply, :beside)
 
         # A read file and the print that keeps it.
         class Read
@@ -44,7 +44,7 @@ module Plastic
 
         def read(path)
           file = file_of(path)
-          Read.new(path, file.database, file.method(:apply))
+          Read.new(path, file.database, file.method(:apply), file.respond_to?(:beside) ? file.beside : {})
         end
 
         private

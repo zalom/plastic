@@ -30,7 +30,7 @@ class SchemaStore2Test < Plastic::TestCase
     end
   end
 
-  def migrate = Sequences.migrate(@database, Sequences::SEQUENCES.fetch(:store), :work)
+  def migrate = Sequences.migrate(@database, Sequences::SEQUENCES.fetch(:store).first(3), :work)
 
   def runs = @database.execute("SELECT node_id, number, agent, session_id, started_at, ended_at, result FROM runs ORDER BY node_id, number")
 

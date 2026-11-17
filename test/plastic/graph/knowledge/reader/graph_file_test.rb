@@ -96,7 +96,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
   def read_up = sync.apply(sync.plan(:up))
 
   def put_completion
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:completions, { intent_id: "1", origin_id: retrieval.origin_id, at: "2026-10-19T09:00:00Z", session_id: "s0", judge: "verdict",
                                 criteria: "{}", evidence: "{}", outcome_sha256: "kept" })
     end
@@ -106,7 +106,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text(completion: completion_hash))
     read_up
 
-    assert_equal [["1", "s1", retrieval.origin_id]], store_graphs.databases.fetch(:work).rows("SELECT intent_id, session_id, origin_id FROM completions").map(&:values)
+    assert_equal [["1", "s1", retrieval.origin_id]], store_graphs.databases.fetch(:knowledge).rows("SELECT intent_id, session_id, origin_id FROM completions").map(&:values)
   end
 
   def test_a_file_without_the_completion_key_leaves_the_row_the_intent_held
@@ -114,7 +114,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text)
     read_up
 
-    assert_equal ["kept"], store_graphs.databases.fetch(:work).rows("SELECT outcome_sha256 FROM completions").map { |row| row["outcome_sha256"] }
+    assert_equal ["kept"], store_graphs.databases.fetch(:knowledge).rows("SELECT outcome_sha256 FROM completions").map { |row| row["outcome_sha256"] }
   end
 
   def test_a_null_completion_leaves_the_row_the_intent_held
@@ -122,7 +122,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text(completion: nil))
     read_up
 
-    assert_equal 1, store_graphs.databases.fetch(:work).rows("SELECT * FROM completions").size
+    assert_equal 1, store_graphs.databases.fetch(:knowledge).rows("SELECT * FROM completions").size
   end
 
   def test_a_completion_that_names_another_intent_is_refused
@@ -263,7 +263,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     read = reader.read(GRAPH)
     apply_read(read)
 
-    assert_equal %i[work], [read.database]
+    assert_equal %i[knowledge], [read.database]
     assert_equal ["n1"], node_rows.map { |row| row[:id] }
   end
 end

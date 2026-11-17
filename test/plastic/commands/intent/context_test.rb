@@ -23,7 +23,7 @@ module IntentContextTestSupport
 
   def archive_source_intent
     source = Plastic::Graph.create(home: @plastic_home, store: "other")
-    source.databases.fetch(:work).transaction do |batch|
+    source.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:archives, { intent_id: "1", at: Plastic::TestCase::STAMP, restored_at: nil, session_id: "context-test" })
     end
   end

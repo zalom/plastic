@@ -57,10 +57,10 @@ class DoctorCoreTest < Plastic::TestCase
   end
 
   def test_a_store_that_lacks_a_table_names_the_table_and_the_repair
-    drop_table(store_path(:work), "intents")
+    drop_table(store_path(:knowledge), "intents")
     store = check("store #{SLUG}:")
 
-    assert_equal ["work_graph.db lacks the table intents", "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
+    assert_equal ["knowledge_graph.db lacks the table intents", "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
   end
 
   def test_a_store_with_no_folder_names_each_database

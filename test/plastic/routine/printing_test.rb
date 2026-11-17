@@ -8,7 +8,7 @@ class RoutinePrintingTest < Plastic::TestCase
   include HandEditHelper
 
   def row_counts
-    %i[work knowledge].to_h { |key| [key, store_graphs.databases.fetch(key).row("SELECT COUNT(*) AS n FROM #{(key == :work) ? "approvals" : "document_revisions"}").fetch("n")] }
+    %w[approvals document_revisions].to_h { |table| [table, knowledge.row("SELECT COUNT(*) AS n FROM #{table}").fetch("n")] }
   end
 
   def test_a_level_file_whose_bytes_equal_its_print_passes
@@ -40,7 +40,7 @@ class RoutinePrintingTest < Plastic::TestCase
     edited_spec
     cli("intent", "approve", "1")
 
-    assert_equal 0, store_graphs.databases.fetch(:work).row("SELECT COUNT(*) AS n FROM approvals").fetch("n")
+    assert_equal 0, store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM approvals").fetch("n")
   end
 
   def test_an_edited_spec_stays_as_written_after_a_refusal

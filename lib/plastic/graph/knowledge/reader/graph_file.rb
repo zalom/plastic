@@ -22,11 +22,14 @@ module Plastic
             reasons.map { |reason| "#{@path} #{reason}" }
           end
 
+          KNOWLEDGE = %i[approvals verdicts completions].freeze
+
           def apply(batch)
             refuse_problems
-            clear(batch)
-            rows.each { |table, list| batch.put_all(table, list) }
+            write(batch, KNOWLEDGE)
           end
+
+          def apply_work(batch) = write(batch, rows.keys - KNOWLEDGE)
 
           private
 
@@ -35,7 +38,12 @@ module Plastic
             raise Invalid, found.join("; ") if found.any?
           end
 
-          def clear(batch) = Document::TABLES.each_key { |table| batch.remove(table, intent_id: @intent_id, origin_id: @origin_id) }
+          def write(batch, tables)
+            clear(batch, tables)
+            rows.slice(*tables).each { |table, list| batch.put_all(table, list) }
+          end
+
+          def clear(batch, tables) = (Document::TABLES.keys & tables).each { |table| batch.remove(table, intent_id: @intent_id, origin_id: @origin_id) }
 
           def rows = Document::TABLES.merge(Document::PUT_ONLY).to_h { |table, record| [table, table_rows(table, record)] }
 

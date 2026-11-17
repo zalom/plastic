@@ -14,6 +14,8 @@ module Plastic
 
       def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
+      def knowledge = store_graphs.databases.fetch(:knowledge)
+
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
       def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
@@ -46,7 +48,10 @@ module Plastic
       end
 
       # Writes the rows one read adds, in the database that owns them.
-      def apply_read(read) = store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
+      def apply_read(read)
+        store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
+        read.beside.each { |key, apply| store_graphs.databases.fetch(key).transaction { |batch| apply.call(batch) } }
+      end
 
       # The one item of a list, asserted to be the only one.
       def sole(list)

@@ -30,7 +30,7 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_rows_of_another_origin_stay_out
-    put(:work, :intents, { intent_id: "1", origin_id: "beef", slug: "a", title: "A", status: "open" })
+    put(:knowledge, :intents, { intent_id: "1", origin_id: "beef", slug: "a", title: "A", status: "open" })
 
     assert_empty retrieval.intents
   end
@@ -44,7 +44,7 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_clusters_nodes_and_edges_read_back
-    put(:work, :clusters, { name: "Core", intent_id: "1" })
+    put(:knowledge, :clusters, { name: "Core", intent_id: "1" })
     put(:work, :nodes, { intent_id: "1", id: "n1", kind: "build" })
     put(:work, :edges, { intent_id: "1", from: "n1", to: "n2", kind: "needs" })
 

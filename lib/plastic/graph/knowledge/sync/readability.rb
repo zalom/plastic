@@ -24,6 +24,7 @@ module Plastic
           def problem(path)
             read = reader.read(path)
             @databases.fetch(read.database).dry_run { |batch| read.apply.call(batch) }
+            read.beside.each { |other, apply| @databases.fetch(other).dry_run { |batch| apply.call(batch) } }
             nil
           rescue => error
             error.message

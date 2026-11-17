@@ -41,11 +41,11 @@ module Plastic
 
           def origin_id = @retrieval.origin_id
 
-          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:work), intent_id, origin_id, files: @collaborators[:files])
+          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:knowledge), intent_id, origin_id, files: @collaborators[:files])
 
           def remove_printed(dir) = PrintedCleanup.new(@databases, @retrieval).remove(dir)
 
-          def capture = Capture.new(@databases.fetch(:work), @folder, origin_id, session: @collaborators[:session])
+          def capture = Capture.new(@databases.fetch(:knowledge), @folder, origin_id, session: @collaborators[:session])
 
           def guard = Guard.new(@retrieval)
 
@@ -56,7 +56,7 @@ module Plastic
               snapshot: method(:snapshot), remove_printed: method(:remove_printed))
           end
 
-          def restore_operation = Restore.new(@databases.fetch(:work), @retrieval, @folder, snapshot: method(:snapshot))
+          def restore_operation = Restore.new(@databases.fetch(:knowledge), @retrieval, @folder, snapshot: method(:snapshot))
         end
       end
     end

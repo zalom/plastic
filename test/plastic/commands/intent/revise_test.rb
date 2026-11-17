@@ -14,7 +14,7 @@ class IntentReviseTest < Plastic::TestCase
 
   def revisions = store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
 
-  def set_status(status) = store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
+  def set_status(status) = store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
   def test_a_revise_changes_the_title_row_and_writes_a_second_revision
     open_intent
@@ -158,7 +158,7 @@ class IntentReviseCommandTest < Plastic::TestCase
 
     assert_equal [0, ""], [call.code, call.err]
     assert_includes call.out, "what: Beta, after grilling"
-    assert_equal [{ "title" => "Beta, after grilling" }], store_graphs.databases.fetch(:work).rows("SELECT title FROM intents").map { |row| row.to_h.transform_keys(&:to_s) }
+    assert_equal [{ "title" => "Beta, after grilling" }], store_graphs.databases.fetch(:knowledge).rows("SELECT title FROM intents").map { |row| row.to_h.transform_keys(&:to_s) }
   end
 end
 

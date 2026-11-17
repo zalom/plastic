@@ -5,13 +5,11 @@ require_relative "../../../test_helper"
 class DatabaseBatchTest < Plastic::TestCase
   Batch = Plastic::Graph::Database::Batch
 
-  def work = store_graphs.databases[:work]
-
   def cluster(name) = { name:, intent_id: "1" }
 
-  def names = work.rows("SELECT name FROM clusters").map { |row| row["name"] }
+  def names = knowledge.rows("SELECT name FROM clusters").map { |row| row["name"] }
 
-  def changes = work.rows("SELECT \"table\", operation FROM changes ORDER BY rowid").map(&:values)
+  def changes = knowledge.rows("SELECT \"table\", operation FROM changes ORDER BY rowid").map(&:values)
 
   def test_a_new_batch_is_empty_until_a_statement_is_added
     batch = Batch.new
@@ -20,31 +18,31 @@ class DatabaseBatchTest < Plastic::TestCase
   end
 
   def test_a_put_in_a_store_database_stamps_the_origin_and_logs_the_change
-    work.transaction { |batch| batch.put(:clusters, cluster("C")) }
+    knowledge.transaction { |batch| batch.put(:clusters, cluster("C")) }
 
-    assert_equal [store_graphs.retrieval.origin_id], work.rows("SELECT origin_id FROM clusters").map { |row| row["origin_id"] }
+    assert_equal [store_graphs.retrieval.origin_id], knowledge.rows("SELECT origin_id FROM clusters").map { |row| row["origin_id"] }
     assert_equal [%w[clusters put]], changes
   end
 
   def test_a_put_with_insert_refuses_a_row_already_there
-    work.transaction { |batch| batch.put(:clusters, cluster("C")) }
+    knowledge.transaction { |batch| batch.put(:clusters, cluster("C")) }
 
-    assert_raises(Plastic::Graph::Database::Error) { work.transaction { |batch| batch.put(:clusters, cluster("C"), statement: :insert) } }
-    assert_equal 1, work.rows("SELECT * FROM clusters").size
+    assert_raises(Plastic::Graph::Database::Error) { knowledge.transaction { |batch| batch.put(:clusters, cluster("C"), statement: :insert) } }
+    assert_equal 1, knowledge.rows("SELECT * FROM clusters").size
   end
 
   def test_a_remove_deletes_the_matching_rows_and_logs_the_removal
-    work.transaction { |batch| batch.put_all(:clusters, [cluster("A"), cluster("B")]) }
-    work.transaction { |batch| batch.remove_all(:clusters, [cluster("A")]) }
+    knowledge.transaction { |batch| batch.put_all(:clusters, [cluster("A"), cluster("B")]) }
+    knowledge.transaction { |batch| batch.remove_all(:clusters, [cluster("A")]) }
 
     assert_equal ["B"], names
     assert_equal %w[put put remove], changes.map(&:last)
   end
 
   def test_insert_rows_writes_each_row_under_its_table_in_order
-    work.transaction { |batch| batch.insert_rows(clusters: cluster("A"), nodes: { intent_id: "1", id: "n1", state: "open" }) }
+    knowledge.transaction { |batch| batch.insert_rows(clusters: cluster("A"), approvals: { intent_id: "1" }) }
 
-    assert_equal [%w[clusters put], %w[nodes put]], changes
+    assert_equal [%w[clusters put], %w[approvals put]], changes
   end
 
   def test_a_counted_write_names_its_table_and_a_plain_add_names_none
@@ -73,12 +71,12 @@ class DatabaseBatchTest < Plastic::TestCase
 end
 
 class ChangeLogTest < Plastic::TestCase
-  def work = @work ||= store_graphs.databases[:work]
+  def work = @work ||= store_graphs.databases[:knowledge]
 
   def changes(database = work) = database.rows("SELECT * FROM changes ORDER BY seq")
 
   def test_every_put_appends_one_change_with_its_key_and_no_row
-    work.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
+    knowledge.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
     change = sole(changes)
 
     assert_equal ["clusters", "put", origin, nil], change.values_at("table", "operation", "origin_id", "row")
@@ -88,19 +86,19 @@ class ChangeLogTest < Plastic::TestCase
 
   def test_a_failed_write_leaves_no_change_row
     assert_raises(Plastic::Graph::Database::Error) do
-      work.transaction do |batch|
+      knowledge.transaction do |batch|
         batch.put(:clusters, { name: "Core", intent_id: "1" })
         batch.add("INSERT INTO nowhere VALUES (1)")
       end
     end
 
     assert_empty changes
-    assert_empty work.rows("SELECT * FROM clusters")
+    assert_empty knowledge.rows("SELECT * FROM clusters")
   end
 
   def test_a_removal_is_logged_with_no_row
-    work.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
-    work.transaction { |batch| batch.remove(:clusters, name: "Core") }
+    knowledge.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
+    knowledge.transaction { |batch| batch.remove(:clusters, name: "Core") }
     change = changes.last
 
     assert_equal "remove", change["operation"]

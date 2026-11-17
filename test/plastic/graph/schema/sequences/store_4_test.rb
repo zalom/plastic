@@ -17,7 +17,7 @@ class SchemaStore4Test < Plastic::TestCase
   end
 
   def test_the_text_of_the_landed_migration_is_pinned_by_its_digest
-    assert_equal "pinned-after-landing", Digest::SHA256.hexdigest(Plastic::Graph::SchemaStore4.texts.join("\n--\n"))
+    assert_equal "64c5883985dfad00ae251bdaab85768c45e019e0a61f32d05e81d7d2b3e4a269", Digest::SHA256.hexdigest(Plastic::Graph::SchemaStore4.texts.join("\n--\n"))
   end
 
   def test_the_migration_never_reads_the_live_schema
@@ -39,19 +39,30 @@ class SchemaStore4Test < Plastic::TestCase
 
     assert_equal before, @knowledge.execute("SELECT * FROM archive_entries")
     assert_equal [2, 1, 1, 1, 1, 1, 1, 1], MOVED.map { |table| count(@knowledge, table) }
-    assert_empty tables(@work) & MOVED
-    assert_equal 1, count(@work, "nodes")
+  end
+
+  def test_work_drops_the_moved_tables_and_keeps_its_nodes
+    Plastic::Graph::SchemaStore4.apply(@knowledge, :knowledge, {})
+    migrate_work
+
+    assert_equal [[], 1], [tables(@work) & MOVED, count(@work, "nodes")]
   end
 
   def test_the_printed_and_changes_rows_of_the_moved_paths_move_and_the_others_stay
     Plastic::Graph::SchemaStore4.apply(@knowledge, :knowledge, {})
     migrate_work
 
-    assert_equal %w[1--alpha/graph.json store/index.json], @knowledge.execute("SELECT path FROM printed ORDER BY path").map { |row| row["path"] }
-    assert_equal %w[1--alpha/work.log roadmaps/r.md], @work.execute("SELECT path FROM printed ORDER BY path").map { |row| row["path"] }
-    assert_equal ["intents"], @knowledge.execute("SELECT \"table\" FROM changes").map { |row| row["table"] }
-    assert_equal ["nodes"], @work.execute("SELECT \"table\" FROM changes").map { |row| row["table"] }
+    assert_equal [%w[1--alpha/graph.json store/index.json], %w[1--alpha/work.log roadmaps/r.md]], [column(@knowledge, "path", "printed"), column(@work, "path", "printed")]
   end
+
+  def test_the_changes_rows_of_the_moved_tables_move_and_the_others_stay
+    Plastic::Graph::SchemaStore4.apply(@knowledge, :knowledge, {})
+    migrate_work
+
+    assert_equal [["intents"], ["nodes"]], [column(@knowledge, "table", "changes"), column(@work, "table", "changes")]
+  end
+
+  def column(database, name, table) = database.execute("SELECT \"#{name}\" FROM #{table} ORDER BY 1").map { |row| row[name] }
 
   def test_a_second_run_changes_nothing
     Plastic::Graph::SchemaStore4.apply(@knowledge, :knowledge, {})

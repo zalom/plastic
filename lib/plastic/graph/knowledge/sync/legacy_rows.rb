@@ -45,7 +45,7 @@ module Plastic
           def write(parsed)
             now = Plastic.now
             rows = parsed.entries.map { |entry| entry.row(FrontMatter.new(@folder).read(entry.dir), now) }
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:knowledge).transaction do |batch|
               batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))
             end
           end

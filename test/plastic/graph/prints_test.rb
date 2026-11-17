@@ -20,7 +20,7 @@ class PrintsTest < Plastic::TestCase
 
   def test_clusters_list_their_intents
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
+    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
 
     assert_equal [{ "name" => "Core", "intents" => ["1"] }], JSON.parse(index_text)["clusters"]
   end
@@ -148,7 +148,7 @@ class PrintsArchiveTest < Plastic::TestCase
   end
 
   def archive(intent_id, restored_at: nil)
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:completions, completion_row(intent_id))
       batch.put(:archives, { intent_id:, at: "2026-10-21T09:00:00Z", origin_id: retrieval.origin_id, restored_at:, session_id: "s2" })
     end
@@ -158,7 +158,7 @@ class PrintsArchiveTest < Plastic::TestCase
 
   def test_the_graph_file_prints_the_completion_of_a_done_intent
     intent = open_intent("Alpha", status: "done")
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:completions, completion_row("1")) }
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:completions, completion_row("1")) }
 
     printed = JSON.parse(graph_text(retrieval.intent(intent.intent_id))).fetch("completion")
 
@@ -217,7 +217,7 @@ class PrintsChecklistTest < Plastic::TestCase
 
   def paths = printed.map(&:path)
 
-  def insert(*statements) = store_graphs.databases[:work].transaction { |batch| statements.each { |sql| batch.add(sql, origin:) } }
+  def insert(*statements) = store_graphs.databases[:knowledge].transaction { |batch| statements.each { |sql| batch.add(sql, origin:) } }
 
   def approved_graph
     store_graphs.work.write_intent(title: "One")
@@ -440,7 +440,7 @@ class PrintTriggerTest < Plastic::TestCase
 
   def test_archive_rewrites_the_index_to_list_the_intent_among_the_archives
     open_intent
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done'") }
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done'") }
     cli("intent", "archive", "1")
 
     assert_equal ["1"], JSON.parse(File.read(store_path("store/index.json"))).fetch("archives").map { |mark| mark.fetch("intent_id") }

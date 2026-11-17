@@ -75,8 +75,8 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
   def file_without(*tables)
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     db = SQLite3::Database.new(path)
-    db.execute_batch(Plastic::Graph::Schema.fetch(:work))
-    db.execute("CREATE TABLE savepoints (intent_id TEXT)")
+    db.execute_batch(Plastic::Graph::SchemaStore1::Layout::TEXT.fetch(:work))
+    %w[approvals verdicts].each { |table| db.execute("CREATE TABLE IF NOT EXISTS #{table} (intent_id TEXT)") }
     tables.each { |table| db.execute("DROP TABLE #{table}") }
     db.close
     path

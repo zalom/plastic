@@ -45,7 +45,7 @@ module BackupHomes
   def store_file(home, name, slug = "alpha") = File.join(home, "stores", slug, "#{name}.db")
 
   def intent_count(home, slug = "alpha")
-    Plastic::Graph.open(home:, store: slug).databases.fetch(:work).row("SELECT count(*) AS n FROM intents").fetch("n")
+    Plastic::Graph.open(home:, store: slug).databases.fetch(:knowledge).row("SELECT count(*) AS n FROM intents").fetch("n")
   end
 
   def add_intent(home, slug = "alpha") = Plastic::Graph.open(home:, store: slug).work.write_intent(title: "More")

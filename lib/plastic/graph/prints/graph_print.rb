@@ -13,7 +13,7 @@ module Plastic
 
         def call(intent, rows)
           id = intent.intent_id
-          Print.text("#{intent.dir}/graph.json", :work, text(id, parts(id, rows)))
+          Print.text("#{intent.dir}/graph.json", :knowledge, text(id, parts(id, rows)))
         end
 
         def parts(id, rows)

@@ -43,7 +43,7 @@ class KnowledgeArchiveGuardTest < Plastic::TestCase
 
   def test_a_link_from_an_archived_intent_does_not_hold_it
     source = linked_from("future")
-    store_graphs.databases[:work].transaction do |batch|
+    store_graphs.databases[:knowledge].transaction do |batch|
       batch.put(:archives, { intent_id: source.intent_id, at: STAMP, restored_at: nil, session_id: nil })
     end
 

@@ -15,7 +15,7 @@ class RetrievalArchiveReadsTest < Plastic::TestCase
   end
 
   def test_a_reference_into_an_archived_intent_is_archived
-    put(:work, :archives, { intent_id: "1", at: STAMP })
+    put(:knowledge, :archives, { intent_id: "1", at: STAMP })
 
     assert retrieval.archived_reference?(retrieval.reference("1", @intent.file).fetch(:uri))
   end

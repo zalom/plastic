@@ -17,7 +17,7 @@ module TwoHomesStatusHelper
   def to_both_homes(&) = two_homes(seed: method(:seed), &)
 
   def intent_row(home, intent_id, origin: origin_of(home))
-    rows_of(home, :work, "SELECT * FROM intents WHERE intent_id = :id AND origin_id = :origin", id: intent_id, origin:).first
+    rows_of(home, :knowledge, "SELECT * FROM intents WHERE intent_id = :id AND origin_id = :origin", id: intent_id, origin:).first
   end
 
   def fields(home, intent_id) = intent_row(home, intent_id).slice("title", "status", "disposition", "reason", "closed_at")
@@ -25,7 +25,7 @@ module TwoHomesStatusHelper
   # A change of the row of an intent on a home, printed to the file by sync down.
   def change_row(home, intent_id, **changes)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(changes)
-    database_of(home, :work).transaction { |batch| batch.put(:intents, row) }
+    database_of(home, :knowledge).transaction { |batch| batch.put(:intents, row) }
     call_in(home, "sync", "down")
   end
 

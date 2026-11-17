@@ -5,10 +5,10 @@ require_relative "../../../test_helper"
 class WorkIntentRowTest < Plastic::TestCase
   COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition reason opened_at closed_at updated_at].freeze
 
-  def work = @work ||= store_graphs.databases[:work]
+  def work = @work ||= store_graphs.databases[:knowledge]
 
   def test_the_intent_table_has_the_ruled_columns
-    assert_equal COLUMNS, work.rows("SELECT name FROM pragma_table_info('intents')").map { |row| row["name"] }
+    assert_equal COLUMNS, knowledge.rows("SELECT name FROM pragma_table_info('intents')").map { |row| row["name"] }
   end
 
   def test_the_six_statuses_are_the_ruled_ones
@@ -24,17 +24,17 @@ class WorkIntentRowTest < Plastic::TestCase
   end
 
   def test_the_same_intent_id_from_two_origins_is_two_rows
-    work.transaction do |batch|
+    knowledge.transaction do |batch|
       batch.put(:intents, { intent_id: "1", origin_id: "aaaa", slug: "a", title: "A", status: "open" })
       batch.put(:intents, { intent_id: "1", origin_id: "bbbb", slug: "a", title: "A", status: "open" })
     end
 
-    assert_equal [1, 2], work.rows("SELECT id FROM intents ORDER BY id").map { |row| row["id"] }
+    assert_equal [1, 2], knowledge.rows("SELECT id FROM intents ORDER BY id").map { |row| row["id"] }
   end
 
   def test_a_second_put_keeps_the_id
-    2.times { |n| work.transaction { |batch| batch.put(:intents, { intent_id: "1", slug: "a", title: "A#{n}", status: "open" }) } }
+    2.times { |n| knowledge.transaction { |batch| batch.put(:intents, { intent_id: "1", slug: "a", title: "A#{n}", status: "open" }) } }
 
-    assert_equal [{ "id" => 1, "title" => "A1" }], work.rows("SELECT id, title FROM intents")
+    assert_equal [{ "id" => 1, "title" => "A1" }], knowledge.rows("SELECT id, title FROM intents")
   end
 end

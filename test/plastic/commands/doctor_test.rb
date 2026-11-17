@@ -89,7 +89,7 @@ class DoctorDamageCaseTest < Plastic::TestCase
   end
 
   def test_a_store_without_the_intents_table_names_the_project_repair
-    drop_table(store_path(:work), "intents")
+    drop_table(store_path(:knowledge), "intents")
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
