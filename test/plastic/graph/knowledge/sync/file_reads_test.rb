@@ -41,6 +41,25 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     assert_empty store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
   end
 
+  def test_read_all_raises_instead_of_falling_back
+    write_null_id_graph
+    write("#{DIR}/notes.md", "# notes\n")
+    error = assert_raises(Plastic::Failed) { file_reads.read_all([GRAPH, "#{DIR}/notes.md"]) }
+
+    assert_includes error.message, GRAPH
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT path FROM document_heads WHERE path = 'notes.md'")
+  end
+
+  def test_read_all_gives_the_reads_and_prints_nothing_until_asked
+    write("#{DIR}/notes.md", "# notes\n")
+    reads = file_reads.read_all(["#{DIR}/notes.md"])
+
+    assert_equal ["read #{DIR}/notes.md"], reads.map(&:line)
+    assert_nil retrieval.stored.printed["#{DIR}/notes.md"]
+    file_reads.reprint(reads)
+    refute_nil retrieval.stored.printed["#{DIR}/notes.md"]
+  end
+
   def rename_by_hand_in_the_index
     index = JSON.parse(folder.read("store/index.json"))
     index.fetch("intents").each { |entry| entry["title"] = "Renamed by hand" }
