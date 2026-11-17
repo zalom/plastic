@@ -17,17 +17,17 @@ module Plastic
           end
 
           def add_verdict(intent_id:, **fields)
-            round = @retrieval.verdicts(intent_id).size + 1
+            round = @retrieval.structure.verdicts(intent_id).size + 1
             insert({ intent_id:, round:, at: Plastic.timestamp(@clock.now), session_id: @session, **fields }) unless round > Verdict::ROUNDS
           end
 
-          def rounds_left?(intent_id) = @retrieval.verdicts(intent_id).size < Verdict::ROUNDS
+          def rounds_left?(intent_id) = @retrieval.structure.verdicts(intent_id).size < Verdict::ROUNDS
 
           private
 
           def insert(row)
             @databases.fetch(:store).transaction { |batch| batch.put(:verdicts, row, statement: :insert) }
-            @retrieval.verdicts(row[:intent_id]).find { |found| found.round == row[:round] }
+            @retrieval.structure.verdicts(row[:intent_id]).find { |found| found.round == row[:round] }
           end
         end
       end

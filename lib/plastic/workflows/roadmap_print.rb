@@ -21,7 +21,7 @@ module Plastic
       private
 
       def batches
-        all = @retrieval.batches(@slug)
+        all = @retrieval.roadmaps.batches(@slug)
         position = @context.position
         position ? all.select { |row| row.position == position.to_i } : all
       end
@@ -31,11 +31,11 @@ module Plastic
         items(batch.position).each { |item| @context.print(item_line(item)) }
       end
 
-      def items(position) = @retrieval.roadmap_items(@slug).select { |item| item.batch == position }
+      def items(position) = @retrieval.roadmaps.items(@slug).select { |item| item.batch == position }
 
       def item_line(item)
         state = Graph::Knowledge::Roadmap::State.of(item, @retrieval)
-        RoadmapLines.item(item, state, @retrieval.roadmap_edges(@slug))
+        RoadmapLines.item(item, state, @retrieval.roadmaps.edges(@slug))
       end
     end
   end

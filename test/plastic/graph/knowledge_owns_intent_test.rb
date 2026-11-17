@@ -38,7 +38,7 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
     work.write_intent(title: "Alpha")
     work.add_node(intent_id: "1", id: "n1", kind: "task", title: "First")
 
-    assert_equal ["Alpha", ["n1"]], [graphs.retrieval.intent("1").title, graphs.retrieval.nodes("1").map(&:id)]
+    assert_equal ["Alpha", ["n1"]], [graphs.retrieval.intent("1").title, graphs.retrieval.structure.nodes("1").map(&:id)]
   end
 
   def printed_graph = JSON.parse(File.read(Dir.glob(File.join(@plastic_home, "stores", "global", "store", "1--*", "graph.json")).first))

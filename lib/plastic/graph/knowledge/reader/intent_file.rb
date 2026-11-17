@@ -76,11 +76,13 @@ module Plastic
           def log_row(line, index) = { intent_id: @intent_id, position: index + 1, **Work::LogLine.parse(line) }
 
           def savepoint(batch)
-            known = @retrieval.work_log(@intent_id)
+            known = logged_lines
             added = old_rows.reject { |row| known.any? { |line| line.text == row[:text] } }
             start = known.map(&:position).max.to_i
             batch.put_all(:work_log, added.each_with_index.map { |row, index| { **row, position: start + index + 1 } })
           end
+
+          def logged_lines = @retrieval.structure.work_log(@intent_id)
 
           def old_rows = text.lines(chomp: true).reject { |line| line.strip.empty? }.map { |line| old_row(line) }
 

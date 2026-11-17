@@ -17,7 +17,7 @@ module Plastic
       end
 
       def text
-        row = @retrieval.roadmap(@slug)
+        row = @retrieval.roadmaps.find(@slug)
         lines = [Form::LINE, "# #{Form.escape(row.title)}", "", *fields(row, %i[slug title goal opened_at]), "", *batches,
           "## Graph", "", *edge_lines, "", *edge_records, "## Log", "", *log_lines]
         "#{lines.join("\n")}\n"
@@ -29,14 +29,14 @@ module Plastic
 
       def indented(record, names) = fields(record, names).map { |line| "  #{line}" }
 
-      def batches = @retrieval.batches(@slug).flat_map { |batch| batch_lines(batch) }
+      def batches = @retrieval.roadmaps.batches(@slug).flat_map { |batch| batch_lines(batch) }
 
       def batch_lines(batch)
         ["## Batch #{batch.position}: #{Form.escape(batch.title)}", "", *fields(batch, %i[title goal done]), "", *item_lines(batch.position)]
       end
 
       def item_lines(position)
-        @retrieval.roadmap_items(@slug).select { |item| item.batch == position }.flat_map { |item| [item_line(item), *indented(item, %i[item position title goal done intent_id mark]), ""] }
+        @retrieval.roadmaps.items(@slug).select { |item| item.batch == position }.flat_map { |item| [item_line(item), *indented(item, %i[item position title goal done intent_id mark]), ""] }
       end
 
       def item_line(item) = "- [#{box(item)}] #{item.item} #{Form.escape(item.title)} — #{state_of(item)}"
@@ -45,17 +45,17 @@ module Plastic
 
       def box(item) = CHECKED.fetch(state_of(item), " ")
 
-      def edge_lines = @retrieval.roadmap_items(@slug).map { |item| needs_line(item.item) }
+      def edge_lines = @retrieval.roadmaps.items(@slug).map { |item| needs_line(item.item) }
 
       def needs_line(name) = "- #{name} needs #{needs_of(name).join(" ").sub(/\A\z/, "nothing")}"
 
       def needs_of(name) = edges.select { |edge| edge.to == name }.map(&:from)
 
-      def edges = (@edges ||= @retrieval.roadmap_edges(@slug))
+      def edges = (@edges ||= @retrieval.roadmaps.edges(@slug))
 
       def edge_records = edges.flat_map { |edge| ["- edge", *indented(edge, %i[from to kind]), ""] }
 
-      def log_lines = @retrieval.roadmap_log(@slug).flat_map { |line| ["- log", *indented(line, %i[position at session_id text])] }
+      def log_lines = @retrieval.roadmaps.log(@slug).flat_map { |line| ["- log", *indented(line, %i[position at session_id text])] }
     end
   end
 end

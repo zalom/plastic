@@ -54,7 +54,7 @@ class EdgeAddTest < Plastic::TestCase
     result = call("1", "n1", "n2")
 
     assert_equal 0, result.code
-    edge = sole(store_graphs.retrieval.edges("1"))
+    edge = sole(structure.edges("1"))
 
     assert_equal ["n1", "n2"], [edge.from, edge.to]
   end

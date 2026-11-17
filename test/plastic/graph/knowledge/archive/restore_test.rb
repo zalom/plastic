@@ -23,7 +23,7 @@ class KnowledgeArchiveRestoreTest < Plastic::TestCase
 
     assert_equal [true, nil, nil], restore.call("1")
     assert_path_exists folder.path("#{@intent.dir}/#{@intent.file}")
-    refute retrieval.archived?("1")
+    refute retrieval.archives.archived?("1")
   end
 
   def test_an_archived_intent_whose_snapshot_is_on_another_home_refuses_and_stays_archived

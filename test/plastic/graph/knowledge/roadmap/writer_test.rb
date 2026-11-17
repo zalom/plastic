@@ -13,13 +13,13 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
 
   def item(name, needs: nil) = @work.add_item("plan", name, 1, fields: fields(title: name.upcase), needs:)
 
-  def edges = @graphs.retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to] }
+  def edges = @graphs.retrieval.roadmaps.edges("plan").map { |edge| [edge.from, edge.to] }
 
   def test_the_first_batch_writes_the_roadmap_row_and_names_an_untitled_batch
     batch = @work.write_batch("plan", 1, fields: fields(done: %w[One Two]))
 
     assert_equal ["Batch 1", %w[One Two]], [batch.title, batch.done_lines]
-    assert_equal "plan", @graphs.retrieval.roadmap("plan").title
+    assert_equal "plan", @graphs.retrieval.roadmaps.find("plan").title
   end
 
   def test_rewriting_a_batch_keeps_the_words_left_out
@@ -35,7 +35,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
     item("b")
     item("a", needs: "b")
 
-    assert_equal [%w[a b], [%w[b a]]], [@graphs.retrieval.roadmap_items("plan").map(&:item), edges]
+    assert_equal [%w[a b], [%w[b a]]], [@graphs.retrieval.roadmaps.items("plan").map(&:item), edges]
   end
 
   def test_items_take_the_next_position_in_their_batch_and_write_their_edges
@@ -78,7 +78,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
     item("a")
 
     assert_equal [true, false], [@work.drop_item("plan", "a"), @work.drop_item("plan", "z")]
-    assert_predicate @graphs.retrieval.roadmap_items("plan").first, :dropped?
+    assert_predicate @graphs.retrieval.roadmaps.items("plan").first, :dropped?
   end
 
   def test_removing_an_edge_reports_true_then_false

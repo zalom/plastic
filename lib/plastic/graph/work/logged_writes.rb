@@ -34,7 +34,7 @@ module Plastic
 
         def approve_intent(intent_id, **options)
           @log.recorded do
-            given = @writers.retrieval.approval(intent_id)
+            given = @writers.retrieval.structure.approval(intent_id)
             @writers.approvals.approve(intent_id, **options).tap { given || @log.line(intent_id, "approved", "Go-ahead given") }
           end
         end

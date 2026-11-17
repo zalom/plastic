@@ -23,7 +23,7 @@ class WorkNodeRunTest < Plastic::TestCase
 
   def claim(session = "s-1") = work(session).claim_node(intent_id: "1", id: "n1", by: session)
 
-  def runs = retrieval.runs("1").select { |run| run.node_id == "n1" }
+  def runs = retrieval.structure.runs("1").select { |run| run.node_id == "n1" }
 
   def test_a_claim_opens_a_run_of_the_session
     claim

@@ -20,8 +20,8 @@ module Plastic
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
           read "print each node and edge" do |context|
-            context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
-            context.retrieval.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
+            context.retrieval.structure.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
           end
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"

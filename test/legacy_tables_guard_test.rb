@@ -19,7 +19,7 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/prints.rb
     plastic/graph/prints/contents.rb
     plastic/graph/source.rb
-    plastic/graph/retrieval/store_reads.rb
+    plastic/graph/retrieval/store_read.rb
   ].map { |path| File.join(KERNEL, path) }.freeze
   DECLARATION = /create_table\s+:(\w+)[^\n]*legacy:\s*true/
 

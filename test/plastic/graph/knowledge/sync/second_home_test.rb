@@ -11,7 +11,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     second_home_roadmap
 
     assert_includes run_up, "read roadmaps/plan.md"
-    assert_equal ["Plan", ["First"]], [retrieval.roadmap("plan").title, retrieval.roadmap_items("plan").map(&:title)]
+    assert_equal ["Plan", ["First"]], [roadmaps.find("plan").title, roadmaps.items("plan").map(&:title)]
   end
 
   def test_a_read_roadmap_is_counted_as_pending_before_it_is_read_and_not_after
@@ -28,10 +28,10 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_empty plan.unreadable_files
     run_up
 
-    assert_equal [[nil, nil], [%w[1 2 after]], ["a note"]], [retrieval.roadmap_items("plan").map(&:title), edges_of_plan, retrieval.roadmap_log("plan").map(&:text)]
+    assert_equal [[nil, nil], [%w[1 2 after]], ["a note"]], [roadmaps.items("plan").map(&:title), edges_of_plan, roadmaps.log("plan").map(&:text)]
   end
 
-  def edges_of_plan = retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }
+  def edges_of_plan = roadmaps.edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }
 
   def test_a_roadmap_file_with_rows_is_not_read_again
     text = roadmap_text
@@ -51,7 +51,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     write(CONTEXT, context_json)
 
     assert_includes run_up, "read #{CONTEXT}"
-    assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.discoveries("1").first.data), JSON.parse(retrieval.contexts("1").first.data)]
+    assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(structure.discoveries("1").first.data), JSON.parse(structure.contexts("1").first.data)]
   end
 
   def test_a_context_json_with_a_row_that_differs_from_its_print_replaces_the_row
@@ -60,7 +60,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     write(CONTEXT, context_json(context: { "b" => 3 }))
     run_up
 
-    assert_equal({ "b" => 3 }, JSON.parse(retrieval.contexts("1").first.data))
+    assert_equal({ "b" => 3 }, JSON.parse(structure.contexts("1").first.data))
   end
 end
 
@@ -70,11 +70,11 @@ class KnowledgeSyncSecondHomeListingTest < Plastic::TestCase
   fixtures :alpha_synced
 
   def rows_of_the_second_home
-    { roadmap: retrieval.roadmap("plan")&.title, old: retrieval.roadmap("old"), batches: retrieval.batches("plan").map(&:position),
-      items: retrieval.roadmap_items("plan").map(&:item), **context_rows }
+    { roadmap: roadmaps.find("plan")&.title, old: roadmaps.find("old"), batches: roadmaps.batches("plan").map(&:position),
+      items: roadmaps.items("plan").map(&:item), **context_rows }
   end
 
-  def context_rows = { intents: retrieval.intents.map(&:intent_id), contexts: retrieval.contexts("1").size, discoveries: retrieval.discoveries("1").size }
+  def context_rows = { intents: retrieval.intents.map(&:intent_id), contexts: structure.contexts("1").size, discoveries: structure.discoveries("1").size }
 
   def test_a_broken_part_is_listed_and_every_good_part_is_read_into_every_table
     write(CONTEXT, context_json)
@@ -157,7 +157,7 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
     assert_includes plan.unreadable_files.fetch("roadmaps/old.md"), "older form"
     run_up
 
-    assert_equal ["# Old\n\n## Goal\n\nShip\n", nil], [folder.read("roadmaps/old.md"), retrieval.roadmap("old")]
+    assert_equal ["# Old\n\n## Goal\n\nShip\n", nil], [folder.read("roadmaps/old.md"), roadmaps.find("old")]
   end
 
   def test_the_log_file_beside_a_roadmap_is_not_a_roadmap_and_stays_as_it_is
@@ -190,7 +190,7 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
     assert_includes plan.unreadable_files.fetch(CONTEXT), "not JSON"
     run_up
 
-    assert_equal [["Plan"], [], "{nope"], [[retrieval.roadmap("plan").title], retrieval.contexts("1"), folder.read(CONTEXT)]
+    assert_equal [["Plan"], [], "{nope"], [[roadmaps.find("plan").title], structure.contexts("1"), folder.read(CONTEXT)]
   end
 
   def test_a_context_json_is_read_while_a_roadmap_file_is_broken

@@ -28,7 +28,7 @@ class RoadmapLogTest < Plastic::TestCase
   def test_the_line_carries_its_session
     call("r1", "a", "note")
 
-    line = store_graphs.retrieval.roadmap_log("r1").last
+    line = store_graphs.retrieval.roadmaps.log("r1").last
 
     assert_equal "a note", line.text
     assert_equal "sess-1", line.session_id

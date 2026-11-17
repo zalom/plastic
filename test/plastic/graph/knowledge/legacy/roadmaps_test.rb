@@ -29,32 +29,32 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
   def test_a_roadmap_with_no_batch_headings_gets_one_batch_named_after_it
     write_rows
 
-    assert_equal [[1, "Plan"]], retrieval.batches("plan").map { |batch| [batch.position, batch.title] }
+    assert_equal [[1, "Plan"]], retrieval.roadmaps.batches("plan").map { |batch| [batch.position, batch.title] }
   end
 
   def test_a_roadmap_with_no_batch_headings_puts_every_item_in_its_one_batch
     write_rows
 
-    assert_equal [%w[1 1], %w[2 1]], retrieval.roadmap_items("plan").map { |item| [item.item, item.batch.to_s] }
+    assert_equal [%w[1 1], %w[2 1]], retrieval.roadmaps.items("plan").map { |item| [item.item, item.batch.to_s] }
   end
 
   def test_the_header_is_written
     write_rows
 
-    assert_equal %w[Plan Ship], retrieval.roadmap("plan").to_h.values_at(:title, :goal)
+    assert_equal %w[Plan Ship], retrieval.roadmaps.find("plan").to_h.values_at(:title, :goal)
   end
 
   def test_the_edges_are_written
     write_rows(result(edges: { "2" => ["1"] }))
 
-    assert_equal [%w[1 2]], retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to] }
+    assert_equal [%w[1 2]], retrieval.roadmaps.edges("plan").map { |edge| [edge.from, edge.to] }
   end
 
   def test_an_item_keyed_by_an_intent_in_the_store_names_that_intent
     store_graphs.work.write_intent(title: "Alpha")
     rows(result)
 
-    assert_equal ["1", nil], retrieval.roadmap_items("plan").map(&:intent_id)
+    assert_equal ["1", nil], retrieval.roadmaps.items("plan").map(&:intent_id)
   end
 
   def test_the_savepoint_sibling_lines_follow_the_roadmap_log
@@ -62,6 +62,6 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
     log = [Parse::LogLine.new(at: "2026-10-01", text: "Opened")]
     rows(result(log:), folder.path("roadmaps/plan.savepoint.md"))
 
-    assert_equal [%w[2026-10-01 Opened], ["2026-10-02", "Started it"]], retrieval.roadmap_log("plan").map { |line| [line.at, line.text] }
+    assert_equal [%w[2026-10-01 Opened], ["2026-10-02", "Started it"]], retrieval.roadmaps.log("plan").map { |line| [line.at, line.text] }
   end
 end

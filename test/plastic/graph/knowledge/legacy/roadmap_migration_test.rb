@@ -19,6 +19,6 @@ class KnowledgeLegacyRoadmapMigrationTest < Plastic::TestCase
   def test_migrating_writes_the_items_of_the_roadmap
     migrate
 
-    assert_equal ["Build it"], retrieval.roadmap_items("plan").map(&:title)
+    assert_equal ["Build it"], retrieval.roadmaps.items("plan").map(&:title)
   end
 end

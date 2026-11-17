@@ -37,6 +37,12 @@ module Plastic
 
       def retrieval = store_graphs.retrieval
 
+      def structure = retrieval.structure
+
+      def roadmaps = retrieval.roadmaps
+
+      def archived?(intent_id) = retrieval.archives.archived?(intent_id)
+
       # A new intent with its files printed, as plastic intent new leaves it.
       def open_intent(title = "Alpha", **fields)
         work = store_graphs.work

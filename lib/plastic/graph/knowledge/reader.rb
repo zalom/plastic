@@ -65,7 +65,7 @@ module Plastic
         end
 
         # A part with a printed row has a last print to judge a removal against.
-        def printed?(path) = !@retrieval.nil? && @retrieval.printed.key?(path)
+        def printed?(path) = !@retrieval.nil? && @retrieval.stored.printed.key?(path)
 
         def intent_file(path)
           dir = path.split("/").first(2).join("/")

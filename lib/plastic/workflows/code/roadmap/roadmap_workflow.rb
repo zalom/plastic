@@ -11,7 +11,7 @@ module Plastic
         class RoadmapWorkflow < CodeWorkflow
           # Stops the call, as a failure, when the roadmap named by the slug has no row.
           def self.roadmap_gate
-            gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+            gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmaps.find(context.slug).nil? }
           end
         end
       end

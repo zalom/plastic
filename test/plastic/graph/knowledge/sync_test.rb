@@ -91,7 +91,7 @@ class KnowledgeSyncTest < Plastic::TestCase
     write("store/1--alpha/work.log", "")
 
     assert_equal ["read store/1--alpha/work.log"], run_sync(:up)
-    assert_equal [[], ""], [retrieval.work_log("1"), folder.read("store/1--alpha/work.log")]
+    assert_equal [[], ""], [retrieval.structure.work_log("1"), folder.read("store/1--alpha/work.log")]
   end
 
   def test_print_says_each_path_it_wrote
@@ -111,7 +111,7 @@ class KnowledgeSyncTest < Plastic::TestCase
     store_graphs.databases.fetch(:store).transaction { |batch| batch.remove(:printed, path: SPEC) }
 
     assert_equal [], run_sync(:up)
-    assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
+    assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.stored.printed[SPEC]
   end
 end
 
@@ -636,7 +636,7 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
       call_in(b, "sync", "up")
       archive = call_in(b, "intent", "archive", "--older-than", "2099-01-01")
 
-      assert_equal [0, []], [archive.code, home_graphs(b).retrieval.archive_rows.map(&:intent_id)], said(archive)
+      assert_equal [0, []], [archive.code, home_graphs(b).retrieval.archives.rows.map(&:intent_id)], said(archive)
     end
   end
 

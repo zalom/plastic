@@ -23,7 +23,7 @@ module Plastic
 
       # Records the hash of each print, so the next sync knows the file is level.
       def record(prints)
-        recorded = @retrieval.printed
+        recorded = @retrieval.stored.printed
         fresh = with_part(prints).reject { |print| print.recorded?(recorded) }
         record_in(fresh.map { |print| print.printed_row(@retrieval.clock.now) }) unless fresh.empty?
       end

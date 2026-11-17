@@ -46,7 +46,7 @@ module Plastic
 
           def node_rows
             intent = @pick.intent
-            intent ? NodeLines.new(@retrieval.nodes(intent.intent_id)).rows : []
+            intent ? NodeLines.new(@retrieval.structure.nodes(intent.intent_id)).rows : []
           end
 
           def log_rows

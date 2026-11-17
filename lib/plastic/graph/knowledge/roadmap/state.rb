@@ -45,8 +45,9 @@ module Plastic
 
           def predecessors
             roadmap = @item.roadmap
-            from_items = @retrieval.roadmap_edges(roadmap).select { |edge| edge.to == @item.item }.map(&:from)
-            @retrieval.roadmap_items(roadmap).select { |row| from_items.include?(row.item) }
+            roadmaps = @retrieval.roadmaps
+            from_items = roadmaps.edges(roadmap).select { |edge| edge.to == @item.item }.map(&:from)
+            roadmaps.items(roadmap).select { |row| from_items.include?(row.item) }
           end
         end
       end

@@ -18,7 +18,7 @@ class OpenRoadmapItemTest < Plastic::TestCase
     outcome, context = start("a")
 
     assert_equal [:done, "intent: 1"], [outcome, context.printed.first]
-    assert_equal "1", sole(retrieval.roadmap_items("r1")).intent_id
+    assert_equal "1", sole(retrieval.roadmaps.items("r1")).intent_id
   end
 
   def test_a_blocked_item_is_refused_with_no_intent

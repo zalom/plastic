@@ -32,7 +32,7 @@ module Plastic
 
           def create_roadmap(slug, title:, goal:)
             @databases.fetch(:store).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.timestamp(@clock.now)).merge(title:, goal:), statement: :insert) }
-            @retrieval.roadmap(slug)
+            @retrieval.roadmaps.find(slug)
           end
 
           # Writes the batch's goal and done criteria, and the roadmap row the
@@ -42,7 +42,7 @@ module Plastic
             now = Plastic.timestamp(@clock.now)
             kept = fields.over(find_batch(slug, position), "Batch #{position}")
             @databases.fetch(:store).transaction do |batch|
-              batch.put(:roadmaps, roadmap_row(slug, now), statement: :insert) unless @retrieval.roadmap(slug)
+              batch.put(:roadmaps, roadmap_row(slug, now), statement: :insert) unless @retrieval.roadmaps.find(slug)
               batch.put(:batches, batch_row(slug, position, kept, now), statement: :upsert)
             end
             find_batch(slug, position)
@@ -53,7 +53,7 @@ module Plastic
           def add_item(slug, item, batch_position, fields:, needs:)
             return [nil, "no batch #{batch_position} on roadmap #{slug}", :failure] unless batch?(slug, batch_position)
 
-            missing = Array(needs).find { |from| @retrieval.roadmap_items(slug).none? { |row| row.item == from } }
+            missing = Array(needs).find { |from| item_rows(slug).none? { |row| row.item == from } }
             return [nil, "no item #{missing} on roadmap #{slug}", :failure] if missing
 
             looped = Array(needs).find { |from| loop?(slug, from, item) }
@@ -88,7 +88,7 @@ module Plastic
             now = Plastic.timestamp(@clock.now)
             row = { roadmap: slug, position: next_log_position(slug), at: now, text:, session_id: @session }
             @databases.fetch(:store).transaction { |batch| batch.put(:roadmap_log, row, statement: :insert) }
-            @retrieval.roadmap_log(slug).last
+            @retrieval.roadmaps.log(slug).last
           end
 
           private
@@ -102,22 +102,24 @@ module Plastic
             database.written[table.to_s] > before
           end
 
-          def batch?(slug, position) = @retrieval.batches(slug).any? { |row| row.position == position }
+          def batch?(slug, position) = @retrieval.roadmaps.batches(slug).any? { |row| row.position == position }
 
-          def find_batch(slug, position) = @retrieval.batches(slug).find { |row| row.position == position }
+          def find_batch(slug, position) = @retrieval.roadmaps.batches(slug).find { |row| row.position == position }
 
           def loop?(slug, from, to)
             from == to || !@databases.fetch(:store).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
           end
 
           def write_item(slug, item, batch_position, fields, needs)
-            existing = @retrieval.roadmap_items(slug).any? { |row| row.item == item }
+            existing = item_rows(slug).any? { |row| row.item == item }
             @databases.fetch(:store).transaction do |batch|
               batch.put(:roadmap_items, item_row(slug, item, batch_position, fields, Plastic.timestamp(@clock.now)), statement: :insert) unless existing
               Array(needs).each { |from| batch.put(:roadmap_edges, { roadmap: slug, from:, to: item, kind: "after" }, statement: :insert) }
             end
-            [@retrieval.roadmap_items(slug).find { |row| row.item == item }, nil, nil]
+            [item_rows(slug).find { |row| row.item == item }, nil, nil]
           end
+
+          def item_rows(slug) = @retrieval.roadmaps.items(slug)
 
           def roadmap_row(slug, now) = { slug:, title: slug, goal: nil, opened_at: now, updated_at: now }
 
@@ -132,13 +134,11 @@ module Plastic
           end
 
           def next_item_position(slug, batch_position)
-            positions = @retrieval.roadmap_items(slug).select { |row| row.batch == batch_position }.map(&:position)
+            positions = item_rows(slug).select { |row| row.batch == batch_position }.map(&:position)
             (positions.max || 0) + 1
           end
 
-          def next_log_position(slug)
-            (@retrieval.roadmap_log(slug).map(&:position).max || 0) + 1
-          end
+          def next_log_position(slug) = (@retrieval.roadmaps.log(slug).map(&:position).max || 0) + 1
         end
       end
     end

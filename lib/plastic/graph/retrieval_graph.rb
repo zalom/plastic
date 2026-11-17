@@ -16,10 +16,7 @@ require_relative "retrieval/search"
 require_relative "retrieval/store_read"
 require_relative "retrieval/archive_reader"
 require_relative "retrieval/roadmap_reader"
-require_relative "retrieval/roadmap_reads"
-require_relative "retrieval/store_reads"
-require_relative "retrieval/archive_reads"
-require_relative "retrieval/structure_reads"
+require_relative "retrieval/structure_reader"
 require_relative "retrieval/evidence"
 
 module Plastic
@@ -29,11 +26,6 @@ module Plastic
     # not write. Explicit repair and reindex rebuild derived
     # tables. A selected-source read never runs either operation.
     class RetrievalGraph
-      include Retrieval::RoadmapReads
-      include Retrieval::StoreReads
-      include Retrieval::ArchiveReads
-      include Retrieval::StructureReads
-
       # Signals that a caller must build the derived retrieval rows first.
       class MaintenanceRequired < StandardError
         attr_reader :slug
@@ -73,13 +65,19 @@ module Plastic
         row && Knowledge::Intent.from_h(row)
       end
 
-      def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
+      def unarchived_intents = intents.reject { |intent| archives.archived?(intent.intent_id) }
 
-      def completion(intent_id)
-        @databases.fetch(:store).row("SELECT * FROM completions WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
-      end
+      def archived_reference?(reference) = archives.archived?(fetch_reference(reference).fetch(:intent_id))
 
       def clusters = read(:clusters)
+
+      def stored = (@stored ||= Retrieval::StoreRead.new(@databases, origin_id))
+
+      def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases, origin_id))
+
+      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:store), origin_id))
+
+      def structure = (@structure ||= Retrieval::StructureReader.new(@databases, origin_id))
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = Retrieval::Search::SEARCH_SQL
@@ -87,12 +85,6 @@ module Plastic
       private
 
       def evidence = (@evidence ||= Retrieval::Evidence.new(@databases, store:, origin: @origin))
-
-      def stored = (@stored ||= Retrieval::StoreRead.new(@databases))
-
-      def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases.fetch(:store), origin_id))
-
-      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:store), origin_id))
 
       def sessions = (@sessions ||= Work::Session::Reader.new(@databases, store:, origin: @origin))
 

@@ -16,7 +16,7 @@ module Plastic
 
           sets :rounds_before
 
-          read("count the rounds written so far") { |context| context[:rounds_before] = context.retrieval.verdicts(context.intent_id).size }
+          read("count the rounds written so far") { |context| context[:rounds_before] = context.retrieval.structure.verdicts(context.intent_id).size }
 
           step "write the verdict", done: ->(context) { rounds(context) > context.rounds_before },
             changes: { work: "The verdict of the review round is recorded" } do |context|
@@ -24,9 +24,9 @@ module Plastic
             context.print("verdict: #{context.verdict} round #{rounds(context)}")
           end
 
-          def self.rounds(context) = context.retrieval.verdicts(context.intent_id).size
+          def self.rounds(context) = context.retrieval.structure.verdicts(context.intent_id).size
 
-          def self.latest(context) = context.retrieval.verdicts(context.intent_id).max_by(&:round)
+          def self.latest(context) = context.retrieval.structure.verdicts(context.intent_id).max_by(&:round)
 
           review_round_gate
 

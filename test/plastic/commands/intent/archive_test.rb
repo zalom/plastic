@@ -103,7 +103,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 1, result.code
-    refute retrieval.archived?(intent.intent_id)
+    refute archived?(intent.intent_id)
   end
 
   def test_an_intent_refused_while_open_archives_once_it_is_done
@@ -114,7 +114,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 0, result.code
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archiving_an_archived_intent_finishes_idempotently
@@ -125,7 +125,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 0, result.code
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archiving_a_missing_intent_reports_a_failure
@@ -142,7 +142,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call("--older-than", "2026-02-01")
 
-    assert_equal [0, true], [result.code, retrieval.archived?(intent.intent_id)]
+    assert_equal [0, true], [result.code, archived?(intent.intent_id)]
     assert_includes result.out, "intent: #{intent.intent_id} archived"
   end
 
@@ -294,7 +294,7 @@ class ArchiveFidelityTest < Plastic::TestCase
 
     assert_equal 1, unarchive(intent).code
     assert File.symlink?(folder.path(intent.dir))
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archive_offers_status_instead_of_revert

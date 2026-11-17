@@ -17,13 +17,13 @@ class LogRoadmapTest < Plastic::TestCase
     outcome, context = log
 
     assert_equal [:done, ["log: batch 1 started"]], [outcome, context.printed]
-    assert_equal "s-1", sole(retrieval.roadmap_log("r1")).session_id
+    assert_equal "s-1", sole(retrieval.roadmaps.log("r1")).session_id
   end
 
   def test_an_unknown_roadmap_fails_with_no_line
     error = assert_raises(Plastic::Failed) { log("r9") }
 
     assert_equal "no roadmap r9", error.message
-    assert_empty retrieval.roadmap_log("r9")
+    assert_empty retrieval.roadmaps.log("r9")
   end
 end

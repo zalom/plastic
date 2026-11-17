@@ -19,7 +19,7 @@ class WorkWritersTest < Plastic::TestCase
     built.intents.write(title: "Alpha")
     built.nodes.add_node(intent_id: "1", title: "Build")
 
-    assert_equal ["Build"], retrieval.nodes("1").map(&:title)
+    assert_equal ["Build"], retrieval.structure.nodes("1").map(&:title)
   end
 
   def test_the_session_writer_writes_under_the_store_name

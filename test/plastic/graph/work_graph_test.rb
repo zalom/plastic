@@ -67,6 +67,6 @@ class WorkGraphTest < Plastic::TestCase
     second.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
 
     assert_equal "s-2", run_session(second)
-    assert_equal "s-1", second.retrieval.work_log("1").first.session_id
+    assert_equal "s-1", structure.work_log("1").first.session_id
   end
 end

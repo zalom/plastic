@@ -26,7 +26,7 @@ class CloseIntentTest < Plastic::TestCase
 
     close
 
-    assert_equal "verdict", retrieval.completion("1").fetch("judge")
+    assert_equal "verdict", structure.completions("1").first.judge
     assert_includes Plastic::Commands::Intent::End.chain.keys, :agent_wind_down_intent
   end
 
@@ -34,6 +34,6 @@ class CloseIntentTest < Plastic::TestCase
     open_intent
 
     assert_raises(Plastic::Failed) { close }
-    assert_nil retrieval.completion("1")
+    assert_nil structure.completions("1").first
   end
 end

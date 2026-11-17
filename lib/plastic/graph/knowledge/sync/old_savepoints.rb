@@ -15,7 +15,7 @@ module Plastic
           def self.none = new([], {})
 
           def self.find(folder, retrieval)
-            printed = retrieval.printed
+            printed = retrieval.stored.printed
             files = folder.intent_dirs.map { |dir| "#{dir}/#{FILE}" }.select { |rel| folder.exist?(rel) }
             removable, kept = files.partition { |rel| printed[rel] && printed[rel] == folder.digest(rel) }
             new(removable, kept.to_h { |rel| [rel, reason(printed, rel)] })

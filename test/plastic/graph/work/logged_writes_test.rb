@@ -11,7 +11,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def work = graphs.work
 
-  def lines(id = "1") = graphs.retrieval.work_log(id)
+  def lines(id = "1") = graphs.retrieval.structure.work_log(id)
 
   def kinds(id = "1") = lines(id).map(&:kind)
 

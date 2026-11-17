@@ -11,7 +11,7 @@ class SyncOldSavepointsTest < Plastic::TestCase
 
   def old_path(intent) = "#{intent.dir}/savepoint.md"
 
-  def log_lines(id = "1") = retrieval.work_log(id)
+  def log_lines(id = "1") = retrieval.structure.work_log(id)
 
   def old_print(intent, text)
     write(old_path(intent), text)
@@ -97,9 +97,9 @@ class SyncOldSavepointsTest < Plastic::TestCase
     intent = open_intent
     old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
 
-    assert retrieval.printed.key?(old_path(intent))
+    assert retrieval.stored.printed.key?(old_path(intent))
     sync_down
 
-    refute retrieval.printed.key?(old_path(intent))
+    refute retrieval.stored.printed.key?(old_path(intent))
   end
 end

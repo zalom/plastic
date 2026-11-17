@@ -55,7 +55,7 @@ class PrintsTest < Plastic::TestCase
     graphs = store_graphs
     graphs.work.write_intent(title: "One")
     graphs.work.print_intent("1")
-    printed = store_graphs.retrieval.printed
+    printed = store_graphs.retrieval.stored.printed
 
     %w[store/index.json store/1--one/intent.md store/1--one/graph.json store/1--one/work.log].each do |path|
       assert_equal Digest::SHA256.file(store_path(path)).hexdigest, printed.fetch(path)
@@ -100,7 +100,7 @@ class PrintsTest < Plastic::TestCase
     row = { name: "store/1--one/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("z"), intent_id: "1",
             sha256: "h" }
     store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:sqlar, row) }
-    print = Plastic::Graph::Prints.kept_files(retrieval, retrieval.kept_files("1")).first
+    print = Plastic::Graph::Prints.kept_files(retrieval, retrieval.archives.kept_files("1")).first
 
     assert_equal ["store/1--one/x.bin", "h", "z"], [print.path, print.sha256, print.text]
   end
@@ -123,7 +123,7 @@ class PrintsTest < Plastic::TestCase
     store_graphs.work.write_intent(title: "One")
     savepoint = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1"))[1]
 
-    assert_equal ["store/1--one/work.log", "#{retrieval.work_log("1").first.line}\n"], [savepoint.path, savepoint.text]
+    assert_equal ["store/1--one/work.log", "#{retrieval.structure.work_log("1").first.line}\n"], [savepoint.path, savepoint.text]
   end
 
   def graph_text_with_node

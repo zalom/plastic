@@ -12,7 +12,7 @@ module Plastic
 
           gate "roadmap %{slug} already exists", stops: :failure, offers: "plastic roadmap show %{slug}",
             because: "roadmap new creates a roadmap once",
-            pass: ->(context) { context.retrieval.roadmap(context.slug).nil? }
+            pass: ->(context) { context.retrieval.roadmaps.find(context.slug).nil? }
 
           gate "roadmaps/%{slug}.md holds a roadmap this home has no rows for; run plastic sync up to read it", stops: :failure, offers: "plastic sync up",
             because: "roadmaps/%{slug}.md is in the form of this release, and plastic sync up reads it into rows",

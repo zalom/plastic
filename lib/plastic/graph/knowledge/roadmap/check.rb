@@ -19,9 +19,9 @@ module Plastic
 
           private
 
-          def items = @items ||= @retrieval.roadmap_items(@slug)
+          def items = @items ||= @retrieval.roadmaps.items(@slug)
 
-          def edges = @edges ||= @retrieval.roadmap_edges(@slug)
+          def edges = @edges ||= @retrieval.roadmaps.edges(@slug)
 
           def item_ids = @item_ids ||= items.map(&:item)
 

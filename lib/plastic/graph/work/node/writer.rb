@@ -85,7 +85,7 @@ module Plastic
 
           # The runs the node had after the owner last answered; all of them when it was never answered.
           def runs_since_answer(node)
-            runs = @retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
+            runs = @retrieval.structure.runs(node.intent_id).select { |run| run.node_id == node.id }
             node.answered_at ? runs.select { |run| run.started_at > node.answered_at } : runs
           end
 
@@ -115,7 +115,7 @@ module Plastic
               result: move.fetch(:result, move.fetch(:to)), origin: @retrieval.origin_id)
           end
 
-          def next_id(intent_id) = NextId.after(@retrieval.nodes(intent_id), prefix: "n")
+          def next_id(intent_id) = NextId.after(@retrieval.structure.nodes(intent_id), prefix: "n")
         end
       end
     end

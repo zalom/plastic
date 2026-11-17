@@ -19,7 +19,7 @@ module Plastic
 
           # Each hand edited path with the reason sync up cannot read it, or nil when it can or when sync up prints it again.
           def call
-            printed = @retrieval.printed
+            printed = @retrieval.stored.printed
             edited = prints.select { |print| hand_edited?(print, printed) }.map(&:path)
             unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| path == StoreFolder::INDEX && !printed[path] })
             edited.to_h { |path| [path, unreadable[path]] }
@@ -44,7 +44,7 @@ module Plastic
 
           def roadmap_prints
             slug = @facts[:slug]
-            (@kinds.include?(:roadmap) && slug && @retrieval.roadmap(slug)) ? [Prints.roadmap(@retrieval, slug)] : []
+            (@kinds.include?(:roadmap) && slug && @retrieval.roadmaps.find(slug)) ? [Prints.roadmap(@retrieval, slug)] : []
           end
         end
       end

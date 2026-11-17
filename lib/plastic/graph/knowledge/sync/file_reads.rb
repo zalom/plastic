@@ -56,7 +56,7 @@ module Plastic
           # A roadmap file read into rows is printed again from them, so the file holds the form the rows print.
           def roadmap_print(path)
             slug = path[%r{\Aroadmaps/(.+)\.md\z}, 1]
-            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmap(slug)
+            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmaps.find(slug)
           end
 
           def reprint(reads)

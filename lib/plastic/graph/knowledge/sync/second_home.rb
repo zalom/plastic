@@ -36,7 +36,7 @@ module Plastic
 
           private
 
-          def roadmap_files = @folder.roadmap_files.reject { |path| @retrieval.roadmap(File.basename(path, ".md")) }
+          def roadmap_files = @folder.roadmap_files.reject { |path| @retrieval.roadmaps.find(File.basename(path, ".md")) }
 
           def roadmaps = roadmap_files.select { |path| roadmap_problem(path).nil? }
 
@@ -63,7 +63,7 @@ module Plastic
 
           def readable_dir?(dir) = @folders.nil? || !@folders.unreadable.include?(dir)
 
-          def unheld?(id) = @retrieval.contexts(id).empty? && @retrieval.discoveries(id).empty?
+          def unheld?(id) = [:contexts, :discoveries].all? { |held| @retrieval.structure.public_send(held, id).empty? }
 
           def contexts = context_files.select { |path, id| context_file(path, id).problem.nil? && context_file(path, id).held? }.map(&:first)
 

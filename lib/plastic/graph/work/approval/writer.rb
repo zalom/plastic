@@ -15,13 +15,13 @@ module Plastic
             @clock = clock
           end
 
-          def approve(intent_id) = @retrieval.approval(intent_id) || insert(intent_id)
+          def approve(intent_id) = @retrieval.structure.approval(intent_id) || insert(intent_id)
 
           private
 
           def insert(intent_id)
             @databases.fetch(:store).transaction { |batch| batch.put(:approvals, { intent_id:, at: Plastic.timestamp(@clock.now), session_id: @session }, statement: :insert) }
-            @retrieval.approval(intent_id)
+            @retrieval.structure.approval(intent_id)
           end
         end
       end

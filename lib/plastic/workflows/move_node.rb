@@ -104,7 +104,7 @@ module Plastic
 
       # The session of the last run of a node: the one that finished it when the node is done.
       def self.finisher_of(context, node)
-        runs = context.retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
+        runs = context.retrieval.structure.runs(node.intent_id).select { |run| run.node_id == node.id }
         runs.max_by(&:number)&.session_id
       end
 

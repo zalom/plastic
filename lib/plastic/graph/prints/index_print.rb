@@ -19,11 +19,11 @@ module Plastic
         end
 
         def archives(retrieval)
-          completions = retrieval.completions.to_h { |row| [row.intent_id, GraphPrint.plain(row)] }
+          completions = retrieval.structure.completions.to_h { |row| [row.intent_id, GraphPrint.plain(row)] }
           marks(retrieval).map { |row| mark(row, completions) }
         end
 
-        def marks(retrieval) = retrieval.archive_rows.reject(&:restored?).sort_by { |row| Knowledge::LuhmannId.segments(row.intent_id) }
+        def marks(retrieval) = retrieval.archives.rows.reject(&:restored?).sort_by { |row| Knowledge::LuhmannId.segments(row.intent_id) }
 
         def mark(row, completions)
           id = row.intent_id

@@ -36,7 +36,7 @@ class SyncUpTest < Plastic::TestCase
     legacy_metadata
     import
 
-    assert_equal ["1"], retrieval.roadmap_items("ship").map(&:intent_id)
+    assert_equal ["1"], retrieval.roadmaps.items("ship").map(&:intent_id)
   end
 
   def test_sync_up_wrote_line_names_the_rows_and_leaves_out_the_command_run
@@ -700,8 +700,8 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
     apply
 
-    assert_equal [[1, "Ship the client"]], retrieval.batches("ship").map { |batch| [batch.position, batch.title] }
-    assert_equal [1, 1], retrieval.roadmap_items("ship").map(&:batch)
+    assert_equal [[1, "Ship the client"]], retrieval.roadmaps.batches("ship").map { |batch| [batch.position, batch.title] }
+    assert_equal [1, 1], retrieval.roadmaps.items("ship").map(&:batch)
   end
 
   def test_an_imported_item_names_the_intent_with_its_id
@@ -709,7 +709,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
     apply
 
-    assert_equal %w[1 1a], retrieval.roadmap_items("ship").map(&:intent_id)
+    assert_equal %w[1 1a], retrieval.roadmaps.items("ship").map(&:intent_id)
   end
 
   def test_savepoint_lines_join_the_roadmap_log
@@ -718,8 +718,8 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
     apply
 
-    assert_equal ["Batch 1 opened"], retrieval.roadmap_log("ship").map(&:text)
-    assert_nil retrieval.roadmap("ship.savepoint")
+    assert_equal ["Batch 1 opened"], retrieval.roadmaps.log("ship").map(&:text)
+    assert_nil retrieval.roadmaps.find("ship.savepoint")
   end
 
   def test_a_second_apply_says_no_store_is_left
@@ -744,7 +744,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
     apply
 
-    assert_equal "Ship the client", retrieval.roadmap("ship").title
+    assert_equal "Ship the client", retrieval.roadmaps.find("ship").title
   end
 
   def test_waits_read_in_number_order
@@ -752,7 +752,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
                               "## Graph\n\n- 9 needs nothing\n- 10 needs nothing\n- 11 needs 10 9\n")
     apply
 
-    assert_equal %w[9 10], retrieval.roadmap_edges("ship").map(&:from)
+    assert_equal %w[9 10], retrieval.roadmaps.edges("ship").map(&:from)
   end
 
   def test_a_store_that_fails_halfway_gets_its_folder_back

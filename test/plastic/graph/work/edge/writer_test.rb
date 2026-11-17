@@ -12,7 +12,7 @@ class WorkEdgeWriterTest < Plastic::TestCase
 
   def add(from, to) = @work.add_edge(intent_id: "1", from:, to:)
 
-  def edges = retrieval.edges("1").map { |edge| [edge.from, edge.to, edge.kind] }
+  def edges = retrieval.structure.edges("1").map { |edge| [edge.from, edge.to, edge.kind] }
 
   def test_an_edge_between_two_live_nodes_is_written_as_needs
     assert add("n1", "n2")
