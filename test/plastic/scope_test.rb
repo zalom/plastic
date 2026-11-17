@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
+require_relative "../test_helper"
 
 class ScopeTest < Plastic::TestCase
   def setup
@@ -9,7 +9,7 @@ class ScopeTest < Plastic::TestCase
   end
 
   def scope(slug: nil, directory: @home, env: { "PLASTIC_HOME" => @plastic_home })
-    Plastic::CLI::Scope.new(env:, home: @home, slug:, directory:)
+    Plastic::Scope.new(env:, home: @home, slug:, directory:)
   end
 
   def projects(text) = File.write(File.join(@plastic_home, "projects.yml"), text)
@@ -32,7 +32,7 @@ class ScopeTest < Plastic::TestCase
   end
 
   def test_an_unknown_project_names_the_known_ones
-    error = assert_raises(Plastic::CLI::Scope::UnknownProject) { scope(slug: "nope").slug }
+    error = assert_raises(Plastic::Scope::UnknownProject) { scope(slug: "nope").slug }
 
     assert_equal "no project named \"nope\"; this machine has global, plastic", error.message
   end
@@ -96,28 +96,28 @@ class ScopeTest < Plastic::TestCase
 
   def test_a_projects_file_that_is_not_a_map_stops_the_call
     projects("- plastic\n")
-    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+    error = assert_raises(Plastic::Scope::BrokenProjects) { scope.projects }
 
     assert_includes error.message, "does not hold a map of projects"
   end
 
   def test_a_projects_file_with_no_projects_key_stops_the_call
     projects("governing_docs: []\n")
-    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+    error = assert_raises(Plastic::Scope::BrokenProjects) { scope.projects }
 
     assert_includes error.message, "does not hold a map of projects"
   end
 
   def test_a_projects_file_with_a_flat_shape_stops_the_call
     projects("plastic:\n  path: /tmp/plastic\n")
-    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+    error = assert_raises(Plastic::Scope::BrokenProjects) { scope.projects }
 
     assert_includes error.message, "does not hold a map of projects"
   end
 
   def test_a_projects_file_that_does_not_parse_stops_the_call
     projects("plastic: [\n")
-    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+    error = assert_raises(Plastic::Scope::BrokenProjects) { scope.projects }
 
     assert_includes error.message, "does not parse"
   end

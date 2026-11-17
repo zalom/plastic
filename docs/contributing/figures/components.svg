@@ -30,7 +30,7 @@
 <text class="m" x="406" y="174">CLI::Declarations</text><text class="s" x="406" y="191">[module]</text>
 <text class="s" x="406" y="211">Options a command declares.</text>
 <rect class="box" x="720" y="150" width="230" height="79" rx="8"/><rect x="720" y="150" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="736" y="174">CLI::Scope</text><text class="s" x="736" y="191">[class]</text>
+<text class="m" x="736" y="174">Scope</text><text class="s" x="736" y="191">[class]</text>
 <text class="s" x="736" y="211">Which project and store.</text>
 <rect class="box" x="1000" y="150" width="210" height="79" rx="8"/><rect x="1000" y="150" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
 <text class="m" x="1016" y="174">Hook</text><text class="s" x="1016" y="191">[class]</text>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "command"
-require_relative "scope"
+require_relative "../scope"
 
 module Plastic
   class CLI

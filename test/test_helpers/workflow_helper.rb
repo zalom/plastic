@@ -45,7 +45,7 @@ module Plastic
 
       # The session and store scope of a call made from the test's home.
       def scoped_harness(session: nil, slug: nil, env: {})
-        scope = Plastic::CLI::Scope.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env), home: @home, slug:, directory: @home)
+        scope = Plastic::Scope.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env), home: @home, slug:, directory: @home)
         Plastic::Context::Harness.new(session, scope)
       end
     end

@@ -34,7 +34,7 @@ module Plastic
       private
 
       def back_up_stores
-        [scope.slug, CLI::Scope::GLOBAL].uniq.each do |slug|
+        [scope.slug, Scope::GLOBAL].uniq.each do |slug|
           Graph::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
         end
       end

@@ -7,7 +7,7 @@ require_relative "../../../../lib/plastic/cli/screen"
 class ScreenNumberedListTest < Plastic::TestCase
   Screen = Plastic::CLI::Screen
 
-  def choices = [Screen::Choice.new(label: "claude", chosen: true), Screen::Choice.new(label: "codex", chosen: false)]
+  def choices = [Plastic::Choice.new(label: "claude", chosen: true), Plastic::Choice.new(label: "codex", chosen: false)]
 
   def listed(output_class)
     out = StringIO.new
@@ -28,7 +28,7 @@ class ScreenNumberedListTest < Plastic::TestCase
   def test_the_list_says_the_answer_grammar
     _, text = listed(Plastic::CLI::TextOutput)
 
-    assert_includes text, Screen::Answer::GRAMMAR
+    assert_includes text, Plastic::Answer::GRAMMAR
   end
 
   def test_next_carries_the_answer_placeholder
@@ -41,7 +41,7 @@ class ScreenNumberedListTest < Plastic::TestCase
   def test_the_listed_outcome_stops_the_call
     outcome, = listed(Plastic::CLI::TextOutput)
 
-    assert_equal Screen::Listed.new, outcome
+    assert_equal Plastic::Listed.new, outcome
   end
 
   def test_the_json_list_is_one_document

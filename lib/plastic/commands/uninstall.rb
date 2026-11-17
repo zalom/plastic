@@ -33,7 +33,7 @@ module Plastic
 
       def self.choices(scope)
         recorded = Installations.recorded(scope.plastic_home)
-        Installations.listed(scope).map { |name| CLI::Screen::Choice.new(label: name, chosen: recorded.include?(name)) }
+        Installations.listed(scope).map { |name| Choice.new(label: name, chosen: recorded.include?(name)) }
       end
     end
   end

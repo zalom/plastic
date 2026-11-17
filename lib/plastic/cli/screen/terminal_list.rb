@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "outcomes"
+require_relative "../../screen_choice"
 
 module Plastic
   class CLI

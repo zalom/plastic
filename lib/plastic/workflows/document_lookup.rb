@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../errors"
-require_relative "../cli/scope"
+require_relative "../scope"
 require_relative "../graph"
 require_relative "../graph/retrieval/maintained_store"
 require_relative "../graph/retrieval_graph"
@@ -12,7 +12,7 @@ module Plastic
   module Workflows
     # Fetches documents by qualified reference from the store each one names.
     class DocumentLookup
-      FAILURES = [Graph::RetrievalGraph::MissingReference, Graph::RetrievalGraph::MaintenanceRequired, CLI::Scope::UnknownProject].freeze
+      FAILURES = [Graph::RetrievalGraph::MissingReference, Graph::RetrievalGraph::MaintenanceRequired, Scope::UnknownProject].freeze
 
       def initialize(context)
         @context = context
@@ -46,7 +46,7 @@ module Plastic
       def require_source(slug)
         return if context.scope.known_slugs.include?(slug)
 
-        raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}"
+        raise Scope::UnknownProject, "no project named #{slug.inspect}"
       end
 
       def maintained_retrieval(slug)

@@ -30,7 +30,7 @@ module Plastic
       def refuse_unregistered
         slug = parsed[:store]
         projects = scope.projects
-        return if slug == CLI::Scope::GLOBAL || projects.key?(slug)
+        return if slug == Scope::GLOBAL || projects.key?(slug)
 
         raise Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}"
       end
@@ -50,7 +50,7 @@ module Plastic
       def database_list = as_usage(Plastic::Graph::Backup::Databases::Unknown) { Plastic::Graph::Backup::Databases.parse(parsed[:databases]) }
 
       def scope
-        @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)
+        @scope ||= Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)
       end
     end
   end

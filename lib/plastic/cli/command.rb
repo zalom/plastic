@@ -9,7 +9,7 @@ require_relative "../graph/missing_store"
 require_relative "../graph/behind"
 require_relative "text_output"
 require_relative "json_output"
-require_relative "scope"
+require_relative "../scope"
 require_relative "parser"
 require_relative "table"
 

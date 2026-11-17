@@ -72,7 +72,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `CLI` | `lib/plastic/cli.rb` | Finds the longest entry in the table that starts the arguments, answers `--help`, and names an unknown command and points at `plastic help`. |
 | `CLI::TABLE` | `lib/plastic/cli/table.rb` and `lib/plastic/cli/table/work_families.rb` | The whole command line in one frozen hash: the words, the class and the help line. The work graph and hook families are written in `work_families.rb`, and `table.rb` adds them in order. |
 | `CLI::Command` | `lib/plastic/cli/command.rb` | The base class. It parses the arguments, runs the call, prints and maps errors to exit codes. |
-| `CLI::Scope` | `lib/plastic/cli/scope.rb` | Which project and store a command works on. |
+| `Scope` | `lib/plastic/scope.rb` | Which project and store a command works on. |
 | `CLI::Output` | `lib/plastic/cli/output.rb` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
 | `Routine` | `lib/plastic/routine.rb` | A command whose work is a chain of workflows, written as data in the class body. |
 | `Routine::Chain` | `lib/plastic/routine/chain.rb` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |

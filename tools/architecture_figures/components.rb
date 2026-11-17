@@ -13,7 +13,7 @@ module ArchitectureFigures
       cli | | 390 44 230 | CLI | class | code | mono | Reads the words.
       table | | 720 44 230 | CLI::TABLE | constant | line | mono | One row for each command.
       declarations | | 390 150 230 | CLI::Declarations | module | line | mono | Options a command declares.
-      scope | | 720 150 230 | CLI::Scope | class | line | mono | Which project and store.
+      scope | | 720 150 230 | Scope | class | line | mono | Which project and store.
       hook | | 1000 150 210 | Hook | class | agent | mono | Answers the hook events.
       workflows | zone | 190 285 840 240 | Workflows | | | |
       traversal | | 205 317 230 | Routine::Traversal | class | code | mono | Walks the chain of workflows.
@@ -52,7 +52,7 @@ module ArchitectureFigures
       ["retrieval.right", "database.left", ["uses"]]
     ].freeze
     NAMES = [
-      *%w[CLI CLI::TABLE CLI::Declarations CLI::Scope Routine Routine::Traversal Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
+      *%w[CLI CLI::TABLE CLI::Declarations Scope Routine Routine::Traversal Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
         Graph Graph::WorkGraph Graph::Work::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
       *%w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] }
     ].freeze

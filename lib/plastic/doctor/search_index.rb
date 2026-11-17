@@ -3,7 +3,7 @@
 require "shellwords"
 require_relative "check"
 require_relative "../graph"
-require_relative "../cli/scope"
+require_relative "../scope"
 
 module Plastic
   module Doctor
@@ -15,7 +15,7 @@ module Plastic
 
       # The checks of the global store and of each project store.
       def self.checks(scope, opener: OPEN)
-        slugs = [CLI::Scope::GLOBAL, *scope.projects.keys].uniq
+        slugs = [Scope::GLOBAL, *scope.projects.keys].uniq
         slugs.filter_map { |slug| new(scope.plastic_home, slug, opener:).check }
       end
 

@@ -62,7 +62,7 @@ module Plastic
       def enter(copy)
         @kept = [@scope, @graphs]
         @output = PreviewOutput.new(output, copy, original_command)
-        @scope = CLI::Scope.new(env: environment.env.to_h.merge("PLASTIC_HOME" => copy.path), home: environment.home, slug: scope.slug,
+        @scope = Scope.new(env: environment.env.to_h.merge("PLASTIC_HOME" => copy.path), home: environment.home, slug: scope.slug,
           directory: environment.directory)
         @graphs = nil
       end

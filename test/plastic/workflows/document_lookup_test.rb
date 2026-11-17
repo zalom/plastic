@@ -26,7 +26,7 @@ class DocumentLookupTest < Plastic::TestCase
   end
 
   def test_an_unknown_store_is_refused_by_name
-    error = assert_raises(Plastic::CLI::Scope::UnknownProject) { lookup.fetch("plastic://missing/1/spec.md") }
+    error = assert_raises(Plastic::Scope::UnknownProject) { lookup.fetch("plastic://missing/1/spec.md") }
 
     assert_equal 'no project named "missing"', error.message
   end

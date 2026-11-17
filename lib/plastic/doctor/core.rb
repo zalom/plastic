@@ -91,7 +91,7 @@ module Plastic
         Check.new("PLASTIC.md:", path, "plastic install --reinstall").judged(File.file?(path) ? nil : "#{path} is missing")
       end
 
-      def backups = [CLI::Scope::GLOBAL, *scope.projects.keys].map { |slug| StoreBackups.new(File.join(home, "stores", slug), slug, now:).check }
+      def backups = [Scope::GLOBAL, *scope.projects.keys].map { |slug| StoreBackups.new(File.join(home, "stores", slug), slug, now:).check }
 
       def project(slug, path) = [store(slug, path), Core.agents(slug, path)]
 

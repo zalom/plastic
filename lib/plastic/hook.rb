@@ -85,7 +85,7 @@ module Plastic
     # The store comes from the directory the event names, so a hook run from
     # another folder still reads the session's own project.
     def scope
-      @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:project], directory:)
+      @scope ||= Scope.new(env: environment.env, home: environment.home, slug: parsed[:project], directory:)
     end
   end
 end

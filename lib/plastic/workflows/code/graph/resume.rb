@@ -46,7 +46,7 @@ module Plastic
 
           def self.refuse_unregistered(scope, name)
             projects = scope.projects
-            return if name == CLI::Scope::GLOBAL || projects.key?(name)
+            return if name == Scope::GLOBAL || projects.key?(name)
 
             raise Usage, "no registered project named #{name.inspect}; the projects are #{projects.keys.sort.join(", ")}"
           end

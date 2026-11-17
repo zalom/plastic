@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "../../../screen_choice"
+require_relative "../../../answer"
 require_relative "../init"
 require_relative "../../../code_workflow"
-require_relative "../../../cli/screen"
 require_relative "../../../harnesses"
 require_relative "../../../config"
 
@@ -26,7 +27,7 @@ module Plastic
             names = Harnesses.found_in(scope).map(&:name)
             return [] if names.empty?
 
-            [*names.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }, CLI::Screen::Choice.new(label: MEDIA, chosen: media?(scope))]
+            [*names.map { |name| Choice.new(label: name, chosen: true) }, Choice.new(label: MEDIA, chosen: media?(scope))]
           end
 
           # Picked until the setting sync.media turns the sync of images and videos off.
@@ -35,8 +36,8 @@ module Plastic
           read "find the installed harnesses and read the person's answer" do |context|
             choices = Choose.choices(context.scope)
             found = choices.map(&:label) - [MEDIA]
-            result = CLI::Screen::Answer.new(choices).call(context.answer) if found.any?
-            labels = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
+            result = Answer.new(choices).call(context.answer) if found.any?
+            labels = result.is_a?(Chosen) ? result.labels : []
             context[:found] = found
             context[:picked] = labels - [MEDIA]
             context[:media] = labels.include?(MEDIA)

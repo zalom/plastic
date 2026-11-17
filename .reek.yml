@@ -49,7 +49,7 @@ detectors:
     - ContextBudget
   TooManyMethods:
     exclude:
-    - Plastic::CLI::Scope
+    - Plastic::Scope
   TooManyStatements:
     max_statements: 10
     exclude:
