@@ -41,7 +41,7 @@ class ConfigStoreTest < Plastic::TestCase
   def test_a_file_changed_by_hand_after_the_print_is_refused_with_the_line_that_names_the_fix
     store.set("global", "screens", false)
     File.write(path, "global:\n  screens: true\n")
-    error = assert_raises(Plastic::CLI::Command::Refusal) { store.set("global", "statusline", true) }
+    error = assert_raises(Plastic::Config::HandEdited) { store.set("global", "statusline", true) }
 
     assert_equal "#{path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", error.message
     assert_equal [["global", "screens", "false"]], setting_rows(@plastic_home)
@@ -59,8 +59,53 @@ class ConfigStoreTest < Plastic::TestCase
   def test_the_hand_edit_line_never_sends_the_person_to_sync_up
     store.set("global", "screens", false)
     File.write(path, "x: 1\n")
-    error = assert_raises(Plastic::CLI::Command::Refusal) { store.set("global", "statusline", true) }
+    error = assert_raises(Plastic::Config::HandEdited) { store.set("global", "statusline", true) }
 
     refute_includes error.message, "sync up"
+  end
+  def line = "config.yml could not be read (%s); fix it and run plastic update"
+
+  def test_the_first_print_copies_a_config_file_to_backups_first
+    File.write(path, "global:\n  screens: false\n")
+    store.print_once
+    copies = Dir.glob(File.join(@plastic_home, "backups", "config-*.yml"))
+
+    assert_equal ["global:\n  screens: false\n"], copies.map { |copy| File.read(copy) }
+  end
+
+  def test_a_config_file_that_does_not_parse_is_kept_and_one_line_is_returned
+    File.write(path, "global: [unclosed\n")
+    answer = store.print_once
+
+    assert_equal ["global: [unclosed\n", true], [File.read(path), answer.start_with?("config.yml could not be read (")]
+    assert answer.end_with?("); fix it and run plastic update"), answer
+    assert_empty setting_rows(@plastic_home)
+  end
+
+  def test_a_config_file_that_is_a_bare_date_is_kept
+    File.write(path, "2026-11-17\n")
+
+    assert_match(/could not be read/, store.print_once)
+    assert_equal "2026-11-17\n", File.read(path)
+  end
+
+  def test_print_once_names_a_file_edited_by_hand_after_the_print
+    store.set("global", "screens", false)
+    File.write(path, "global:\n  screens: true\n")
+
+    assert_equal "#{path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", store.print_once
+  end
+
+  def test_print_once_of_an_untouched_printed_file_says_nothing
+    store.set("global", "screens", false)
+
+    assert_nil store.print_once
+  end
+
+  def test_the_problem_is_the_same_line_the_doctor_reports
+    store.set("global", "screens", false)
+    File.write(path, "x: 1\n")
+
+    assert_equal store.print_once, store.problem
   end
 end

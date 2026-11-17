@@ -161,6 +161,21 @@ class DoctorHomeFilesTest < Plastic::TestCase
     assert_equal ["#{File.join(@plastic_home, "local.db")} is left beside plastic.db", "move local.db out of #{@plastic_home}; plastic update keeps a copy of it in backups/"], [found.value, found.repair]
   end
 
+  def test_a_config_file_edited_by_hand_after_the_print_is_a_finding_with_the_refusal_line
+    Plastic::Config::Store.new(@plastic_home).set("global", "screens", false)
+    File.write(File.join(@plastic_home, "config.yml"), "x: 1\n")
+    found = check("config.yml:")
+
+    assert_equal ["#{File.join(@plastic_home, "config.yml")} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", "plastic config set KEY VALUE"],
+      [found.value, found.repair]
+  end
+
+  def test_a_config_file_printed_from_the_settings_is_ok
+    Plastic::Config::Store.new(@plastic_home).set("global", "screens", false)
+
+    assert_match(/\Aok, /, check("config.yml:").value)
+  end
+
   def test_a_local_db_with_no_plastic_db_is_a_finding_that_names_plastic_update
     File.write(File.join(@plastic_home, "local.db"), "not migrated")
     File.delete(File.join(@plastic_home, "plastic.db"))
