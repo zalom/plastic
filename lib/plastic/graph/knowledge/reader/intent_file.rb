@@ -75,10 +75,11 @@ module Plastic
 
           def savepoint(batch)
             known = @retrieval.work_log(@intent_id)
-            seen = known.map(&:text)
-            added = text.lines(chomp: true).reject { |line| line.strip.empty? }.filter_map { |line| old_row(line) }.reject { |row| seen.include?(row[:text]) }
+            added = old_rows.reject { |row| known.any? { |line| line.text == row[:text] } }
             batch.put_all(:work_log, added.each_with_index.map { |row, index| { **row, position: known.size + index + 1 } })
           end
+
+          def old_rows = text.lines(chomp: true).reject { |line| line.strip.empty? }.map { |line| old_row(line) }
 
           def old_row(line)
             at, said = Work::Savepoint.parse(line)

@@ -27,9 +27,11 @@ module Plastic
 
         def self.parsed(found)
           fields = found.named_captures.transform_keys(&:to_sym)
-          fields.merge(at: unset(fields[:at]), phase: blank(fields[:phase]), node: blank(fields[:node]), session_id: unset(fields[:session_id]),
-            path: blank(fields[:path]), sha256: fields[:sha256].delete_prefix(HASH_PREFIX).delete_prefix(EMPTY), text: fields[:text].to_s)
+          fields.merge(at: unset(fields[:at]), session_id: unset(fields[:session_id]), sha256: bare(fields[:sha256]), text: fields[:text].to_s,
+            **fields.slice(:phase, :node, :path).transform_values { |word| blank(word) })
         end
+
+        def self.bare(word) = word.delete_prefix(HASH_PREFIX).delete_prefix(EMPTY)
 
         def self.unset(word) = (word == EMPTY) ? nil : word
 

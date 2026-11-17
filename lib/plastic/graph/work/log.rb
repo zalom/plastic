@@ -18,9 +18,9 @@ module Plastic
           @session = session
         end
 
-        def record(intent_id, kind, text, node: "", path: "", body: nil)
+        def record(intent_id, kind, text, **parts)
           repair(intent_id)
-          put(intent_id, [{ kind:, at: Plastic.now, text:, node:, path:, sha256: (Digest::SHA256.hexdigest(body) if body).to_s }])
+          put(intent_id, [line(kind, text, **parts)])
         end
 
         def repair(intent_id)
@@ -29,6 +29,10 @@ module Plastic
         end
 
         private
+
+        def line(kind, text, node: "", path: "", body: nil)
+          { kind:, at: Plastic.now, text:, node:, path:, sha256: (Digest::SHA256.hexdigest(body) if body).to_s }
+        end
 
         def put(intent_id, lines)
           return 0 if lines.empty?
