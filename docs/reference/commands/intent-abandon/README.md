@@ -27,7 +27,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | What changes | Where | Reach |
 | --- | --- | --- |
 | The intent is marked abandoned | the work graph database, in the store folder | goes with the store |
-| The lock of the intent is released | the local database, in the home folder | stays on this machine |
 | The index of the store is rewritten | the store folder | goes with the store |
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.

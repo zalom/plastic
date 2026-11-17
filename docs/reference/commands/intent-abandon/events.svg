@@ -141,14 +141,14 @@
 <circle cx="44" cy="572" r="8" class="badge"/>
 <text x="44" y="576" class="badge-t" text-anchor="middle">5</text>
 <text x="64" y="575" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="595" class="t" text-anchor="start">Check cleanup again.</text>
+<text x="64" y="595" class="t" text-anchor="start">Forget the abandon of an earlier call.</text>
 <path d="M 64 604 L 64 630" class="wire"/>
 <path d="M 59 622 L 64 630 L 69 622 Z" class="head"/>
 <rect x="24" y="630" width="400" height="51" rx="6" class="lane-code"/>
 <circle cx="44" cy="649" r="8" class="badge"/>
 <text x="44" y="653" class="badge-t" text-anchor="middle">6</text>
 <text x="64" y="652" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="672" class="t" text-anchor="start">Abandon the intent and finish cleanup.</text>
+<text x="64" y="672" class="t" text-anchor="start">Abandon the intent.</text>
 <path d="M 64 681 L 64 707" class="wire"/>
 <path d="M 59 699 L 64 707 L 69 699 Z" class="head"/>
 <rect x="24" y="707" width="400" height="51" rx="6" class="lane-agent"/>

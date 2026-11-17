@@ -9,7 +9,7 @@ class SchemaStore2Test < Plastic::TestCase
   Sequences = Plastic::Graph::SchemaSequences
   Store1 = Plastic::Graph::SchemaStore1
 
-  PINNED = "18472acd80b00c9d91f0359483e04f2e3647fac1ada256b63c731f7c2c79e4e5"
+  PINNED = "bfef532e6ef8fd580fb9d0ff1cac97a6e05b3b49e3badcd13e6db9a1b2037b48"
 
   ROWS = [
     ["1", "n1", "done", "agent-7", 2, "2026-10-20T08:00:00Z"],

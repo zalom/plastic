@@ -6,15 +6,15 @@ module Plastic
   module Workflows
     module Code
       module Intent
-        # Closure can be retried after the work commit but before lock cleanup. The files of the intent print after the close.
+        # A close that stopped after the status write can be retried. The files of the intent print after the close.
         class End < CodeWorkflow
           summary "Closes the intent and ends its run of work."
           sets :ended
 
-          read("check cleanup again") { |context| context[:ended] = false }
+          read("forget the close of an earlier call") { |context| context[:ended] = false }
 
-          step "close the intent and finish cleanup", done: ->(context) { context.ended == true },
-            changes: { work: "The intent is marked done and its completion is saved", local: "The lock of the intent is released" } do |context|
+          step "close the intent", done: ->(context) { context.ended == true },
+            changes: { work: "The intent is marked done and its completion is saved" } do |context|
             context.work.close_intent(context.intent_id)
             context.print("intent: #{context.intent_id} done")
             context[:ended] = true

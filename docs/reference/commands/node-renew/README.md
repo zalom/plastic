@@ -21,9 +21,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The claim of this session on the node is renewed to now | the work graph database, in the store folder | goes with the store |
-| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
-
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+| The claim of this session on the node is renewed to now | the work graph database, in the store folder | stays on this machine |
 
 The command is `Plastic::Commands::Node::Renew`, in [`commands/node/renew.rb`](../../../../lib/plastic/commands/node/renew.rb).

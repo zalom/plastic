@@ -186,14 +186,14 @@
 <circle cx="44" cy="1027" r="8" class="badge"/>
 <text x="44" y="1031" class="badge-t" text-anchor="middle">8</text>
 <text x="64" y="1030" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="1050" class="t" text-anchor="start">Check cleanup again.</text>
+<text x="64" y="1050" class="t" text-anchor="start">Forget the close of an earlier call.</text>
 <path d="M 64 1059 L 64 1085" class="wire"/>
 <path d="M 59 1077 L 64 1085 L 69 1077 Z" class="head"/>
 <rect x="24" y="1085" width="400" height="51" rx="6" class="lane-code"/>
 <circle cx="44" cy="1104" r="8" class="badge"/>
 <text x="44" y="1108" class="badge-t" text-anchor="middle">9</text>
 <text x="64" y="1107" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="1127" class="t" text-anchor="start">Close the intent and finish cleanup.</text>
+<text x="64" y="1127" class="t" text-anchor="start">Close the intent.</text>
 <path d="M 64 1136 L 64 1162" class="wire"/>
 <path d="M 59 1154 L 64 1162 L 69 1154 Z" class="head"/>
 <rect x="24" y="1162" width="400" height="51" rx="6" class="lane-agent"/>

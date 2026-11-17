@@ -3,13 +3,14 @@
 Claim an open node, or take a lapsed claim, and print its brief.
 
 ```sh
-plastic node claim ID NODE
+plastic node claim ID NODE [--agent NAME]
 ```
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
 | `NODE` | the node | |
+| `--agent NAME` | the agent that runs the node, recorded on its run; empty when left out | `""` |
 
 ## The events of one call, step by step
 
@@ -21,7 +22,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The node is claimed by this session | the work graph database, in the store folder | goes with the store |
+| The node is claimed by this session: PLASTIC_SESSION, else the harness session, else terminal- and the login at a terminal | the work graph database, in the store folder | goes with the store |
 | A node with three runs moves to needing information, with the question for the owner | the work graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
