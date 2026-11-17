@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
-require "open3"
+require_relative "support/child_process"
 require "rbconfig"
 
 class ArchitectureFiguresLayersTest < Minitest::Test
@@ -18,7 +18,7 @@ class ArchitectureFiguresLayersTest < Minitest::Test
 
   def test_every_shape_file_loads_alone
     failures = shape_files.filter_map do |file|
-      _out, error, status = Open3.capture3(RbConfig.ruby, "-e", "require 'cgi/escape'; require ARGV.first", file)
+      _out, error, status = ChildProcess.capture3(RbConfig.ruby, "-e", "require 'cgi/escape'; require ARGV.first", file)
       "#{File.basename(file)}: #{error.lines.first&.strip}" unless status.success?
     end
 
