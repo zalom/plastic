@@ -40,6 +40,13 @@ class WorkNodeResultTest < Plastic::TestCase
     assert_raises(Plastic::Usage) { result(["../elsewhere.md"]) }
   end
 
+  def test_a_named_file_the_sync_does_not_read_is_refused_as_usage_naming_the_path
+    write("#{dir}/resources/tmp/scratch.md", "# scratch\n")
+    error = assert_raises(Plastic::Usage) { result(["resources/tmp/scratch.md"]) }
+
+    assert_includes error.message, "resources/tmp/scratch.md"
+  end
+
   def test_a_file_that_does_not_exist_is_refused_as_usage
     assert_raises(Plastic::Usage) { result(["ghost.md"]) }
   end

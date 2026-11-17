@@ -53,6 +53,28 @@ class NodeDoneTest < Plastic::TestCase
     assert_equal ["a.md"], heads
   end
 
+  def test_two_claimed_nodes_each_finish_with_their_own_file
+    cli("node", "add", "1", "Second", "--criterion", KEY)
+    cli("node", "claim", "1", "n2")
+    dir = retrieval.intent("1").dir
+    write("#{dir}/a.md", "# a\n")
+    write("#{dir}/b.md", "# b\n")
+    cli("node", "done", "1", "n1", "ok", "--file", "a.md")
+    after_first = heads
+    cli("node", "done", "1", "n2", "ok", "--file", "b.md")
+
+    assert_equal [%w[a.md], %w[a.md b.md]], [after_first, heads.sort]
+  end
+
+  def test_a_file_the_sync_does_not_read_exits_2_naming_it_and_the_node_stays_claimed
+    dir = retrieval.intent("1").dir
+    write("#{dir}/resources/tmp/scratch.md", "# scratch\n")
+    result = cli("node", "done", "1", "n1", "ok", "--file", "resources/tmp/scratch.md")
+
+    assert_call result, code: 2, err: /resources\/tmp\/scratch\.md/
+    assert_equal "claimed", retrieval.node("1", "n1").state
+  end
+
   def test_a_file_outside_the_intent_exits_2_and_the_node_stays_claimed
     result = cli("node", "done", "1", "n1", "ok", "--file", "../elsewhere.md")
 
