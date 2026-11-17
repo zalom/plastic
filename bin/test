@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 # Runs the Minitest unit suite in a single process, either the whole suite or a
-# named subset via --only. --end-to-end runs the Varar
+# named subset via --only. --e2e runs the Varar
 # acceptance documents instead. Every run, named or full,
 # goes through FailuresReporter, so a green run costs one line and a red run
 # prints only the failures plus that line, never a dot per test.
@@ -21,9 +21,9 @@ kernel = []
 system_runner = File.join(root, "test", "varar_test.rb")
 discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort - [system_runner] }
 
-# `bin/test --end-to-end` runs the Varar acceptance documents: each command
+# `bin/test --e2e` runs the Varar acceptance documents: each command
 # through a child process, apart from the unit layer.
-end_to_end_layer = ARGV.delete("--end-to-end")
+e2e_layer = ARGV.delete("--e2e")
 
 unknown = ARGV.take_while { |arg| arg != "--only" }.grep(/\A-/) - ["--list"]
 unless unknown.empty?
@@ -34,13 +34,13 @@ end
 # `bin/test --list` prints the files of the layer without running them, so the
 # discovery logic can be tested cheaply (no full-suite execution).
 if ARGV.delete("--list")
-  files = end_to_end_layer ? [system_runner] : discover.call
+  files = e2e_layer ? [system_runner] : discover.call
   abort "No test files found under #{File.join(root, "test")}" if files.empty?
   puts files.map { |f| f.sub("#{root}/", "") }
   exit 0
 end
 
-ARGV.concat(["--only", system_runner]) if end_to_end_layer
+ARGV.concat(["--only", system_runner]) if e2e_layer
 
 only_index = ARGV.index("--only")
 if only_index

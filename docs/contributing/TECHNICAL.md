@@ -70,7 +70,7 @@ The patterns and the rules for every test are in
 [Test a change](../../CONTRIBUTING.md#test-a-change). This section tells how the runs are built.
 
 CI runs the full suite on every push to `main` and `alpha`, and on every pull request
-into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --end-to-end` for
+into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --e2e` for
 the acceptance documents.
 
 On a full run, `bin/test` splits the test files in two. It runs the kernel tests under
@@ -100,7 +100,7 @@ commands would.
   `legacy-import`. Each runs its command in a child Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
-  directly, by the case. `bin/test --end-to-end` runs them through `test/varar_test.rb`. The change
+  directly, by the case. `bin/test --e2e` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
 
 ## The byte budget

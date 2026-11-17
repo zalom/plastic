@@ -11,7 +11,7 @@ around broken data. A legitimately absent value is not broken data.
 ## Stack
 - Language: Ruby (scripts, installer, the `plastic` command)
 - Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`exe/plastic`).
-- Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows. `bin/test` runs the unit layer, and `bin/test --end-to-end` runs the Varar end-to-end layer.
+- Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows. `bin/test` runs the unit layer, and `bin/test --e2e` runs the Varar end-to-end (e2e) layer.
 - Source: this repository. The source command line runs as `ruby exe/plastic`.
 - Remote: git@github.com:zalom/plastic.git
 
