@@ -20,11 +20,15 @@ class CommandTest < Plastic::TestCase
 
   class Bare < Plastic::CLI::Command; end
 
+  class Idle < Plastic::CLI::Command
+    def call = nil
+  end
+
   class FailingRenewal < Plastic::CLI::Command
     argument :intent_id, label: "ID", text: "the intent"
 
     def call
-      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "the database is locked" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise SQLite3::BusyException, "the database is locked" }
       output.row("title:", graphs.retrieval.intent(parsed[:intent_id]).title)
     end
   end
@@ -126,5 +130,29 @@ class CommandTest < Plastic::TestCase
     result = run_tool("1", tool: FailingRenewal, env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal CommandHelper::Result.new("title:  Alpha\n", "", 0), result
+  end
+
+  class BrokenRenewal < FailingRenewal
+    def call
+      graphs.work.define_singleton_method(:renew_claims) { |_session| nil.renew }
+      output.row("title:", "x")
+    end
+  end
+
+  def test_a_renewal_that_is_a_bug_is_not_hidden
+    open_intent("Alpha")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    assert_raises(NoMethodError) { run_tool("1", tool: BrokenRenewal, env: { "PLASTIC_SESSION" => "s-1" }) }
+  end
+
+  def test_a_call_in_a_store_with_no_work_database_makes_none
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
+
+    result = run_tool("1", tool: Idle, env: { "PLASTIC_SESSION" => "s-1" })
+
+    refute_path_exists File.join(@plastic_home, "stores", "global", "work_graph.db")
+    assert_equal 0, result.code
   end
 end

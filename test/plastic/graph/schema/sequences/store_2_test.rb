@@ -49,7 +49,7 @@ class SchemaStore2Test < Plastic::TestCase
   def test_the_node_gains_its_claim_columns
     migrate
 
-    assert_empty %w[claimed_by claimed_at seen_at] - node_columns
+    assert_empty %w[claimed_by claimed_at seen_at answered_at] - node_columns
   end
 
   def test_the_node_loses_its_holder_and_its_count
