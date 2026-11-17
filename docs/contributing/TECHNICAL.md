@@ -71,7 +71,7 @@ The patterns and the rules for every test are in
 
 CI runs the full suite on every push to `main` and `alpha`, and on every pull request
 into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --e2e` for
-the acceptance documents.
+the end-to-end (e2e) layer, the acceptance documents.
 
 On a full run, `bin/test` splits the test files in two. It runs the kernel tests under
 `test/plastic/` in a process of their own first, then every other test file in its own
