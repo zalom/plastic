@@ -126,9 +126,7 @@ class ClaudeHooksTest < Plastic::TestCase
   end
 
   def test_a_status_line_stays_off_while_the_flag_is_off
-    settings, = merge({}, choice: :plastic)
-
-    refute settings.key?("statusLine")
+    refute merge({}, choice: :plastic).first.key?("statusLine")
   end
 
   def test_a_settings_file_that_does_not_exist_is_started_from_nothing
@@ -139,6 +137,7 @@ class ClaudeHooksTest < Plastic::TestCase
   end
 
   def test_the_status_line_that_is_plastics_own_is_not_kept_in_the_cache
+    config_with("global:\n  statusline: true\n")
     merge({ "statusLine" => { "type" => "command", "command" => "#{@home}/.claude/hooks/plastic-statusline" } })
 
     refute_path_exists File.join(@plastic_home, ".cache", "original-statusline.json")

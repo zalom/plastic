@@ -37,6 +37,18 @@ class SchemaHomeCopyTest < Plastic::TestCase
     assert_empty Dir.glob(File.join(folder, "*"))
   end
 
+  def test_a_copy_that_cannot_be_written_leaves_no_file_and_the_call_raises
+    path = File.join(@scratch, "plastic.db")
+    filled_database(path)
+    folder = FileUtils.mkdir_p(File.join(@scratch, "backups")).first
+    File.chmod(0o555, folder)
+
+    assert_raises(SQLite3::Exception) { Plastic::Graph::HomeCopy.new(path, folder, NOW).call }
+    assert_empty Dir.glob(File.join(folder, "*"))
+  ensure
+    File.chmod(0o755, folder)
+  end
+
   def test_a_copy_already_at_the_target_is_kept_and_the_call_raises
     path = File.join(@scratch, "plastic.db")
     filled_database(path)

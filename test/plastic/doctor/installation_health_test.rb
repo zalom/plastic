@@ -38,6 +38,15 @@ class InstallationHealthTest < Plastic::TestCase
     assert_equal "#{settings} is not valid JSON", check("hooks:").value
   end
 
+  def test_a_release_with_its_sqlite3_bundle_needs_no_repair
+    setup = File.join(share, "active", "runtime", "bundle", "bundler", "setup.rb")
+    FileUtils.mkdir_p(File.dirname(setup))
+    File.write(setup, "")
+    bundle = check("sqlite3 bundle:")
+
+    assert_equal ["present", nil], [bundle.value, bundle.repair]
+  end
+
   def test_no_hooks_need_no_repair
     hooks = check("hooks:")
 
