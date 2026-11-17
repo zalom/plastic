@@ -154,6 +154,26 @@ passages, and prints `search index NAME: rebuilt`. A store whose evidence is gon
 the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
 
+The doctor also names each store with files outside the resources layout, as `resources NAME: N files
+are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
+
+## The resources layout
+
+An intent folder keeps its notes in the root and its other files under `resources/`:
+`resources/output/reports/` for Markdown and HTML, `resources/output/files/` for every other
+output, `resources/references/` for what the agent read, and `resources/tmp/` for state that
+no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
+more types through the setting `sync.types`. `resources/references/` is read only when its
+setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
+so in one line and records the type once in `sync.asked`.
+
+`plastic resources sort --store SLUG` moves the files of a store from the old places into this
+layout. It moves the rows with the files, rewrites the relative links that point at a moved
+file, and runs a sync up. A link that named no file before the move is left as it is and
+listed. `--dry-run` lists every move and changes nothing. A target that holds other bytes than
+the file that would move onto it stops the call with exit 3 and names the target. A second run
+finds nothing to move and says `sorted: nothing to move`.
+
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
