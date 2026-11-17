@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../plastic"
 require_relative "cli/command"
 require_relative "cli/table"
 require_relative "cli/listing"

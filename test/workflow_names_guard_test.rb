@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 require "json"
-require "plastic"
+require "plastic/cli"
 require "plastic/workflow"
 require_relative "support/child_process"
 
@@ -163,7 +163,7 @@ class WorkflowNamesTest < Minitest::Test
   end
 
   PROBE = <<~RUBY
-    require "plastic"; require "plastic/workflow"; require "json"
+    require "plastic/cli"; require "plastic/workflow"; require "json"
     klass = Plastic::Workflow.fetch(ARGV.fetch(0).to_sym)
     parts = klass.name.delete_prefix("Plastic::Workflows::").split("::")
     kinds = parts.each_index.to_h do |index|

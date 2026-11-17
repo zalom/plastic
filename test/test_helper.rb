@@ -36,7 +36,7 @@ module Plastic
       return if @booted
 
       @booted = true
-      require "plastic"
+      require "plastic/cli"
       require "plastic/graph"
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)

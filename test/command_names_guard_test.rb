@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
-require "plastic"
+require "plastic/cli"
 require_relative "support/child_process"
 
 class CommandNamesTest < Minitest::Test
@@ -79,7 +79,7 @@ class CommandNamesTest < Minitest::Test
 
   def parent_after(words)
     parent = words.split.first.capitalize
-    code = %(require "plastic"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), false).class)
+    code = %(require "plastic/cli"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), false).class)
     out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, words, parent, chdir: ROOT)
     [status.success?, out]
   end

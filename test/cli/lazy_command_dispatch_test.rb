@@ -9,7 +9,7 @@ require "tmpdir"
 class LazyCommandDispatchTest < Minitest::Test
   ROOT = File.expand_path("../..", __dir__)
   RETRIEVAL_CONTEXT_SCRIPT = <<~RUBY
-    require "plastic"
+    require "plastic/cli"
     require "plastic/graph"
     require "plastic/graph//retrieval/evidence/writer"
     global = Plastic::Graph.create(home: ARGV.fetch(0), store: "global")

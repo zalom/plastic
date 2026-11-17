@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require "plastic"
+require "plastic/cli"
 
 class CLITableTest < Minitest::Test
   FAMILY_ORDER = %w[core intent project sync session config backup document architecture node edge graph roadmap hook].freeze

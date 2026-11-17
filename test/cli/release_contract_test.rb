@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
-require_relative "../../lib/plastic"
+require_relative "../../lib/plastic/cli"
 require "fileutils"
 require "stringio"
 require "tmpdir"
