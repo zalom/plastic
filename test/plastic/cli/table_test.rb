@@ -4,7 +4,7 @@ require_relative "../../test_helper"
 require "plastic/cli"
 
 class CLITableTest < Minitest::Test
-  FAMILY_ORDER = %w[core intent project sync session config backup document architecture node edge graph roadmap chat hook].freeze
+  FAMILY_ORDER = %w[core intent project sync session config backup resources document architecture node edge graph roadmap chat hook].freeze
   CORE = %w[version doctor init install update rollback uninstall auto status next search].freeze
 
   def test_the_families_come_in_the_order_the_help_lists_them
