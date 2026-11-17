@@ -14,7 +14,7 @@ module Plastic
         class RoadmapFile
           Form = Roadmap::Form
           NOUNS = { head: "a head", batches: "a batch", items: "an item", edges: "an edge", log: "a log line" }.freeze
-          REQUIRED = { head: %i[title], batches: %i[position title], items: %i[item position], edges: %i[from to kind], log: %i[position text] }.freeze
+          REQUIRED = { head: %i[title], batches: %i[position], items: %i[item position], edges: %i[from to kind], log: %i[position text] }.freeze
 
           def self.form?(text) = Form.form?(text.dup.force_encoding(Encoding::UTF_8))
 
@@ -64,7 +64,7 @@ module Plastic
             @records.of(kind).map { |record| send(:"#{kind}_row", record).merge(stamp) }
           end
 
-          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"))
+          def batches_row(record) = base(record, "goal").merge(title: record["title"].to_s, done: record["done"].to_s, position: number(record, "position"))
 
           def items_row(record)
             base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"))
