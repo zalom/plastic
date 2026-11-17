@@ -6,6 +6,9 @@ require "plastic/installations/choices"
 
 class ChoicesTest < Plastic::TestCase
   include PackageFixture
+  include ConfigHomes
+
+  def config_with(text) = seed_config(@plastic_home, text)
 
   def choices = Plastic::Installations::Choices.new(@plastic_home)
 

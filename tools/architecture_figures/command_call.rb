@@ -11,17 +11,17 @@ module ArchitectureFigures
       ["exe/plastic", "Runs CLI with the words", "of the call."],
       ["CLI", "Finds the row for intent new", "in CLI::TABLE."],
       ["Commands::Intent::New", "Loaded on demand; its", "options are read."],
-      ["Routine", "Opens the Graph and", "starts a RoutineRun."],
+      ["Routine", "Opens the Graph and", "starts a CommandRun."],
       ["Routine::Traversal", "Runs the chain through", "Workflows::REGISTRY."],
       ["Workflows::Code::Intent::New", "Checks the call, then", "writes the rows."],
       ["Graph::Printer", "Prints the files of", "the intent folder."],
-      ["Routine", "Saves the RoutineRun", "and builds the report."],
+      ["Routine", "Saves the CommandRun", "and builds the report."],
       ["CLI", "Prints the report."],
       ["exe/plastic", "Exits with code 0:", "the value is Finished."]
     ].freeze
     REPORT = ["intent: ID", "wrote: 1 intent and 1 savepoint line in work_graph.db", "1 document and 1 document head in knowledge_graph.db",
       "files: store/index.json", "store/ID--slug/intent.md", "store/ID--slug/savepoint.md", "store/ID--slug/graph.json", "next: plastic next", "because: intent ID has its rows and its files"].freeze
-    NAMES = [["path", "exe/plastic", "exe/plastic"], ["command", "intent new", "intent new"], *%w[CLI CLI::TABLE Commands::Intent::New Routine RoutineRun Routine::Traversal Workflows::REGISTRY Workflows::Code::Intent::New Graph::Printer Finished].map { |name| ["class", name, name] }].freeze
+    NAMES = [["path", "exe/plastic", "exe/plastic"], ["command", "intent new", "intent new"], *%w[CLI CLI::TABLE Commands::Intent::New Routine CommandRun Routine::Traversal Workflows::REGISTRY Workflows::Code::Intent::New Graph::Printer Finished].map { |name| ["class", name, name] }].freeze
 
     SPOTS = [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [4, 170], [3, 170], [2, 170], [1, 170], [0, 170]].freeze
 

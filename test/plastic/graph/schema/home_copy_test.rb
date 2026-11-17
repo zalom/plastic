@@ -36,4 +36,21 @@ class SchemaHomeCopyTest < Plastic::TestCase
     assert_match(/fails the quick check/, error.message)
     assert_empty Dir.glob(File.join(folder, "*"))
   end
+
+  def test_a_copy_already_at_the_target_is_kept_and_the_call_raises
+    path = File.join(@scratch, "plastic.db")
+    filled_database(path)
+    first = Plastic::Graph::HomeCopy.new(path, File.join(@scratch, "backups"), NOW).call
+    before = File.binread(first)
+
+    assert_raises(Plastic::Graph::HomeCopy::Exists) { Plastic::Graph::HomeCopy.new(path, File.join(@scratch, "backups"), NOW).call }
+    assert_equal before, File.binread(first)
+  end
+
+  def test_the_copy_is_named_after_its_file
+    path = File.join(@scratch, "plastic.db")
+    filled_database(path)
+
+    assert_equal File.join(@scratch, "backups", "plastic-20261116120000.db"), Plastic::Graph::HomeCopy.new(path, File.join(@scratch, "backups"), NOW).call
+  end
 end

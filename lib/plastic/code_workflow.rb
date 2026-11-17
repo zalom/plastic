@@ -49,7 +49,7 @@ module Plastic
       end
 
       # A read that clears what a stopped step of an earlier call left in
-      # `names`, so a resumed routine run tries that step again rather than
+      # `names`, so a resumed command run tries that step again rather than
       # replaying its stop. An earlier call stopped when `problem` is set.
       def forget_stop(*names)
         read("forget a stop of an earlier call") do |context|

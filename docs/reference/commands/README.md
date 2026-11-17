@@ -70,7 +70,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic config`](config/README.md) | Pick which on/off settings are on, on the choice screen |
 | [`plastic config list`](config-list/README.md) | List every setting with its value, globally or for one harness |
 | [`plastic config get`](config-get/README.md) | Print the value of one setting |
-| [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
+| [`plastic config set`](config-set/README.md) | Write one setting to the settings rows, globally or for one harness |
 
 ## backup
 

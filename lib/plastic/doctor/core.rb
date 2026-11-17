@@ -7,6 +7,8 @@ require_relative "database_check"
 require_relative "retrieval_marker"
 require_relative "instruction_line"
 require_relative "store_backups"
+require_relative "home_ignore"
+require_relative "../config"
 require_relative "../workflows/installation_health"
 
 module Plastic
@@ -38,7 +40,7 @@ module Plastic
         @now = now
       end
 
-      def checks = [version, *release, sqlite, machine_database, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups]
+      def checks = [version, *release, sqlite, machine_database, *former_database, config_file, home_ignore, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups]
 
       private
 
@@ -61,6 +63,24 @@ module Plastic
         file = SCHEMA.file(key)
         Check.new("#{file}:", "every table present", "plastic install --reinstall").judged(DatabaseCheck.new(File.join(home, file), key).problem)
       end
+
+      def former_database
+        path = File.join(home, "local.db")
+        return [] unless File.exist?(path)
+
+        return [Check.finding("local.db:", "#{path} is not migrated", "plastic update")] unless File.exist?(File.join(home, "plastic.db"))
+
+        [Check.finding("local.db:", "#{path} is left beside plastic.db", "move local.db out of #{home}; plastic update keeps a copy of it in backups/")]
+      end
+
+      def config_file
+        line = Config::Store.new(home).problem
+        return Check.ok("config.yml:", "matches the settings rows") unless line
+
+        Check.finding("config.yml:", line, Config::Store::REPAIR)
+      end
+
+      def home_ignore = HomeIgnore.new(home).check
 
       def global_store
         path = File.join(home, "stores", "global")

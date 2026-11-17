@@ -77,7 +77,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
-  time. Ownership is a session-keyed lock row in the machine's `local.db`; liveness is a
+  time. Ownership is a session-keyed lock row in the machine's `plastic.db`; liveness is a
   lease (the stop hook renews the row at each turn end; a lock stays live while it was renewed
   within the TTL or its session holds a node of the intent claimed within the node limit, and
   it expires when its session ends, and lives again when that session resumes under the same id); the lock row is the truth of ownership. If you find a live lock owned

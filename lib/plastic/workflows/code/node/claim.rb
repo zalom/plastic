@@ -9,7 +9,7 @@ module Plastic
       module Node
         # Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth claim of a
         # node moves to needs_info instead, with the owner's question, and refuses. A refused
-        # claim keeps its routine run open, so the next call claims again.
+        # claim keeps its command run open, so the next call claims again.
         class Claim < CodeWorkflow
           clear_declarations
 

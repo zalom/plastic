@@ -50,6 +50,7 @@ end
 
 class KnowledgeSyncPreviewTest < Plastic::TestCase
   include DryRunAssertions
+  include ConfigHomes
 
   fixtures :alpha_synced
 
@@ -68,6 +69,15 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 
     assert_includes preview(overwrite: store_path(SPEC)), "preview: read #{SPEC}"
     assert_equal before, snapshot(store_root)
+  end
+
+  def test_the_preview_reads_the_sync_settings_of_the_home
+    write("store/1--alpha/resources/shot.png", "image bytes")
+    without = preview.grep(/shot\.png/)
+    seed_config(@plastic_home, "global:\n  sync:\n    media: true\n")
+    with = preview.grep(/shot\.png/)
+
+    assert_equal [true, true], [without.empty?, !with.empty?], preview.inspect
   end
 
   def test_an_overwrite_path_that_names_no_file_is_refused_naming_the_path
@@ -147,6 +157,8 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 end
 
 class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
+  include ConfigHomes
+
   include DryRunAssertions
 
   fixtures :legacy
@@ -164,7 +176,7 @@ class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
 
   def test_a_dry_run_with_remove_after_import_on_leaves_every_source_file_and_lists_what_it_lists_with_the_flag_off
     off = listed_paths(preview)
-    File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
+    seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
     before = states
     on = listed_paths(preview)
 

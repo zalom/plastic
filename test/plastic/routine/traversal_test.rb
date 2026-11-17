@@ -5,11 +5,11 @@ require_relative "../../test_helper"
 class TraversalTest < Plastic::TestCase
   def traverse(routine, facts)
     ctx = Plastic::Context.new(declared: routine.chain.facts + facts.keys, facts:, graphs: {})
-    run = Plastic::RoutineRun.fresh("kernel test", "ada")
-    Plastic::Routine::Traversal.new(routine.chain, ctx, run) { |saved| store_graphs.work.save_routine_run(saved) }.call { |value| value }
+    run = Plastic::CommandRun.fresh("kernel test", "ada")
+    Plastic::Routine::Traversal.new(routine.chain, ctx, run) { |saved| store_graphs.work.save_command_run(saved) }.call { |value| value }
   end
 
-  def kept = retrieval.routine_run("kernel test", "ada")
+  def kept = retrieval.command_run("kernel test", "ada")
 
   def test_a_chain_that_reaches_noop_finishes_on_the_last_outcome
     value = traverse(Fixtures::TwoStep, name: "ada")

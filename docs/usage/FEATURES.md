@@ -114,7 +114,7 @@ other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 ## Settings
 
 `plastic config list` prints every setting with its value, `plastic config get KEY` prints one,
-and `plastic config set KEY VALUE` writes one into `~/.plastic/config.yml`. `plastic config` shows
+and `plastic config set KEY VALUE` writes one into the settings rows of `~/.plastic/plastic.db` and prints `~/.plastic/config.yml` from them. The one-time import of an older `config.yml` resolves YAML anchors and merge keys to plain values, and the printed file holds none. A `config.yml` edited by hand after the print is refused: move it aside, then run `plastic config set KEY VALUE` to print it again. `plastic config` shows
 the on/off settings on a choice screen. Each takes `--harness NAME` to work on the settings of one
 harness, and refuses a name the harness registry does not hold. See the
 [page of `config`](../reference/commands/config/README.md).

@@ -3,21 +3,19 @@
 require "minitest/autorun"
 require "tmpdir"
 require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../test_helpers/config_homes"
 require_relative "../../../lib/plastic/config"
 require "fileutils"
 require "json"
 require_relative "../../test_helper"
 
 class EntriesTest < Minitest::Test
+  include ConfigHomes
+
   COMMAND = "/opt/plastic/bin/plastic"
   LAUNCHERS = { statusline: "/opt/plastic/bin/statusline", screens: "/opt/plastic/bin/screens" }.freeze
 
-  def config(text = "")
-    Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
-      yield Plastic::Config.new(dir)
-    end
-  end
+  def config(text = "") = Dir.mktmpdir { |dir| seed_config(dir, text).then { yield Plastic::Config.new(dir) } }
 
   def entries(text = "") = config(text) { |cfg| yield Plastic::Hooks::Entries.new(command: COMMAND, config: cfg, launchers: LAUNCHERS) }
 
@@ -188,10 +186,10 @@ class BrokenStoreTest < Plastic::TestCase
       Plastic::Graph.create(home: @plastic_home, store: "global")
       plastic("intent", "new", "Alpha", table: Plastic::CLI::TABLE)
       Pool.release(@home)
-      File.binwrite(File.join(@plastic_home, "local.db"), "not a sqlite file")
+      File.binwrite(File.join(@plastic_home, "plastic.db"), "not a sqlite file")
       call = hook("start", START)
 
-      assert_equal [0, "", "plastic hook: local.db: file is not a database\n"], [call.code, call.out, call.err]
+      assert_equal [0, "", "plastic hook: plastic.db: file is not a database\n"], [call.code, call.out, call.err]
     end
   end
 

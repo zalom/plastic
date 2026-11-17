@@ -5,7 +5,7 @@ require_relative "schema_file"
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
 Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_15_000000) do
-  create_table :routine_runs, key: %i[store tool subject] do |t|
+  create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
     t.text :at, :finished, :status, :facts, :next_command, :because
@@ -23,10 +23,8 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.text :mode, :locked_at, :renewed_at
   end
 
-  create_table :backups, key: %i[name] do |t|
-    t.kept :name
-    t.integer :files, :bytes
-    t.text :sha256, :at, :session_id
+  create_table :settings, key: %i[scope key] do |t|
+    t.kept :scope, :key, :value
   end
 
   create_table :intents, key: %i[intent_id origin_id] do |t|
@@ -233,7 +231,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :origin_id
   end
 
-  database :local, "local.db", %i[routine_runs sessions locks backups]
+  database :local, "plastic.db", %i[command_runs sessions locks settings printed]
   database :work, "work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
     roadmap_edges roadmap_log archives archive_entries approvals verdicts]
   database :knowledge, "knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages

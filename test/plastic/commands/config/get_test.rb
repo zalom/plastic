@@ -29,6 +29,8 @@ class ConfigGetScreensTest < Plastic::TestCase
 end
 
 class ConfigGetTest < Plastic::TestCase
+  include ConfigHomes
+
   def get(*words) = plastic("config", "get", *words, table: Plastic::CLI::TABLE)
 
   def test_a_global_setting_prints_its_value
@@ -39,7 +41,7 @@ class ConfigGetTest < Plastic::TestCase
   end
 
   def test_a_harness_section_value_wins_for_that_harness
-    File.write(File.join(@plastic_home, "config.yml"), "harnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n")
+    seed_config(@plastic_home, "harnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n")
 
     assert_match(/^agents\.models\.plastic-executor\s+gpt-x$/, get("agents.models.plastic-executor", "--harness", "codex").out)
   end

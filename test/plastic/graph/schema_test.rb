@@ -10,11 +10,11 @@ class SchemaTest < Plastic::TestCase
   def table(name) = Schema.table_named(name)
 
   def test_the_schema_names_each_database_file
-    assert_equal %w[local.db work_graph.db knowledge_graph.db references.db], %i[local work knowledge references].map { |key| Schema.file(key) }
+    assert_equal %w[plastic.db work_graph.db knowledge_graph.db references.db], %i[local work knowledge references].map { |key| Schema.file(key) }
   end
 
   def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:local)
+    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:settings).ddl, table(:printed).ddl].join("\n"), Schema.fetch(:local)
     assert_equal %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
       Schema.databases.fetch(:knowledge).last
   end
@@ -35,8 +35,8 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_a_tally_names_one_and_many
-    assert_equal ["1 routine run", "2 savepoint lines", "1 x"],
-      [Schema.tally(:routine_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
+    assert_equal ["1 command run", "2 savepoint lines", "1 x"],
+      [Schema.tally(:command_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
     assert_equal ["1 legacy file", "6 legacy files"], [Schema.tally(:legacy_intents_data, 1), Schema.tally(:legacy_intents_data, 6)]
   end
 

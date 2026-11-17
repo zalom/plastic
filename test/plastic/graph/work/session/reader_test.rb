@@ -12,7 +12,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def closed_run(subject, at: nil)
-    run = Plastic::RoutineRun.fresh("intent end", subject).close(Plastic::Finished.new(next_command: nil, because: "done"), {})
+    run = Plastic::CommandRun.fresh("intent end", subject).close(Plastic::Finished.new(next_command: nil, because: "done"), {})
     at ? run.with(updated_at: at) : run
   end
 
@@ -62,10 +62,10 @@ class WorkSessionReaderTest < Plastic::TestCase
     assert_nil reader.lock("1")
   end
 
-  def test_routine_run_reads_the_run_of_one_tool_on_one_subject
-    graphs.work.save_routine_run(Plastic::RoutineRun.fresh("intent end", "1"))
+  def test_command_run_reads_the_run_of_one_tool_on_one_subject
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
 
-    assert_equal ["intent end", "1"], reader.routine_run("intent end", "1").then { |run| [run.tool, run.subject] }
+    assert_equal ["intent end", "1"], reader.command_run("intent end", "1").then { |run| [run.tool, run.subject] }
   end
 
   def test_touched_names_the_intents_a_session_wrote_to
@@ -81,23 +81,23 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_touched_counts_a_run_whose_subject_is_a_title_through_its_facts_intent_id
-    run = Plastic::RoutineRun.fresh("intent new", "Alpha")
+    run = Plastic::CommandRun.fresh("intent new", "Alpha")
       .close(Plastic::Finished.new(next_command: "plastic continue", because: "done"), { intent_id: "1" })
-    graphs(session: "s-1").work.save_routine_run(run)
+    graphs(session: "s-1").work.save_command_run(run)
 
     assert_equal ["1"], reader.touched("s-1")
   end
 
   def test_touched_orders_the_most_recent_intent_first
     session = graphs(session: "s-1")
-    session.work.save_routine_run(closed_run("1", at: STAMP))
-    session.work.save_routine_run(closed_run("2", at: "2026-10-05T10:00:01+02:00"))
+    session.work.save_command_run(closed_run("1", at: STAMP))
+    session.work.save_command_run(closed_run("2", at: "2026-10-05T10:00:01+02:00"))
 
     assert_equal %w[2 1], session.retrieval.touched("s-1")
   end
 
-  def test_last_run_reads_the_latest_routine_run_naming_the_intent
-    graphs.work.save_routine_run(Plastic::RoutineRun.fresh("intent end", "1"))
+  def test_last_run_reads_the_latest_command_run_naming_the_intent
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
 
     assert_equal "1", reader.last_run("1").subject
   end
@@ -107,7 +107,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_last_run_stays_in_its_own_store
-    graphs(store: "other").work.save_routine_run(Plastic::RoutineRun.fresh("intent end", "1"))
+    graphs(store: "other").work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
 
     assert_nil reader.last_run("1")
   end

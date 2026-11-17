@@ -4,6 +4,8 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/knowledge/sync_selection"
 
 class KnowledgeSyncSelectionTest < Plastic::TestCase
+  include ConfigHomes
+
   SyncSelection = Plastic::Graph::Knowledge::SyncSelection
 
   PATHS = %w[spec.md resources/report.md graph.json context.json actions/1.json resources/shot.PNG resources/demo.mp4
@@ -11,7 +13,7 @@ class KnowledgeSyncSelectionTest < Plastic::TestCase
 
   def read_by(selection) = PATHS.select { |rel| selection.read?(rel) }
 
-  def config(text) = File.write(File.join(@plastic_home, "config.yml"), text)
+  def config(text) = seed_config(@plastic_home, text)
 
   def test_each_path_has_the_kind_its_folder_and_extension_name
     kinds = PATHS.map { |rel| SyncSelection.kind_of(rel) }

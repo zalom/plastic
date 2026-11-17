@@ -29,7 +29,7 @@
 <rect class="box" x="696" y="20" width="207" height="94" rx="8"/><rect x="696" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="m" x="712" y="44">Routine</text><text class="s" x="712" y="61">[Step 4]</text>
 <text class="s" x="712" y="81">Opens the Graph and</text>
-<text class="s" x="712" y="96">starts a RoutineRun.</text>
+<text class="s" x="712" y="96">starts a CommandRun.</text>
 <rect class="box" x="923" y="20" width="207" height="94" rx="8"/><rect x="923" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="m" x="939" y="44">Routine::Traversal</text><text class="s" x="939" y="61">[Step 5]</text>
 <text class="s" x="939" y="81">Runs the chain through</text>
@@ -44,7 +44,7 @@
 <text class="s" x="712" y="246">the intent folder.</text>
 <rect class="box" x="469" y="170" width="207" height="94" rx="8"/><rect x="469" y="170" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="m" x="485" y="194">Routine</text><text class="s" x="485" y="211">[Step 8]</text>
-<text class="s" x="485" y="231">Saves the RoutineRun</text>
+<text class="s" x="485" y="231">Saves the CommandRun</text>
 <text class="s" x="485" y="246">and builds the report.</text>
 <rect class="box" x="242" y="170" width="207" height="79" rx="8"/><rect x="242" y="170" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="m" x="258" y="194">CLI</text><text class="s" x="258" y="211">[Step 9]</text>

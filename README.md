@@ -356,8 +356,8 @@ step and records what it reports.
 
 ## Configuration
 
-`~/.plastic/config.yml` holds the settings you changed, in a `global` section and one
-section per harness:
+`~/.plastic/config.yml` is printed from the settings rows in `plastic.db`. It shows the
+settings you changed, in a `global` section and one section per harness, and holds no anchors:
 
 ```yaml
 global:

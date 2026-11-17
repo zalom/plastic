@@ -1,6 +1,6 @@
 # plastic config set
 
-Write one setting to config.yml, globally or for one harness.
+Write one setting to the settings rows, globally or for one harness.
 
 ```sh
 plastic config set KEY VALUE [--harness NAME]
@@ -22,6 +22,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The setting is written to config.yml in the Plastic home | the Plastic home folder | stays on this machine |
+| The setting is written to the settings rows in plastic.db, and config.yml is printed from them | the Plastic home folder | stays on this machine |
 
 The command is `Plastic::Commands::Config::Set`, in [`commands/config/set.rb`](../../../../lib/plastic/commands/config/set.rb).

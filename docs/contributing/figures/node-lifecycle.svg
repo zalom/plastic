@@ -19,7 +19,7 @@
 <text class="s" x="46" y="91">Only an open node. It</text>
 <text class="s" x="46" y="106">leaves the graph.</text>
 <rect class="box" x="350" y="30" width="260" height="109" rx="8"/><rect x="350" y="30" width="6" height="109" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="t" x="366" y="54">Delivery lock</text><text class="s" x="366" y="71">[row in local.db]</text>
+<text class="t" x="366" y="54">Delivery lock</text><text class="s" x="366" y="71">[row in plastic.db]</text>
 <text class="s" x="366" y="91">Live while renewed within 1800 s,</text>
 <text class="s" x="366" y="106">or while a node of its session</text>
 <text class="s" x="366" y="121">is claimed within 7200 s.</text>

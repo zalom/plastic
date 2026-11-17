@@ -4,6 +4,8 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/search_scope"
 
 class WorkflowSearchScopeTest < Plastic::TestCase
+  include ConfigHomes
+
   def sources(source_projects, env: {})
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "other"))
     context = call_context(harness: scoped_harness(slug: "global", env:), source_projects:)
@@ -18,7 +20,7 @@ class WorkflowSearchScopeTest < Plastic::TestCase
     assert_equal %w[global other], sources([" other", "global", "other", ""])
   end
 
-  def configure(value) = File.write(File.join(@plastic_home, "config.yml"), { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
+  def configure(value) = seed_config(@plastic_home, { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
 
   def test_the_environment_variable_is_not_read
     assert_equal ["global"], sources([], env: { "PLASTIC_SOURCE_PROJECTS" => "other" })

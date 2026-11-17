@@ -7,7 +7,7 @@ require_relative "handed_off"
 require_relative "failed"
 require_relative "refused"
 require_relative "context"
-require_relative "routine_run"
+require_relative "command_run"
 require_relative "routine/chain"
 require_relative "routine/traversal"
 require_relative "routine/preview"
@@ -76,15 +76,15 @@ module Plastic
 
     private
 
-    def finish(routine_run)
-      ctx = context(routine_run)
-      report(hand_edit_failure(ctx) || walk(routine_run, ctx), ctx)
+    def finish(command_run)
+      ctx = context(command_run)
+      report(hand_edit_failure(ctx) || walk(command_run, ctx), ctx)
     end
 
-    # A resumed routine run brings back what its workflows found; this call's
+    # A resumed command run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
-    def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
+    def context(command_run)
+      Context.new(declared: self.class.declared_facts, facts: command_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
     end
 
     def chain = self.class.chain
@@ -101,10 +101,10 @@ module Plastic
       @exit_code = value.report(output)
     end
 
-    # The open routine run for this tool and subject, or a new one.
-    def open_routine_run
-      found = graphs.retrieval.routine_run(words, subject) if keeps_routine_run?
-      found&.open? ? found : RoutineRun.fresh(words, subject)
+    # The open command run for this tool and subject, or a new one.
+    def open_command_run
+      found = graphs.retrieval.command_run(words, subject) if keeps_command_run?
+      found&.open? ? found : CommandRun.fresh(words, subject)
     end
 
     # The subject arguments of this call, joined, or nil when none is set.
@@ -113,12 +113,12 @@ module Plastic
       parts.join("-") unless parts.empty?
     end
 
-    def save_routine_run(routine_run)
-      graphs.work.save_routine_run(routine_run) if keeps_routine_run?
+    def save_command_run(command_run)
+      graphs.work.save_command_run(command_run) if keeps_command_run?
     end
 
-    # A command that writes keeps its routine run, so a resumed write finds
+    # A command that writes keeps its command run, so a resumed write finds
     # its facts. A read, and a dry run, keep none.
-    def keeps_routine_run? = self.class.writes.any? && !parsed[:dry_run]
+    def keeps_command_run? = self.class.writes.any? && !parsed[:dry_run]
   end
 end

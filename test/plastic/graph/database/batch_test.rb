@@ -120,7 +120,7 @@ class ChangeLogTest < Plastic::TestCase
 
   def test_the_local_database_keeps_no_change_log
     local = store_graphs.databases[:local]
-    local.transaction { |batch| batch.put(:routine_runs, { store: "global", tool: "x", subject: "" }) }
+    local.transaction { |batch| batch.put(:command_runs, { store: "global", tool: "x", subject: "" }) }
 
     assert_empty local.rows("SELECT name FROM sqlite_master WHERE name = 'changes'")
   end

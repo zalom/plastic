@@ -380,7 +380,7 @@ class IntentContextSavingTest < Plastic::TestCase
   def test_the_saved_run_of_a_submission_holds_no_document
     submit_context(context_submission(discovered_reference))
 
-    facts = global_graphs.databases.fetch(:local).rows("SELECT facts FROM routine_runs WHERE tool = 'intent context'").map { |row| row.fetch("facts") }
+    facts = global_graphs.databases.fetch(:local).rows("SELECT facts FROM command_runs WHERE tool = 'intent context'").map { |row| row.fetch("facts") }
 
     refute_empty facts
     refute(facts.any? { |text| text.include?("a source fact") })

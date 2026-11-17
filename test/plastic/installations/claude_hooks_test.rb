@@ -7,6 +7,9 @@ require "plastic/installations/claude_hooks"
 
 class ClaudeHooksTest < Plastic::TestCase
   include PackageFixture
+  include ConfigHomes
+
+  def config_with(text) = seed_config(@plastic_home, text)
 
   def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3")
 

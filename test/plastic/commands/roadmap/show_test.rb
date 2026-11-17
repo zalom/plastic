@@ -47,5 +47,5 @@ class RoadmapShowTest < Plastic::TestCase
     assert_equal "", result.out.lines.grep(/^wrote:/).join
   end
 
-  def run_count = store_graphs.databases.fetch(:local).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
+  def run_count = store_graphs.databases.fetch(:local).row("SELECT count(*) AS n FROM command_runs").fetch("n")
 end

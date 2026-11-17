@@ -56,9 +56,10 @@ class DoctorCommandTest < Plastic::TestCase
     assert_includes result.err, "no harness unknown; the registered harnesses are claude-code, codex, hermes"
   end
 
-  def test_the_doctor_changes_no_file_under_the_home
+  def test_a_second_doctor_run_changes_no_file_under_the_home
     File.delete(machine_path)
     FileUtils.rm_rf(store_dir)
+    doctor
     before = tree_snapshot(@home)
     doctor
 
@@ -269,9 +270,10 @@ class CodexDoctorCommandTest < Plastic::TestCase
     assert_equal [1, 0, "", ["hook SessionStart", "plastic install --reinstall"]], [found.code, repaired.code, repaired.err, words]
   end
 
-  def test_a_damaged_codex_home_is_unchanged_after_the_doctor
+  def test_a_second_doctor_run_on_a_damaged_codex_home_changes_no_file
     File.delete(codex_record)
     File.delete(machine_path)
+    doctor("--harness", "codex")
     before = tree_snapshot(@home)
     result = doctor("--harness", "codex")
 

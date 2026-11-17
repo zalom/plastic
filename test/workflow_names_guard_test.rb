@@ -8,7 +8,7 @@ require_relative "support/child_process"
 
 module WorkflowNameTable
   # Every key with the class under Workflows that runs it. A key is stored in
-  # an open routine run, so the keys never change; the classes follow the
+  # an open command run, so the keys never change; the classes follow the
   # command a workflow belongs to.
   MAPPING = {
     code_write_intent: "Code::Intent::New",

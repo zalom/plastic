@@ -127,7 +127,7 @@ The installer copies each role file of `agents/` into every harness that reads a
 | Codex | `~/.codex/agents/` | `NAME.toml`, rendered with the name, the description, the model fields and the instructions |
 | Hermes | `~/.hermes/agents/` | `NAME.md`, copied |
 
-A model or an effort set for a harness in `config.yml` rewrites that agent's model line for
+A model or an effort set for a harness with `plastic config set` rewrites that agent's model line for
 that harness only. With `advisor.enabled: false`, the two advisor agents are not installed.
 
 `plastic init` counts a harness as found when its folder, `.claude`, `.codex` or `.hermes`, is in

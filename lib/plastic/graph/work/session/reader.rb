@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../routine_run"
+require_relative "../../../command_run"
 require_relative "../session"
 require_relative "../../lock"
 require_relative "touched"
@@ -10,7 +10,7 @@ module Plastic
   module Graph
     module Work
       class Session
-        # The read side of the local database's `sessions`, `locks` and `routine_runs`
+        # The read side of the local database's `sessions`, `locks` and `command_runs`
         # tables for one store, and the savepoint lines a session wrote.
         class Reader
           PREDECESSOR_SQL = <<~SQL
@@ -21,7 +21,7 @@ module Plastic
           SQL
 
           LAST_RUN_SQL = <<~SQL
-            SELECT * FROM routine_runs WHERE store = :store
+            SELECT * FROM command_runs WHERE store = :store
               AND (subject = :intent_id OR json_extract(facts, '$.intent_id') = :intent_id)
             ORDER BY updated_at DESC LIMIT 1
           SQL
@@ -32,11 +32,11 @@ module Plastic
             @origin = origin
           end
 
-          # The open or last routine run of one tool on one subject.
-          def routine_run(tool, subject)
-            row = local.row("SELECT * FROM routine_runs WHERE store = :store AND tool = :tool AND subject = :subject",
+          # The open or last command run of one tool on one subject.
+          def command_run(tool, subject)
+            row = local.row("SELECT * FROM command_runs WHERE store = :store AND tool = :tool AND subject = :subject",
               store: @store, tool:, subject: subject.to_s)
-            row && RoutineRun.from_row(row, subject)
+            row && CommandRun.from_row(row, subject)
           end
 
           # The session row, or nil when it has none.
@@ -68,11 +68,11 @@ module Plastic
             row && Lock.from_h(row)
           end
 
-          # The latest RoutineRun of this store whose subject is `intent_id` or
+          # The latest CommandRun of this store whose subject is `intent_id` or
           # whose facts hold it as `intent_id`, by `updated_at`.
           def last_run(intent_id)
             row = local.row(LAST_RUN_SQL, store: @store, intent_id:)
-            row && RoutineRun.from_row(row, row.fetch("subject"))
+            row && CommandRun.from_row(row, row.fetch("subject"))
           end
 
           # The Lock::Liveness of `lock`.

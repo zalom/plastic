@@ -8,7 +8,7 @@ plastic install [--reinstall] [--dry-run]
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
-| `--reinstall` | sync the files again and make the global store and local.db when they are missing or behind | `false` |
+| `--reinstall` | sync the files again and make the global store and plastic.db when they are missing or behind | `false` |
 | `--dry-run` | list what would change and change nothing | `false` |
 
 ## The workflows of one call

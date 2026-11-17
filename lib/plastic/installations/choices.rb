@@ -5,7 +5,7 @@ require_relative "../config/layout"
 
 module Plastic
   module Installations
-    # What the person set in config.yml that an install reads: the model and
+    # What the person set with plastic config set that an install reads: the model and
     # effort of each agent role for one harness, whether the advisor is on, and
     # whether the status line is on.
     class Choices

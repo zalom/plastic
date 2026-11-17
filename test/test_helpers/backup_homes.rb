@@ -42,10 +42,6 @@ module BackupHomes
     Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).grep(Plastic::Graph::Backup::FolderName::PATTERN).sort : []
   end
 
-  def row_names(home, slug = "alpha")
-    Plastic::Graph.open(home:, store: slug).retrieval.backups.map(&:name)
-  end
-
   def store_file(home, name, slug = "alpha") = File.join(home, "stores", slug, "#{name}.db")
 
   def intent_count(home, slug = "alpha")
@@ -54,7 +50,7 @@ module BackupHomes
 
   def add_intent(home, slug = "alpha") = Plastic::Graph.open(home:, store: slug).work.write_intent(title: "More")
 
-  def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "local.db")).execute("SELECT tool FROM routine_runs").flatten
+  def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "plastic.db")).execute("SELECT tool FROM command_runs").flatten
 
   def backup_call(home, *argv) = plastic("backup", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 

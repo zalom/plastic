@@ -29,7 +29,7 @@ module Plastic
             [*names.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }, CLI::Screen::Choice.new(label: MEDIA, chosen: media?(scope))]
           end
 
-          # Picked until the home's config.yml turns the sync of images and videos off.
+          # Picked until the setting sync.media turns the sync of images and videos off.
           def self.media?(scope) = !Plastic::Config::FALSE_VALUES.include?(Plastic::Config.new(scope.plastic_home).overrides.dig("sync", "media"))
 
           read "find the installed harnesses and read the person's answer" do |context|

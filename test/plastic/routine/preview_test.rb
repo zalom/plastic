@@ -40,11 +40,11 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_equal [], twin.changed_paths
   end
 
-  def test_a_preview_keeps_no_routine_run
+  def test_a_preview_keeps_no_command_run
     twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
 
-    assert_nil home_graphs(twin.first).retrieval.routine_run("intent archive", "1")
-    assert home_graphs(twin.second).retrieval.routine_run("intent archive", "1")
+    assert_nil home_graphs(twin.first).retrieval.command_run("intent archive", "1")
+    assert home_graphs(twin.second).retrieval.command_run("intent archive", "1")
   end
 
   def test_a_preview_names_original_paths_never_the_copy
@@ -54,12 +54,12 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_includes twin.previewed.out, "preview: would change #{twin.first}/stores/global/store/1--alpha/graph.json"
   end
 
-  def test_a_dry_run_and_the_real_call_leave_the_routine_run_row_off_their_lines
+  def test_a_dry_run_and_the_real_call_leave_the_command_run_row_off_their_lines
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
     assert_match(/would write:\s+1 node in work_graph\.db/, twin.previewed.out)
     assert_match(/wrote:\s+1 node in work_graph\.db/, twin.applied.out)
-    refute_includes twin.previewed.out + twin.applied.out, "routine run"
+    refute_includes twin.previewed.out + twin.applied.out, "command run"
   end
 
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line
@@ -140,7 +140,7 @@ class RoutineDatabaseFailureTest < Plastic::TestCase
 
     private
 
-    def open_routine_run = raise(Plastic::Graph::Database::Error, "disk full")
+    def open_command_run = raise(Plastic::Graph::Database::Error, "disk full")
   end
 
   def test_a_database_error_in_the_chain_ends_the_call_as_a_failure_naming_the_error

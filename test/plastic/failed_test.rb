@@ -15,9 +15,9 @@ class FailedTest < Plastic::TestCase
   end
 
   def test_a_raised_database_error_gives_its_message_with_no_class_name
-    failed = Plastic::Failed.raised(:code_a, "step", Plastic::Graph::Database::Error.new("local.db is held by another process"))
+    failed = Plastic::Failed.raised(:code_a, "step", Plastic::Graph::Database::Error.new("plastic.db is held by another process"))
 
-    assert_equal "local.db is held by another process", failed.reason
+    assert_equal "plastic.db is held by another process", failed.reason
   end
 
   def test_a_failure_exits_one

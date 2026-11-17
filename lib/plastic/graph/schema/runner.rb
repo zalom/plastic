@@ -4,6 +4,7 @@ require_relative "../database"
 require_relative "../origin"
 require_relative "../backup/writer"
 require_relative "home_copy"
+require_relative "home_rename"
 
 module Plastic
   module Graph
@@ -37,23 +38,39 @@ module Plastic
       def reasons(results) = results.select { |_slug, outcome| outcome.is_a?(String) }
 
       def migrate_home
-        return :current unless %w[local.db home.db].any? { |name| File.exist?(File.join(@home, name)) }
+        path = [current, former].find { |file| File.exist?(file) }
+        return :current unless path
+
+        reason = preparation_failure(path)
+        return reason if reason
 
         local = Database.open_local(@home).fetch(:local)
         return :current if local.version >= SchemaSequences.newest(:home)
-        reason = copy_failure(local)
-        return "the copy of its database failed (#{reason})" if reason
 
         local.migrate(@sequences)
         :migrated
-      rescue SQLite3::Exception, Database::Error => error
+      rescue SQLite3::Exception, Database::Error, SystemCallError, HomeRename::Taken => error
         "it could not be migrated (#{first_line(error)})"
       end
 
-      def copy_failure(local)
-        HomeCopy.new(local.path, File.join(@home, "backups"), @now).call
+      def former = File.join(@home, "local.db")
+
+      def current = File.join(@home, "plastic.db")
+
+      def preparation_failure(path)
+        reason = copy_failure(path) if version_of(path) < SchemaSequences.newest(:home)
+        return "the copy of its database failed (#{reason})" if reason
+
+        HomeRename.new(former, current).call if path == former
         nil
-      rescue SQLite3::Exception, SystemCallError => error
+      end
+
+      def version_of(path) = SQLite3::Database.open(path, readonly: true) { |db| db.get_first_value("PRAGMA user_version").to_i }
+
+      def copy_failure(path)
+        HomeCopy.new(path, File.join(@home, "backups"), @now).call
+        nil
+      rescue SQLite3::Exception, SystemCallError, HomeCopy::Exists => error
         first_line(error)
       end
 

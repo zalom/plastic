@@ -14,7 +14,6 @@ class DbSchemaTest < Plastic::TestCase
 
   # The DDL of every table that existed before the schema file, pinned from origin/alpha.
   OLD_DDL = {
-    routine_runs: "a4248d5193775ccca84c3576ac399a52fd4d32a62acb087e6e5ddd8449921104",
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
     locks: "c0ffe9a67c940055d590e7c8de8211b4bf537750f01e269013befa4e0ca3949d",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
@@ -33,7 +32,6 @@ class DbSchemaTest < Plastic::TestCase
     roadmap_log: "ed05eef89c9592b5b36da98a8cdd28009314de634a6663e56fc3fc73314ac3cd",
     archives: "1063eeec2b8c6c26d12bb3b369574b04a85a42c45093c5c945acc35f969f9070",
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",
-    backups: "b98b347026dfb8bfc9eb30e67971717fc479f69090533c9818ad0e107552f8d7",
     sqlar: "e009afa1c7e455192a87f15934d1082e9f304b49ceffeab8aece9948142713b1",
     printed: "eeb9e475e607f232e6c325c72d9de74debf78a53fa16b1bffd8839ba597c40be",
     changes: "1f784ae1ffbda6d665262ef29dbec704842024b50fe79728eaea7c41cd50cb75",
@@ -53,7 +51,7 @@ class DbSchemaTest < Plastic::TestCase
 
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
-      local: ["local.db", %i[routine_runs sessions locks backups]],
+      local: ["plastic.db", %i[command_runs sessions locks settings printed]],
       work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
         roadmap_edges roadmap_log archives archive_entries approvals verdicts]],
       knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
@@ -109,9 +107,9 @@ class DbSchemaTest < Plastic::TestCase
     assert_empty file.tables.fetch(:things).key
   end
 
-  def test_the_printed_table_is_neither_logged_nor_counted_and_routine_runs_are_counted
+  def test_the_printed_table_is_neither_logged_nor_counted_and_command_runs_are_counted
     assert_equal [false, false, true, true], [Schema.table_named(:printed).logged?, Schema.table_named(:printed).counted?,
-      Schema.table_named(:changes).logged?, Schema.table_named(:routine_runs).counted?]
+      Schema.table_named(:changes).logged?, Schema.table_named(:command_runs).counted?]
   end
 
   def test_a_database_lists_tables_declared_once_and_shared

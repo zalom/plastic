@@ -13,7 +13,7 @@ module Plastic
 
       def self.rulings(rulings)
         superseded = rulings.filter_map(&:supersedes).to_set
-        rulings.map { |ruling| ruling_line(ruling, superseded.include?(ruling.id) ? " (superseded)" : "") }
+        rulings.sort_by { |ruling| ruling.id[/\d+/].to_i }.map { |ruling| ruling_line(ruling, superseded.include?(ruling.id) ? " (superseded)" : "") }
       end
 
       def self.ruling_line(ruling, mark) = "ruling: #{ruling.id} #{ruling.text}#{mark}"

@@ -119,12 +119,12 @@ class SchemaBehindCommandTest < Plastic::TestCase
 
   def test_a_command_on_a_behind_store_exits_3_names_the_update_command_and_changes_no_store_byte
     home = behind_home
-    before = file_bytes(home).reject { |path, _| path.end_with?("local.db") }
+    before = file_bytes(home).reject { |path, _| path.end_with?("plastic.db") }
     result = plastic("intent", "new", "Gamma", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
     assert_equal 3, result.code
     assert_includes result.err, "plastic update"
-    assert_equal before, file_bytes(home).reject { |path, _| path.end_with?("local.db") }
+    assert_equal before, file_bytes(home).reject { |path, _| path.end_with?("plastic.db") }
   end
 
   def test_a_hook_on_a_behind_store_prints_one_line_and_exits_0

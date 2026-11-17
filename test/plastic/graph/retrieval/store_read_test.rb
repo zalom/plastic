@@ -21,11 +21,4 @@ class RetrievalStoreReadTest < Plastic::TestCase
 
     assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, store_read.printed)
   end
-
-  def test_backups_read_in_time_order
-    backup("b-backup")
-    backup("a-backup")
-
-    assert_equal %w[a-backup b-backup], store_read.backups.map(&:name)
-  end
 end

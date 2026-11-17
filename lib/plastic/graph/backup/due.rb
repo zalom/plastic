@@ -3,7 +3,6 @@
 require_relative "../backup"
 require_relative "copy"
 require_relative "folder_name"
-require_relative "../database"
 require_relative "folders"
 require_relative "purger"
 require_relative "writer"
@@ -46,7 +45,7 @@ module Plastic
         private
 
         def purge
-          purger = Purger.new(Database.open_local(@home).fetch(:local), @root, @slug)
+          purger = Purger.new(@root)
           (purger.expired(now: @now) - [newest_done]).each { |name| purger.remove(name) }
         end
 

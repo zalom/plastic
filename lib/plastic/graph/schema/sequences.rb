@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "sequences/home_1"
+require_relative "sequences/home_2"
+require_relative "sequences/home_3"
 require_relative "sequences/store_1"
 
 module Plastic
@@ -30,7 +32,9 @@ module Plastic
       CURRENT_LAYOUT = ->(connection, key) { connection.execute_batch(Schema.fetch(key)) }
 
       SEQUENCES = {
-        home: [Migration.new(1, SchemaHome1.method(:apply), SchemaHome1::TABLES)].freeze,
+        home: [Migration.new(1, SchemaHome1.method(:apply), SchemaHome1::TABLES),
+          Migration.new(2, SchemaHome2.method(:apply), SchemaHome2::TABLES),
+          Migration.new(3, SchemaHome3.method(:apply), SchemaHome3::TABLES)].freeze,
         store: [Migration.new(1, SchemaStore1.method(:apply), SchemaStore1::TABLES)].freeze
       }.freeze
 

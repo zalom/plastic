@@ -87,10 +87,11 @@ module Plastic
           end
 
           def copy_home_files(copy)
-            %w[origin_id config.yml projects.yml].each do |name|
+            %w[origin_id projects.yml].each do |name|
               path = File.join(@home, name)
               FileUtils.cp(path, copy) if File.file?(path)
             end
+            Config::Store.new(copy).copy_rows_from(@home)
             Config.new(copy).set("migrate.remove_after_import", false)
           end
         end

@@ -4,6 +4,8 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/config/get"
 
 class WorkflowGetConfigTest < Plastic::TestCase
+  include ConfigHomes
+
   Flow = Plastic::Workflows::Code::Config::Get
 
   def read(key, harness: nil)
@@ -24,7 +26,7 @@ class WorkflowGetConfigTest < Plastic::TestCase
   end
 
   def test_the_next_step_keeps_the_harness_it_was_called_with
-    File.write(File.join(@plastic_home, "config.yml"), "harnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n")
+    seed_config(@plastic_home, "harnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n")
     outcome, context = read("agents.models.plastic-executor", harness: "codex")
 
     assert_equal ["gpt-x", "plastic config set agents.models.plastic-executor VALUE --harness codex"],

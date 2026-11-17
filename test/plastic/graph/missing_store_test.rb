@@ -119,6 +119,7 @@ end
 
 class MissingGlobalStoreRepairTest < Plastic::TestCase
   include InstallerHelper
+  include OwnHome
 
   def test_the_install_line_next_prints_for_a_missing_global_store_runs_and_makes_the_store
     installed_home_without_stores

@@ -15,13 +15,19 @@ module OldLayoutHomes
     INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('7', 'o-1', 'seven', 'Seven', 'active');
   SQL
 
+  OLD_HOME_TABLES = <<~SQL
+    ALTER TABLE command_runs RENAME TO routine_runs;
+    CREATE TABLE "backups"("name" TEXT NOT NULL, "files" INTEGER, "bytes" INTEGER, "sha256" TEXT, "at" TEXT, "session_id" TEXT, UNIQUE("name"));
+  SQL
+
   def old_layout(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
     database_files(home).each { |path| downgrade(path) }
+    File.rename(File.join(home, "plastic.db"), File.join(home, "local.db")) if File.exist?(File.join(home, "plastic.db"))
     home
   end
 
-  def database_files(home) = Dir.glob(File.join(home, "{local.db,stores/*/*.db}"))
+  def database_files(home) = Dir.glob(File.join(home, "{local.db,plastic.db,stores/*/*.db}"))
 
   def user_versions(home) = database_files(home).to_h { |path| [path, read_value(path, "PRAGMA user_version")] }
 
@@ -45,6 +51,7 @@ module OldLayoutHomes
     with_database(path) do |db|
       db.execute_batch(OLD_INTENTS) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'intents' AND type = 'table'")
       db.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'locks' AND type = 'table'")
+      db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
       db.execute("PRAGMA user_version = 0")
     end
   end

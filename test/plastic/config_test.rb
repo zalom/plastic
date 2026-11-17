@@ -5,9 +5,11 @@ require_relative "../../lib/plastic/config"
 require "tmpdir"
 
 class ConfigTest < Plastic::TestCase
+  include ConfigHomes
+
   def config(text)
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
+      seed_config(dir, text)
       yield Plastic::Config.new(dir)
     end
   end
@@ -58,7 +60,7 @@ class ConfigTest < Plastic::TestCase
 
   def harness_config(text, harness)
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
+      seed_config(dir, text)
       yield Plastic::Config.new(dir, harness:)
     end
   end

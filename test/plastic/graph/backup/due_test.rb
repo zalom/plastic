@@ -93,7 +93,6 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
     taken_after_four_days(home)
 
     assert_equal [stamp(FOUR_DAYS_LATER)], folder_names(home)
-    assert_empty row_names(home)
   end
 
   def test_the_newest_migration_backup_stays_until_a_newer_one_is_taken

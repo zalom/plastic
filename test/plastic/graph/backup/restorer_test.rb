@@ -57,7 +57,6 @@ class GraphBackupRestorerTest < Plastic::TestCase
     restorer.call(STAMP)
 
     assert_equal [STAMP, "20260601120000"], folder_names(@restore_home)
-    assert_equal 2, local_db.row("SELECT count(*) AS n FROM backups").fetch("n")
   end
 
   def test_a_file_that_fails_the_check_replaces_nothing

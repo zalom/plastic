@@ -4,7 +4,7 @@ module Plastic
   module Workflows
     # Every workflow key, listed by hand, with the class path under Workflows
     # that runs it. A key is the lane, then the words of its job and never
-    # changes, because an open routine run stores it; the class path follows
+    # changes, because an open command run stores it; the class path follows
     # the command the workflow belongs to: :code_close_intent is
     # Workflows::Code::Intent::End in workflows/code/intent/end.rb, a
     # CodeWorkflow. Workflow.fetch loads a file only when a routine asks for

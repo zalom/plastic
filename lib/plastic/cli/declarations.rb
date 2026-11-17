@@ -15,7 +15,7 @@ module Plastic
 
       # The arguments that name the thing a call works on, such as the
       # intent id and the node id. A tool that writes keeps one open routine
-      # run per subject (see RoutineRun).
+      # run per subject (see CommandRun).
       def subject(*names)
         @subject = names if names.any?
         @subject

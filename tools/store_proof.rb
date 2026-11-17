@@ -74,10 +74,12 @@ module StoreProof
     VERSION_FILE = "VERSION"
     STORE_DATABASES = %w[work_graph knowledge_graph references].freeze
     SIDE_FILE = /\.db(-wal|-shm|-journal)?\z/
+    MACHINE = "plastic.db"
+    MACHINE_BEFORE_UPDATE = "local.db"
 
     def initialize(home)
       @home = home
-      @files = ["local.db", *Dir.glob(File.join(home, "stores", "*", "*.db")).map { |file| file.delete_prefix("#{home}/") }.sort]
+      @files = [machine, *Dir.glob(File.join(home, "stores", "*", "*.db")).map { |file| file.delete_prefix("#{home}/") }.sort]
     end
 
     attr_reader :files
@@ -111,6 +113,13 @@ module StoreProof
     end
 
     private
+
+    # The machine database of a home that has not run the update yet is still local.db.
+    def machine
+      return MACHINE if File.exist?(path(MACHINE))
+
+      File.exist?(path(MACHINE_BEFORE_UPDATE)) ? MACHINE_BEFORE_UPDATE : MACHINE
+    end
 
     def user_version(file)
       self.class.scalar(path(file), "PRAGMA user_version")
