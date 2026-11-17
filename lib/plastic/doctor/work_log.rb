@@ -27,11 +27,7 @@ module Plastic
         return row("ok, no database in this store") unless File.file?(File.join(folder, Graph::Schema.file(:work)))
 
         added = repaired
-        row(if added.zero?
-          "ok, every intent has its lines"
-        else
-          "ok, added #{added} missing #{(added == 1) ? "line" : "lines"}"
-        end)
+        row(added.zero? ? "ok, every intent has its lines" : "ok, added #{Graph::Schema.tally(:work_log, added)}")
       end
 
       private

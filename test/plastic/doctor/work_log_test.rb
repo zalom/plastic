@@ -26,7 +26,7 @@ class DoctorWorkLogTest < Plastic::TestCase
     store_graphs.work.write_intent(title: "One")
     store_graphs.databases[:work].transaction { |batch| batch.remove(:work_log, intent_id: "1") }
 
-    assert_equal "ok, added 1 missing line", check.value
+    assert_equal "ok, added 1 work log line", check.value
     assert_equal ["opened"], store_graphs.retrieval.work_log("1").map(&:kind)
   end
 end
