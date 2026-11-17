@@ -22,4 +22,12 @@ class KnowledgeFrontMatterTest < Plastic::TestCase
   def test_a_field_with_no_quotes_gives_its_text
     assert_equal "plain", FrontMatter.fields("---\nintent: plain\n---\n")["intent"]
   end
+
+  def test_a_single_quoted_field_gives_its_text_without_the_quotes
+    assert_equal "24", FrontMatter.fields("---\nid: '24'\n---\n")["id"]
+  end
+
+  def test_a_doubled_single_quote_in_a_single_quoted_field_gives_one_quote
+    assert_equal "it's done", FrontMatter.fields("---\nintent: 'it''s done'\n---\n")["intent"]
+  end
 end
