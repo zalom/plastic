@@ -42,6 +42,9 @@ class PrinterTest < Plastic::TestCase
   end
 
   def test_record_with_nothing_to_record_writes_nothing
-    assert_empty printer.record([])
+    database = Recording.new
+    Plastic::Graph::Printer.new(folder, { store: database }, retrieval).record([])
+
+    assert_empty database.rows
   end
 end
