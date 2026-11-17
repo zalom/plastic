@@ -13,8 +13,8 @@ module Plastic
         option :store, switch: "--store SLUG", required: true, text: "the registered project whose resources the call sorts"
         option :dry_run, switch: "--dry-run", default: false, text: "list the moves and the links that would change, and move nothing"
 
-        changes(knowledge: "The files move to resources/output, resources/references or resources/tmp, and their rows move with them",
-          files: "The links of the files that point at a moved file are rewritten")
+        changes(knowledge: "The rows of the moved files move with them, and the rows of the files with changed links are rewritten",
+          store: "The files move to resources/output, resources/references or resources/tmp, and the links that point at them are rewritten")
 
         backs_up_first
 

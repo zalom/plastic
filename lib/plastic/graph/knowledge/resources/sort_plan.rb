@@ -15,7 +15,7 @@ module Plastic
           end
 
           # Refused when a target holds other bytes than the file that would move onto it.
-          def moves = (@moves ||= intents.flat_map(&:moves).each { |move| refuse_conflict(move) })
+          def moves = (@moves ||= intents.flat_map(&:moves).tap { |all| refuse_conflict(all) })
 
           def empty? = moves.empty?
 
@@ -25,13 +25,12 @@ module Plastic
 
           private
 
-          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir) })
-
-          def refuse_conflict(move)
-            return if !@folder.exist?(move.to) || @folder.digest(move.to) == @folder.digest(move.from)
-
-            raise Refused, "#{move.to} already holds other bytes than #{move.from}; move one of them away, then run plastic resources sort again"
+          def refuse_conflict(moves)
+            conflicting = moves.find { |move| move.onto_other_bytes?(@folder) }
+            raise Refused, conflicting.refusal if conflicting
           end
+
+          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir) })
         end
       end
     end

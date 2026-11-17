@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "resource_keys"
+
 module Plastic
   module Workflows
     # Every workflow key, listed by hand, with the class path under Workflows
@@ -84,9 +86,6 @@ module Plastic
       code_backup_purge: "Code::Backup::Purge",
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
-      # Resources: the files of a store moved into the resources layout.
-      code_preview_sort_resources: "Code::Resources::Sort::Preview",
-      code_sort_resources: "Code::Resources::Sort",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
@@ -123,6 +122,6 @@ module Plastic
       code_ask_node: "Code::Node::Ask",
       code_impede_node: "Code::Node::Impede",
       code_resolve_node: "Code::Node::Resolve"
-    }.freeze
+    }.merge(RESOURCE_KEYS).freeze
   end
 end

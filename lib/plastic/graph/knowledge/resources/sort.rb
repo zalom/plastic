@@ -38,18 +38,17 @@ module Plastic
           def relocate(moves)
             done = []
             moves.each do |move|
-              FileUtils.mkdir_p(File.dirname(@folder.path(move.to)))
-              @rename.call(@folder.path(move.from), @folder.path(move.to))
+              move.relocate(@folder, @rename)
               done << move
             end
-          rescue StandardError
+          rescue
             restore(done, moves)
             raise
           end
 
           def restore(done, moves)
-            done.reverse_each { |move| File.rename(@folder.path(move.to), @folder.path(move.from)) }
-            rows.call(moves, back: true)
+            done.reverse_each { |move| move.reverse.relocate(@folder, File.method(:rename)) }
+            rows.call(moves.map(&:reverse))
           end
 
           def settle

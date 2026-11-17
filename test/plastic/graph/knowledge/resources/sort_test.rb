@@ -80,10 +80,14 @@ class ResourcesSortTest < Plastic::TestCase
     assert_equal before, [files_without_databases, row_digest]
   end
 
+  def move_by_hand(from, to)
+    FileUtils.mkdir_p(File.dirname(File.join(store_root, INTENT, to)))
+    File.rename(File.join(store_root, INTENT, from), File.join(store_root, INTENT, to))
+  end
+
   def test_a_rerun_after_a_partial_sort_completes
     hold_rows("resources/output/reports/reviews/r1.md", OLD_FILES.fetch("reviews/r1.md"))
-    FileUtils.mkdir_p(File.join(store_root, INTENT, "resources/output/reports/reviews"))
-    File.rename(File.join(store_root, INTENT, "reviews/r1.md"), File.join(store_root, INTENT, "resources/output/reports/reviews/r1.md"))
+    move_by_hand("reviews/r1.md", "resources/output/reports/reviews/r1.md")
     sort
 
     assert_empty Resources::SortPlan.new(folder).moves

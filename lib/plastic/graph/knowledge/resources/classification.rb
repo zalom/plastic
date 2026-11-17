@@ -13,7 +13,6 @@ module Plastic
           SORTED = %w[resources/output/ resources/references/ resources/tmp/].freeze
           REFERENCES = { "references/" => "resources/references/", "resources/sources/" => "resources/references/sources/" }.freeze
           REPORT_FOLDERS = %w[reviews/ packets/ nodes/].freeze
-          REPORT_TYPES = %w[md html].freeze
           MACHINE = /\A(?:.*\.lock|\.DS_Store)\z/
           SCRATCH = /\.(?:last|out|tmp)\z/
 
@@ -35,7 +34,7 @@ module Plastic
           def self.by_type(rel)
             return "resources/tmp/#{rel}" if rel.match?(SCRATCH)
 
-            "resources/output/#{REPORT_TYPES.include?(SyncSelection.type_of(rel)) ? "reports" : "files"}/#{rel}"
+            "resources/output/#{%w[md html].include?(SyncSelection.type_of(rel)) ? "reports" : "files"}/#{rel}"
           end
         end
       end
