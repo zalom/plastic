@@ -4,13 +4,21 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/lines"
 
 class LinesTest < Minitest::Test
-  Node = Struct.new(:id, :state, :title)
+  Node = Struct.new(:id, :state, :title, :claimed_by)
   Ruling = Struct.new(:id, :text, :supersedes)
 
   def lines = Plastic::Workflows::Lines
 
   def test_a_node_line_names_its_state_and_title
     assert_equal "node: n1 open Build", lines.node(Node.new(id: "n1", state: "open", title: "Build"))
+  end
+
+  def test_a_claimed_node_line_names_its_holder
+    assert_equal "node: n1 claimed Build, held by s-1", lines.node(Node.new("n1", "claimed", "Build", "s-1"))
+  end
+
+  def test_a_claimed_node_line_without_a_holder_names_none
+    assert_equal "node: n1 claimed Build", lines.node(Node.new("n1", "claimed", "Build"))
   end
 
   def test_a_ready_node_line_leaves_out_the_state
