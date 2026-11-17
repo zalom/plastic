@@ -32,6 +32,7 @@ module Plastic
   class Routine < CLI::Command
     extend Preview::Declaration
     extend BackupFirst::Declaration
+    extend Printing::Facts
     include Preview
     include BackupFirst
     include Printing

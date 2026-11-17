@@ -15,9 +15,7 @@ module Plastic
         # one shared `default` array, and appending in place would pollute
         # every later call with every earlier call's values.
         def add_to(parser, values)
-          return parser.on(switch, text) { |value| values[name] += [value] } if repeatable
-
-          parser.on(switch, text) { |value| values[name] = value }
+          parser.on(switch, text) { |value| repeatable ? values[name] += [value] : values[name] = value }
         end
       end
     end

@@ -58,7 +58,7 @@ module Plastic
       end
 
       def changes(places = nil, **named)
-        given = places || (named unless named.empty?)
+        given = named.empty? ? places : named
         @changes = given if given
         @changes
       end

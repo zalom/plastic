@@ -62,8 +62,9 @@ module Plastic
       # false, and the check must hold after the body. So a rerun after a
       # failure or a handoff never repeats the change.
       def step(step_name, done:, changes: nil, &body)
-        raise Invalid, "#{name}: step #{step_name.inspect} needs a block" unless body
-        raise Invalid, "#{name}: step #{step_name.inspect} needs changes:, a hash of place to words, or {} when it changes nothing" unless changes
+        label = step_name.inspect
+        raise Invalid, "#{name}: step #{label} needs a block" unless body
+        raise Invalid, "#{name}: step #{label} needs changes:, a hash of place to words, or {} when it changes nothing" unless changes
 
         steps << Step.new(step_name, done, changes, body)
       end
