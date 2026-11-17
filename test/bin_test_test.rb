@@ -60,6 +60,27 @@ class BinTestTest < Minitest::Test
     assert_match(/\A\d+ runs, \d+ assertions, \d+ failures, \d+ errors, \d+ skips\z/, lines.first)
   end
 
+  def test_end_to_end_layer_selects_the_varar_runner
+    write_test("a_test", GREEN)
+    write_test("varar_test", GREEN)
+    out, _err, status = run_bin_test("--end-to-end", "--list")
+    assert status.success?
+    assert_equal "test/varar_test.rb", out.strip
+  end
+
+  def test_system_flag_is_refused_as_unknown
+    write_test("a_test", GREEN)
+    _out, err, status = run_bin_test("--system", "--list")
+    assert_equal 2, status.exitstatus
+    assert_includes err, "unknown option: --system"
+  end
+
+  def test_no_workflow_names_the_system_flag
+    workflows = Dir.glob(File.join(REPO, ".github", "workflows", "*.yml"))
+    refute_empty workflows
+    workflows.each { |path| refute_includes File.read(path), "--system", path }
+  end
+
   def test_list_still_prints_files
     write_test("a_test", GREEN)
     out, _err, status = run_bin_test("--list")
