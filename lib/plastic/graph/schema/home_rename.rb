@@ -11,7 +11,7 @@ module Plastic
       # The new name is taken by another file.
       class Taken < StandardError; end
 
-      SUFFIXES = ["-wal", "-shm", ""].freeze
+      SUFFIXES = ["-journal", "-wal", "-shm", ""].freeze
 
       def initialize(former, target, timeout: 5_000)
         @former = former

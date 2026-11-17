@@ -38,9 +38,10 @@ module Plastic
       def reasons(results) = results.select { |_slug, outcome| outcome.is_a?(String) }
 
       def migrate_home
-        return :current unless File.exist?(former) || File.exist?(current)
+        path = [current, former].find { |file| File.exist?(file) }
+        return :current unless path
 
-        reason = rename_failure
+        reason = preparation_failure(path)
         return reason if reason
 
         local = Database.open_local(@home).fetch(:local)
@@ -48,7 +49,7 @@ module Plastic
 
         local.migrate(@sequences)
         :migrated
-      rescue SQLite3::Exception, Database::Error => error
+      rescue SQLite3::Exception, Database::Error, SystemCallError, HomeRename::Taken => error
         "it could not be migrated (#{first_line(error)})"
       end
 
@@ -56,20 +57,22 @@ module Plastic
 
       def current = File.join(@home, "plastic.db")
 
-      def rename_failure
-        return unless File.exist?(former) && !File.exist?(current)
+      def preparation_failure(path)
+        return unless version_of(path) < SchemaSequences.newest(:home)
 
-        reason = copy_failure
+        reason = copy_failure(path)
         return "the copy of its database failed (#{reason})" if reason
 
-        HomeRename.new(former, current).call
+        HomeRename.new(former, current).call if path == former
         nil
       end
 
-      def copy_failure
-        HomeCopy.new(former, File.join(@home, "backups"), @now).call
+      def version_of(path) = SQLite3::Database.open(path, readonly: true) { |db| db.get_first_value("PRAGMA user_version").to_i }
+
+      def copy_failure(path)
+        HomeCopy.new(path, File.join(@home, "backups"), @now).call
         nil
-      rescue SQLite3::Exception, SystemCallError => error
+      rescue SQLite3::Exception, SystemCallError, HomeCopy::Exists => error
         first_line(error)
       end
 
