@@ -22,4 +22,8 @@ class KnowledgeLinkTest < Plastic::TestCase
 
     assert_equal [true, false], [link.joins?(%w[1 2 chain]), link.joins?(%w[1 2 cites])]
   end
+
+  def test_an_edge_is_complete_with_two_refs_and_a_known_kind
+    assert_equal [true, false, false], [Knowledge::Link.complete?("1", "2", "chain"), Knowledge::Link.complete?("1", "", "chain"), Knowledge::Link.complete?("1", "2", "other")]
+  end
 end

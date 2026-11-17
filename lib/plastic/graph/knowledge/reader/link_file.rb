@@ -26,13 +26,11 @@ module Plastic
           def links(now) = listed("links").map { |entry| link(entry, now) }
 
           def link(entry, now)
-            from_ref, to_ref, kind = entry.values_at("from_ref", "to_ref", "kind")
-            return { from_ref:, to_ref:, kind:, at: entry["at"] || now } if refs?(from_ref, to_ref) && Link::KINDS.include?(kind)
+            from_ref, to_ref, kind, at = entry.values_at("from_ref", "to_ref", "kind", "at")
+            return { from_ref:, to_ref:, kind:, at: at || now } if Link.complete?(from_ref, to_ref, kind)
 
             raise Invalid, "#{StoreFolder::INDEX} lists a link that needs a from_ref, a to_ref and a kind of #{Link::KINDS.join(", ")}: #{entry.inspect}"
           end
-
-          def refs?(*refs) = refs.all? { |ref| ref.is_a?(String) && !ref.empty? }
         end
       end
     end

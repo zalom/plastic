@@ -40,7 +40,8 @@ module Plastic
             raise Invalid, "#{@path} is not a JSON object" unless parsed.is_a?(Hash)
             return parsed unless TABLES.keys.any? { |part| parsed[part] }
 
-            raise Invalid, "#{@path} names intent #{parsed["intent"]}, not intent #{@intent_id}" unless parsed["intent"] == @intent_id
+            named = parsed["intent"]
+            raise Invalid, "#{@path} names intent #{named}, not intent #{@intent_id}" unless named == @intent_id
 
             parsed
           rescue JSON::ParserError

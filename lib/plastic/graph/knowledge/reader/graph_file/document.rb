@@ -47,12 +47,11 @@ module Plastic
             private
 
             def parsed(text)
-              legacy(object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8))))
+              data = object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
+              data && LegacyNodes.new(data).call
             rescue JSON::ParserError => error
               refuse(error.message.lines.first.chomp)
             end
-
-            def legacy(data) = data && LegacyNodes.new(data).call
 
             def object(data) = data.is_a?(Hash) ? data : refuse("it is not an object")
 
