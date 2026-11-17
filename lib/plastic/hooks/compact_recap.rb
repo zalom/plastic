@@ -33,7 +33,7 @@ module Plastic
 
       def claims = @claims ||= @retrieval.claimed_nodes.select { |node| node.claimed_by == @session_id && unfinished?(node.intent_id) }
 
-      def unfinished?(intent_id) = @retrieval.intent(intent_id)&.closed? == false
+      def unfinished?(intent_id) = !@retrieval.intent(intent_id).closed?
 
       def newest_logged_intent
         newest = @retrieval.work_log.select { |line| line.session_id == @session_id }.max_by { |line| [line.at.to_s, line.position] }
