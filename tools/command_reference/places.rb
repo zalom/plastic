@@ -6,11 +6,11 @@ module CommandReference
     KEYS = [*Plastic::CLI::Declarations::GRAPHS, :store, :databases, :backups, :local, :home, :harness].freeze
     WHERE = {
       work: "the work graph database, in the store folder", knowledge: "the knowledge graph database, in the store folder",
-      references: "the references database, in the store folder", retrieval: "the search index, in the store folder",
+      retrieval: "the search index, in the store folder",
       store: "the store folder", databases: "the database files of the store, in the store folder", backups: "the backups folder, in the store folder", local: "the local database, in the home folder",
       home: "the Plastic home folder", harness: "the settings of the agent harness, in the home folder"
     }.freeze
-    WITH_PRINT = %i[work knowledge references].freeze
+    WITH_PRINT = %i[work knowledge].freeze
     WITH_STORE = %i[store].freeze
     TRAVELS = "goes with the store"
     STAYS = "stays on this machine"

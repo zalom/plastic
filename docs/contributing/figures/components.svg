@@ -64,7 +64,7 @@
 <text class="m" x="515.0" y="771" text-anchor="middle">knowledge_graph.db</text>
 <path class="box" d="M 630 744 L 630 778 A 85.0 9 0 0 0 800 778 L 800 744 Z"/>
 <ellipse class="box" cx="715.0" cy="744" rx="85.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
-<text class="m" x="715.0" y="771" text-anchor="middle">references.db</text>
+<text class="m" x="715.0" y="771" text-anchor="middle">retrieval_graph.db</text>
 <rect class="box" x="880" y="722" width="330" height="79" rx="8"/><rect x="880" y="722" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="m" x="896" y="746">Graph::Database</text><text class="s" x="896" y="763">[class]</text>
 <text class="s" x="896" y="783">One SQLite file, one transaction a write.</text>
@@ -95,7 +95,7 @@
 <path class="flow" d="M 514.9999 680 L 514.9999 735" marker-end="url(#components-arrow)"/>
 <text class="al" x="515" y="712" text-anchor="middle">writes</text>
 <path class="flow" d="M 714.9997 680 L 714.9997 735" marker-end="url(#components-arrow)"/>
-<text class="al" x="715" y="712" text-anchor="middle">writes</text>
+<text class="al" x="715" y="712" text-anchor="middle">indexes</text>
 <path class="flow" d="M 115.0003 842 L 115.0003 787" marker-end="url(#components-arrow)"/>
 <text class="al" x="115" y="819" text-anchor="middle">reads</text>
 <path class="flow" d="M 315.00010000000003 842 L 315.00010000000003 787" marker-end="url(#components-arrow)"/>

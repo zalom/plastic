@@ -26,7 +26,7 @@ module ArchitectureFigures
       local | cylinder | 30 735 170 | plastic.db | | | |
       work_db | cylinder | 230 735 170 | work_graph.db | | | |
       knowledge_db | cylinder | 430 735 170 | knowledge_graph.db | | | |
-      references_db | cylinder | 630 735 170 | references.db | | | |
+      retrieval_db | cylinder | 630 735 170 | retrieval_graph.db | | | |
       database | | 880 722 330 | Graph::Database | class | code | mono | One SQLite file, one transaction a write.
       retrieval | | 30 842 770 | Graph::RetrievalGraph | class | line | mono | The read side of every database. It writes nothing.
       printer | | 880 842 330 | Graph::Printer | class | line | mono | Prints the rows as files.
@@ -42,11 +42,11 @@ module ArchitectureFigures
       ["work.bottom@0.11039", "local.top", ["writes"]],
       ["work.bottom@0.37013", "work_db.top", ["writes"]],
       ["work.bottom@0.62987", "knowledge_db.top", ["writes"]],
-      ["work.bottom@0.88961", "references_db.top", ["writes"]],
+      ["work.bottom@0.88961", "retrieval_db.top", ["indexes"]],
       ["retrieval.top@0.11039", "local.bottom", ["reads"]],
       ["retrieval.top@0.37013", "work_db.bottom", ["reads"]],
       ["retrieval.top@0.62987", "knowledge_db.bottom", ["reads"]],
-      ["retrieval.top@0.88961", "references_db.bottom", ["reads"]],
+      ["retrieval.top@0.88961", "retrieval_db.bottom", ["reads"]],
       ["work.right", "writers.left", ["delegates"]],
       ["writers.bottom", "database.top", ["uses"]],
       ["retrieval.right", "database.left", ["uses"]]
@@ -54,7 +54,7 @@ module ArchitectureFigures
     NAMES = [
       *%w[CLI CLI::TABLE CLI::Declarations CLI::Scope Routine Routine::Traversal Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
         Graph Graph::WorkGraph Graph::Work::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
-      *%w[plastic.db work_graph.db knowledge_graph.db references.db].map { |name| ["database", name, name] }
+      *%w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] }
     ].freeze
 
     def self.diagrams = [Diagram.new(META, BOXES, ARROWS)]

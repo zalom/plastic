@@ -72,7 +72,7 @@ module StoreProof
   # database and every database of every store under stores/.
   class Real
     VERSION_FILE = "VERSION"
-    STORE_DATABASES = %w[work_graph knowledge_graph references].freeze
+    STORE_DATABASES = %w[work_graph knowledge_graph retrieval_graph].freeze
     SIDE_FILE = /\.db(-wal|-shm|-journal)?\z/
     MACHINE = "plastic.db"
     MACHINE_BEFORE_UPDATE = "local.db"

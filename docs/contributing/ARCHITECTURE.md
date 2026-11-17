@@ -17,7 +17,7 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## What runs and where it keeps data
 
-![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
+![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and retrieval_graph.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
 
 One program, `active/bin/plastic` of the install, serves every command and the three hooks.
 Everything it keeps lives under the Plastic home.
@@ -31,19 +31,19 @@ Everything it keeps lives under the Plastic home.
 | `config.yml`, `projects.yml` | The settings, printed from the `settings` rows, and the list of projects from slug to repository. |
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
-| `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
+| `stores/SLUG/backups/` | Copies of the work and knowledge databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
 | `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
 | `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
 
-A store keeps its rows in three SQLite databases. The store folder's `.gitignore` lists them,
+A store keeps its rows in three SQLite databases: work, knowledge and retrieval. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `work_log`, `work_log_pending`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
-| `knowledge_graph.db` | `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, and the search tables of the retrieval graph |
-| `references.db` | `sqlar` |
+| `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
+| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `work_log_pending`, `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
+| `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
 
 Every store database also has two bookkeeping tables:
 
@@ -117,16 +117,16 @@ To retire a kind of data:
 
 ## The three graphs
 
-![The three graphs and their databases. Graph::WorkGraph is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, and the knowledge graph and the retrieval graph live in knowledge_graph.db. Graph::RetrievalGraph is the read side: it reads those rows and writes nothing. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
+![The three graphs and their databases. Graph::WorkGraph is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, and the knowledge graph live in knowledge_graph.db, and the retrieval graph lives in retrieval_graph.db. Graph::RetrievalGraph is the read side: it reads those rows and writes nothing. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
 
 `Graph::WorkGraph` is the write side of every database. `Graph::RetrievalGraph` is the read side:
 it reads every database and writes nothing. The commands below reach them through these two.
 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
-| Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, the work log, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
+| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
-| Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
 ![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
 
@@ -310,9 +310,9 @@ is never stored: it is derived on each read as done, dropped, in flight, blocked
 | Command | What it does |
 | ------- | ------------ |
 | `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
-| `plastic intent archive ID` | Saves the whole intent folder in `work_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent archive ID` | Saves the whole intent folder in `knowledge_graph.db`, then removes it. Open and linked intents are refused. |
 | `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
-| `plastic backup --store SLUG` | Copies the three databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
+| `plastic backup --store SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic backup list --store SLUG` | Lists the backups of a store. |
 | `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
 | `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live. |
