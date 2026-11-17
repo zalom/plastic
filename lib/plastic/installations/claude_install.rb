@@ -28,26 +28,27 @@ module Plastic
       end
 
       def integrate
-        root = @record.root
+        root = record.root
         LegacyPlugin.new(root).call
-        ClaudeHooks.new(@package, root).merge(settings_path, choice: choice)
+        hooks = ClaudeHooks.new(package, root)
+        keep_status_line? ? hooks.merge_keeping_status_line(settings_path) : hooks.merge(settings_path)
         EnginePermissions.merge_file(settings_path)
         MarkedSection.new(MarkedSection::CLAUDE, CompactInstructions::BODY).inject(File.join(root, "CLAUDE.md"))
         {}
       end
 
-      def settings_path = File.join(@record.root, "settings.json")
+      def settings_path = File.join(record.root, "settings.json")
 
-      def hooks_dir = File.join(@record.root, "hooks")
+      def hooks_dir = File.join(record.root, "hooks")
 
       def hooks
-        Dir.glob(File.join(@package.root, "hooks", "*")).select { |path| File.file?(path) }.filter_map { |path| hook(path) }
+        Dir.glob(File.join(package.root, "hooks", "*")).select { |path| File.file?(path) }.filter_map { |path| hook(path) }
       end
 
       def hook(source)
         name = File.basename(source)
         target = File.join(hooks_dir, name.start_with?("plastic-") ? name : "plastic-#{name}")
-        return drop_status_line(target) if name.end_with?("statusline") && !@package.choices.statusline?
+        return drop_status_line(target) if name.end_with?("statusline") && !package.choices.statusline?
 
         FileUtils.cp(source, target)
         FileUtils.chmod(0o755, target)
@@ -61,11 +62,11 @@ module Plastic
         puts "  Status line removed. To turn it on: plastic config set statusline true"
       end
 
-      def choice
-        return @statusline if @statusline
+      def keep_status_line?
+        return @statusline == :keep if @statusline
 
         command = Hash(Files.read_json(settings_path))["statusLine"]&.fetch("command", nil)
-        (command.nil? || HookRegistry.claude_purge_command?(command)) ? :plastic : :keep
+        !command.nil? && !HookRegistry.claude_purge_command?(command)
       end
     end
   end

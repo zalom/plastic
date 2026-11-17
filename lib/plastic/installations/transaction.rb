@@ -10,11 +10,11 @@ module Plastic
     # fail their check, it puts the prior files back, or removes a partial
     # first install.
     class Transaction
-      def initialize(home, record, roots, verified: nil)
+      def initialize(home, record, roots, verified: -> { record.manifest.verified? })
         @home = home
         @record = record
         @roots = roots
-        @verified = verified || -> { record.manifest.verified? }
+        @verified = verified
       end
 
       def call(&install)
@@ -23,7 +23,7 @@ module Plastic
         from = @record.version
         snapshot = capture_snapshot
         result = settle(sync(&install), snapshot)
-        result.merge(from_version: from, to_version: @record.version)
+        result.merge(from_version: from, to_version: version_after)
       end
 
       private
@@ -35,7 +35,7 @@ module Plastic
 
       def capture_snapshot
         manifest = @record.manifest
-        return if manifest.empty?
+        return Snapshot::NONE if manifest.empty?
 
         Snapshot.new(File.join(@home, "backups", @record.key), manifest).capture
       end
@@ -55,11 +55,13 @@ module Plastic
       end
 
       def undo(snapshot)
-        return "verify failed - restored prior snapshot" if snapshot&.restore
+        return "verify failed - restored prior snapshot" if snapshot.restore
 
         prune(@record.manifest.files)
         "verify failed - partial install pruned"
       end
+
+      def version_after = @record.version
 
       def prune(stale) = Prune.new(home: @home, roots: @roots).call(stale)
     end

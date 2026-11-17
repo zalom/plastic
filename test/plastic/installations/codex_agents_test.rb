@@ -9,7 +9,7 @@ class CodexAgentsTest < Plastic::TestCase
 
   ROLES = { "demo-role" => PackageFixture::ROLE, "plastic-primary-advisor" => "---\nname: plastic-primary-advisor\n---\nAdvise.\n" }.freeze
 
-  def generate(roles = ROLES, **options) = Plastic::Installations::CodexAgents.new(package(roles:)).call(File.join(@home, "agents"), **options)
+  def generate(roles = ROLES, **options) = Plastic::Installations::CodexAgents.new(package(roles:), **options).call(File.join(@home, "agents"))
 
   def test_each_role_file_becomes_a_toml_agent
     assert_equal [File.join(@home, "agents", "demo-role.toml"), File.join(@home, "agents", "plastic-primary-advisor.toml")], generate
@@ -24,7 +24,7 @@ class CodexAgentsTest < Plastic::TestCase
   end
 
   def test_a_declined_advisor_generates_no_consultation_agent
-    assert_equal [File.join(@home, "agents", "demo-role.toml")], generate(advisor: false)
+    assert_equal [File.join(@home, "agents", "demo-role.toml")], generate(skip: Plastic::Config::AgentModels::CONSULTATION_AGENTS)
   end
 
   def test_a_model_override_reaches_the_document

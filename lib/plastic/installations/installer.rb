@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require "tmpdir"
 require_relative "../config/upgrade"
 require_relative "../wiring"
@@ -28,25 +29,22 @@ module Plastic
     class Installer
       LEDGER_ACTIONS = { install: "install", update: "reinstall" }.freeze
 
+      extend Forwardable
+
       attr_reader :package
 
-      def initialize(package_root:, plastic_home:, version: nil, clock: Time, **seams)
-        @package = Package.new(root: package_root, home: plastic_home, version: version || PackageVersion.new(package_root).call, clock:)
+      def_delegator :package, :root, :package_root
+      def_delegator :package, :home, :plastic_home
+      def_delegator :package, :version
+      def_delegator :@agents, :agents
+      def_delegator :@agents, :config, :agent_config
+      def_delegator :@agents, :installed_keys, :installed_agents
+
+      def initialize(package_root:, plastic_home:, version: PackageVersion.new(package_root).call, clock: Time, **seams)
+        @package = Package.new(root: package_root, home: plastic_home, version:, clock:)
         @agents = AgentSet.new(seams.fetch(:agents, AgentSet::DEFAULTS))
         @distribution = seams.except(:agents)
       end
-
-      def package_root = package.root
-
-      def plastic_home = package.home
-
-      def version = package.version
-
-      def agents = @agents.agents
-
-      def agent_config(key) = @agents.config(key)
-
-      def installed_agents = @agents.installed_keys
 
       def installed? = File.exist?(File.join(plastic_home, "VERSION"))
 
@@ -76,7 +74,7 @@ module Plastic
       end
 
       def prepare(kind)
-        Distribution.new(package, **@distribution).call(kind)
+        Distribution.new(package, **@distribution).public_send(kind)
         prepare_config_import
         migrate_databases
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)

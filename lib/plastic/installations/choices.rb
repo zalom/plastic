@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../wiring"
+require_relative "../config/agent_models"
 require_relative "../config/layout"
 
 module Plastic
@@ -20,6 +21,8 @@ module Plastic
       def efforts(harness: "claude") = overrides(harness, "efforts")
 
       def advisor? = Wiring.config(@home).flag(%w[advisor enabled], default: true)
+
+      def skipped_roles = advisor? ? [] : Config::AgentModels::CONSULTATION_AGENTS
 
       def statusline? = Wiring.config(@home).flag(["statusline"], default: false)
 

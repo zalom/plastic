@@ -31,6 +31,13 @@ class ChoicesTest < Plastic::TestCase
     refute_predicate choices, :advisor?
   end
 
+  def test_the_skipped_roles_are_the_advisors_only_when_the_advisor_is_off
+    assert_empty choices.skipped_roles
+    config_with("global:\n  advisor:\n    enabled: false\n")
+
+    assert_equal Plastic::Config::AgentModels::CONSULTATION_AGENTS, choices.skipped_roles
+  end
+
   def test_the_status_line_is_off_by_default_and_on_when_the_flag_says_so
     refute_predicate choices, :statusline?
     config_with("global:\n  statusline: true\n")

@@ -18,7 +18,8 @@ class ClaudeHooksTest < Plastic::TestCase
   def merge(settings, times: 1, root: REAL_PACKAGE, choice: :plastic)
     write(settings_path, JSON.generate(settings))
     out = ""
-    times.times { out, = capture_io { Plastic::Installations::ClaudeHooks.new(package(root), File.join(@home, ".claude")).merge(settings_path, choice:) } }
+    hooks = Plastic::Installations::ClaudeHooks.new(package(root), File.join(@home, ".claude"))
+    times.times { out, = capture_io { (choice == :keep) ? hooks.merge_keeping_status_line(settings_path) : hooks.merge(settings_path) } }
     [JSON.parse(File.read(settings_path)), out]
   end
 

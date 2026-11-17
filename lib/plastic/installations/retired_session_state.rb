@@ -18,12 +18,34 @@ module Plastic
         @tmp_dirs = Array(tmp_dirs).compact
       end
 
-      def call = candidates.uniq.count { |path| regular?(path) && delete(path) }
+      def call = candidates.uniq.count { |path| RetiredSessionState.regular?(path) && delete(path) }
+
+      def self.current_files(root)
+        tmp = File.join(root, ".tmp")
+        return [] unless File.lstat(tmp).directory?
+
+        Dir.children(tmp).map { |child| File.join(tmp, child) }.select { |dir| File.lstat(dir).directory? }.map { |dir| File.join(dir, "current") }
+      rescue SystemCallError
+        []
+      end
+
+      def self.tmp_files(dir)
+        real = File.realpath(dir)
+        Dir.children(real).select { |name| name.b.match?(TMP_NAME) }.map { |name| File.join(real, name) }
+      rescue SystemCallError
+        []
+      end
+
+      def self.regular?(path)
+        File.lstat(path).file?
+      rescue SystemCallError
+        false
+      end
 
       private
 
       def candidates
-        store_roots.flat_map { |root| current_files(root) } + @tmp_dirs.flat_map { |dir| tmp_files(dir) }
+        store_roots.flat_map { |root| RetiredSessionState.current_files(root) } + @tmp_dirs.flat_map { |dir| RetiredSessionState.tmp_files(dir) }
       end
 
       def store_roots
@@ -33,28 +55,6 @@ module Plastic
 
       def real?(root)
         File.realpath(root) == File.join(File.realpath(@home), root.delete_prefix("#{@home}/"))
-      rescue SystemCallError
-        false
-      end
-
-      def current_files(root)
-        tmp = File.join(root, ".tmp")
-        return [] unless File.lstat(tmp).directory?
-
-        Dir.children(tmp).map { |child| File.join(tmp, child) }.select { |dir| File.lstat(dir).directory? }.map { |dir| File.join(dir, "current") }
-      rescue SystemCallError
-        []
-      end
-
-      def tmp_files(dir)
-        real = File.realpath(dir)
-        Dir.children(real).select { |name| name.b.match?(TMP_NAME) }.map { |name| File.join(real, name) }
-      rescue SystemCallError
-        []
-      end
-
-      def regular?(path)
-        File.lstat(path).file?
       rescue SystemCallError
         false
       end

@@ -2,6 +2,7 @@
 
 require "yaml"
 require_relative "../config/agent_models"
+require_relative "files"
 
 module Plastic
   module Installations
@@ -14,27 +15,34 @@ module Plastic
 
       def render(source, override, effort_override)
         front, body = split(File.read(source))
-        name = (front["name"] || File.basename(source, ".md")).to_s
-        fields = model_fields(model_for(name, front, override), effort: effort_for(name, front, effort_override))
-        "#{[heading(name, front), fields, instructions(body)].reject(&:empty?).join("\n")}\n"
+        name = front["name"] || File.basename(source, ".md")
+        front = front.merge("name" => name.to_s)
+        fields = model_fields(model_for(front, override), effort: effort_for(front, effort_override))
+        "#{[heading(front), fields, instructions(body)].reject(&:empty?).join("\n")}\n"
       end
 
-      def heading(name, front)
-        %(name = "#{inline(name)}"\ndescription = "#{inline(front["description"].to_s)}")
+      def write(root, source, override, effort_override)
+        target = File.join(root, "#{File.basename(source, ".md")}.toml")
+        Files.write_text(target, render(source, override, effort_override))
+        target
+      end
+
+      def heading(front)
+        %(name = "#{inline(front["name"])}"\ndescription = "#{inline(front["description"].to_s)}")
       end
 
       def instructions(body) = %(developer_instructions = """\n#{multiline(body.strip)}\n""")
 
-      def model_for(name, front, override)
+      def model_for(front, override)
         return override unless override.to_s.empty?
 
-        Config::AgentModels.shipped_model_for(name, harness: "codex") || front["model"]
+        Config::AgentModels.shipped_model_for(front["name"], harness: "codex") || front["model"]
       end
 
-      def effort_for(name, front, override)
+      def effort_for(front, override)
         return override unless override.to_s.empty?
 
-        front["effort"] || Config::AgentModels.shipped_effort_for(name)
+        front["effort"] || Config::AgentModels.shipped_effort_for(front["name"])
       end
 
       # [frontmatter, body]. A file with no frontmatter, or frontmatter that is
