@@ -10,7 +10,7 @@ plastic resources sort --store SLUG --store SLUG [--dry-run]
 | --- | --- | --- |
 | `--store SLUG` | the registered project whose backups the call works on |  |
 | `--store SLUG` | the registered project whose resources the call sorts |  |
-| `--dry-run` | list the moves and the links that would change, and move nothing | `false` |
+| `--dry-run` | list the moves, the links that would change and the links left as they are, and move nothing | `false` |
 
 ## The workflows of one call
 

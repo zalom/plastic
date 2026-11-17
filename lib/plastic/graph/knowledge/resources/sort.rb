@@ -26,7 +26,7 @@ module Plastic
             merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
             apply(moves, merges, plan.rewrites)
             settle
-            ["sorted: #{moves.size + merges.size} files moved"]
+            plan.report(moves.size + merges.size)
           end
 
           private

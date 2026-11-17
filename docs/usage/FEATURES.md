@@ -169,8 +169,10 @@ so in one line and records the type once in `sync.asked`.
 
 `plastic resources sort --store SLUG` moves the files of a store from the old places into this
 layout. It moves the rows with the files, rewrites the relative links that point at a moved
-file, and runs a sync up. A link that named no file before the move is left as it is and
-listed. `--dry-run` lists every move and changes nothing. A target that holds other bytes than
+file, and runs a sync up. A link that named no file before the move is left as it is. Both the
+run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
+also lists every move and changes nothing. A file directly under `resources/output/` moves into
+`reports/` or `files/` by its type. A target that holds other bytes than
 the file that would move onto it stops the call with exit 3 and names the target. A second run
 finds nothing to move and says `sorted: nothing to move`.
 

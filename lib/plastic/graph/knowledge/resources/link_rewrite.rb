@@ -10,7 +10,7 @@ module Plastic
         # absolute link, or named no file in the store folder before the move; the last kind is reported back. Every path
         # is relative to the store folder; `moves` maps old to new paths and `known` holds the files before the move.
         class LinkRewrite
-          Result = Data.define(:text, :unresolved)
+          Result = Data.define(:text, :unresolved, :changed)
 
           LINK = /(\]\(|(?:href|src)=")([^)"\s]+)/
           EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|/|#|\?)}i
@@ -22,11 +22,18 @@ module Plastic
 
           def call(path, text)
             unresolved = []
-            rewritten = text.gsub(LINK) { "#{Regexp.last_match(1)}#{target(Regexp.last_match(2), path, unresolved)}" }
-            Result.new(rewritten, unresolved)
+            changed = []
+            rewritten = text.gsub(LINK) { relinked(Regexp.last_match(1), Regexp.last_match(2), path, unresolved, changed) }
+            Result.new(rewritten, unresolved, changed)
           end
 
           private
+
+          def relinked(prefix, link, path, unresolved, changed)
+            now = target(link, path, unresolved)
+            changed << "#{link} -> #{now}" unless now == link
+            "#{prefix}#{now}"
+          end
 
           def target(link, path, unresolved)
             return link if EXTERNAL.match?(link)

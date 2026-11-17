@@ -22,6 +22,8 @@ module Plastic
             def changed? = found.text != was
 
             def unresolved_in(dir) = found.unresolved.map { |link| "#{dir}/#{rel}: #{link}" }
+
+            def changed_in(dir) = found.changed.map { |link| "#{dir}/#{rel}: #{link}" }
           end
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
@@ -37,6 +39,8 @@ module Plastic
           def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @moved.call) }
 
           def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
+
+          def changed = results.flat_map { |linked| linked.changed_in(@dir) }
 
           private
 

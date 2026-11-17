@@ -26,6 +26,11 @@ module Plastic
 
           def unresolved = intents.flat_map(&:unresolved)
 
+          def changed = intents.flat_map(&:changed)
+
+          # The lines a sort of `count` files prints: the count, the links it changed and the links it left.
+          def report(count) = ["sorted: #{count} files moved", *changed.map { |link| "link changed #{link}" }, *unresolved.map { |link| "link left as it is #{link}" }]
+
           private
 
           def refuse_conflict(moves)

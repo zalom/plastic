@@ -11,7 +11,7 @@ module Plastic
         include CLI::BackupStore
 
         option :store, switch: "--store SLUG", required: true, text: "the registered project whose resources the call sorts"
-        option :dry_run, switch: "--dry-run", default: false, text: "list the moves and the links that would change, and move nothing"
+        option :dry_run, switch: "--dry-run", default: false, text: "list the moves, the links that would change and the links left as they are, and move nothing"
 
         changes(knowledge: "The rows of the moved files move with them, and the rows of the files with changed links are rewritten",
           store: "The files move to resources/output, resources/references or resources/tmp, and the links that point at them are rewritten")
