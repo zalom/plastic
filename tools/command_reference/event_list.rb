@@ -6,6 +6,8 @@ module CommandReference
 
   # A way the call stops beside an event: a failure, a refusal, a hand off or an end.
   Stop = Data.define(:kind, :exit_code, :text, :next_line) do
+    def look = [kind, tag]
+
     def tag = "#{STOP_HEADS.fetch(kind)}, EXIT #{exit_code}"
 
     def words = [text, next_line].compact

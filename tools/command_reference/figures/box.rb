@@ -21,6 +21,10 @@ module CommandReference
         [foot, Point.new(center, turn), Point.new(target.center, turn), target.head]
       end
 
+      def branch_to(across, bus) = [foot, Point.new(center, bus), Point.new(across, bus), Point.new(across, bus + 8)]
+
+      def drop(gap) = [foot, Point.new(center, bottom + gap)]
+
       def foot = Point.new(center, bottom)
 
       def attributes = %(x="#{left}" y="#{top}" width="#{width}" height="#{height}")
