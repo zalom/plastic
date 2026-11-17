@@ -102,10 +102,8 @@ module Plastic
 
       def rows(connection, table, where, names)
         list = names.map { |name| "\"#{name}\"" }.join(", ")
-        connection.prepare("SELECT #{list} FROM \"#{table}\" WHERE #{where} ORDER BY rowid") { |statement| statement.map { |row| values(row, names) } }
+        connection.prepare("SELECT #{list} FROM \"#{table}\" WHERE #{where} ORDER BY rowid") { |statement| statement.map(&:to_a) }
       end
-
-      def values(row, names) = row.is_a?(Hash) ? names.map { |name| row.fetch(name) } : row.to_a
 
       def insert(knowledge, table, names, row)
         list = names.map { |name| "\"#{name}\"" }.join(", ")

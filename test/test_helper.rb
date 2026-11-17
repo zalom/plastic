@@ -63,6 +63,9 @@ module Plastic
       Dir.glob(File.join(@plastic_home, "stores", "*")).each { |root| FileUtils.mkdir_p(File.join(root, "backups", stamp)) }
     end
 
-    def teardown = @template.reset
+    def teardown
+      forget_lost_retrieval_file
+      @template.reset
+    end
   end
 end

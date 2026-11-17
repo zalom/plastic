@@ -19,7 +19,16 @@ module Plastic
       def derived = store_graphs.databases.fetch(:retrieval)
 
       def lose_retrieval_file
-        path = derived.path
+        @lost_retrieval_path = derived.path
+        delete_database(@lost_retrieval_path)
+      end
+
+      # A rebuilt file commits outside the test's transaction, so it goes again for the reset to put the original back.
+      def forget_lost_retrieval_file
+        delete_database(@lost_retrieval_path) if @lost_retrieval_path && File.exist?(@lost_retrieval_path)
+      end
+
+      def delete_database(path)
         Plastic::Graph::Database::ConnectionPool.connections.delete(path)&.close
         File.delete(path)
       end

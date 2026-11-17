@@ -54,4 +54,12 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
 
     assert_equal "no passage 99", assert_raises(Missing) { reader.passage(fields(revision: reader.current_revision("1", @path)), 99) }.message
   end
+
+  def test_a_passage_read_with_the_retrieval_file_gone_asks_for_the_repair
+    reindex
+    fields = fields(revision: reader.current_revision("1", @path))
+    lose_retrieval_file
+
+    assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { reader.passage(fields, 1) }
+  end
 end
