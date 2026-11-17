@@ -10,10 +10,10 @@ class UpdateConfigImportTest < Plastic::TestCase
   CONFIG = "global:\n  search:\n    source_projects: alpha\nharnesses:\n  claude-code:\n    hooks:\n      enabled: true\n"
   SETTINGS = "SELECT scope, key, value FROM settings ORDER BY scope, key"
 
-  def update_old_layout_home
+  def update_old_layout_home(config = CONFIG)
     @aged_home = old_layout(fresh_home)
     File.write(File.join(@aged_home, "VERSION"), "99.0.0-alpha.1\n")
-    File.write(File.join(@aged_home, "config.yml"), CONFIG)
+    File.write(File.join(@aged_home, "config.yml"), config)
     update
   end
 
@@ -38,6 +38,13 @@ class UpdateConfigImportTest < Plastic::TestCase
     update
 
     assert_equal before, rows("SELECT * FROM settings ORDER BY scope, key")
+  end
+
+  def test_an_unreadable_config_is_named_by_update_and_imports_no_row
+    result = update_old_layout_home("global: [unclosed\n")
+
+    assert_includes result.out, "config.yml could not be read"
+    assert_empty rows(SETTINGS)
   end
 
   def rows(sql) = Plastic::Graph::Database.open_local(@aged_home).fetch(:local).rows(sql).map(&:values)

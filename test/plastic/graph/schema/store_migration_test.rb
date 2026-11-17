@@ -2,9 +2,8 @@
 
 require_relative "../../../test_helper"
 
-class StoreMigrationTest < Plastic::TestCase
+module StoreMigrationRuns
   include Beta2Store
-  include BackupHomes
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 1, 1)
@@ -22,6 +21,11 @@ class StoreMigrationTest < Plastic::TestCase
     Plastic::Graph.create(home:, store: "alpha")
     layouts_of(store_root(home))
   end
+end
+
+class StoreMigrationTest < Plastic::TestCase
+  include StoreMigrationRuns
+  include BackupHomes
 
   def test_the_store_migrates_and_each_table_has_the_names_and_columns_of_a_new_store
     home = beta_2_home
@@ -96,36 +100,6 @@ class StoreMigrationTest < Plastic::TestCase
     refute_path_exists store_path(home, "references.db")
   end
 
-  def test_a_store_without_references_db_migrates
-    home = beta_2_home(references: false)
-    report = migrate(home)
-
-    assert_equal [["alpha"], 0, 2], [report.migrated, knowledge(home, "SELECT count(*) FROM sqlar").flatten.first, knowledge(home, "SELECT count(*) FROM intents").flatten.first]
-    refute_path_exists store_path(home, "references.db")
-  end
-
-  ABSENT_BETA_2_TABLES = %w[approvals verdicts archives archive_entries clusters completions printed changes savepoints].freeze
-
-  def test_a_store_that_lacks_one_beta_2_work_table_still_migrates
-    migrated = ABSENT_BETA_2_TABLES.to_h do |table|
-      home = beta_2_home
-      read_file(store_path(home, "work_graph.db"), %(DROP TABLE "#{table}"), readonly: false)
-      [table, Runner.new(home:, now: NOW).call.migrated]
-    end
-
-    assert_equal ABSENT_BETA_2_TABLES.to_h { |table| [table, ["alpha"]] }, migrated
-  end
-
-  def test_a_store_without_a_knowledge_file_migrates_and_keeps_its_work_rows
-    home = beta_2_home
-    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
-    report = Runner.new(home:, now: NOW).call
-
-    assert_equal [["alpha"], {}], [report.migrated, report.failed]
-    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
-    assert_equal fresh_layouts, layouts_of(store_root(home))
-  end
-
   def test_a_second_run_changes_nothing
     home = migrated_home
     before = beta_2_files(home).except(*Dir.glob(File.join(store_root(home), "backups", "**", "*")))
@@ -149,6 +123,40 @@ class StoreMigrationTest < Plastic::TestCase
     folder = Dir.glob(File.join(store_root(home), "backups", "*")).first
 
     assert_equal %w[knowledge_graph references work_graph], Dir.children(folder).grep(/\.db\z/).map { |name| name.sub(/-\d{14}\.db\z/, "") }.sort
+  end
+end
+
+class PartialStoreMigrationTest < Plastic::TestCase
+  include StoreMigrationRuns
+
+  ABSENT_BETA_2_TABLES = %w[approvals verdicts archives archive_entries clusters completions printed changes savepoints].freeze
+
+  def test_a_store_without_references_db_migrates
+    home = beta_2_home(references: false)
+    report = migrate(home)
+
+    assert_equal [["alpha"], 0, 2], [report.migrated, knowledge(home, "SELECT count(*) FROM sqlar").flatten.first, knowledge(home, "SELECT count(*) FROM intents").flatten.first]
+    refute_path_exists store_path(home, "references.db")
+  end
+
+  def test_a_store_that_lacks_one_beta_2_work_table_still_migrates
+    migrated = ABSENT_BETA_2_TABLES.to_h do |table|
+      home = beta_2_home
+      read_file(store_path(home, "work_graph.db"), %(DROP TABLE "#{table}"), readonly: false)
+      [table, migrate(home).migrated]
+    end
+
+    assert_equal ABSENT_BETA_2_TABLES.to_h { |table| [table, ["alpha"]] }, migrated
+  end
+
+  def test_a_store_without_a_knowledge_file_migrates_and_keeps_its_work_rows
+    home = beta_2_home
+    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
+    report = migrate(home)
+
+    assert_equal [["alpha"], {}], [report.migrated, report.failed]
+    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
+    assert_equal fresh_layouts, layouts_of(store_root(home))
   end
 end
 
