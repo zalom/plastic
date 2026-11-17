@@ -32,4 +32,18 @@ class LegacyPluginTest < Plastic::TestCase
 
     assert_equal ["", []], [migrate, @removed]
   end
+
+  def test_a_marketplace_list_without_the_plastic_entry_is_left_as_it_is
+    write(File.join(claude, "plugins", "known_marketplaces.json"), JSON.generate("mine" => {}))
+    migrate
+
+    assert_equal [{ "mine" => {} }, []], [JSON.parse(File.read(File.join(claude, "plugins", "known_marketplaces.json"))), @removed]
+  end
+
+  def test_a_marketplace_list_that_is_no_object_is_left_as_it_is
+    write(File.join(claude, "plugins", "known_marketplaces.json"), "[]")
+    migrate
+
+    assert_equal [[], []], [JSON.parse(File.read(File.join(claude, "plugins", "known_marketplaces.json"))), @removed]
+  end
 end

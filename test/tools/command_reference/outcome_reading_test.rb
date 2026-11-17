@@ -2,7 +2,7 @@
 
 require_relative "../../command_reference_helper"
 
-class CommandReferenceStepReadingsTest < Minitest::Test
+class CommandReferenceOutcomeReadingTest < Minitest::Test
   Workflow = Struct.new(:outcomes, :lane, :handoff_exit_code)
   Source = Struct.new(:unused) do
     def lambda_code(_callable) = nil

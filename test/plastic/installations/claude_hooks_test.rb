@@ -137,4 +137,10 @@ class ClaudeHooksTest < Plastic::TestCase
 
     assert_includes JSON.parse(File.read(settings_path)).keys, "hooks"
   end
+
+  def test_the_status_line_that_is_plastics_own_is_not_kept_in_the_cache
+    merge({ "statusLine" => { "type" => "command", "command" => "#{@home}/.claude/hooks/plastic-statusline" } })
+
+    refute_path_exists File.join(@plastic_home, ".cache", "original-statusline.json")
+  end
 end

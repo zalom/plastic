@@ -77,11 +77,8 @@ module Plastic
           def self.other_origin(folder, path, print)
             return unless path == StoreFolder::INDEX && folder.exist?(path)
 
-            text = print.text
-            return unless text
-
             theirs = origin_of(folder.read(path))
-            theirs unless theirs == origin_of(text)
+            theirs unless theirs == origin_of(print.text)
           end
 
           # The top-level origin of an index, nil when the text is no JSON object.

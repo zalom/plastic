@@ -46,4 +46,12 @@ class ConfigRowsTest < Plastic::TestCase
 
     assert_nil rows.printed("other.yml")
   end
+
+  def test_a_key_under_a_scalar_replaces_it_and_a_key_beside_a_hash_joins_it
+    tree = { "a" => 1, "b" => { "x" => 1 } }
+    Plastic::Config::Rows.insert(tree, "a.deep", 2)
+    Plastic::Config::Rows.insert(tree, "b.y", 3)
+
+    assert_equal({ "a" => { "deep" => 2 }, "b" => { "x" => 1, "y" => 3 } }, tree)
+  end
 end
