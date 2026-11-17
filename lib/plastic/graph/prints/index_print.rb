@@ -35,8 +35,8 @@ module Plastic
         end
 
         def links(rows)
-          rows.sort_by { |link| [link.from_ref, link.to_ref, link.kind] }
-            .map { |link| { "from_ref" => link.from_ref, "to_ref" => link.to_ref, "kind" => link.kind, "at" => link.at } }
+          rows.map { |link| [link.from_ref, link.to_ref, link.kind, link.at] }.sort_by { |link| link.first(3) }
+            .map { |from_ref, to_ref, kind, at| { "from_ref" => from_ref, "to_ref" => to_ref, "kind" => kind, "at" => at } }
         end
 
         def luhmann(ids) = ids.sort_by { |id| Knowledge::LuhmannId.segments(id) }

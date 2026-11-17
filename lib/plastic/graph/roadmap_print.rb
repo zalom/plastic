@@ -2,6 +2,7 @@
 
 require_relative "knowledge/roadmap/state"
 require_relative "knowledge/roadmap/form"
+require_relative "roadmap_graph_print"
 
 module Plastic
   module Graph
@@ -18,25 +19,16 @@ module Plastic
 
       def text
         row = @retrieval.roadmaps.find(@slug)
-        lines = [Form::LINE, "# #{Form.escape(row.title)}", "", *fields(row, %i[slug title goal opened_at]), "", *batches,
-          "## Graph", "", *edge_lines, "", *edge_records, "## Log", "", *log_lines]
+        lines = [Form::LINE, "# #{Form.escape(row.title)}", "", *Form.fields(row, %i[slug title goal opened_at]), "", *batches, *RoadmapGraphPrint.new(@retrieval, @slug).lines]
         "#{lines.join("\n")}\n"
       end
 
       private
 
-      def fields(record, names) = names.map { |name| Form.labeled(name, record.public_send(name)) }
-
-      def indented(record, names) = fields(record, names).map { |line| "  #{line}" }
-
-      def batches = @retrieval.roadmaps.batches(@slug).flat_map { |batch| batch_lines(batch) }
-
-      def batch_lines(batch)
-        ["## Batch #{batch.position}: #{Form.escape(batch.title)}", "", *fields(batch, %i[title goal done]), "", *item_lines(batch.position)]
-      end
+      def batches = @retrieval.roadmaps.batches(@slug).flat_map { |batch| Form.batch_lines(batch, item_lines(batch.position)) }
 
       def item_lines(position)
-        @retrieval.roadmaps.items(@slug).select { |item| item.batch == position }.flat_map { |item| [item_line(item), *indented(item, %i[item position title goal done intent_id mark]), ""] }
+        @retrieval.roadmaps.items(@slug).select { |item| item.batch == position }.flat_map { |item| [item_line(item), *Form.indented(item, %i[item position title goal done intent_id mark]), ""] }
       end
 
       def item_line(item) = "- [#{box(item)}] #{item.item} #{Form.escape(item.title)} — #{state_of(item)}"
@@ -44,18 +36,6 @@ module Plastic
       def state_of(item) = Knowledge::Roadmap::State.of(item, @retrieval)
 
       def box(item) = CHECKED.fetch(state_of(item), " ")
-
-      def edge_lines = @retrieval.roadmaps.items(@slug).map { |item| needs_line(item.item) }
-
-      def needs_line(name) = "- #{name} needs #{needs_of(name).join(" ").sub(/\A\z/, "nothing")}"
-
-      def needs_of(name) = edges.select { |edge| edge.to == name }.map(&:from)
-
-      def edges = (@edges ||= @retrieval.roadmaps.edges(@slug))
-
-      def edge_records = edges.flat_map { |edge| ["- edge", *indented(edge, %i[from to kind]), ""] }
-
-      def log_lines = @retrieval.roadmaps.log(@slug).flat_map { |line| ["- log", *indented(line, %i[position at session_id text])] }
     end
   end
 end

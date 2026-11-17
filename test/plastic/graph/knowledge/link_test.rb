@@ -24,6 +24,6 @@ class KnowledgeLinkTest < Plastic::TestCase
   end
 
   def test_an_edge_is_complete_with_two_refs_and_a_known_kind
-    assert_equal [true, false, false], [Knowledge::Link.complete?("1", "2", "chain"), Knowledge::Link.complete?("1", "", "chain"), Knowledge::Link.complete?("1", "2", "other")]
+    assert_equal [{ from_ref: "1", to_ref: "2", kind: "chain", at: "now" }, nil, nil], [Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "chain" }, "now"), Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "", "kind" => "chain" }, "now"), Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "other" }, "now")]
   end
 end

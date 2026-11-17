@@ -17,7 +17,12 @@ module Plastic
 
         def supersedes_from_another?(intent_id) = kind == "supersedes" && to_ref == intent_id && from_intent_id != intent_id
 
-        def self.complete?(from, to, link_kind) = [from, to].all? { |ref| ref.is_a?(String) && !ref.empty? } && Link::KINDS.include?(link_kind)
+        def self.from_entry(entry, now)
+          from_ref, to_ref, kind, at = entry.values_at("from_ref", "to_ref", "kind", "at")
+          return unless [from_ref, to_ref].all? { |ref| ref.is_a?(String) && !ref.empty? } && Link::KINDS.include?(kind)
+
+          { from_ref:, to_ref:, kind:, at: at || now }
+        end
 
         def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
       end

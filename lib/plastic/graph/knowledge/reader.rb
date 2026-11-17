@@ -50,12 +50,16 @@ module Plastic
         private
 
         def file_of(path)
-          return IndexFile.new(@folder.read(path), @origin_id, @folder.intent_dirs, @intents) if path == StoreFolder::INDEX
+          return index_file(path) if path == StoreFolder::INDEX
           return part_file(path) if Prints::Parts.path?(path)
-          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
+          return roadmap_file(path) if StoreFolder.roadmap?(path)
 
           intent_file(path)
         end
+
+        def index_file(path) = IndexFile.new(@folder.read(path), @origin_id, @folder.intent_dirs, @intents)
+
+        def roadmap_file(path) = RoadmapFile.new(File.basename(path, ".md"), @folder.read(path))
 
         def part_file(path)
           index = @folder.read(StoreFolder::INDEX)

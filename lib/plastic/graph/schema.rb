@@ -45,10 +45,10 @@ module Plastic
       end
 
       def self.databases = SchemaCatalog::DATABASES
-      def self.store = SchemaCatalog::STORE
-      def self.derived = SchemaCatalog::DERIVED
+      def self.store = SchemaCatalog.store
+      def self.derived = SchemaCatalog.derived
       def self.tables = SchemaCatalog::TABLES
-      def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
+      def self.later_tables = SchemaCatalog.since
 
       def self.nouns = SchemaMetadata::NOUNS
     end

@@ -34,7 +34,7 @@ module Plastic
         end
 
         def normal(clusters)
-          clusters.map { |cluster| { "name" => cluster["name"], "intents" => ids(cluster["intents"]) } }.sort_by { |cluster| cluster["name"].to_s }
+          clusters.map { |cluster| cluster.values_at("name", "intents") }.sort_by { |name, _intents| name.to_s }.map { |name, intents| { "name" => name, "intents" => ids(intents) } }
         end
 
         def ids(listed) = listed.is_a?(Array) ? listed.map(&:to_s).sort : listed
