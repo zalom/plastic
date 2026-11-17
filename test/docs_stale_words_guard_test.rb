@@ -19,6 +19,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
     /plastic (?:auto (?:report|brief)|intent step|session (?:commit|summary|handoff)|migrate|feedback)\b/,
     /(?i:day ledger)/,
     /\bPLASTIC_CHANNEL\b/,
+    /\bsync\.(?:media|documents)\b/,
     /brings its own Ruby|jdx\/ruby|(?i:portable Ruby)|downloads? Ruby|with no Ruby on|update check hook|check-update|update-check\.json/,
     %r{\bscripts/(?!#{SCRIPTS.map { |name| Regexp.escape(name) }.join("|")})[a-z]}
   )

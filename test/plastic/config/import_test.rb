@@ -66,4 +66,48 @@ class ConfigImportTest < Plastic::TestCase
 
     assert_empty setting_rows(home)
   end
+
+  MEDIA_TYPES = %w[png jpg jpeg gif webp svg avif heic bmp ico tif tiff mp4 mov webm m4v avi mkv].freeze
+
+  def synced(home) = JSON.parse(setting_rows(home).to_h { |_scope, key, value| [key, value] }.fetch("sync.types"))
+
+  def test_sync_media_true_becomes_the_media_types
+    home = Dir.mktmpdir
+
+    import(home, "global:\n  sync:\n    media: true\n")
+
+    assert_equal %w[md html] + MEDIA_TYPES, synced(home)
+  end
+
+  def test_sync_documents_true_becomes_the_document_types
+    home = Dir.mktmpdir
+
+    import(home, "global:\n  sync:\n    documents: true\n")
+
+    assert_equal %w[md html] + Plastic::Config::SyncTypes::DOCUMENTS, synced(home)
+  end
+
+  def test_both_old_keys_add_both_lists_once
+    home = Dir.mktmpdir
+
+    import(home, "global:\n  sync:\n    media: true\n    documents: true\n    types: [md]\n")
+
+    assert_equal %w[md] + MEDIA_TYPES + Plastic::Config::SyncTypes::DOCUMENTS, synced(home)
+  end
+
+  def test_old_sync_keys_leave_no_row
+    home = Dir.mktmpdir
+
+    import(home, "global:\n  sync:\n    media: true\n    documents: false\n    references: true\n")
+
+    assert_equal %w[sync.references sync.types], setting_rows(home).map { |_scope, key, _value| key }
+  end
+
+  def test_old_keys_set_to_false_add_no_type
+    home = Dir.mktmpdir
+
+    import(home, "global:\n  sync:\n    media: false\n    documents: false\n")
+
+    assert_empty setting_rows(home)
+  end
 end

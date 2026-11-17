@@ -31,9 +31,16 @@ class InitChooseTest < Plastic::TestCase
     assert_equal [["claude-code"], [], false], [context.found, context.picked, context.media]
   end
 
-  def test_the_sync_of_media_is_not_picked_when_the_settings_turn_it_off
+  def test_the_sync_of_media_is_picked_when_the_types_hold_every_media_type
     FileUtils.mkdir_p(File.join(@home, ".claude"))
-    settings = FakeSettings.new(values: { "sync.media" => false })
+    settings = FakeSettings.new(values: { "sync.types" => %w[md html] + Plastic::Config::SyncTypes::MEDIA })
+
+    assert_equal [true], [Choose.choices(scoped_harness(env: { "PATH" => "" }).scope, settings).last.chosen]
+  end
+
+  def test_the_sync_of_media_is_not_picked_when_the_types_leave_media_out
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    settings = FakeSettings.new(values: { "sync.types" => %w[md html] })
 
     assert_equal [false], [Choose.choices(scoped_harness(env: { "PATH" => "" }).scope, settings).last.chosen]
   end
