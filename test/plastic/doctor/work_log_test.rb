@@ -22,11 +22,44 @@ class DoctorWorkLogTest < Plastic::TestCase
     assert_equal ["work log global:", "ok, every intent has its lines"], check.to_a.first(2)
   end
 
-  def test_a_line_a_failed_write_left_out_is_added
+  class Died < StandardError; end
+
+  class DiesAfterCommit < Plastic::Graph::Work::Log
+    def drain(_intent_id) = raise(Died, "the process died after the owning commit")
+  end
+
+  def leave_pending(intent_id, text)
+    open = store_graphs
+    log = DiesAfterCommit.new(open.databases, open.retrieval, session: "s-dead")
+    work = Plastic::Graph::WorkGraph.new(open.databases, folder:, retrieval: open.retrieval, session: "s-dead", log:)
+    assert_raises(Died) { work.add_ruling(intent_id:, text:) }
+  end
+
+  def test_a_write_that_died_after_its_commit_is_drained_and_the_intent_is_named
+    store_graphs.work.write_intent(title: "One")
+    store_graphs.work.write_intent(title: "Two")
+    leave_pending("2", "kept")
+
+    assert_equal "ok, drained 1 work log line: intent 2", check.value
+    assert_equal %w[opened ruled], store_graphs.retrieval.work_log("2").map(&:kind)
+    assert_equal ["s-dead"], store_graphs.retrieval.work_log("2").last(1).map(&:session_id)
+  end
+
+  def test_a_second_check_adds_nothing
+    store_graphs.work.write_intent(title: "One")
+    leave_pending("1", "kept")
+    check
+
+    assert_equal "ok, every intent has its lines", check.value
+    assert_equal %w[opened ruled], store_graphs.retrieval.work_log("1").map(&:kind)
+  end
+
+  def test_a_converted_store_gets_no_line_from_the_check
     store_graphs.work.write_intent(title: "One")
     store_graphs.databases[:work].transaction { |batch| batch.remove(:work_log, intent_id: "1") }
+    store_graphs.databases[:work].transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
 
-    assert_equal "ok, added 1 work log line", check.value
-    assert_equal ["opened"], store_graphs.retrieval.work_log("1").map(&:kind)
+    assert_equal "ok, every intent has its lines", check.value
+    assert_equal %w[noted], store_graphs.retrieval.work_log("1").map(&:kind)
   end
 end

@@ -95,4 +95,34 @@ class CompactRecapTest < Plastic::TestCase
   def test_a_codex_fork_prints_the_resume_line
     assert_equal recap("resume").first, recap("fork").first
   end
+
+  def test_the_session_note_prints_as_a_note_line_just_before_the_next_line
+    claimed_intent
+    graphs.work.write_note("s-1", "pick up at the failing guard test")
+    lines = recap("compact")
+
+    assert_equal ["note: pick up at the failing guard test", "next: plastic graph resume"], lines.last(2)
+  end
+
+  def test_a_session_with_no_intent_stays_one_line_even_with_a_note
+    graphs("s-9").work.write_note("s-9", "a note")
+
+    assert_equal ["Plastic: the session was compacted and holds no intent. Run plastic next."], recap("compact", session: "s-9")
+  end
+
+  def test_a_session_with_no_note_prints_no_note_line
+    claimed_intent
+
+    refute recap("compact").any? { |line| line.start_with?("note:") }
+  end
+
+  def test_the_intent_is_the_one_the_session_wrote_to_last
+    work = graphs.work
+    work.write_intent(title: "Alpha")
+    second = work.write_intent(title: "Beta")
+    work.add_ruling(intent_id: "1", text: "older intent, newer line")
+    work.add_ruling(intent_id: second.intent_id, text: "newest line")
+
+    assert_includes recap("compact"), "intent: #{second.intent_id} Beta"
+  end
 end

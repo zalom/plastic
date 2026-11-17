@@ -14,6 +14,16 @@ class IntentEndAcceptedCaseTest < Plastic::TestCase
     assert_equal [0, "done", 1], [result.code, retrieval.intent("1").status, work_rows("completions").size]
     refute_match(/^next:/, result.out)
   end
+
+  def test_ending_an_intent_with_a_done_node_adds_a_done_line_with_no_node
+    accepted_intent
+    review_off
+    cli("intent", "end", "1", session: "delivery")
+    done = retrieval.work_log("1").select { |line| line.kind == "done" }
+
+    assert_equal ["n1", ""], done.map(&:node)
+    assert_equal "Done", done.last.text
+  end
 end
 
 class IntentEndTest < Plastic::TestCase

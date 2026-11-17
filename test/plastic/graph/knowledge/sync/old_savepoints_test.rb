@@ -77,4 +77,28 @@ class SyncOldSavepointsTest < Plastic::TestCase
 
     assert folder.exist?(old_path(intent))
   end
+
+  def test_a_file_this_home_never_printed_is_named_as_never_printed
+    intent = open_intent
+    write(old_path(intent), "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
+
+    assert_call sync_down, code: 0, out: ["kept #{old_path(intent)}: never printed by this home"]
+  end
+
+  def test_a_file_changed_by_hand_is_named_as_changed_by_hand
+    intent = open_intent
+    old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
+    write(old_path(intent), "a line a person added\n")
+
+    assert_call sync_down, code: 0, out: ["kept #{old_path(intent)}: changed by hand"]
+  end
+
+  def test_removing_the_file_removes_its_printed_row_too
+    intent = open_intent
+    old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
+    assert retrieval.printed.key?(old_path(intent))
+    sync_down
+
+    refute retrieval.printed.key?(old_path(intent))
+  end
 end

@@ -52,4 +52,10 @@ class KnowledgeRoadmapItemOpenTest < Plastic::TestCase
 
     assert_equal [nil, "item a already has an intent", :refusal], start("a")
   end
+
+  def test_the_opened_intent_has_an_opened_line
+    start("a")
+
+    assert_equal [["opened", "Opened: Item A"]], retrieval.work_log("1").map { |line| line.values_at(:kind, :text) }
+  end
 end

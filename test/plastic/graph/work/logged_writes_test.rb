@@ -3,7 +3,7 @@
 require "digest"
 require_relative "../../../test_helper"
 
-# Every intent write stores its owning rows first and one work_log row second.
+# Every intent write stores its owning rows and one pending row together, and one work_log line follows.
 class WorkLoggedWritesTest < Plastic::TestCase
   fixtures :empty
 
@@ -110,24 +110,6 @@ class WorkLoggedWritesTest < Plastic::TestCase
     assert_equal [1, 2], lines.map(&:position)
   end
 
-  def test_the_next_write_adds_the_line_a_failed_write_left_out
-    intent
-    forget
-    work.add_ruling(intent_id: "1", text: "after the gap")
-
-    assert_equal %w[opened ruled], kinds
-  end
-
-  def test_the_next_write_adds_the_missing_closing_line_once
-    intent
-    work.note_intent(work_intent, "note", "why it ends")
-    work.abandon_intent("1")
-    graphs.databases.fetch(:work).transaction { |batch| batch.remove(:work_log, intent_id: "1", position: 3) }
-    work.repair_log("1")
-
-    assert_equal %w[opened noted abandoned], kinds
-  end
-
   def test_an_intent_converted_from_savepoints_is_not_given_an_opened_line
     intent
     forget
@@ -137,10 +119,72 @@ class WorkLoggedWritesTest < Plastic::TestCase
     assert_equal %w[noted ruled], kinds
   end
 
-  def test_repairing_a_store_adds_every_missing_line_and_says_how_many
+  def test_adding_and_removing_a_node_append_a_line_each
+    intent
+    work.add_node(intent_id: "1", title: "Build")
+    work.remove_node(intent_id: "1", id: "n1")
+
+    assert_equal [%w[added n1 Build], %w[removed n1 Build]], lines.drop(1).map { |line| line.values_at(:kind, :node, :text) }
+  end
+
+  def test_adding_and_removing_an_edge_append_a_line_naming_both_nodes
+    intent
+    2.times { work.add_node(intent_id: "1", title: "Step") }
+    work.add_edge(intent_id: "1", from: "n2", to: "n1")
+    work.remove_edge(intent_id: "1", from: "n2", to: "n1")
+    edge_lines = lines.select { |line| line.kind.start_with?("edge") }
+
+    assert_equal ["edge added", "edge removed"], edge_lines.map { |line| line.kind.tr("_", " ") }
+    assert(edge_lines.all? { |line| line.text.include?("n2") && line.text.include?("n1") })
+  end
+
+  def test_an_edge_move_that_changed_nothing_appends_no_line
+    intent
+    work.remove_edge(intent_id: "1", from: "n2", to: "n1")
+
+    assert_equal %w[opened], kinds
+  end
+
+  def test_archiving_and_unarchiving_append_a_line_each
+    intent
+    work.print_intent("1")
+    work.note_intent(work_intent, "note", "why it ends")
+    work.abandon_intent("1")
+    work.archive_intent("1")
+    work.unarchive_intent("1")
+
+    assert_equal %w[archived unarchived], kinds.last(2)
+  end
+
+  def test_the_go_ahead_line_belongs_to_the_session_that_gave_it
+    intent
+    graphs("s-2").work.approve_intent("1")
+
+    assert_equal "s-2", lines.last.session_id
+  end
+
+  class CappedNowhere
+    def claim_node(**) = [:capped, nil]
+  end
+
+  class NodesThatCapNowhere < Plastic::Graph::Work::Writers
+    def nodes = (@nodes ||= CappedNowhere.new)
+  end
+
+  def test_a_claim_that_is_capped_with_no_node_appends_no_line_and_raises_nothing
+    intent
+    open = graphs
+    writers = NodesThatCapNowhere.new(open.databases, open.retrieval, folder, "s-1")
+    status, node = Plastic::Graph::Work::LoggedWrites.new(writers).claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    assert_equal [:capped, nil, %w[opened]], [status, node, kinds]
+  end
+
+  def test_a_legacy_intent_gets_no_line_until_a_real_write
     intent
     forget
+    graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
 
-    assert_equal [1, 0], [work.repair_log("1"), work.repair_log("1")]
+    assert_equal [0, %w[noted]], [work.drain_log("1"), kinds]
   end
 end

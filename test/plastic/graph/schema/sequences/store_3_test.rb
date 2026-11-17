@@ -89,4 +89,39 @@ class SchemaStore3Test < Plastic::TestCase
 
     assert_equal sql.call(fresh), sql.call(@database)
   end
+
+  def test_the_migrated_log_has_a_write_id_column_that_converted_rows_leave_empty
+    migrate
+    columns = @database.execute("PRAGMA table_info(work_log)").map { |column| column[1] }
+
+    assert_includes columns, "write_id"
+    assert_equal [4], @database.execute("SELECT count(*) FROM work_log WHERE write_id IS NULL").flatten
+  end
+
+  def test_the_migration_adds_the_pending_table_with_its_columns
+    migrate
+    columns = @database.execute("PRAGMA table_info(work_log_pending)").map { |column| column[1] }
+
+    assert_equal %w[write_id intent_id at phase node session_id kind path sha256 text origin_id], columns
+  end
+
+  def test_one_write_id_of_one_origin_is_kept_once_and_converted_rows_do_not_collide
+    migrate
+    insert = "INSERT INTO work_log (intent_id, position, at, kind, text, origin_id, write_id) VALUES ('1', ?, 'x', 'noted', 't', 'o', ?)"
+    @database.execute(insert, [10, "w-1"])
+
+    assert_raises(SQLite3::ConstraintException) { @database.execute(insert, [11, "w-1"]) }
+    @database.execute(insert, [12, nil])
+    @database.execute(insert, [13, nil])
+  end
+
+  def test_a_migrated_work_database_has_the_pending_table_and_the_index_of_a_new_one
+    migrate
+    fresh = SQLite3::Database.new(":memory:")
+    fresh.execute_batch(Plastic::Graph::Schema.fetch(:work))
+    sql = ->(database) { database.execute("SELECT name, sql FROM sqlite_master WHERE name IN ('work_log_pending', 'work_log_write_id') ORDER BY name") }
+
+    assert_equal sql.call(fresh), sql.call(@database)
+    assert_equal 2, sql.call(@database).size
+  end
 end

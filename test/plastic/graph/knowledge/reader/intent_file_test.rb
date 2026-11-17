@@ -125,6 +125,13 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal ["data.json", "intent.md", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
   end
+
+  def test_an_old_savepoint_md_numbers_its_lines_after_the_highest_position_not_after_the_count
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 3, at: AT, kind: "noted", text: "later line" }) }
+    read_in("savepoint.md", "#{AT}  Spec written\n")
+
+    assert_equal [4, "Spec written"], retrieval.work_log("1").last.values_at(:position, :text)
+  end
 end
 
 class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
