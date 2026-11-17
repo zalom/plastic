@@ -63,9 +63,9 @@ class DatabaseBatchTest < Plastic::TestCase
     def read(_sql, _values) = []
   end
 
-  def test_run_executes_each_statement_and_tells_the_count_the_rows_it_changed
+  def test_execute_runs_each_statement_and_tells_the_count_the_rows_it_changed
     counted = []
-    Batch.new.write(:clusters, "DELETE FROM clusters").add("SELECT 1").run(FakeConnection.new(2)) { |table, rows| counted << [table, rows] }
+    Batch.new.write(:clusters, "DELETE FROM clusters").add("SELECT 1").execute(FakeConnection.new(2)) { |table, rows| counted << [table, rows] }
 
     assert_equal [["clusters", 2]], counted
   end
