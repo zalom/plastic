@@ -34,12 +34,12 @@ class InstallerTest < Plastic::TestCase
     assert_equal [%w[2.0.3 install claude]], rows.map { |row| row.values_at("version", "action", "harness") }
   end
 
-  def test_a_second_run_is_a_reinstall_and_a_named_action_wins
+  def test_a_second_run_is_a_reinstall
     make_agent_folders(claude_config)
     run_install
-    run_install(ledger_action: "update")
+    run_install
 
-    assert_equal %w[install update], rows.map { |row| row["action"] }
+    assert_equal %w[install reinstall], rows.map { |row| row["action"] }
   end
 
   def test_an_unknown_agent_key_fails_with_that_reason

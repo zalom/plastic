@@ -56,11 +56,11 @@ module Plastic
 
       def core_files = CoreFiles.new(package_root).call
 
-      def install_agents(selected:, ledger_action: nil, statusline: nil, already_registered: [])
+      def install_agents(selected:, statusline: nil, already_registered: [])
         kind = installed? ? :update : :install
         prepare(kind)
         results = sync(selected, statusline) + already_registered.map { |key| skipped(key) }
-        log(results, ledger_action || LEDGER_ACTIONS.fetch(kind))
+        log(results, LEDGER_ACTIONS.fetch(kind))
         Results.new(version).print(results, kind)
         results
       end
