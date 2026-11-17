@@ -52,7 +52,6 @@ module Plastic
 
       def work_rows(table) = store_graphs.databases.fetch(:store).rows("SELECT * FROM #{table}")
 
-
       def accepted_intent(keys = { KEY => CRITERION }, **specified_options)
         intent = specified(keys, **specified_options)
         delivered_nodes(keys)
