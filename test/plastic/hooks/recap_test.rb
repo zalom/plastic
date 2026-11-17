@@ -56,14 +56,14 @@ class RecapTest < Plastic::TestCase
     assert_includes recap(source: "clear"), "in progress: #{intent_id} Alpha"
   end
 
-  def test_compact_prints_the_intent_its_log_lines_and_the_next_command_and_no_note
+  def test_compact_prints_the_intent_its_log_lines_the_note_and_the_next_command
     printed_intent
     opened.work.write_note("s-1", "note text")
 
     lines = recap(source: "compact")
 
     assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", lines.first
-    assert_equal [true, ["next: plastic next"], false], [lines.any? { |line| line.include?("Opened: Alpha") }, lines.last(1), lines.any? { |line| line.start_with?("note:") }]
+    assert_equal [true, ["note: note text", "next: plastic next"]], [lines.any? { |line| line.include?("Opened: Alpha") }, lines.last(2)]
   end
 
   def test_the_intents_are_listed_by_group_with_their_state

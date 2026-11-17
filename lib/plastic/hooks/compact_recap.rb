@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "../graph/work/last_log_lines"
+require_relative "../graph/work/session_intent"
 
 module Plastic
   module Hooks
     # What a session start prints after a compaction: the session's intent, its claims, the
-    # ready nodes, the last work log lines and the one next command. A session with no intent
+    # ready nodes, the last work log lines, the session note and the one next command. A session with no intent
     # gets one line.
     class CompactRecap
       FIRST_LINE = "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."
@@ -14,31 +15,24 @@ module Plastic
 
       def initialize(retrieval, session_id:)
         @retrieval = retrieval
+        @session = Graph::Work::SessionIntent.new(retrieval, session_id)
         @session_id = session_id
       end
 
       def lines
-        intent = session_intent
+        intent = @session.intent
         return [NO_INTENT] unless intent
 
-        [FIRST_LINE, "intent: #{intent.label}", *claim_lines(intent), *ready_lines(intent), *log_lines(intent), "next: #{next_command(intent)}"]
+        [FIRST_LINE, "intent: #{intent.label}", *claim_lines(intent), *ready_lines(intent), *log_lines(intent), *note_line, "next: #{next_command(intent)}"]
       end
 
       private
 
-      def session_intent
-        held = claims.first
-        held ? @retrieval.intent(held.intent_id) : newest_logged_intent
-      end
+      def claims = @session.claims
 
-      def claims = @claims ||= @retrieval.claimed_nodes.select { |node| node.claimed_by == @session_id && unfinished?(node.intent_id) }
-
-      def unfinished?(intent_id) = !@retrieval.intent(intent_id).closed?
-
-      def newest_logged_intent
-        newest = @retrieval.work_log.select { |line| line.session_id == @session_id }.max_by { |line| [line.at.to_s, line.position] }
-        found = newest && @retrieval.intent(newest.intent_id)
-        found unless found&.closed?
+      def note_line
+        text = @retrieval.session(@session_id)&.note
+        text ? ["note: #{text}"] : []
       end
 
       def claim_lines(intent) = claims.select { |node| node.intent_id == intent.intent_id }.map { |node| "claim: #{node.id} #{node.title}" }

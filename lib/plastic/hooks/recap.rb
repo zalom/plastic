@@ -3,6 +3,7 @@
 require_relative "../graph/knowledge/intent"
 require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/last_log_lines"
+require_relative "../graph/work/session_intent"
 require_relative "compact_recap"
 
 module Plastic
@@ -86,11 +87,10 @@ module Plastic
         Graph::Work::LastLogLines.new(@retrieval, LOG_LINES).lines(intent_id).map { |line| "  #{line}" }
       end
 
-      # The first open intent this session touched, else the one its predecessor touched.
+      # The intent this session works on, else the one its predecessor worked on.
       def in_progress_intent
         sessions = [@session_id, predecessor&.session_id].compact
-        sessions.lazy.flat_map { |session_id| @retrieval.touched(session_id) }
-          .filter_map { |intent_id| @retrieval.intent(intent_id) }.find(&:open?)
+        sessions.lazy.filter_map { |session_id| Graph::Work::SessionIntent.new(@retrieval, session_id).intent }.first
       end
 
       def note_line

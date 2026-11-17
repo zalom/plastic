@@ -41,7 +41,7 @@ so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `work_log`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
+| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `work_log`, `work_log_pending`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
 | `knowledge_graph.db` | `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, and the search tables of the retrieval graph |
 | `references.db` | `sqlar` |
 
@@ -251,7 +251,7 @@ order, and later hooks read it from the session row.
 
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
-| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last work log lines, and the note. |
+| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node claims, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |
