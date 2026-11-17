@@ -31,7 +31,7 @@ class FilesTest < Plastic::TestCase
   end
 
   def test_an_edit_of_a_missing_file_does_not_call_the_block
-    assert_equal false, Files.edit_json(File.join(@home, "absent.json")) { flunk }
+    refute Files.edit_json(File.join(@home, "absent.json")) { flunk }
   end
 
   def test_json_is_written_pretty_with_a_closing_newline_and_no_temporary_left
