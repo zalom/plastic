@@ -16,7 +16,7 @@ module Plastic
       TYPES = {
         text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER", int: "INT", blob: "BLOB",
         number: "INTEGER NOT NULL", blank: "TEXT NOT NULL DEFAULT ''", primary: "TEXT PRIMARY KEY",
-        serial: "INTEGER PRIMARY KEY AUTOINCREMENT",
+        serial: "INTEGER PRIMARY KEY AUTOINCREMENT", role: "TEXT NOT NULL CHECK(role IN ('user', 'assistant'))",
         operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))",
         status: "TEXT NOT NULL CHECK(status IN (#{IntentStatus::ALL.map { |status| "'#{status}'" }.join(", ")}))"
       }.freeze

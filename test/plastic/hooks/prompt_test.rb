@@ -9,7 +9,7 @@ class PromptTest < Plastic::TestCase
   CLAUDE = { "CLAUDE_CODE_SESSION_ID" => "s-1" }.freeze
   FIXTURES = File.expand_path("../../fixtures/hooks", __dir__)
 
-  def call(input, env: CLAUDE) = plastic("hook", "prompt", input: input.is_a?(String) ? input : JSON.generate(input), env:, table: Plastic::CLI::TABLE)
+  def call(input = nil, env: CLAUDE, **event) = plastic("hook", "prompt", input: input || JSON.generate(event), env:, table: Plastic::CLI::TABLE)
 
   def messages = store_graphs.databases.fetch(:local).rows("SELECT session_id, harness, store, intent_id, role, text FROM chat_messages ORDER BY id")
 
@@ -42,11 +42,15 @@ class PromptTest < Plastic::TestCase
     assert_equal [["s-1", "claude-code", "global", nil, "user", "hello"]], messages.map(&:values)
   end
 
+  def hook_in(home, input = JSON.generate(prompt: "alone"))
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" },
+      input: StringIO.new(input), out: StringIO.new, err: StringIO.new, home: File.dirname(home), directory: File.dirname(home))
+    [Plastic::Hooks::Prompt.call([], environment:), environment.err.string]
+  end
+
   def test_a_prompt_with_no_store_is_recorded_with_store_and_intent_empty
     with_home(global: false) do |home|
-      environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" },
-        input: StringIO.new(JSON.generate(prompt: "alone")), out: StringIO.new, err: StringIO.new, home: File.dirname(home), directory: File.dirname(home))
-      code = Plastic::Hooks::Prompt.call([], environment:)
+      code, = hook_in(home)
       rows = Plastic::Graph::Database.open_local(home).fetch(:local).rows("SELECT store, intent_id, text FROM chat_messages")
 
       assert_equal [0, [{ "store" => nil, "intent_id" => nil, "text" => "alone" }]], [code, rows]
@@ -54,12 +58,12 @@ class PromptTest < Plastic::TestCase
   end
 
   def test_an_event_with_no_session_records_nothing_and_exits_zero
-    assert_call call({ prompt: "hello" }, env: {}), code: 0, out: "", err: "plastic hook: the event names no session; nothing recorded\n"
+    assert_call call(env: {}, prompt: "hello"), code: 0, out: "", err: "plastic hook: the event names no session; nothing recorded\n"
     assert_empty messages
   end
 
   def test_an_event_with_no_prompt_records_nothing
-    assert_call call({}), code: 0, out: "", err: "plastic hook: the event carries no prompt; nothing recorded\n"
+    assert_call call, code: 0, out: "", err: "plastic hook: the event carries no prompt; nothing recorded\n"
     assert_empty messages
   end
 
@@ -70,18 +74,19 @@ class PromptTest < Plastic::TestCase
     assert_equal [0, "", true], [result.code, result.out, result.err.start_with?("plastic hook:")]
   end
 
-  def fixture(name) = JSON.parse(File.read(File.join(FIXTURES, name)))
-
   def test_reads_both_harness_fixtures
-    %w[claude_code_prompt_submit.json codex_prompt_submit.documented.json].each { |name| call(fixture(name), env: {}) }
+    %w[claude_code_prompt_submit.json codex_prompt_submit.documented.json].each { |name| call(File.read(File.join(FIXTURES, name)), env: {}) }
 
     assert_equal ["Reply with the word ready."] * 2, messages.map { |row| row["text"] }
   end
 
-  def test_a_home_with_the_former_local_db_exits_zero
-    File.write(File.join(@plastic_home, "local.db"), "")
-    File.delete(File.join(@plastic_home, "plastic.db")) if File.exist?(File.join(@plastic_home, "plastic.db"))
+  def test_a_home_with_the_former_local_db_exits_zero_and_says_so_on_stderr
+    with_home(global: false) do |home|
+      FileUtils.mkdir_p(home)
+      File.write(File.join(home, "local.db"), "")
+      code, err = hook_in(home)
 
-    assert_equal 0, call(prompt: "hello").code
+      assert_equal [0, true], [code, err.include?("local.db is not migrated")]
+    end
   end
 end
