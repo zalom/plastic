@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "digest"
-
 module Plastic
   module Installations
     # The text Plastic installs into ~/.claude/CLAUDE.md between its two markers. It is one
