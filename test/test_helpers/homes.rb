@@ -85,7 +85,12 @@ module Plastic
         end
 
         def restore_lost_databases
-          @databases.each { |path| FileUtils.cp(pristine(path), path) if !File.exist?(path) && File.exist?(pristine(path)) }
+          @databases.each { |path| restore_lost(path) if !File.exist?(path) && File.exist?(pristine(path)) }
+        end
+
+        def restore_lost(path)
+          FileUtils.mkdir_p(File.dirname(path))
+          FileUtils.cp(pristine(path), path)
         end
 
         def pristine(path) = File.join("#{@dir}.databases", path.delete_prefix("#{@dir}/"))
