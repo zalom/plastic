@@ -4,15 +4,12 @@ require_relative "table"
 require_relative "knowledge/intent"
 require_relative "knowledge/roadmap"
 require_relative "schema/metadata"
-require_relative "schema/triggers"
 require_relative "schema/catalog"
 
 module Plastic
   module Graph
     # Builds database DDL and exposes the tables that Plastic's graph uses.
     module Schema
-      extend SchemaTriggers
-
       class UnknownTable < KeyError; end
 
       def self.file(key) = databases.fetch(key).first
@@ -25,7 +22,7 @@ module Plastic
 
       def self.fetch(key, schema: nil)
         names = databases.fetch(key).last
-        [*names.map { |name| ddl(name, schema) }, *names.flat_map { |name| trigger_creates(name) }].join("\n")
+        names.map { |name| ddl(name, schema) }.join("\n")
       end
 
       def self.prepare(connection, schema) = connection.execute_batch(schema)
@@ -51,7 +48,6 @@ module Plastic
       def self.store = SchemaCatalog::STORE
       def self.derived = SchemaCatalog::DERIVED
       def self.tables = SchemaCatalog::TABLES
-      def self.triggers = SchemaCatalog::TRIGGERS
       def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
 
       def self.nouns = SchemaMetadata::NOUNS

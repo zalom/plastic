@@ -34,27 +34,19 @@ module Plastic
         end
       end
 
-      # One trigger: its name, the table it sits on, and its text from the timing on.
-      Trigger = Data.define(:name, :on, :sql) do
-        def create = "CREATE TRIGGER IF NOT EXISTS #{SQL.name(name)} #{sql}"
-
-        def drop = "DROP TRIGGER IF EXISTS #{SQL.name(name)};"
-      end
-
       # One virtual table: its name and the module it is built with.
       VirtualTable = Data.define(:name, :using) do
         def ddl(schema = nil) = "CREATE VIRTUAL TABLE IF NOT EXISTS #{SQL.qualified(schema, name)} USING #{using};"
       end
 
-      # What the block of SchemaFile.define declares: tables, virtual tables, triggers, marks and databases.
+      # What the block of SchemaFile.define declares: tables, virtual tables, marks and databases.
       class Declared
-        attr_reader :tables, :virtual, :triggers, :databases
+        attr_reader :tables, :virtual, :databases
 
         def initialize
           @tables = {}
           @marks = {}
           @virtual = {}
-          @triggers = {}
           @databases = {}
         end
 
@@ -85,7 +77,7 @@ module Plastic
 
       attr_reader :version
 
-      def_delegators :@declared, :tables, :virtual, :triggers, :databases, :legacy, :since
+      def_delegators :@declared, :tables, :virtual, :databases, :legacy, :since
 
       def self.define(version:, &block) = new(version, Declared.new.tap { |declared| declared.instance_eval(&block) })
 

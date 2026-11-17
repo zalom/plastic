@@ -9,7 +9,6 @@ module Plastic
       TABLES = SCHEMA_FILE.tables.freeze
       VIRTUAL = SCHEMA_FILE.virtual.freeze
       MARKS = { since: SCHEMA_FILE.since.freeze }.freeze
-      TRIGGERS = SCHEMA_FILE.triggers.freeze
       DATABASES = SCHEMA_FILE.databases.freeze
       STORE = %i[work knowledge].freeze
       DERIVED = %i[retrieval].freeze
