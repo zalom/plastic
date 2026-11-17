@@ -26,7 +26,14 @@ module Plastic
 
         private
 
-        def candidates(dir, named) = named.empty? ? @folder.files(dir) : named.map { |name| inside(dir, name) }
+        def candidates(dir, named) = named.empty? ? @folder.files(dir) : named.map { |name| read_by_sync(dir, name) }
+
+        def read_by_sync(dir, name)
+          path = inside(dir, name)
+          raise Usage, "#{name} is not read by the sync, so it cannot be the result of a node" unless result?(dir, path)
+
+          path
+        end
 
         def inside(dir, name)
           path = name.start_with?("#{dir}/") ? name : File.join(dir, name)
