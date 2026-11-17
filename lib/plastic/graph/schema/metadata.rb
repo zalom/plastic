@@ -9,7 +9,7 @@ module Plastic
         "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
         "command_runs" => ["command run", "command runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "runs" => %w[run runs], "edges" => %w[edge edges],
-        "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
+        "work_log" => ["work log line", "work log lines"], "documents" => %w[document documents],
         "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions],
