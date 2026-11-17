@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require "json"
+require "sqlite3"
 require_relative "../graph/database"
+require_relative "../graph/behind"
 
 module Plastic
   class Config
@@ -39,7 +41,7 @@ module Plastic
         return [] unless File.file?(@path)
 
         Graph::Database.open_local(@home).fetch(:local).rows(sql, **binds).map(&:values)
-      rescue
+      rescue SQLite3::Exception, Graph::Database::Error, Graph::OutOfStep
         []
       end
     end
