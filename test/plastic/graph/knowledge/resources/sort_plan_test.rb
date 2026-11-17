@@ -50,4 +50,14 @@ class ResourcesSortPlanTest < Plastic::TestCase
     assert_equal ["#{INTENT}/resources/notes.md: missing.md"], plan.unresolved
     assert_equal %w[reviews/r1.md resources/notes.md spec.md].map { |rel| "#{INTENT}/#{MOVES.fetch(rel, rel)}" }.sort, plan.rewrites.map(&:path).sort
   end
+
+  def test_links_that_leave_the_intent_folder_are_recomputed
+    put(OLD_FILES.merge("reviews/r1.md" => "[o](../../2--b/spec.md) [m](../../2--b/reviews/r2.md)\n"))
+    @folder.write("store/2--b/spec.md", "# B\n")
+    @folder.write("store/2--b/reviews/r2.md", "# R2\n")
+    plan = SortPlan.new(@folder)
+    written = plan.rewrites.find { |rewrite| rewrite.path == "#{INTENT}/resources/output/reports/reviews/r1.md" }
+
+    assert_equal ["[o](../../../../../2--b/spec.md) [m](../../../../../2--b/resources/output/reports/reviews/r2.md)\n", []], [written.text, plan.unresolved.grep(/r1/)]
+  end
 end
