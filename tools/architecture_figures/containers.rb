@@ -17,7 +17,7 @@ module ArchitectureFigures
       instructions | | 30 199 230 | PLASTIC.md | file | agent | | The always-on instructions / the harness imports.
       program | | 330 199 260 | exe/plastic | pointer | code | mono | A launcher that points to / the active program.
       local | cylinder | 640 205 210 | plastic.db | | | | command_runs, sessions, / locks, settings
-      registry | | 880 199 250 | config.yml, projects.yml | files | line | | Settings, and the list of / projects: slug to repository.
+      registry | | 880 199 250 | config.yml, projects.yml | files | line | | Printed from the settings / rows, and the list of / projects: slug to repository.
       store | zone | 10 370 1140 390 | A store | | | |
       work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, edges
       knowledge | cylinder | 320 405 250 | knowledge_graph.db | | | | documents, rulings, links

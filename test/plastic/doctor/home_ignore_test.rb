@@ -32,6 +32,7 @@ class DoctorHomeIgnoreTest < Plastic::TestCase
 
     assert_equal ["*.db\n*.db-*\nbackups/\n", "ok, *.db *.db-* listed"], [File.read(file), result.value]
   end
+
   def test_a_file_that_lists_only_the_database_line_gets_the_side_file_line
     File.write(file, "*.db\n")
     ignore.check

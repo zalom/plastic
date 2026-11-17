@@ -6,7 +6,7 @@ require_relative "../harnesses"
 module Plastic
   module Hooks
     # The harness entries the installer writes: one hook group per event,
-    # plus the status line and the screens, from `config.yml`. A rerun
+    # plus the status line and the screens, from the settings rows. A rerun
     # replaces this installation's own groups and keeps everyone else's,
     # so a user's own hook or status line is never touched.
     class Entries

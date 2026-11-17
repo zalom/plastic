@@ -256,8 +256,8 @@ order, and later hooks read it from the session row.
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its live locks, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |
-| Message display (Claude Code) | The screens launcher | Paints the screens when `config.yml` turns them on. |
-| Status line (Claude Code) | The statusline launcher | Prints the status line when `config.yml` turns it on. |
+| Message display (Claude Code) | The screens launcher | Paints the screens when the setting `screens` (`plastic config set screens true`) turns them on. |
+| Status line (Claude Code) | The statusline launcher | Prints the status line when the setting `statusline` (`plastic config set statusline true`) turns it on. |
 
 ### Sync
 
