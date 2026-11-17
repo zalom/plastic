@@ -62,7 +62,7 @@ class GraphBackupWriterTest < Plastic::TestCase
     row = backup_at(home, at(2026, 1, 1, 10, 0, 0))
     folders = Backup::Folders.new(File.join(home, "stores", "alpha"))
 
-    assert_equal [3, "alpha/20260101100000", folders.digest("20260101100000")], row.values_at(:files, :name, :sha256)
+    assert_equal [2, "alpha/20260101100000", folders.digest("20260101100000")], row.values_at(:files, :name, :sha256)
     assert_equal row.fetch(:bytes), folders.bytes("20260101100000")
   end
 
@@ -153,6 +153,13 @@ class GraphBackupWriterLogTest < Plastic::TestCase
   def test_the_log_is_not_counted_as_a_database
     home = fresh_home
 
+    assert_equal 2, writer(home).call.fetch(:files)
+  end
+
+  def test_a_beta_2_store_with_references_db_backs_up_three_databases
+    home = fresh_home
+    add_references(home)
+
     assert_equal 3, writer(home).call.fetch(:files)
   end
 end
@@ -168,7 +175,7 @@ class GraphBackupWriterSafetyTest < Plastic::TestCase
 
   def stamp_versions(home, version)
     Plastic::Graph::Database::ConnectionPool.release(root(home))
-    %w[work_graph knowledge_graph references].each do |name|
+    %w[work_graph knowledge_graph].each do |name|
       SQLite3::Database.new(store_file(home, name)).tap { |db| db.execute("PRAGMA user_version = #{version}") }.close
     end
   end

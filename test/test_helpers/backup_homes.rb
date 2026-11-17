@@ -22,6 +22,10 @@ module BackupHomes
     graphs.databases.fetch(:store).rows("SELECT 1")
   end
 
+  def add_references(home, slug = "alpha")
+    SQLite3::Database.new(File.join(home, "stores", slug, "references.db")).tap { |db| db.execute("CREATE TABLE sqlar (name TEXT)") }.close
+  end
+
   def at(*parts) = Time.utc(*parts)
 
   def local_at(*parts) = Time.new(*parts)
