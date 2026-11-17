@@ -99,6 +99,7 @@ module WorkflowNameTable
     code_add_edge: "Code::Edge::Add",
     code_remove_edge: "Code::Edge::Remove",
     code_claim_node: "Code::Node::Claim",
+    code_renew_node: "Code::Node::Renew",
     code_release_node: "Code::Node::Release",
     code_done_node: "Code::Node::Done",
     code_fail_node: "Code::Node::Fail",
@@ -131,8 +132,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic.snake(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_four_keys_in_order
-    assert_equal 94, MAPPING.size
+  def test_the_registry_holds_the_ninety_five_keys_in_order
+    assert_equal 95, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

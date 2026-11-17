@@ -55,7 +55,7 @@ module Plastic
             lapsed = node.lapsed?(now)
             return [contested(node), node] unless node.state == "open" || lapsed
 
-            won = take_node(node, by:, agent:, now:, lapsed:)
+            won = win_claim(node, by:, agent:, now:, lapsed:)
             fresh = @retrieval.node(node.intent_id, node.id)
             [won ? :claimed : contested(fresh), fresh]
           end
@@ -64,7 +64,7 @@ module Plastic
 
           def contested(node) = (node.state == "claimed") ? :held : :refused
 
-          def take_node(node, by:, agent:, now:, lapsed:)
+          def win_claim(node, by:, agent:, now:, lapsed:)
             key = { intent_id: node.intent_id, id: node.id, origin: @retrieval.origin_id }
             values = { by:, agent:, now: Plastic.now(now), cutoff: Plastic.now(now - Node::LAPSE) }
             values = values.merge(holder: node.claimed_by) if lapsed
