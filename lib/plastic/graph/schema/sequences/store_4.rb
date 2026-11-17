@@ -94,7 +94,7 @@ module Plastic
       end
 
       def columns(connection, table)
-        names = connection.execute("SELECT name FROM pragma_table_info('#{table}')").map { |row| named(row, "name") }
+        names = connection.execute("SELECT name FROM pragma_table_info(?)", [table]).map { |row| named(row, "name") }
         (table == "changes") ? names - ["seq"] : names
       end
 
