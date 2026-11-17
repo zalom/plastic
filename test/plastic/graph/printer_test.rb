@@ -20,14 +20,14 @@ class PrinterTest < Plastic::TestCase
 
   def test_print_writes_the_files_that_differ_and_returns_their_paths
     write("a.md", "same\n")
-    prints = [Print.text("a.md", :knowledge, "same\n"), Print.text("b.md", :work, "new\n")]
+    prints = [Print.text("a.md", "same\n"), Print.text("b.md", "new\n")]
 
     assert_equal ["b.md"], printer.print(prints)
     assert_equal "new\n", folder.read("b.md")
   end
 
-  def test_print_records_every_hash_in_the_database_that_owns_it
-    printer.print([Print.text("a.md", :knowledge, "x"), Print.text("b.md", :work, "y")])
+  def test_print_records_every_hash_in_the_one_printed_table
+    printer.print([Print.text("a.md", "x"), Print.text("b.md", "y")])
 
     assert_equal({ "b.md" => Digest::SHA256.hexdigest("y"), "a.md" => Digest::SHA256.hexdigest("x") }, retrieval.printed)
   end
@@ -35,8 +35,8 @@ class PrinterTest < Plastic::TestCase
   def test_record_skips_a_hash_already_recorded
     database = Recording.new
     recorded = Data.define(:printed).new({ "a.md" => Digest::SHA256.hexdigest("x") })
-    Plastic::Graph::Printer.new(folder, { knowledge: database }, recorded).record([Print.text("a.md", :knowledge, "x"),
-      Print.text("b.md", :knowledge, "y")])
+    Plastic::Graph::Printer.new(folder, { store: database }, recorded).record([Print.text("a.md", "x"),
+      Print.text("b.md", "y")])
 
     assert_equal [[:printed, ["b.md"]]], database.rows
   end

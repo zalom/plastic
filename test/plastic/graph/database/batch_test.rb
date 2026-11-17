@@ -45,7 +45,14 @@ class DatabaseBatchTest < Plastic::TestCase
     assert_equal [%w[clusters put], %w[approvals put]], changes
   end
 
-  def test_a_counted_write_names_its_table_and_a_plain_add_names_none
+  def test_a_put_writes_its_row_and_no_change_row
+    knowledge.transaction { |batch| batch.put(:clusters, cluster("C")) }
+
+    assert_empty knowledge.rows("SELECT name FROM sqlite_master WHERE name = 'changes'")
+  end
+
+  def test_a_counted_write_names
+_its_table_and_a_plain_add_names_none
     batch = Batch.new.write(:clusters, "DELETE FROM clusters").add("SELECT 1")
 
     assert_equal ["clusters", nil], batch.statements.map(&:table)
