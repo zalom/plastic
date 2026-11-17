@@ -13,7 +13,7 @@ class RetrievalGraphTest < Plastic::TestCase
   def index_text(intent, name, body)
     path = "#{intent.dir}/#{name}"
     write(path, body)
-    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:, clock: FixedClock::CLOCK).read(path))
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path, FixedClock::STAMP))
   end
 
   def test_the_origin_id_is_the_installation_id
