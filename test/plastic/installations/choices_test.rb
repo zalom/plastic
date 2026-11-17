@@ -6,6 +6,7 @@ require "plastic/installations/choices"
 
 class ChoicesTest < Plastic::TestCase
   include PackageFixture
+
   def settings = (@settings ||= FakeSettings.new)
 
   def config_with(values) = @settings = FakeSettings.new(values:)
