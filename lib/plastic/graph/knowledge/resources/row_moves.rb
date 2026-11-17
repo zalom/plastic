@@ -44,13 +44,13 @@ module Plastic
             @database = database
           end
 
-          def call(moves) = run(moves, RowMoves.moving)
+          def call(moves) = transact(moves, RowMoves.moving)
 
-          def drop(moves) = run(moves, RowMoves.dropping)
+          def drop(moves) = transact(moves, RowMoves.dropping)
 
           private
 
-          def run(moves, statements)
+          def transact(moves, statements)
             return if moves.empty?
 
             @database.transaction { |batch| RowMoves.script(batch, moves, statements) }
