@@ -107,7 +107,6 @@ class CommandReferencePageFilesTest < Minitest::Test
 
     assert_includes text, "| What changes | Where | Reach |"
     assert_match(/\| The intent is marked done and its completion is saved \| [^|]+ \| goes with the store \|/, text)
-    assert_match(/\| The lock of the intent is released \| [^|]+ \| stays on this machine \|/, text)
   end
 
   def test_the_texts_the_agent_reads_show_their_placeholders_in_words

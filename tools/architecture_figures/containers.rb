@@ -19,7 +19,7 @@ module ArchitectureFigures
       local | cylinder | 640 205 210 | plastic.db | | | | command_runs, sessions, / settings
       registry | | 880 199 250 | config.yml, projects.yml | files | line | | Printed from the settings / rows, and the list of / projects: slug to repository.
       store | zone | 10 370 1140 390 | A store | | | |
-      work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, edges
+      work | cylinder | 40 405 250 | work_graph.db | | | | intents, nodes, runs, edges
       knowledge | cylinder | 320 405 250 | knowledge_graph.db | | | | documents, rulings, links
       references | cylinder | 600 405 250 | references.db | | | | sqlar
       backups | | 880 399 250 | backups/ | folder | line | | Copies of the three databases, / one folder for each backup.

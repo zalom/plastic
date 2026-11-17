@@ -52,7 +52,7 @@ module GraphResumeHelper
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
-  def node(verb, intent, node_id, *rest) = plastic("node", verb, intent.intent_id, node_id, *rest, table: Plastic::CLI::TABLE)
+  def node(verb, intent, node_id, *rest) = plastic("node", verb, intent.intent_id, node_id, *rest, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
   def intent_with_nodes_in_each_state
     intent = ready_intent

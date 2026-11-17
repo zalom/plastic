@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "optparse"
-require "sqlite3"
 require_relative "command/usage"
 require_relative "command/refusal"
 require_relative "command/failure"
