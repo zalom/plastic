@@ -45,14 +45,18 @@ class AttachedStoreTest < Plastic::TestCase
     assert_equal [0, 0, 0], ["nodes", "intents", "document_passages"].map { |table| store.rows("SELECT COUNT(*) AS n FROM #{table}").first.fetch("n") }
   end
 
+  def names_in(schema) = connection.execute("SELECT name FROM #{schema}.sqlite_master WHERE type = 'table'").map { |row| row["name"] }
+
   def test_each_table_is_built_in_the_file_that_owns_it
     store.rows("SELECT 1")
-    names = ->(schema) { connection.execute("SELECT name FROM #{schema}.sqlite_master WHERE type = 'table'").map { |row| row["name"] } }
 
-    assert_includes names.call("work"), "nodes"
-    assert_includes names.call("main"), "intents"
-    assert_includes names.call("retrieval"), "document_passages"
-    refute_includes names.call("work"), "intents"
+    assert_equal [true, true, true], [names_in("work").include?("nodes"), names_in("main").include?("intents"), names_in("retrieval").include?("document_passages")]
+  end
+
+  def test_a_table_is_not_built_in_a_file_that_does_not_own_it
+    store.rows("SELECT 1")
+
+    refute_includes names_in("work"), "intents"
   end
 
   def test_printed_lives_in_main_only_and_no_file_keeps_a_changes_table

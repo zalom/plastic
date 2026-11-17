@@ -58,11 +58,12 @@ module Plastic
 
       # An attached file that was lost, such as the derived retrieval file, is built again empty; the stamp of the main file stays.
       def build_missing_files
-        lost = @layouts.keys.compact.select { |schema| empty_schema?(schema) }
-        return if lost.empty?
+        return if lost_schemas.empty?
 
-        under_write_lock { lost.each { |schema| @connection.execute_batch(Schema.fetch(@layouts.fetch(schema), schema:)) if empty_schema?(schema) } }
+        under_write_lock { lost_schemas.each { |schema| @connection.execute_batch(Schema.fetch(@layouts.fetch(schema), schema:)) } }
       end
+
+      def lost_schemas = @layouts.keys.compact.select { |schema| empty_schema?(schema) }
 
       def settle(version)
         return if empty? && build_layout

@@ -11,6 +11,7 @@ class RetrievalEvidenceIntegritySourcesTest < Plastic::TestCase
     super
     Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Body\n")
   end
+
   def in_transaction(sql)
     found = nil
     store_database.immediate_transaction { |_batch, connection| found = Evidence::IntegrityTransactionSource.new(connection).rows(sql) }

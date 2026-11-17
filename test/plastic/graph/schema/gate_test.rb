@@ -20,6 +20,23 @@ class SchemaGateTest < Plastic::TestCase
     assert_equal [false, 0], [gate_of(connection).send(:build_layout), connection.get_first_value("PRAGMA user_version")]
   end
 
+  def test_a_file_that_is_not_a_database_is_not_called_behind
+    path = File.join(Dir.mktmpdir, "knowledge_graph.db")
+    File.write(path, "this is not a database" * 100)
+
+    refute Plastic::Graph::SchemaGate.behind?(path, [])
+  end
+
+  def test_a_lost_attached_file_is_built_again_empty_and_the_stamp_stays
+    connection = SQLite3::Database.new(File.join(Dir.mktmpdir, "a.db"))
+    connection.execute("ATTACH DATABASE ? AS retrieval", [File.join(Dir.mktmpdir, "r.db")])
+    connection.execute("CREATE TABLE taken (id)")
+    connection.execute("PRAGMA user_version = #{newest}")
+    Plastic::Graph::SchemaGate.new(connection, layouts: { nil => :knowledge, "retrieval" => :retrieval }, file: "a.db").call
+
+    assert_includes connection.execute("SELECT name FROM retrieval.sqlite_master").flatten, "document_passages"
+  end
+
   def test_a_new_empty_store_gets_the_declared_schema_and_the_newest_stamp_on_its_knowledge_file
     root = File.join(Dir.mktmpdir, "stores", "new")
     FileUtils.mkdir_p(root)

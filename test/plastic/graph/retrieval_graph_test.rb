@@ -162,6 +162,7 @@ class RetrievalReadTest < Plastic::TestCase
   private
 
   def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+
   def historical_reference
     writer.write("1", historical_path, "first body")
     reference = retrieval.reference("1", historical_path)
@@ -391,6 +392,7 @@ class RetrievalRepairTest < Plastic::TestCase
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "repair.md", "repair evidence")
     reindex
   end
+
   def assert_repaired
     assert_equal ["repair evidence"], retrieval.search("repair").map { |row| row.fetch("body") }
     assert_equal [1], DERIVED_TABLES.map { |table| store_database.row("SELECT count(*) AS n FROM #{table}").fetch("n") }.uniq

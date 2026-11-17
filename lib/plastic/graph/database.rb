@@ -79,7 +79,7 @@ module Plastic
       # come back in the order the statements were added. A failed statement
       # rolls the whole batch back and raises Error.
       def transaction
-        batch = Batch.new(origin: @origin)
+        batch = new_batch
         yield batch
         batch.empty? ? [] : commit(batch)
       end
@@ -87,7 +87,7 @@ module Plastic
       # Runs the statements of the batch and always takes them back, so a
       # statement the database refuses raises Error and no row is written or counted.
       def dry_run
-        batch = Batch.new(origin: @origin)
+        batch = new_batch
         yield batch
         connected { |connection| connection.atomically { try(connection, batch) } }
       rescue Undone
@@ -98,7 +98,7 @@ module Plastic
       # transaction. The reader uses the same connection as the eventual
       # commit, so no writer can change the source rows between them.
       def immediate_transaction
-        batch = Batch.new(origin: @origin)
+        batch = new_batch
         connected do |connection|
           connection.atomically do
             yield batch, connection
@@ -134,6 +134,8 @@ module Plastic
       def version = File.exist?(path) ? unfenced { open_file.get_first_value("PRAGMA user_version").to_i } : nil
 
       private
+
+      def new_batch = Batch.new(origin: @origin)
 
       def open_file = ConnectionPool.for(path)
 

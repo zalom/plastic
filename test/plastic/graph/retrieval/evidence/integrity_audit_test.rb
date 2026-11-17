@@ -9,6 +9,7 @@ class RetrievalEvidenceIntegrityAuditTest < Plastic::TestCase
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Audited evidence\n")
     reindex
   end
+
   def report
     snapshot = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(store_database, origin).capture
     Plastic::Graph::Retrieval::Evidence::IntegrityAudit.report(snapshot)

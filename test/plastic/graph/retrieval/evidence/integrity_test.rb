@@ -12,6 +12,7 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Integrity evidence\n")
     reindex
   end
+
   def integrity = Integrity.new(store_database, origin, before_rebuild: -> { @calls += 1 })
 
   def drop(table) = store_database.transaction { |batch| batch.add("DELETE FROM #{table}") }

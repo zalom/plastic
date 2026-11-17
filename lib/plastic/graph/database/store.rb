@@ -21,6 +21,7 @@ module Plastic
         def initialize(root, origin)
           super(File.join(root, Schema.file(:knowledge)), nil, origin:, key: :knowledge)
           @files = Store.attachments(path)
+          @retrieval_lost = false
         end
 
         def retrieval_path = files.fetch(:retrieval)
@@ -32,15 +33,12 @@ module Plastic
         end
 
         # What this call wrote, as the report says it, one phrase for each file in the order work, knowledge, retrieval.
-        def phrases
-          counted = written.except(RUNS).group_by { |table, _count| Schema.file_of(table) }
-          FILES.filter_map { |file| "#{Schema.phrase(counted.fetch(file).to_h)} in #{file}" if counted.key?(file) }
-        end
+        def phrases = written_by_file.sort_by { |file, _tables| FILES.index(file) }.map { |file, tables| "#{Schema.phrase(tables)} in #{file}" }
 
         # Runs a search rebuild in a deferred transaction, which takes the write lock of a file only when it first writes
         # there. The rebuild reads before it and writes only retrieval tables, so work and knowledge stay writable.
         def rebuilding
-          batch = Batch.new(origin: @origin)
+          batch = new_batch
           connected do |connection|
             connection.deferred do
               yield batch, connection
@@ -51,6 +49,8 @@ module Plastic
 
         private
 
+        def written_by_file = written.except(RUNS).group_by { |table, _count| Schema.file_of(table) }.transform_values(&:to_h)
+
         def open_file
           refuse_behind unless ConnectionPool.connections.key?(path)
           ConnectionPool.for(path, attach: files)
@@ -59,7 +59,8 @@ module Plastic
         # ATTACH makes a file for a missing one, so a store that is behind and lacks an attached file is refused before the first ATTACH.
         def refuse_behind
           @retrieval_lost = File.file?(path) && !File.file?(retrieval_path)
-          raise Behind, "#{file} is behind this code; run plastic update" if files.values.any? { |attached| !File.file?(attached) } && SchemaGate.behind?(path, files.values)
+          attached = files.values
+          raise Behind, "#{file} is behind this code; run plastic update" if attached.any? { |attachment| !File.file?(attachment) } && SchemaGate.behind?(path, attached)
         end
 
         def settle(connection)

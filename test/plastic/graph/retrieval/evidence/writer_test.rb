@@ -68,7 +68,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
     assert_equal ["first evidence", "second evidence"], rows("document_revisions", "body").sort
     assert_equal ["first evidence", "second evidence"], rows("document_passages", "body").sort
   end
-  
+
   def rows(table, column) = store_database.rows("SELECT #{column} AS value FROM #{table}").map { |row| row.fetch("value") }
 
   def count(table) = store_database.row("SELECT count(*) AS n FROM #{table}").fetch("n")

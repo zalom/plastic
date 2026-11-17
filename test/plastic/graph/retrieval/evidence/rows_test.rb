@@ -11,6 +11,7 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
   end
 
   def document = Plastic::Graph::Retrieval::Evidence::Document.new("1", "plan.md", "Body\n", now: STAMP)
+
   def test_the_rows_are_written_canonical_then_immutable_then_current
     batch = Recording.new([])
     Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write

@@ -28,18 +28,21 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
   def test_work_log_reads_one_row_per_line_and_a_loose_line_is_noted
     read_in("work.log", "- #{AT} Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec written\nfree text\n")
+
     assert_equal [[1, "wrote", "n3", "s-1", "Spec written"], [2, "noted", "", nil, "free text"]],
       retrieval.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
   end
 
   def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
     read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
+
     assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
       retrieval.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
   end
 
   def test_a_markdown_file_reads_into_a_document
     read_in("notes.md", "# Notes\n")
+
     assert_equal "# Notes\n", retrieval.documents("1").find { |document| document.path == "notes.md" }.body
   end
 
@@ -75,6 +78,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     read_in("plan.md", "# Plan\n")
     read_in("checklist.md", "- [ ] one\n")
     read_in("actions/ACTION_1.md", "# A\n")
+
     assert_equal [["actions/ACTION_1.md", "# A\n"], ["checklist.md", "- [ ] one\n"], ["plan.md", "# Plan\n"]], legacy_rows
     assert_empty retrieval.documents("1").map(&:path) & %w[plan.md checklist.md actions/ACTION_1.md]
   end
@@ -100,16 +104,19 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
   def test_a_binary_file_under_actions_stays_a_kept_file
     read_in("actions/data.bin", "\x00\xFF".b)
+
     assert_equal [[], true], [legacy_rows, !kept("actions/data.bin").nil?]
   end
 
   def test_an_empty_file_under_actions_is_a_legacy_row
     read_in("actions/.gitkeep", "")
+
     assert_equal [["actions/.gitkeep", ""]], legacy_rows
   end
 
   def test_spec_md_stays_a_document
     read_in("spec.md", "# Spec\n")
+
     assert_equal [[], ["# Spec\n"]], [legacy_rows, retrieval.documents("1").select { |document| document.path == "spec.md" }.map(&:body)]
   end
 
@@ -144,6 +151,7 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
 
   def test_context_json_cannot_become_a_document
     read_in("context.json", JSON.generate("intent" => "1", "context" => {}))
+
     assert_empty retrieval.documents("1").select { |document| document.path == "context.json" }
   end
 

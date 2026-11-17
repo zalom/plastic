@@ -9,6 +9,7 @@ class RetrievalEvidenceIntegrityRebuilderTest < Plastic::TestCase
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Rebuilt evidence\n")
     @expected = rows("document_heads")
   end
+
   def rows(table) = store_database.rows("SELECT * FROM #{table} ORDER BY 1, 2, 3")
 
   def rebuild
