@@ -48,7 +48,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
   def test_a_failed_live_check_is_a_finding_that_names_the_file_and_the_backup_command
     home = stale_home
     damage_leaf(home)
-    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER, store: Plastic::Wiring.store(@plastic_home)).call("sync up")
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
     found = check(home, THIRTEEN_HOURS_LATER)
 
     assert_equal ["backups alpha:", "plastic backup --store alpha"], [found.label, found.repair]
@@ -74,7 +74,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
   def test_the_core_checks_carry_one_backups_check_for_each_store
     home = stale_home
     scope = Plastic::Scope.new(env: env_for(home), home: @home, slug: "alpha", directory: @home)
-    labels = Plastic::Doctor::Core.new(scope, running: "0", loader: -> { "2" }, now: THIRTEEN_HOURS_LATER).checks.map(&:label)
+    labels = Plastic::Doctor::Core.new(scope, running: "0", loader: -> { "2" }, now: THIRTEEN_HOURS_LATER, store: Plastic::Wiring.store(@plastic_home)).checks.map(&:label)
 
     assert_equal ["backups alpha:", "backups beta:", "backups global:"], labels.grep(/\Abackups/).sort
   end

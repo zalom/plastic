@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../cli/wiring"
-
 module Plastic
   module Workflows
     # Resolves the selected stores for a retrieval discovery request.
@@ -25,7 +23,7 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        (values.empty? ? Plastic::Wiring.config(@context.scope.plastic_home).source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
+        (values.empty? ? @context.settings.config.source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
       end
 
       def validate(selected)

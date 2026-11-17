@@ -26,7 +26,7 @@ class CommandWorkspaceTest < Plastic::TestCase
     assert_nil workspace.renew_claims
   end
 
-  def test_the_settings_are_bound_to_the_home_and_the_clock_of_the_call_and_made_once
+  def test_the_settings_are_bound_to_the_home_and_the_clock_of_the_call
     scope = Struct.new(:plastic_home).new("/plastic-home")
     workspace = Plastic::CLI::Command::Workspace.new(Environment.new(nil, :the_clock), -> { scope })
 

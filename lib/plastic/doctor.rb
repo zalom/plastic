@@ -39,14 +39,14 @@ module Plastic
       end
     end
 
-    def self.checks(scope, kind, running:, now:)
-      Core.new(scope, running:, now:).checks + harness_checks(scope, kind, running:)
+    def self.checks(scope, kind, running:, now:, store:)
+      Core.new(scope, running:, now:, store:).checks + harness_checks(scope, kind, running:)
     end
 
     def self.harness_checks(scope, kind, running:) = kind ? kind.new(scope, running:).checks : []
 
-    def self.check(scope, harness:, running:, now:) = checks(scope, kind(harness), running:, now:)
+    def self.check(scope, harness:, running:, now:, store:) = checks(scope, kind(harness), running:, now:, store:)
 
-    def self.failing(scope, harness:, running:, now:) = check(scope, harness:, running:, now:).select(&:repair)
+    def self.failing(scope, harness:, running:, now:, store:) = check(scope, harness:, running:, now:, store:).select(&:repair)
   end
 end

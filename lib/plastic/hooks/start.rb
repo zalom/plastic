@@ -33,7 +33,7 @@ module Plastic
 
       private
 
-      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now)
+      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now, store: Wiring.store(scope.plastic_home, clock: environment.clock))
 
       def back_up_stores
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|

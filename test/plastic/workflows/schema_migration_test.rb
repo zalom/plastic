@@ -5,7 +5,7 @@ require_relative "../../../lib/plastic/workflows/schema_migration"
 
 class SchemaMigrationTest < Plastic::TestCase
   def test_the_line_the_store_of_the_settings_prints_is_printed_by_the_call
-    context = call_context(settings: FakeSettings.new(print_once: "config.yml printed from the settings"))
+    context = call_context(harness: scoped_harness(settings: FakeSettings.new(print_once: "config.yml printed from the settings")))
 
     Plastic::Workflows::SchemaMigration.import_config(context)
 
@@ -13,7 +13,7 @@ class SchemaMigrationTest < Plastic::TestCase
   end
 
   def test_a_store_with_nothing_to_print_adds_no_line
-    context = call_context(settings: FakeSettings.new)
+    context = call_context(harness: scoped_harness(settings: FakeSettings.new))
 
     Plastic::Workflows::SchemaMigration.import_config(context)
 

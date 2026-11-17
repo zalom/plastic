@@ -9,7 +9,7 @@ class InstallerTest < Plastic::TestCase
 
   Installations = Plastic::Installations
 
-  def installer = Installations::Installer.new(package_root: shipped, plastic_home: plastic, settings: Plastic::Wiring.settings(plastic), agents: agent_configs, tmp_dirs: [])
+  def installer = Installations::Installer.new(shipped_package, agents: agent_configs, tmp_dirs: [])
 
   def run_install(selected = %w[claude], **options)
     results = nil
@@ -88,7 +88,7 @@ class InstallerTest < Plastic::TestCase
   end
 
   def test_the_version_comes_from_the_package_and_the_channel_from_the_version
-    value = Installations::Installer.new(package_root: shipped, plastic_home: plastic, settings: Plastic::Wiring.settings(plastic), agents: agent_configs, version: "2.1.0-beta.2")
+    value = Installations::Installer.new(shipped_package("2.1.0-beta.2"), agents: agent_configs)
 
     assert_equal ["2.1.0-beta.2", "beta"], [value.version, value.channel]
   end
@@ -127,7 +127,7 @@ class InstallerTest < Plastic::TestCase
 
   def test_the_install_prints_the_line_the_store_of_the_settings_reports
     out, = capture_io do
-      Installations::Installer.new(package_root: shipped, plastic_home: plastic, settings: FakeSettings.new(print_once: "config.yml printed from the settings"), agents: agent_configs, tmp_dirs: []).install_agents(selected: [])
+      Installations::Installer.new(Installations::Package.new(shipped, plastic, "2.0.3", FakeSettings.new(print_once: "config.yml printed from the settings")), agents: agent_configs, tmp_dirs: []).install_agents(selected: [])
     end
 
     assert_includes out, "   config.yml printed from the settings"

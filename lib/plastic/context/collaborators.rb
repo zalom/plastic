@@ -13,6 +13,8 @@ module Plastic
       def session = harness.session
 
       def scope = harness.scope
+
+      def settings = harness.settings
     end
   end
 end

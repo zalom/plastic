@@ -5,7 +5,7 @@ require_relative "../../../lib/plastic/workflows/config_settings"
 
 class ConfigSettingsTest < Plastic::TestCase
   def settings_for(fake, harness: nil)
-    Plastic::Workflows::ConfigSettings.new(call_context(declared: %i[harness], settings: fake, harness:))
+    Plastic::Workflows::ConfigSettings.new(call_context(declared: %i[harness], harness: scoped_harness(settings: fake)))
   end
 
   def test_the_entries_are_the_ones_of_the_config_the_settings_hold

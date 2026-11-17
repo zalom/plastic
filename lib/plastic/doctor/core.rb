@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require "shellwords"
 require_relative "check"
 require_relative "version_record"
@@ -7,12 +8,13 @@ require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
 require_relative "../installations/home_ignore"
-require_relative "../cli/wiring"
 require_relative "installation_health"
 
 module Plastic
   module Doctor
     class Core
+      extend Forwardable
+
       SQLITE = lambda do
         require "sqlite3"
         SQLite3::VERSION
@@ -20,6 +22,7 @@ module Plastic
       SCHEMA = Graph::Schema
       STORE = SCHEMA.store
       PLASTIC_LINE = /PLASTIC\.md/
+      Readers = Data.define(:running, :loader, :config_store)
 
       def self.store_problem(folder)
         problems = STORE.filter_map { |key| DatabaseCheck.new(File.join(folder, SCHEMA.file(key)), key).problem }
@@ -32,10 +35,9 @@ module Plastic
           .judged(InstructionLine.new(file, PLASTIC_LINE).problem)
       end
 
-      def initialize(scope, running:, now:, loader: SQLITE)
+      def initialize(scope, running:, now:, store:, loader: SQLITE)
         @scope = scope
-        @running = running
-        @loader = loader
+        @readers = Readers.new(running:, loader:, config_store: store)
         @now = now
       end
 
@@ -43,7 +45,9 @@ module Plastic
 
       private
 
-      attr_reader :scope, :running, :loader, :now
+      attr_reader :scope, :now
+
+      def_delegators :@readers, :running, :loader, :config_store
 
       def home = scope.plastic_home
 
@@ -73,7 +77,7 @@ module Plastic
       end
 
       def config_file
-        line = Wiring.store(home).problem
+        line = config_store.problem
         return Check.ok("config.yml:", "matches the settings rows") unless line
 
         Check.finding("config.yml:", line, Config::Store::REPAIR)

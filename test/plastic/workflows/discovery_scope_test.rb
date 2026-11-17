@@ -5,7 +5,7 @@ require_relative "../../../lib/plastic/workflows/discovery_scope"
 
 class DiscoveryScopeTest < Plastic::TestCase
   def resolve(source_projects = [], env: {})
-    Plastic::Workflows::DiscoveryScope.resolve(call_context(harness: scoped_harness(env:), settings:, source_projects:))
+    Plastic::Workflows::DiscoveryScope.resolve(call_context(harness: scoped_harness(env:, settings:), source_projects:))
   end
 
   def store(slug) = FileUtils.mkdir_p(File.join(@plastic_home, "stores", slug))

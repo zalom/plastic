@@ -4,7 +4,6 @@ require_relative "../../code_workflow"
 require_relative "../../harnesses"
 require_relative "../installation"
 require_relative "../../doctor/installation_hooks"
-require_relative "../../cli/wiring"
 
 module Plastic
   module Workflows
@@ -30,7 +29,7 @@ module Plastic
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }
-          Plastic::Wiring.config(context.scope.plastic_home, clock: context.clock).set("sync.media", context.media)
+          context.settings.config.set("sync.media", context.media)
           context[:installed] = installation.version
           context[:checked] = context.picked.first
         end

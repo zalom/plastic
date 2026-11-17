@@ -6,7 +6,7 @@ require_relative "../../../lib/plastic/workflows/search_scope"
 class WorkflowSearchScopeTest < Plastic::TestCase
   def sources(source_projects, env: {})
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "other"))
-    context = call_context(harness: scoped_harness(slug: "global", env:), settings:, source_projects:)
+    context = call_context(harness: scoped_harness(slug: "global", env:, settings:), source_projects:)
     Plastic::Workflows::SearchScope.new(context).sources
   end
 

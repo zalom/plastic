@@ -97,8 +97,8 @@ module Plastic
 
       def_delegators :@call, :words, :argv, :parsed
       def_delegator :@workspace, :environment
-      def_delegators :@workspace, :graphs, :renew_claims
-      private :words, :environment, :argv, :parsed, :graphs, :renew_claims
+      def_delegators :@workspace, :graphs, :settings, :renew_claims
+      private :words, :environment, :argv, :parsed, :graphs, :settings, :renew_claims
 
       def tool = self.class
 

@@ -28,8 +28,8 @@ module Plastic
       end
 
       # The context of one call against the graphs of the global store.
-      def call_context(declared: [], harness: scoped_harness, graphs: store_graphs, settings: Plastic::Wiring.settings(@plastic_home), **facts)
-        Plastic::Context.new(declared: (declared + facts.keys).uniq, facts:, graphs:, harness:, settings:)
+      def call_context(declared: [], harness: scoped_harness, graphs: store_graphs, **facts)
+        Plastic::Context.new(declared: (declared + facts.keys).uniq, facts:, graphs:, harness:)
       end
 
       # The labelled rows a call printed, as an output keeps them.
@@ -44,9 +44,9 @@ module Plastic
       def printed_row(context, label) = printed_rows(context).assoc(label)&.last
 
       # The session and store scope of a call made from the test's home.
-      def scoped_harness(session: nil, slug: nil, env: {})
+      def scoped_harness(session: nil, slug: nil, env: {}, settings: Plastic::Wiring.settings(@plastic_home))
         scope = Plastic::Scope.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env), home: @home, slug:, directory: @home)
-        Plastic::Context::Harness.new(session, scope)
+        Plastic::Context::Harness.new(session, scope, settings)
       end
     end
   end

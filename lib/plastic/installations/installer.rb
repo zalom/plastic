@@ -3,7 +3,6 @@
 require "forwardable"
 require "tmpdir"
 require_relative "../config/upgrade"
-require_relative "../cli/wiring"
 require_relative "home_ignore"
 require_relative "../installations"
 require_relative "../graph"
@@ -39,8 +38,8 @@ module Plastic
       def_delegator :@agents, :config, :agent_config
       def_delegator :@agents, :installed_keys, :installed_agents
 
-      def initialize(package_root:, plastic_home:, version: PackageVersion.new(package_root).call, clock: Time, **seams)
-        @package = Package.new(root: package_root, home: plastic_home, version:, clock:)
+      def initialize(package, **seams)
+        @package = package
         @agents = AgentSet.new(seams.fetch(:agents, AgentSet::DEFAULTS))
         @distribution = seams.except(:agents)
       end
@@ -82,7 +81,7 @@ module Plastic
 
       def print_config
         HomeIgnore.new(plastic_home).apply
-        line = Wiring.store(plastic_home, clock: package.clock).print_once
+        line = package.settings.store.print_once
         puts "   #{line}" if line
       end
 

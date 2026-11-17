@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../cli/wiring"
 require_relative "../graph"
 
 module Plastic
@@ -17,7 +16,7 @@ module Plastic
       end
 
       def self.import_config(context)
-        line = Wiring.store(context.scope.plastic_home, clock: context.clock).print_once
+        line = context.settings.store.print_once
         context.print(line) if line
       end
     end

@@ -19,10 +19,10 @@ module Plastic
   class Context
     extend Forwardable
 
-    # The session and store scope that made the call.
-    Harness = Struct.new(:session, :scope)
+    # The session, the store scope and the settings that made the call.
+    Harness = Struct.new(:session, :scope, :settings)
 
-    def_delegators :@collaborators, :session, :scope, :clock, :work, :retrieval, :database
+    def_delegators :@collaborators, :session, :scope, :settings, :clock, :work, :retrieval, :database
     def_delegators :@printed, :print_to
     def_delegator :@printed, :lines, :printed
 

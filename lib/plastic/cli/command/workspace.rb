@@ -24,6 +24,8 @@ module Plastic
 
         def graphs = (@graphs ||= open_graphs)
 
+        def settings = Wiring.settings(scope.plastic_home, clock: @environment.clock)
+
         # Renews the claims of this session after the call, in the store the call reached and
         # only when its work database exists: a renewal never makes one.
         def renew_claims
