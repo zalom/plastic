@@ -77,30 +77,6 @@ module Plastic
         SHIPPED_EFFORT_DEFAULTS.fetch(agent.to_s, DEFAULT_EFFORT)
       end
 
-      # Pull { basename => model } out of a loaded config hash's `agents.models`
-      # section, scoped to `harness` ("claude" or "codex"), tolerating a missing or
-      # malformed shape. `agents.models` can mix two shapes: legacy FLAT scalar
-      # entries (agents.models.plastic-executor: sonnet), honored as the claude
-      # harness only, and harness-scoped sub-hashes (agents.models.claude.*,
-      # agents.models.codex.*). Nested wins over flat for the same agent on the
-      # claude harness; a non-claude harness reads ONLY its own nested sub-hash,
-      # never the flat entries, so a literal model id written under the flat form
-      # (or agents.models.claude.*) can never leak into another harness's config.
-      def models_section(config, harness: "claude")
-        return {} unless config.is_a?(Hash)
-        agents = config["agents"]
-        return {} unless agents.is_a?(Hash)
-        section = agents["models"]
-        return {} unless section.is_a?(Hash)
-
-        nested = section[harness]
-        nested = nested.is_a?(Hash) ? nested : {}
-        return nested unless harness == "claude"
-
-        flat = section.reject { |_key, value| value.is_a?(Hash) }
-        flat.merge(nested)
-      end
-
       # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not
       # one of the three shipped aliases (the caller treats nil as a literal Codex model id).
       def effort_for(value)

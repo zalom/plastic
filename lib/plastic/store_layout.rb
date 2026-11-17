@@ -3,7 +3,6 @@
 module Plastic
   module StoreLayout
     GLOBAL = "global"
-    PARENTS = %w[stores projects].freeze
 
     module_function
 
@@ -29,14 +28,6 @@ module Plastic
 
     def root(home, slug)
       (slug == GLOBAL) ? global_root(home) : project_root(home, slug)
-    end
-
-    def locate(store)
-      root = File.dirname(File.expand_path(store))
-      parent = File.dirname(root)
-      return [root, GLOBAL] unless PARENTS.include?(File.basename(parent))
-
-      [File.dirname(parent), File.basename(root)]
     end
   end
 end

@@ -4,34 +4,6 @@ require_relative "../../test_helper"
 require "plastic/config/agent_models"
 
 class AgentModelsTest < Plastic::TestCase
-  def config(models)
-    { "agents" => { "models" => models } }
-  end
-
-  def test_a_flat_entry_counts_for_the_claude_harness
-    assert_equal({ "plastic-executor" => "haiku" }, Plastic::Config::AgentModels.models_section(config("plastic-executor" => "haiku")))
-  end
-
-  def test_a_nested_claude_entry_wins_over_a_flat_one
-    models = config("plastic-executor" => "haiku", "claude" => { "plastic-executor" => "opus" })
-
-    assert_equal({ "plastic-executor" => "opus" }, Plastic::Config::AgentModels.models_section(models))
-  end
-
-  def test_the_codex_harness_never_reads_a_flat_entry
-    assert_empty Plastic::Config::AgentModels.models_section(config("plastic-executor" => "haiku"), harness: "codex")
-  end
-
-  def test_a_malformed_models_section_reads_as_empty
-    assert_empty Plastic::Config::AgentModels.models_section(config("not a hash"))
-  end
-
-  def test_a_config_that_is_not_a_mapping_reads_as_empty
-    models = Plastic::Config::AgentModels
-
-    assert_equal [{}, {}], [models.models_section("text"), models.models_section({ "agents" => "text" })]
-  end
-
   def test_a_value_that_is_not_a_tier_alias_has_no_effort_and_no_codex_model
     assert_equal [nil, nil], [Plastic::Config::AgentModels.effort_for("gpt-5.6-sol"), Plastic::Config::AgentModels.codex_model_for("gpt-5.6-sol")]
   end
