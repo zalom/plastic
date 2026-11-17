@@ -3,7 +3,7 @@
 Move a claimed node to needs_info with a question for the owner.
 
 ```sh
-plastic node ask ID NODE TEXT
+plastic node ask ID NODE TEXT [--file PATH]
 ```
 
 | Argument or option | What it gives | Default |
@@ -11,6 +11,7 @@ plastic node ask ID NODE TEXT
 | `ID` | the intent | |
 | `NODE` | the node | |
 | `TEXT` | the question and what was tried | |
+| `--file PATH` | a file of the intent folder to read as the result; repeat for more; every changed file when left out | `[]` |
 
 ## The events of one call, step by step
 
