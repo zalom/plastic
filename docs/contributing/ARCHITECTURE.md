@@ -291,7 +291,8 @@ disk and get no rows.
 | `resources/tmp/` and every other place | Every file | Never |
 
 A sync up skips the first file of a type that `sync.types` and `sync.asked` do not name, prints one
-line with the `plastic config set sync.types` command, and adds the type to `sync.asked`.
+line that names the `plastic config set` command adding the type to `sync.types`, and adds the type to
+`sync.asked`.
 
 A file the selection leaves out is not read, even when an earlier sync put it in rows.
 Its rows stay, and nothing on disk is removed.

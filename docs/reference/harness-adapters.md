@@ -166,7 +166,7 @@ Plastic's hooks: no record lists a SubagentStart or a SubagentStop entry.
 | Codex CLI | `install.sh`, then `plastic init` | The section in `~/.codex/AGENTS.md` | `hook start`, `hook prompt`, `hook stop` and `hook end` in `~/.codex/hooks.json` | No | `~/.codex/agents/` |
 | Hermes | `install.sh`, then `plastic init` | None | None | No | `~/.hermes/agents/` |
 
-So Claude Code gets three kernel hooks and the update check through `settings.json`. Each
+So Claude Code gets four kernel hooks and the update check through `settings.json`. Each
 harness keeps its version record in its own folder: `~/.claude/plastic/VERSION`,
 `~/.agents/plastic/VERSION` and `~/.hermes/plastic/VERSION`.
 
