@@ -462,3 +462,11 @@ class PrintTriggerTest < Plastic::TestCase
     assert_equal [true, false], %w[1 2].map { cli("intent", "approve", "1").out.include?("files:") }
   end
 end
+
+class PrintsLogOfTest < Plastic::TestCase
+  def test_the_log_print_of_an_intent_is_its_work_log_alone
+    store_graphs.work.write_intent(title: "One")
+
+    assert_equal ["store/1--one/work.log"], Plastic::Graph::Prints.log_of(store_graphs.retrieval, "1").map(&:path)
+  end
+end

@@ -45,6 +45,9 @@ module Plastic
         [index(retrieval), *retrieval.unarchived_intents.flat_map { |intent| of_intent_contents(retrieval, intent, rows) }]
       end
 
+      # The print of the work log of one intent.
+      def log_of(retrieval, intent_id) = of_intent(retrieval, retrieval.intent(intent_id)).select { |print| print.path.end_with?("/" + WORK_LOG) }
+
       def of_intent(retrieval, intent) = of_intent_contents(retrieval, intent, Contents.read(retrieval, intent.intent_id))
 
       def of_intent_contents(retrieval, intent, contents)

@@ -32,6 +32,13 @@ class PrinterTest < Plastic::TestCase
     assert_equal({ "b.md" => Digest::SHA256.hexdigest("y"), "a.md" => Digest::SHA256.hexdigest("x") }, retrieval.stored.printed)
   end
 
+  def test_reprint_forgets_the_recorded_hash_and_records_the_hash_of_the_print
+    printer.print([Print.text("a.md", "x")])
+    printer.reprint([Print.text("a.md", "y")])
+
+    assert_equal({ "a.md" => Digest::SHA256.hexdigest("y") }, retrieval.stored.printed)
+  end
+
   def test_record_skips_a_hash_already_recorded
     database = Recording.new
     stored = Struct.new(:printed).new({ "a.md" => Digest::SHA256.hexdigest("x") })
