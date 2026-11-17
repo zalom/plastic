@@ -76,7 +76,8 @@ module Plastic
           def savepoint(batch)
             known = @retrieval.work_log(@intent_id)
             added = old_rows.reject { |row| known.any? { |line| line.text == row[:text] } }
-            batch.put_all(:work_log, added.each_with_index.map { |row, index| { **row, position: known.size + index + 1 } })
+            start = known.map(&:position).max.to_i
+            batch.put_all(:work_log, added.each_with_index.map { |row, index| { **row, position: start + index + 1 } })
           end
 
           def old_rows = text.lines(chomp: true).reject { |line| line.strip.empty? }.map { |line| old_row(line) }

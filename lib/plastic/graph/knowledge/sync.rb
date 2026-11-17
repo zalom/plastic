@@ -64,7 +64,7 @@ module Plastic
 
         def print_down(plan)
           printer.print(plan.entries_for(:print).map(&:print))
-          [*plan.old_savepoints.remove(@folder), *plan.old_savepoints.kept_lines]
+          [*plan.old_savepoints.remove(@folder, @databases), *plan.old_savepoints.kept_lines]
         end
 
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
