@@ -23,6 +23,7 @@ module OldLayoutHomes
   def old_layout(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
     database_files(home).each { |path| downgrade(path) }
+    restore_old_references(home)
     File.rename(File.join(home, "plastic.db"), File.join(home, "local.db")) if File.exist?(File.join(home, "plastic.db"))
     home
   end
@@ -45,14 +46,36 @@ module OldLayoutHomes
 
   def file_bytes(home) = database_files(home).to_h { |path| [path, File.binread(path)] }
 
+  MOVED_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries work_log_pending].freeze
+  LAYOUT = Plastic::Graph::SchemaStore1::Layout::TEXT
+
   private
 
   def downgrade(path)
     with_database(path) do |db|
-      db.execute_batch(OLD_INTENTS) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'intents' AND type = 'table'")
+      restore_old_tables(db, File.basename(path))
       db.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'locks' AND type = 'table'")
       db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
       db.execute("PRAGMA user_version = 0")
+    end
+  end
+
+  def restore_old_tables(db, name)
+    case name
+    when "work_graph.db" then db.execute_batch(LAYOUT.fetch(:work) + OLD_INTENTS)
+    when "knowledge_graph.db" then restore_old_knowledge(db)
+    end
+  end
+
+  def restore_old_knowledge(db)
+    MOVED_TABLES.each { |table| db.execute("DROP TABLE IF EXISTS \"#{table}\"") }
+    db.execute_batch(LAYOUT.fetch(:knowledge))
+  end
+
+  def restore_old_references(home)
+    Dir.glob(File.join(home, "stores", "*")).each do |store|
+      FileUtils.rm_f(File.join(store, "retrieval_graph.db"))
+      with_database(File.join(store, "references.db")) { |db| db.execute_batch(LAYOUT.fetch(:references)) }
     end
   end
 
