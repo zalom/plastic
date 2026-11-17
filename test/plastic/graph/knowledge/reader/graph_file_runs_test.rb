@@ -49,15 +49,21 @@ class KnowledgeReaderGraphFileRunsTest < Plastic::TestCase
     assert_equal [["n1", 1, "plastic-executor", "s-1", "2026-10-20T07:00:00Z", "2026-10-20T08:00:00Z", "done"]], runs
   end
 
-  def test_the_printed_file_holds_the_holder_and_each_run
+  def printed_graph
     work = store_graphs.work
     node = work.add_node(intent_id: "1", title: "Build", criterion: "Done")
     work.claim_node(intent_id: "1", id: node.id, by: "s-1")
     work.print_intent("1")
-    printed = JSON.parse(File.read(File.join(store_root, "store/1--alpha/graph.json")))
+    JSON.parse(File.read(File.join(store_root, "store/1--alpha/graph.json")))
+  end
+
+  def test_the_printed_file_holds_the_holder_and_each_run
+    printed = printed_graph
 
     assert_equal ["s-1", ["s-1"]], [printed["nodes"].first["claimed_by"], printed["runs"].map { |run| run["session_id"] }]
-    refute_includes printed["nodes"].first.keys, "by"
-    refute_includes printed["nodes"].first.keys, "retries"
+  end
+
+  def test_the_printed_file_holds_no_old_holder_or_count
+    assert_empty printed_graph["nodes"].first.keys & %w[by retries]
   end
 end

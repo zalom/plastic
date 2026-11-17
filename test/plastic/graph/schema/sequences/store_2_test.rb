@@ -24,9 +24,9 @@ class SchemaStore2Test < Plastic::TestCase
     @database = SQLite3::Database.new(":memory:")
     @database.execute_batch(Store1::Layout::TEXT.fetch(:work))
     @database.execute("PRAGMA user_version = 1")
-    ROWS.each do |intent_id, id, state, by, retries, updated_at|
+    ROWS.each do |row|
       @database.execute('INSERT INTO nodes (intent_id, id, state, "by", retries, updated_at, origin_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [intent_id, id, state, by, retries, updated_at, "o"])
+        [*row, "o"])
     end
   end
 
@@ -46,14 +46,16 @@ class SchemaStore2Test < Plastic::TestCase
     refute_match(/Schema\.(fetch|ddl|prepare)/, source)
   end
 
-  def test_the_node_loses_its_holder_and_its_count_and_gains_its_claim
+  def test_the_node_gains_its_claim_columns
     migrate
 
-    assert_includes node_columns, "claimed_by"
-    assert_includes node_columns, "claimed_at"
-    assert_includes node_columns, "seen_at"
-    refute_includes node_columns, "by"
-    refute_includes node_columns, "retries"
+    assert_empty %w[claimed_by claimed_at seen_at] - node_columns
+  end
+
+  def test_the_node_loses_its_holder_and_its_count
+    migrate
+
+    assert_empty node_columns & %w[by retries]
   end
 
   def test_a_node_with_a_holder_gets_one_run_that_the_state_closes

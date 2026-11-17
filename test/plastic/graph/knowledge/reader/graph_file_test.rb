@@ -182,8 +182,15 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
     sync.apply(sync_up_plan)
 
-    assert_equal [["n1", "done", "agent-7", 2, "2026-10-20T08:00:00Z", retrieval.origin_id]],
-      node_rows.map { |row| row.values_at(:id, :state, :by, :retries, :updated_at, :origin_id) }
+    assert_equal [["n1", "done", "2026-10-20T08:00:00Z", retrieval.origin_id]],
+      node_rows.map { |row| row.values_at(:id, :state, :updated_at, :origin_id) }
+  end
+
+  def test_sync_up_reads_the_runs_of_a_hand_edited_graph_json
+    write(GRAPH, graph_text(nodes: [node_hash("n1")]))
+    sync.apply(sync_up_plan)
+
+    assert_equal [["n1", 1, "agent-7", "done"]], retrieval.runs("1").map { |run| [run.node_id, run.number, run.session_id, run.result] }
   end
 
   def test_the_rows_of_the_file_replace_the_node_rows_the_intent_held

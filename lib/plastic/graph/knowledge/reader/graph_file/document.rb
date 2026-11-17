@@ -5,6 +5,8 @@ require_relative "../../../work/approval"
 require_relative "../../../work/completion_row"
 require_relative "../../../work/edge"
 require_relative "../../../work/node"
+require_relative "../../../work/run"
+require_relative "legacy_nodes"
 require_relative "../../../work/verdict"
 
 module Plastic
@@ -15,7 +17,7 @@ module Plastic
           # The JSON object of a graph file, or the reason the text is not one.
           class Document
             TABLES = {
-              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, edges: Work::Edge
+              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, runs: Work::Run, edges: Work::Edge
             }.freeze
 
             PUT_ONLY = { completions: Work::CompletionRow }.freeze
@@ -45,10 +47,12 @@ module Plastic
             private
 
             def parsed(text)
-              object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
+              legacy(object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8))))
             rescue JSON::ParserError => error
               refuse(error.message.lines.first.chomp)
             end
+
+            def legacy(data) = data && LegacyNodes.new(data).call
 
             def object(data) = data.is_a?(Hash) ? data : refuse("it is not an object")
 
