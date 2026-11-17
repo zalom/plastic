@@ -28,8 +28,6 @@ module Plastic
         [*names.map { |name| ddl(name, schema) }, *names.flat_map { |name| trigger_creates(name) }].join("\n")
       end
 
-      def self.tables_ddl(key, schema) = databases.fetch(key).last.map { |name| ddl(name, schema) }.join("\n")
-
       def self.prepare(connection, schema) = connection.execute_batch(schema)
 
       def self.table_named(name) = tables.fetch(name.to_sym)
