@@ -35,9 +35,9 @@ module Plastic
           end
         end
 
-        def archive_intent(intent_id) = archived(intent_id, "archived") { @writers.archives.archive(intent_id) }
+        def archive_intent(intent_id) = logged(intent_id, "archived", "Archived") { @writers.archives.archive(intent_id) }
 
-        def unarchive_intent(intent_id) = archived(intent_id, "unarchived") { @writers.archives.restore(intent_id) }
+        def unarchive_intent(intent_id) = logged(intent_id, "unarchived", "Unarchived") { @writers.archives.restore(intent_id) }
 
         def add_ruling(intent_id:, **fields)
           recorded do
@@ -77,9 +77,9 @@ module Plastic
           recorded { @writers.nodes.claim_node(intent_id:, **fields).tap { |status, node| claim_line(intent_id, status, node) } }
         end
 
-        def add_edge(intent_id:, from:, to:) = edged(intent_id, "edge_added", from, to) { @writers.edges.add_edge(intent_id:, from:, to:) }
+        def add_edge(intent_id:, from:, to:) = logged(intent_id, "edge_added", "#{from} -> #{to}") { @writers.edges.add_edge(intent_id:, from:, to:) }
 
-        def remove_edge(intent_id:, from:, to:) = edged(intent_id, "edge_removed", from, to) { @writers.edges.remove_edge(intent_id:, from:, to:) }
+        def remove_edge(intent_id:, from:, to:) = logged(intent_id, "edge_removed", "#{from} -> #{to}") { @writers.edges.remove_edge(intent_id:, from:, to:) }
 
         NODE_KINDS.each do |name, kind|
           define_method(name) do |intent_id:, **fields|
@@ -92,21 +92,18 @@ module Plastic
         def recorded(&) = store.atomically(&)
 
         def line(intent_id, kind, text, **parts)
+          body = parts[:body]
           top = store.row(TOP_SQL, intent_id:).fetch("top")
           store.transaction do |batch|
             batch.put(:work_log, { intent_id:, position: top + 1, at: Plastic.now, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:, path: parts.fetch(:path, ""),
-                                   sha256: parts[:body] ? Digest::SHA256.hexdigest(parts[:body]) : "", text:, origin_id: @writers.retrieval.origin_id })
+                                   sha256: body ? Digest::SHA256.hexdigest(body) : "", text:, origin_id: @writers.retrieval.origin_id })
           end
         end
 
         def store = @writers.databases.fetch(:store)
 
-        def archived(intent_id, kind)
-          recorded { yield.tap { |ok,| ok && line(intent_id, kind, kind.capitalize) } }
-        end
-
-        def edged(intent_id, kind, from, to)
-          recorded { yield.tap { |moved| moved && line(intent_id, kind, "#{from} -> #{to}") } }
+        def logged(intent_id, kind, wording)
+          recorded { yield.tap { |moved,| moved && line(intent_id, kind, wording) } }
         end
 
         def claim_line(intent_id, status, node)
