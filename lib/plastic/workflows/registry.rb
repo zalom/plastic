@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "resource_keys"
-
 module Plastic
   module Workflows
     # Every workflow key, listed by hand, with the class path under Workflows
@@ -121,7 +119,11 @@ module Plastic
       code_fail_node: "Code::Node::Fail",
       code_ask_node: "Code::Node::Ask",
       code_impede_node: "Code::Node::Impede",
-      code_resolve_node: "Code::Node::Resolve"
-    }.merge(RESOURCE_KEYS).freeze
+      code_resolve_node: "Code::Node::Resolve",
+
+      # Resources: the sort of an intent folder into the resources layout.
+      code_preview_sort_resources: "Code::Resources::Sort::Preview",
+      code_sort_resources: "Code::Resources::Sort"
+    }.freeze
   end
 end

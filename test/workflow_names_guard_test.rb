@@ -7,14 +7,6 @@ require "plastic/workflow"
 require "plastic/workflows/registry"
 require_relative "support/child_process"
 
-# The keys of the resources layout.
-module ResourceWorkflowNames
-  KEYS = {
-    code_preview_sort_resources: "Code::Resources::Sort::Preview",
-    code_sort_resources: "Code::Resources::Sort"
-  }.freeze
-end
-
 module WorkflowNameTable
   # Every key with the class under Workflows that runs it. A key is stored in
   # an open command run, so the keys never change; the classes follow the
@@ -115,8 +107,10 @@ module WorkflowNameTable
     code_fail_node: "Code::Node::Fail",
     code_ask_node: "Code::Node::Ask",
     code_impede_node: "Code::Node::Impede",
-    code_resolve_node: "Code::Node::Resolve"
-  }.merge(ResourceWorkflowNames::KEYS).freeze
+    code_resolve_node: "Code::Node::Resolve",
+    code_preview_sort_resources: "Code::Resources::Sort::Preview",
+    code_sort_resources: "Code::Resources::Sort"
+  }.freeze
 end
 
 # The paths that hold other workflows, which the guard of the parent kinds reads.
