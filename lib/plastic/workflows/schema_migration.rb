@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../config"
 require_relative "../graph"
 
 module Plastic
@@ -11,7 +12,13 @@ module Plastic
       def self.bring_current(context, slug: nil)
         report = Graph::SchemaRunner.new(home: context.scope.plastic_home, only: slug).call
         report.failed.each { |store, reason| context.print(line(store, reason)) }
+        import_config(context) unless slug
         report
+      end
+
+      def self.import_config(context)
+        line = Config::Store.new(context.scope.plastic_home).print_once
+        context.print(line) if line
       end
 
       # The line that says a store stayed behind, for every caller of the runner.

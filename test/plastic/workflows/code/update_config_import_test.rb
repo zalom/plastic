@@ -1,21 +1,23 @@
 # frozen_string_literal: true
 
-require_relative "../../commands/installer_helper"
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/config"
 
 class UpdateConfigImportTest < Plastic::TestCase
-  include InstallerHelper
+  include BackupHomes
   include OldLayoutHomes
 
   CONFIG = "global:\n  search:\n    source_projects: alpha\nharnesses:\n  claude-code:\n    hooks:\n      enabled: true\n"
   SETTINGS = "SELECT scope, key, value FROM settings ORDER BY scope, key"
 
   def update_old_layout_home
-    old_layout(@plastic_home)
-    File.write(File.join(@plastic_home, "config.yml"), CONFIG)
-    installed("99.0.0-alpha.1")
-    activated("99.0.0-alpha.1")
-    call("update", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_LOCAL_RELEASE" => local_release("99.0.0-alpha.1") })
+    @aged_home = old_layout(fresh_home)
+    File.write(File.join(@aged_home, "VERSION"), "99.0.0-alpha.1\n")
+    File.write(File.join(@aged_home, "config.yml"), CONFIG)
+    update
   end
+
+  def update = plastic("update", env: { "PLASTIC_HOME" => @aged_home }, table: Plastic::CLI::TABLE)
 
   def test_an_old_layout_home_brought_current_by_update_has_its_settings_rows_and_a_printed_config
     result = update_old_layout_home
@@ -27,16 +29,16 @@ class UpdateConfigImportTest < Plastic::TestCase
   def test_the_imported_setting_is_read_by_config
     update_old_layout_home
 
-    assert_equal ["alpha"], Plastic::Config.new(@plastic_home).source_projects
+    assert_equal ["alpha"], Plastic::Config.new(@aged_home).source_projects
   end
 
   def test_a_second_update_changes_no_row
     update_old_layout_home
     before = rows("SELECT * FROM settings ORDER BY scope, key")
-    call("update", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_LOCAL_RELEASE" => local_release("99.0.0-alpha.1") })
+    update
 
     assert_equal before, rows("SELECT * FROM settings ORDER BY scope, key")
   end
 
-  def rows(sql) = SQLite3::Database.new(File.join(@plastic_home, "plastic.db"), readonly: true).execute(sql)
+  def rows(sql) = Plastic::Graph::Database.open_local(@aged_home).fetch(:local).rows(sql).map(&:values)
 end
