@@ -227,6 +227,28 @@ class RecapCompactTest < Plastic::TestCase
     assert_includes recap("compact"), "intent: #{intent.intent_id} Alpha"
   end
 
+  def test_a_ready_node_with_no_claim_names_the_claim_as_the_next_command
+    intent = graphs.work.write_intent(title: "Alpha")
+    graphs.work.add_node(intent_id: intent.intent_id, title: "Build")
+
+    assert_equal "next: plastic node claim #{intent.intent_id} n1", recap("compact").last
+  end
+
+  def test_a_closed_intent_is_not_the_intent_of_the_session
+    graphs.work.write_intent(title: "Alpha", status: "done")
+
+    assert_equal [Plastic::Hooks::CompactRecap::NO_INTENT], recap("compact")
+  end
+
+  def test_a_claim_in_a_closed_intent_does_not_hold_the_session_to_it
+    work = graphs.work
+    intent = work.write_intent(title: "Alpha", status: "done")
+    work.add_node(intent_id: intent.intent_id, title: "Build")
+    work.claim_node(intent_id: intent.intent_id, id: "n1", by: "s-1")
+
+    assert_equal [Plastic::Hooks::CompactRecap::NO_INTENT], recap("compact")
+  end
+
   def test_a_session_with_no_intent_gets_one_line_that_names_plastic_next
     assert_equal ["Plastic: the session was compacted and holds no intent. Run plastic next."], recap("compact", session: "s-9")
   end
