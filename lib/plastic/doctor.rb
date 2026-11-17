@@ -4,7 +4,6 @@ require_relative "errors"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
-require_relative "workflows/installation"
 require_relative "harnesses/detection"
 require_relative "harnesses/session_rows"
 
@@ -46,10 +45,8 @@ module Plastic
 
     def self.harness_checks(scope, kind, running:) = kind ? kind.new(scope, running:).checks : []
 
-    def self.check(scope, harness:, now:)
-      checks(scope, kind(harness), running: Workflows::Installation.running(scope), now:)
-    end
+    def self.check(scope, harness:, running:, now:) = checks(scope, kind(harness), running:, now:)
 
-    def self.failing(scope, harness:, now:) = check(scope, harness:, now:).select(&:repair)
+    def self.failing(scope, harness:, running:, now:) = check(scope, harness:, running:, now:).select(&:repair)
   end
 end

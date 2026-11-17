@@ -4,7 +4,7 @@ require "forwardable"
 require "tmpdir"
 require_relative "../config/upgrade"
 require_relative "../wiring"
-require_relative "../doctor/home_ignore"
+require_relative "home_ignore"
 require_relative "../installations"
 require_relative "../graph"
 require_relative "../store_layout"
@@ -82,7 +82,7 @@ module Plastic
       end
 
       def print_config
-        Doctor::HomeIgnore.new(plastic_home).check
+        HomeIgnore.new(plastic_home).apply
         line = Wiring.store(plastic_home, clock: package.clock).print_once
         puts "   #{line}" if line
       end

@@ -4,6 +4,7 @@ require_relative "../hook"
 require_relative "../graph"
 require_relative "../wiring"
 require_relative "../doctor"
+require_relative "../workflows/installation"
 require_relative "../graph/backup/due"
 require_relative "../harnesses/detection"
 require_relative "recap"
@@ -32,7 +33,7 @@ module Plastic
 
       private
 
-      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, now: environment.now)
+      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now)
 
       def back_up_stores
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|

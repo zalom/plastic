@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/workflows/installation_health"
+require_relative "../../../lib/plastic/doctor/installation_health"
 
 class InstallationLauncherTest < Plastic::TestCase
   def bin = File.join(@home, "bin")
@@ -12,7 +12,7 @@ class InstallationLauncherTest < Plastic::TestCase
     File.chmod(0o755, File.join(directory, "plastic"))
   end
 
-  def check(*path) = Plastic::Workflows::InstallationLauncher.new(bin:, path: path.join(File::PATH_SEPARATOR)).check
+  def check(*path) = Plastic::Doctor::InstallationLauncher.new(bin:, path: path.join(File::PATH_SEPARATOR)).check
 
   def test_the_linked_launcher_first_on_path_needs_no_repair
     launcher(bin)

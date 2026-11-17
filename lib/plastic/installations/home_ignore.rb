@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "check"
-
 module Plastic
-  module Doctor
-    # The home keeps its databases out of version control: this adds the
+  module Installations
+    # The home keeps its databases out of version control: `apply` adds the
     # `*.db` and `*.db-*` lines (the databases and their journal, wal and shm files) to the home's .gitignore when they are missing, once.
     class HomeIgnore
       LINES = ["*.db", "*.db-*"].freeze
@@ -13,10 +11,7 @@ module Plastic
         @file = File.join(home, ".gitignore")
       end
 
-      def check
-        added = add
-        Check.ok(".gitignore:", "#{LINES.join(" ")} #{added ? "added" : "listed"}")
-      end
+      def apply = "#{LINES.join(" ")} #{add ? "added" : "listed"}"
 
       private
 

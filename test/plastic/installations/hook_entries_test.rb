@@ -2,14 +2,14 @@
 
 require "minitest/autorun"
 require "tmpdir"
-require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/installations/hook_entries"
 require_relative "../../test_helpers/config_homes"
 require_relative "../../../lib/plastic/config"
 require "fileutils"
 require "json"
 require_relative "../../test_helper"
 
-class EntriesTest < Minitest::Test
+class HookEntriesTest < Minitest::Test
   include ConfigHomes
 
   COMMAND = "/opt/plastic/bin/plastic"
@@ -17,7 +17,7 @@ class EntriesTest < Minitest::Test
 
   def config(text = "") = Dir.mktmpdir { |dir| seed_config(dir, text).then { yield Plastic::Wiring.config(dir) } }
 
-  def entries(text = "") = config(text) { |cfg| yield Plastic::Hooks::Entries.new(command: COMMAND, config: cfg, launchers: LAUNCHERS) }
+  def entries(text = "") = config(text) { |cfg| yield Plastic::Installations::HookEntries.new(command: COMMAND, config: cfg, launchers: LAUNCHERS) }
 
   def commands_for(hooks, event) = Array(hooks[event]).flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
 
@@ -135,7 +135,7 @@ class EntriesTest < Minitest::Test
 
   def test_no_launcher_writes_no_status_line_or_screens
     config do |cfg|
-      settings = Plastic::Hooks::Entries.new(command: COMMAND, config: cfg, launchers: {}).claude({})
+      settings = Plastic::Installations::HookEntries.new(command: COMMAND, config: cfg, launchers: {}).claude({})
 
       refute_includes settings, "statusLine"
       refute_includes settings["hooks"], "MessageDisplay"

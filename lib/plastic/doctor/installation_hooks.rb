@@ -3,7 +3,7 @@
 require "json"
 
 module Plastic
-  module Workflows
+  module Doctor
     # Reads the hook commands in the agent settings and checks that every
     # Plastic hook runs the active release launcher.
     class InstallationHooks

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Hooks
+  module Installations
     # Tells the hook commands this installation wrote, or an earlier install
     # wrote, from everyone else's, so an install replaces them and an
     # uninstall removes them.
-    class Ownership
+    class HookOwnership
       # The launchers and the Codex dispatcher earlier installs wrote. A
       # command is theirs only when one of its words names one of these
       # files, never by a substring, so a user's plastic-writing-style stays.

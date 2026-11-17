@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/workflows/installation_health"
+require_relative "../../../lib/plastic/doctor/installation_health"
 
 class InstallationLockTest < Plastic::TestCase
   def share = FileUtils.mkdir_p(File.join(@home, "share")).first
 
-  def check = Plastic::Workflows::InstallationLock.new(share).check
+  def check = Plastic::Doctor::InstallationLock.new(share).check
 
   def test_a_share_with_no_lock_is_free
     assert_equal ["installer lock:", "free", nil], check.to_h.values
@@ -23,6 +23,6 @@ class InstallationLockTest < Plastic::TestCase
   def test_an_interrupted_activation_names_the_repair
     FileUtils.mkdir_p(File.join(share, "activation"))
 
-    assert_equal Plastic::Workflows::InstallationLock::INTERRUPTED, check.repair
+    assert_equal Plastic::Doctor::InstallationLock::INTERRUPTED, check.repair
   end
 end

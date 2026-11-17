@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
-require_relative "ownership"
+require_relative "hook_ownership"
 require_relative "../harnesses"
 
 module Plastic
-  module Hooks
+  module Installations
     # The harness entries the installer writes: one hook group per event,
     # plus the status line and the screens, from the settings rows. A rerun
     # replaces this installation's own groups and keeps everyone else's,
     # so a user's own hook or status line is never touched.
-    class Entries
+    class HookEntries
       # Former names the launchers this installation wrote before it moved,
       # so their groups are replaced, not kept beside the new ones.
       def initialize(command:, config:, launchers:, former: [])
         @command = command
         @config = config
         @launchers = launchers
-        @ownership = Ownership.new([command, *former, *launchers.values])
+        @ownership = HookOwnership.new([command, *former, *launchers.values])
       end
 
       # A new Claude Code settings hash, with this installation's hook groups,

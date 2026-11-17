@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require_relative "../../../lib/plastic/hooks/ownership"
+require_relative "../../../lib/plastic/installations/hook_ownership"
 
-class OwnershipTest < Minitest::Test
+class HookOwnershipTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"
 
-  def ownership = Plastic::Hooks::Ownership.new([COMMAND, nil])
+  def ownership = Plastic::Installations::HookOwnership.new([COMMAND, nil])
 
   def test_the_bare_command_is_owned
     assert ownership.own?(COMMAND)

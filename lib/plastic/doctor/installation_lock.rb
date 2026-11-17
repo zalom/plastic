@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Workflows
+  module Doctor
     # Reads the installer lock of a share: free, held by a running
     # installer, or left behind by an interrupted activation.
     class InstallationLock

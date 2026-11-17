@@ -6,9 +6,9 @@ require_relative "version_record"
 require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
-require_relative "home_ignore"
+require_relative "../installations/home_ignore"
 require_relative "../wiring"
-require_relative "../workflows/installation_health"
+require_relative "installation_health"
 
 module Plastic
   module Doctor
@@ -49,7 +49,7 @@ module Plastic
 
       def version = VersionRecord.new(File.join(home, "VERSION"), running).check("version:", install: "plastic install")
 
-      def release = Workflows::InstallationHealth.at(scope).parts.map { |part| Check.from(part) }
+      def release = InstallationHealth.at(scope).parts.map { |part| Check.from(part) }
 
       def sqlite
         Check.ok("sqlite3 gem:", "loads, version #{loader.call}")
@@ -79,7 +79,7 @@ module Plastic
         Check.finding("config.yml:", line, Config::Store::REPAIR)
       end
 
-      def home_ignore = HomeIgnore.new(home).check
+      def home_ignore = Check.ok(".gitignore:", Installations::HomeIgnore.new(home).apply)
 
       def global_store
         path = File.join(home, "stores", "global")

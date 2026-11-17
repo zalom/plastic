@@ -6,7 +6,7 @@ require_relative "installation_launcher"
 require_relative "installation_lock"
 
 module Plastic
-  module Workflows
+  module Doctor
     # Reads the parts of an installation that a working `plastic` needs and
     # names a repair for each broken one. It reads files and changes none.
     class InstallationHealth

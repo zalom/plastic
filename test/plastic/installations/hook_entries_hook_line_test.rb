@@ -2,12 +2,12 @@
 
 require "minitest/autorun"
 require "tmpdir"
-require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/installations/hook_entries"
 require_relative "../../test_helper"
 require_relative "../../support/child_process"
 
 # The shell lines the installer writes into a harness, run against a stand-in command that fails.
-class EntriesHookLineTest < Minitest::Test
+class HookEntriesHookLineTest < Minitest::Test
   def failing_command(home)
     File.join(home, "plastic").tap do |path|
       File.write(path, "#!/bin/sh\nexit 2\n")
@@ -16,7 +16,7 @@ class EntriesHookLineTest < Minitest::Test
   end
 
   def written_hook_lines(command)
-    hooks = Plastic::Hooks::Entries.new(command: command, config: nil, launchers: {}).codex({})["hooks"]
+    hooks = Plastic::Installations::HookEntries.new(command: command, config: nil, launchers: {}).codex({})["hooks"]
     hooks.values.flatten.flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
   end
 

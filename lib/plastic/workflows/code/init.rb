@@ -3,7 +3,7 @@
 require_relative "../../code_workflow"
 require_relative "../../harnesses"
 require_relative "../installation"
-require_relative "../installation_hooks"
+require_relative "../../doctor/installation_hooks"
 require_relative "../../wiring"
 
 module Plastic
@@ -18,7 +18,7 @@ module Plastic
         sets :broken, :installed, :checked
 
         read "check the harness settings files" do |context|
-          context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
+          context[:broken] = Plastic::Doctor::InstallationHooks.new(home: context.scope.home).unreadable
         end
 
         gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,

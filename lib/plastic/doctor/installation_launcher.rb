@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Workflows
+  module Doctor
     # Finds the first `plastic` on PATH and checks that it is the launcher
     # the installer links into the bin directory.
     class InstallationLauncher
