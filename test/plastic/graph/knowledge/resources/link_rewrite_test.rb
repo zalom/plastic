@@ -30,7 +30,7 @@ class ResourcesLinkRewriteTest < Plastic::TestCase
   end
 
   def test_leaves_an_absolute_or_web_link
-    text = "[a](https://example.com/x.md) [b](/etc/hosts) [c](mailto:a@b.c) [d](#top)"
+    text = "[a](https://example.com/x.md) [b](/etc/hosts) [c](mailto:a@b.c) [d](#top) [e](?page=2)"
     found = rewrite("reviews/r1.md", text)
 
     assert_equal [text, []], [found.text, found.unresolved]

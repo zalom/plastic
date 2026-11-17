@@ -13,7 +13,7 @@ module Plastic
           Result = Data.define(:text, :unresolved)
 
           LINK = /(\]\(|(?:href|src)=")([^)"\s]+)/
-          EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|/|#)}i
+          EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|/|#|\?)}i
 
           def initialize(moves, known)
             @moves = moves
