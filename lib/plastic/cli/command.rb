@@ -37,6 +37,8 @@ module Plastic
         @argv = argv.dup
         @words = words
         @environment = environment
+        @scope = nil
+        @graphs = nil
         @exit_code = OK
       end
 
