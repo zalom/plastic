@@ -51,7 +51,7 @@ class KernelCommand
 
   def initialize(home)
     @home = home
-    @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp") }
+    @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"), "PLASTIC_SESSION" => "s-1" }
     create_store unless File.exist?(plastic_home)
   end
 

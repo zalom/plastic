@@ -37,7 +37,7 @@ module TwoHomes
     end
   end
 
-  def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, by, retries, updated_at, findings FROM nodes ORDER BY id")
+  def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, claimed_by, answered_at, updated_at, findings FROM nodes ORDER BY id")
 
   def query(kernel, sql) = kernel.rows("work_graph.db", sql)
 
