@@ -65,6 +65,7 @@ module Plastic
         migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
         begin
           SchemaMigrator.new(migrating, SchemaMigrations.path(:store)).call
+          migrating.execute_batch(Schema.tables_ddl(:knowledge, "main"))
         ensure
           migrating.execute("DETACH DATABASE refs")
         end
