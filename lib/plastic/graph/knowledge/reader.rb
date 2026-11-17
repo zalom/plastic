@@ -6,7 +6,7 @@ require_relative "reader/cluster_file"
 require_relative "reader/link_file"
 require_relative "reader/intent_file"
 require_relative "reader/roadmap_file"
-require_relative "../prints"
+require_relative "prints"
 require_relative "store_folder"
 require_relative "store_path"
 

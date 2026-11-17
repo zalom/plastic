@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph"
 require_relative "../../../../../lib/plastic/graph/retrieval/context/source"
 
 class RetrievalContextSourceTest < Plastic::TestCase
   REFERENCE = "plastic://global/1/plan.md"
 
-  def source = Plastic::Graph::Retrieval::Context::Source.new(@plastic_home)
+  def source = Plastic::Graph::Retrieval::Context::Source.new(@plastic_home, opener: Plastic::Graph.method(:open))
 
   def keep_a_file
     row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("\x00".b), intent_id: "1", sha256: "h" }

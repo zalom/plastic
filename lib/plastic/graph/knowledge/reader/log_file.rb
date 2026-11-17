@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../../work/log_line"
-require_relative "../../work/savepoint"
+require_relative "../../rows/log_line"
+require_relative "../../rows/savepoint"
 
 module Plastic
   module Graph

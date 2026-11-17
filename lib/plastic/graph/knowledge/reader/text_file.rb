@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../retrieval/evidence/document"
-require_relative "../../retrieval/evidence/rows"
-require_relative "../../retrieval/evidence/removal"
+require_relative "../../evidence/document"
+require_relative "../../evidence/rows"
+require_relative "../../evidence/removal"
 
 module Plastic
   module Graph

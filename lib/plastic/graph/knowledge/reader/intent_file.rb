@@ -2,7 +2,7 @@
 
 require "digest"
 require "json"
-require_relative "../../retrieval/evidence/text"
+require_relative "../../evidence/text"
 require_relative "../legacy_path"
 require_relative "folder_file"
 require_relative "graph_file"

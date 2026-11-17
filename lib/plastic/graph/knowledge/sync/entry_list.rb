@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "entry"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../store_folder"
 
 module Plastic

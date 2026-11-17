@@ -3,7 +3,7 @@
 require_relative "../intent"
 require_relative "ref"
 require_relative "../store_folder"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../evidence/writer"
 
 module Plastic
   module Graph

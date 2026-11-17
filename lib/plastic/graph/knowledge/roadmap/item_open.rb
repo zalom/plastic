@@ -2,7 +2,7 @@
 
 require_relative "../roadmap"
 require "forwardable"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../evidence/writer"
 require_relative "state"
 
 module Plastic

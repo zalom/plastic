@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../store_folder"
 require_relative "../store_path"
 

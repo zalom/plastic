@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "notes"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../evidence/writer"
 
 module Plastic
   module Graph

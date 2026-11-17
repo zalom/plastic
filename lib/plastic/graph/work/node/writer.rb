@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../node"
+require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
 require_relative "claim"

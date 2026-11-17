@@ -4,7 +4,7 @@ require "digest"
 require_relative "work_check"
 require_relative "../../knowledge/spec"
 require_relative "../../knowledge/outcome"
-require_relative "../node"
+require_relative "../../rows/node"
 
 module Plastic
   module Graph

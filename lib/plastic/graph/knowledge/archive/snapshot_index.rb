@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../archive"
-require_relative "../../retrieval/evidence/writer"
-require_relative "../../retrieval/evidence/text"
-require_relative "../../retrieval/evidence/removal"
+require_relative "../../evidence/writer"
+require_relative "../../evidence/text"
+require_relative "../../evidence/removal"
 require_relative "../legacy_path"
 
 module Plastic

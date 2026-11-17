@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "table"
-require_relative "knowledge/intent"
-require_relative "knowledge/roadmap"
 require_relative "schema/metadata"
 require_relative "schema/catalog"
 

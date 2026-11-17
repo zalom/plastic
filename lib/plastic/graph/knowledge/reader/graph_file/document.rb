@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../../../work/approval"
-require_relative "../../../work/completion_row"
-require_relative "../../../work/edge"
-require_relative "../../../work/node"
-require_relative "../../../work/run"
+require_relative "../../../rows/approval"
+require_relative "../../../rows/completion_row"
+require_relative "../../../rows/edge"
+require_relative "../../../rows/node"
+require_relative "../../../rows/run"
 require_relative "legacy_nodes"
-require_relative "../../../work/verdict"
+require_relative "../../../rows/verdict"
 
 module Plastic
   module Graph

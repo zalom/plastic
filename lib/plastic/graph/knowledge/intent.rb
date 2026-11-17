@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../record"
+require_relative "../intent_status"
 require_relative "luhmann_id"
 
 module Plastic
@@ -78,7 +79,6 @@ module Plastic
         # The fields store/index.json lists, in order.
         def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }
       end
-      Intent::STATUSES = %w[open in_progress parked future done abandoned].freeze
       Intent::NEW_STATUSES = %w[open parked future].freeze
       Intent::GROUPS = { "active" => %w[open in_progress parked], "future" => %w[future], "finished" => %w[done abandoned] }.freeze
       Intent::CROSSING_FIELDS = %i[title status disposition reason closed_at].freeze

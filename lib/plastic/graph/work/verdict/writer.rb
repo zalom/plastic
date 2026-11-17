@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../verdict"
+require_relative "../../rows/verdict"
 
 module Plastic
   module Graph

@@ -3,7 +3,7 @@
 require_relative "../../commands/installer_helper"
 require_relative "../../doctor/whole_home"
 require_relative "../../../../lib/plastic/workflows/code/doctor"
-require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 class CheckHealthTest < Plastic::TestCase
   include InstallerHelper

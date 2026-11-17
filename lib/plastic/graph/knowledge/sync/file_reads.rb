@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../reader"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../../schema"
 
 module Plastic

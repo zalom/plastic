@@ -2,7 +2,7 @@
 
 require_relative "../intent"
 require_relative "../legacy/index"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../../schema"
 require_relative "../store_folder"
 require_relative "../store_path"
