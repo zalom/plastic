@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/work/chat/writer"
+require_relative "../../../../../lib/plastic/graph/work/chat/reader"
 
 class WorkChatReaderTest < Plastic::TestCase
   def local = store_graphs.databases.fetch(:local)

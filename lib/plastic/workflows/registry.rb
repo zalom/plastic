@@ -87,6 +87,7 @@ module Plastic
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
+      code_list_chat: "Code::Chat::List",
       # Settings: the config file read and written one key at a time.
       code_list_config: "Code::Config::List",
       code_get_config: "Code::Config::Get",

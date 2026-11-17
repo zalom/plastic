@@ -39,6 +39,9 @@ module Plastic
         "roadmap log" => ["Commands::Roadmap::Log", "Append a log line to a roadmap, stamped with the session id"],
         "roadmap edge remove" => ["Commands::Roadmap::Edge::Remove", "Remove one needs edge from a roadmap"]
       },
+      "chat" => {
+        "chat list" => ["Commands::Chat::List", "List the recorded chat messages of every store in time order, from a day on with --since"]
+      },
       "hook" => {
         "hook start" => ["Hooks::Start", "SessionStart: name the harness, open the session row, print the state the rows carry"],
         "hook prompt" => ["Hooks::Prompt", "UserPromptSubmit: record the prompt in the machine's chat history"],

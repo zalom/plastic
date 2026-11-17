@@ -2,6 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/chat/list"
+require_relative "../../../../lib/plastic/graph/work/chat/writer"
 
 class ChatListTest < Plastic::TestCase
   fixtures :empty
