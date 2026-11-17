@@ -49,7 +49,7 @@ steps do
       before = kernel.snapshot(LegacyImportAcceptance::DIR)
       FileUtils.rm_rf(kernel.path(LegacyImportAcceptance::DIR)) if row["fixture"].end_with?("deleted")
       call = kernel.command(*row["call"].split)
-      intents = kernel.rows("work_graph.db", LegacyImportAcceptance::INTENTS).flatten
+      intents = kernel.rows("knowledge_graph.db", LegacyImportAcceptance::INTENTS).flatten
       row.merge("exit" => call.code.to_s, "result" => LegacyImportAcceptance.result(call),
         "intents" => intents.empty? ? "none" : intents.join(", "),
         "files of 1" => LegacyImportAcceptance.files(before, kernel.snapshot(LegacyImportAcceptance::DIR)))

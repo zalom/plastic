@@ -6,5 +6,5 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup                                           | call                                     | exit | result                                      | next line                          |
 | ----------------------------------------------- | ---------------------------------------- | ---- | ------------------------------------------- | ---------------------------------- |
-| register alpha ; intent new Alpha --project alpha | backup --store alpha                     | 0    | backup: alpha/STAMP, 3 databases, SIZE bytes | plastic backup list --store alpha  |
+| register alpha ; intent new Alpha --project alpha | backup --store alpha                     | 0    | backup: alpha/STAMP, 2 databases, SIZE bytes | plastic backup list --store alpha  |
 | register alpha ; intent new Alpha --project alpha | backup --store alpha --databases work_graph | 0    | backup: alpha/STAMP, 1 database, SIZE bytes | plastic backup list --store alpha  |

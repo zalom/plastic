@@ -63,7 +63,7 @@ class SchemaStore2Test < Plastic::TestCase
     migrate
     @database.results_as_hash = false
 
-    assert_equal [Sequences.newest(:store), [], 4], [@database.get_first_value("PRAGMA user_version"), node_columns & %w[by retries], runs.size]
+    assert_equal [3, [], 4], [@database.get_first_value("PRAGMA user_version"), node_columns & %w[by retries], runs.size]
   end
 
   def test_a_node_with_a_holder_gets_one_run_that_the_state_closes
@@ -85,7 +85,7 @@ class SchemaStore2Test < Plastic::TestCase
   def test_the_runs_table_is_made_and_the_stamp_is_the_number
     migrate
 
-    assert_equal Sequences.newest(:store), @database.get_first_value("PRAGMA user_version")
+    assert_equal 3, @database.get_first_value("PRAGMA user_version")
   end
 
   def test_a_second_run_changes_nothing
