@@ -5,6 +5,10 @@ require_relative "../../lib/plastic/routine"
 require_relative "../../lib/plastic/cli/table"
 
 class RoutineTest < Plastic::TestCase
+  def test_a_routine_gives_its_workflows_no_fact_unless_it_defines_given_facts
+    assert_empty Plastic::Routine.given_facts
+  end
+
   def test_a_chain_of_two_code_workflows_prints_next_and_because
     call = plastic("kernel", "two", "ada")
 

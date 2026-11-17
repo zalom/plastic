@@ -36,11 +36,6 @@ module Plastic
             "spec: none yet; the agent writes #{file}, and #{Lines::CRITERIA}"
           end
 
-          NODE_AND_EDGE_COMMANDS = [
-            Commands::Node::Add, Commands::Node::Remove, Commands::Node::Claim, Commands::Node::Release, Commands::Node::Done,
-            Commands::Node::Fail, Commands::Node::Ask, Commands::Node::Impede, Commands::Node::Resolve, Commands::Edge::Add, Commands::Edge::Remove
-          ].freeze
-
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
           end
@@ -67,7 +62,7 @@ module Plastic
           end
 
           read "print the usage of the node and edge commands" do |context|
-            NODE_AND_EDGE_COMMANDS.each { |klass| context.print(klass.usage_line) }
+            context.command_usages.each { |line| context.print(line) }
           end
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "intent %{intent_id} is briefed"

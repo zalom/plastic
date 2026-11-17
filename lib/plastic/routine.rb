@@ -12,6 +12,7 @@ require_relative "routine/traversal"
 require_relative "routine/preview"
 require_relative "routine/backup_first"
 require_relative "routine/printing"
+require_relative "routine/given_facts"
 require_relative "routine/graph_report"
 require_relative "workflow"
 require_relative "workflows/registry"
@@ -34,6 +35,7 @@ module Plastic
     extend Preview::Declaration
     extend BackupFirst::Declaration
     extend Printing::Facts
+    extend GivenFacts
     include Preview
     include BackupFirst
     include Printing
@@ -52,8 +54,8 @@ module Plastic
       def workflows = Workflows
 
       # Every name a step may read or write: the tool's arguments and options,
-      # plus the facts each workflow in the chain declares.
-      def declared_facts = declared_names + chain.facts
+      # the facts each workflow in the chain declares and the facts the tool gives.
+      def declared_facts = declared_names + chain.facts + given_facts.keys
 
       # Runs once per process, on the first call, and raises every problem at
       # once, so a reordered chain never skips a workflow in silence.
@@ -66,7 +68,7 @@ module Plastic
         end
       end
 
-      def chain_problems = chain.problems(declared_names) + preview_problems
+      def chain_problems = chain.problems(declared_names + given_facts.keys) + preview_problems
     end
 
     def call
@@ -88,7 +90,8 @@ module Plastic
     # A resumed command run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(command_run)
-      Context.new(declared: self.class.declared_facts, facts: command_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope), clock: environment.clock)
+      klass = self.class
+      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope), clock: environment.clock)
     end
 
     def chain = self.class.chain
