@@ -97,11 +97,10 @@ class SyncStepsTest < Plastic::TestCase
 
       sync :up
     end
-    steps = Plastic::Workflows::SyncSteps
     gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
 
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate", "gate"], flow.steps.map(&:name)
-    assert_equal ["%{failure}", steps::REFUSED_BEFORE.fetch(:up), steps::REFUSED_AFTER.fetch(:up), steps::UNREADABLE, steps::UNREADABLE_FILES, steps::UNREADABLE_FILES], gates
+    assert_equal ["%{failure}", Plastic::Workflows::SyncRefusals::REFUSED_BEFORE.fetch(:up), Plastic::Workflows::SyncRefusals::REFUSED_AFTER.fetch(:up), Plastic::Workflows::SyncWords::UNREADABLE, Plastic::Workflows::SyncWords::UNREADABLE_FILES, Plastic::Workflows::SyncWords::UNREADABLE_FILES], gates
     assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 
