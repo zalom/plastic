@@ -67,6 +67,8 @@ module Plastic
         path = File.join(home, "local.db")
         return [] unless File.exist?(path)
 
+        return [Check.finding("local.db:", "#{path} is not migrated", "plastic update")] unless File.exist?(File.join(home, "plastic.db"))
+
         [Check.finding("local.db:", "#{path} is left beside plastic.db", "move local.db out of #{home}; plastic update keeps a copy of it in backups/")]
       end
 
