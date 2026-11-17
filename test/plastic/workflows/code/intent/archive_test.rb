@@ -19,9 +19,8 @@ class ArchiveIntentTest < Plastic::TestCase
   def test_an_open_intent_is_not_archived
     open_intent
 
-    outcome, = archive
+    stop_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id: "1", older_than: nil)
 
-    refute_equal :done, outcome
     refute retrieval.archived?("1")
   end
 
@@ -129,9 +128,8 @@ class ArchiveIntentTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_is_not_archived
-    outcome, = archive("9")
+    stop_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id: "9", older_than: nil)
 
-    refute_equal :done, outcome
     refute retrieval.archived?("9")
   end
 end

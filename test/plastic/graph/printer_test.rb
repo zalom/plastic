@@ -34,7 +34,7 @@ class PrinterTest < Plastic::TestCase
 
   def test_record_skips_a_hash_already_recorded
     database = Recording.new
-    recorded = Data.define(:printed).new({ "a.md" => Digest::SHA256.hexdigest("x") })
+    recorded = Data.define(:printed, :clock).new({ "a.md" => Digest::SHA256.hexdigest("x") }, FixedClock::CLOCK)
     Plastic::Graph::Printer.new(folder, { store: database }, recorded).record([Print.text("a.md", "x"),
       Print.text("b.md", "y")])
 
