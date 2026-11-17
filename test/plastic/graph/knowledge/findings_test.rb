@@ -65,9 +65,15 @@ class KnowledgeFindingsTest < Plastic::TestCase
     assert_equal "node n1 is done with no findings", Findings.findings_finding(node)
   end
 
-  def test_more_than_three_retries_are_named_and_three_are_not
-    nodes = [4, 3].map { |retries| Plastic::Graph::Work::Node.from_h({ id: "n1", retries: }) }
+def test_more_than_three_runs_are_named_and_three_are_not
+  node = Plastic::Graph::Work::Node.from_h({ id: "n1" })
 
-    assert_equal ["node n1 retried 4 times", nil], nodes.map { |node| Findings.retry_finding(node) }
-  end
+  assert_equal ["node n1 retried 4 times", nil], [4, 3].map { |runs| Findings.retry_finding(node, runs) }
+end
+
+def test_the_runs_of_a_node_the_owner_answered_are_not_named
+  node = Plastic::Graph::Work::Node.from_h({ id: "n1", answer: "go on" })
+
+  assert_nil Findings.retry_finding(node, 5)
+end
 end
