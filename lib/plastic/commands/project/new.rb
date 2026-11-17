@@ -18,25 +18,6 @@ module Plastic
         writes :work, :knowledge
         changes(work: "The work database of the store is created if it is missing", knowledge: "The knowledge database of the store is created if it is missing", home: "The project is registered in projects.yml in the Plastic home")
 
-        Target = Data.define(:slug, :path) do
-          def register_in(file, projects)
-            known = projects[slug]
-            return if known && CLI::ProjectsFile.same_folder?(known, path)
-            raise Refused, "#{slug} is registered at #{known}, not at #{path}; edit projects.yml to move it" if known
-
-            file.add(slug, path)
-          end
-
-          def created_line
-            files = CLI::RuleFiles.new(path, slug).write_absent
-            "#{files.join(" and ")} in #{path}" unless files.empty?
-          end
-
-          def summary = "#{slug}: #{path}"
-
-          def next_command = "plastic intent new TITLE --project #{slug}"
-        end
-
         def call
           target = Target.new(slug: checked_slug, path: checked_path)
           register(target)
@@ -69,8 +50,26 @@ module Plastic
         end
 
         def announce(target)
+          slug = target.slug
           output.row("project", target.summary)
-          output.next_step(target.next_command, because: "the project is registered and its store is ready")
+          output.next_step("plastic intent new TITLE --project #{slug}", because: "the project is registered and its store is ready")
+        end
+
+        Target = Data.define(:slug, :path) do
+          def register_in(file, projects)
+            known = projects[slug]
+            return if known && CLI::ProjectsFile.same_folder?(known, path)
+            raise Refused, "#{slug} is registered at #{known}, not at #{path}; edit projects.yml to move it" if known
+
+            file.add(slug, path)
+          end
+
+          def created_line
+            files = CLI::RuleFiles.new(path, slug).write_absent
+            "#{files.join(" and ")} in #{path}" unless files.empty?
+          end
+
+          def summary = "#{slug}: #{path}"
         end
       end
     end

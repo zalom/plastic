@@ -11,7 +11,6 @@ module CommandReference
       home: "the Plastic home folder", harness: "the settings of the agent harness, in the home folder"
     }.freeze
     WITH_PRINT = %i[work knowledge].freeze
-    WITH_STORE = %i[store].freeze
     TRAVELS = "goes with the store"
     STAYS = "stays on this machine"
 
@@ -19,7 +18,9 @@ module CommandReference
 
     def self.where(key) = WHERE.fetch(key)
 
-    def self.reach(key, prints) = (WITH_STORE.include?(key) || (WITH_PRINT.include?(key) && prints)) ? TRAVELS : STAYS
+    def self.reach(key) = { store: TRAVELS }.fetch(key, STAYS)
+
+    def self.reach_printing(key) = WITH_PRINT.include?(key) ? TRAVELS : reach(key)
   end
 
   # The build stops with every word a page lacks, one line each.

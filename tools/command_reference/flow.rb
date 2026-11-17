@@ -27,6 +27,8 @@ module CommandReference
 
     def closing_kind(outcome) = (agent? && outcome.name == :handoff) ? :handoff : :outcome
 
+    def step_changes = klass.steps.grep(Plastic::CodeWorkflow::Step).flat_map { |step| step.changes.to_a }
+
     def gate_endings = klass.steps.zip(rows).filter_map { |step, row| row.gate_ending(step) if step.is_a?(Plastic::CodeWorkflow::Gate) }
   end
 end

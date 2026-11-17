@@ -33,14 +33,13 @@ module CommandReference
 
     def page
       reach = Reach.new(kind:, files: end_files, flows:, own_call:)
-      Page.new(**identity, **found(reach))
+      Page.new(**identity, **reach.to_h.slice(:kind, :own_call, :flows), **found(reach))
     end
 
     private
 
     def found(reach)
-      { kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, endings: @kit.endings.call(reach),
-        changes: Changes.new(@klass, reach.flows).rows }
+      { edges:, endings: @kit.endings.call(reach), changes: Changes.new(@klass, reach.flows).rows }
     end
 
     def identity

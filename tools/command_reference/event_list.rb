@@ -9,6 +9,8 @@ module CommandReference
     def tag = "#{STOP_HEADS.fetch(kind)}, EXIT #{exit_code}"
 
     def words = [text, next_line].compact
+
+    def self.next_line(offers) = Array(offers).first&.then { |text| "next: #{Words.angled(text)}" }
   end
 
   # One box of the events of a call: a read, a step or an agent step, with the stops beside it.
@@ -18,60 +20,70 @@ module CommandReference
     def agent? = lane == :agent
   end
 
-  # The stops and the end of one workflow, in the words a person reads.
-  class FlowStops
+  # The stop a gate makes: a refusal or a failure, in the words of its reason.
+  GateStop = Data.define(:gate) do
+    def stop = Stop.new(kind, (kind == :refusal) ? 3 : 1, Words.sentence(words), Stop.next_line(gate.offers))
+
+    def kind = (gate.stops == :refusal) ? :refusal : :failure
+
+    def words
+      reason = gate.reason
+      gate.because || (reason.match?(PageWords::PLACEHOLDER) ? gate.words : reason)
+    end
+  end
+
+  # The boxes of one workflow before they are numbered, each with the stops beside it.
+  class Drafts
     CHECK = "Check that the call can go on."
 
+    def initialize
+      @items = []
+    end
+
+    def add(row)
+      @items << row.draft
+    end
+
+    def hang_last(stop)
+      @items << { lane: :code, text: CHECK, say: nil, stops: [] } if @items.empty?
+      @items.last[:stops] << stop
+    end
+
+    def hang_end(outcome, flow_key, stop)
+      holder = outcome.holder_among(@items, flow_key)
+      holder ? holder[:stops] << stop : hang_last(stop)
+    end
+
+    def events = @items.map { |draft| Event.new(nil, *draft.values_at(:lane, :text, :say, :stops), nil, true) }
+  end
+
+  # The stops and the end of one workflow, in the words a person reads.
+  class FlowStops
     def initialize(flow)
       @flow = flow
     end
 
     def events
       drafts = stepped
-      shown.each { |outcome| hang(drafts, end_stop(outcome), holder_of(drafts, outcome)) }
-      drafts.map { |draft| Event.new(nil, *draft.values_at(:lane, :text, :say, :stops), nil, true) }
+      shown.each { |outcome| drafts.hang_end(outcome, @flow.key, end_stop(outcome)) }
+      drafts.events
     end
 
-    def gates = @flow.klass.steps.grep(Plastic::CodeWorkflow::Gate).map { |gate| gate_stop(gate) }
+    def gates = @flow.klass.steps.grep(Plastic::CodeWorkflow::Gate).map { |gate| GateStop.new(gate).stop }
 
     def closing = shown.map { |outcome| end_stop(outcome) }
 
     private
 
-    def shown = @flow.outcomes.select { |outcome| outcome.ends? && !outcome.unreachable }
+    def shown = @flow.outcomes.select(&:shown?)
 
     def stepped
-      @flow.klass.steps.zip(@flow.rows).each_with_object([]) { |(step, row), drafts| row.gate? ? hang(drafts, gate_stop(step)) : drafts << draft(row) }
+      @flow.klass.steps.zip(@flow.rows).each_with_object(Drafts.new) do |(step, row), drafts|
+        row.gate? ? drafts.hang_last(GateStop.new(step).stop) : drafts.add(row)
+      end
     end
 
-    def draft(row) = { lane: (row.kind == :agent) ? :agent : :code, text: Words.sentence(row.name), say: row.say, stops: [] }
-
-    def hang(drafts, stop, holder = nil)
-      drafts << { lane: :code, text: CHECK, say: nil, stops: [] } if drafts.empty?
-      (holder || drafts.last)[:stops] << stop
-    end
-
-    # The box of the step an outcome names with found_by:, nil when it names none.
-    def holder_of(drafts, outcome)
-      return unless outcome.found_by
-
-      drafts.find { |draft| draft[:text] == Words.sentence(outcome.found_by) } ||
-        raise(ArgumentError, "workflow #{@flow.key} outcome #{outcome.name} is found_by #{outcome.found_by}, which is no step of the workflow")
-    end
-
-    def gate_stop(gate)
-      kind = (gate.stops == :refusal) ? :refusal : :failure
-      Stop.new(kind, (kind == :refusal) ? 3 : 1, Words.sentence(gate_words(gate)), next_line(gate.offers))
-    end
-
-    def gate_words(gate) = gate.because || (gate.reason.match?(PageWords::PLACEHOLDER) ? gate.words : gate.reason)
-
-    def end_stop(outcome)
-      kind = (@flow.agent? && outcome.name == :handoff && outcome.exit_code != 0) ? :handoff : :end
-      Stop.new(kind, outcome.exit_code, Words.sentence(outcome.because), next_line(outcome.offers))
-    end
-
-    def next_line(offers) = Array(offers).first&.then { |text| "next: #{Words.angled(text)}" }
+    def end_stop(outcome) = outcome.stop_in(@flow)
   end
 
   # The numbered events of a whole call, in the order the call runs them.
@@ -84,7 +96,10 @@ module CommandReference
 
     private
 
-    def listed = @page.flows.empty? ? [call_event] : @page.flows.flat_map { |flow| start_way(flow, FlowStops.new(flow).events) }
+    def listed
+      flows = @page.flows
+      flows.empty? ? [call_event] : flows.flat_map { |flow| start_way(flow, FlowStops.new(flow).events) }
+    end
 
     def start_way(flow, events)
       first, *rest = events
@@ -103,19 +118,12 @@ module CommandReference
 
     def single_way_on?(key) = @page.edges.select { |edge| edge.from == key }.map(&:to).uniq.size == 1
 
-    def previous_of(flow) = @page.flows.fetch(@page.flows.index(flow) - 1).key
+    def previous_of(flow) = @page.before(flow)
 
     def call_event
       Event.new(nil, (@page.kind == :hook) ? :hook : :command, Words.sentence(@page.summary), nil, call_stops, nil, true)
     end
 
-    def call_stops = @page.endings.map { |ending| call_stop(ending) }.uniq
-
-    def call_stop(ending)
-      kind = { 0 => :end, 3 => :refusal }.fetch(ending.exit_code, :failure)
-      Stop.new(kind, ending.exit_code, Words.sentence(ending.text), call_next(ending.next_text))
-    end
-
-    def call_next(text) = [Endings::NONE, Endings::RUNTIME].include?(text) ? nil : "next: #{Words.angled(text)}"
+    def call_stops = @page.endings.map(&:stop).uniq
   end
 end

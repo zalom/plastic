@@ -25,11 +25,15 @@ module CommandReference
 
     def printing? = prints.any?
 
-    def change(text, place) = Change.new(text, place, Places.where(place), Places.reach(place, printing?))
+    def change(text, place) = Change.new(text, place, Places.where(place), reach(place))
 
-    def declared = [*steps, *(@klass.changes || {}).to_a].flat_map { |place, text| Array(text).map { |each| change(each, place) } }
+    def reach(place) = printing? ? Places.reach_printing(place) : Places.reach(place)
 
-    def steps = @flows.flat_map { |flow| flow.klass.steps.grep(Plastic::CodeWorkflow::Step).flat_map { |step| step.changes.to_a } }
+    def declared = [*steps, *(@klass.changes || {}).to_a].flat_map { |place, text| changes_at(place, text) }
+
+    def changes_at(place, text) = Array(text).map { |each| change(each, place) }
+
+    def steps = @flows.flat_map(&:step_changes)
 
     def printed = printed_texts.map { |text| change(text, :store) }
 
