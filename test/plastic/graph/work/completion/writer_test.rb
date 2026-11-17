@@ -37,6 +37,15 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_includes evidence.fetch(KEY).to_s, "Acceptance passes for works"
   end
 
+  def test_closing_a_done_intent_again_raises_and_changes_nothing
+    ready
+    writer.close("1")
+
+    error = assert_raises(Plastic::Invalid) { writer.close("1") }
+
+    assert_equal "intent 1 is already done", error.message
+  end
+
   def test_closing_without_the_merge_and_map_records_raises_and_writes_nothing
     ready(records: "")
 

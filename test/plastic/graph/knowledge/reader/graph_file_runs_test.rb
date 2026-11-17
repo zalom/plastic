@@ -66,4 +66,10 @@ class KnowledgeReaderGraphFileRunsTest < Plastic::TestCase
   def test_the_printed_file_holds_no_old_holder_or_count
     assert_empty printed_graph["nodes"].first.keys & %w[by retries]
   end
+
+  def test_an_old_open_node_with_a_holder_imports_with_a_released_run
+    import(node_hash("n1", state: "open", by: "s-2"))
+
+    assert_equal [["n1", 1, "", "s-2", "2026-10-20T08:00:00Z", "2026-10-20T08:00:00Z", "released"]], runs
+  end
 end

@@ -129,4 +129,13 @@ class WorkNodeRunTest < Plastic::TestCase
     assert_equal ["claimed", "s-2"], retrieval.node("1", "n1").to_h.values_at(:state, :claimed_by)
     assert_equal %w[lapsed], runs.first(1).map(&:result)
   end
+
+  def test_a_claim_that_loses_the_race_to_another_session_is_held
+    stale = retrieval.node("1", "n1")
+    claim("s-2")
+
+    outcome, = Plastic::Graph::Work::Node::Claim.new(graphs("s-1").databases, retrieval, @clock).call(stale, by: "s-1", agent: "")
+
+    assert_equal :held, outcome
+  end
 end
