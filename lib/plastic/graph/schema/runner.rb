@@ -58,9 +58,7 @@ module Plastic
       def current = File.join(@home, "plastic.db")
 
       def preparation_failure(path)
-        return unless version_of(path) < SchemaSequences.newest(:home)
-
-        reason = copy_failure(path)
+        reason = copy_failure(path) if version_of(path) < SchemaSequences.newest(:home)
         return "the copy of its database failed (#{reason})" if reason
 
         HomeRename.new(former, current).call if path == former

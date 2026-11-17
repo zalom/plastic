@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "digest"
+require "fileutils"
 require "yaml"
 require_relative "rows"
 require_relative "../clock"
-require_relative "../cli/command/refusal"
 require_relative "../graph/database"
 require_relative "../graph/schema/sequences/home_3"
 
@@ -13,7 +13,21 @@ module Plastic
     # Writes the settings rows of the machine database and prints config.yml
     # from them. The rows are the truth; the file holds no anchors. A file
     # changed by hand after the print is refused, never overwritten.
+    # config.yml changed after it was printed from the settings.
+    class HandEdited < StandardError
+      attr_reader :path
+
+      def initialize(message, path)
+        super(message)
+        @path = path
+      end
+    end
+
     class Store
+      LINE = "%s changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again"
+      UNREADABLE = "config.yml could not be read (%s); fix it and run plastic update"
+      REPAIR = "plastic config set KEY VALUE"
+
       FILE = "config.yml"
       VERSION = 3
 
@@ -46,13 +60,49 @@ module Plastic
       end
 
       def print_once
-        return if @rows.printed(FILE)
+        return problem if @rows.printed(FILE)
 
+        reason = unreadable
+        return format(UNREADABLE, reason) if reason
+
+        back_up
         import
         print
+        nil
+      end
+
+      # The line that says why config.yml is not the print of the rows, or nil.
+      def problem
+        return edited_line if @rows.printed(FILE)
+
+        reason = unreadable
+        reason && format(UNREADABLE, reason)
       end
 
       private
+
+      def edited_line
+        recorded = @rows.printed(FILE)
+        return if recorded.nil? || !File.file?(@path) || recorded == Digest::SHA256.file(@path).hexdigest
+
+        format(LINE, @path)
+      end
+
+      def unreadable
+        return unless File.file?(@path)
+
+        data = YAML.safe_load_file(@path, aliases: true)
+        "it is not a mapping" unless data.nil? || data.is_a?(Hash)
+      rescue Psych::Exception => error
+        error.message.lines.first.strip
+      end
+
+      def back_up
+        return unless File.file?(@path)
+
+        FileUtils.mkdir_p(File.join(@home, "backups"))
+        FileUtils.cp(@path, File.join(@home, "backups", "config-#{Time.now.utc.strftime("%Y%m%d%H%M%S")}.yml"))
+      end
 
       def import
         rows = Graph::SchemaHome3.rows(@path)
@@ -62,11 +112,8 @@ module Plastic
       def local = Graph::Database.open_local(@home).fetch(:local)
 
       def refuse_hand_edit
-        recorded = @rows.printed(FILE)
-        return if recorded.nil? || !File.file?(@path) || recorded == Digest::SHA256.file(@path).hexdigest
-
-        raise CLI::Command::Refusal.new("#{@path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again",
-          next_command: "plastic config set KEY VALUE", because: "the file was edited by hand")
+        line = edited_line
+        raise HandEdited.new(line, @path) if line
       end
 
       def document

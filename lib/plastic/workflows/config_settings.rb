@@ -19,6 +19,8 @@ module Plastic
 
       def set(key, value) = config.set(key, value)
 
+      def problem = Plastic::Config::Store.new(@context.scope.plastic_home).problem
+
       def current(key)
         entries.fetch(key) { raise CLI::Command::Usage, "no setting #{key}; plastic config list names them" }
       end

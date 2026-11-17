@@ -63,8 +63,6 @@ class ConfigStoreTest < Plastic::TestCase
 
     refute_includes error.message, "sync up"
   end
-  def line = "config.yml could not be read (%s); fix it and run plastic update"
-
   def test_the_first_print_copies_a_config_file_to_backups_first
     File.write(path, "global:\n  screens: false\n")
     store.print_once
@@ -78,7 +76,7 @@ class ConfigStoreTest < Plastic::TestCase
     answer = store.print_once
 
     assert_equal ["global: [unclosed\n", true], [File.read(path), answer.start_with?("config.yml could not be read (")]
-    assert answer.end_with?("); fix it and run plastic update"), answer
+    assert_match(/\); fix it and run plastic update\z/, answer)
     assert_empty setting_rows(@plastic_home)
   end
 

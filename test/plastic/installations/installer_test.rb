@@ -71,6 +71,15 @@ class InstallerTest < Plastic::TestCase
     assert_equal({ "screens" => false }, YAML.safe_load_file(File.join(plastic, "config.yml")).fetch("global"))
   end
 
+  def test_a_config_file_that_does_not_parse_is_kept_and_the_install_says_so
+    make_agent_folders(claude_config)
+    write(File.join(plastic, "config.yml"), "global: [unclosed\n")
+    _, out = run_install
+
+    assert_match(/config\.yml could not be read \(.+\); fix it and run plastic update/, out)
+    assert_equal "global: [unclosed\n", File.read(File.join(plastic, "config.yml"))
+  end
+
   def test_the_version_comes_from_the_package_and_the_channel_from_the_version
     value = Installations::Installer.new(package_root: shipped, plastic_home: plastic, agents: agent_configs, version: "2.1.0-beta.2")
 

@@ -50,7 +50,7 @@ class ConfigSetTest < Plastic::TestCase
     File.write(path, "global:\n  screens: true\n")
     result = set("statusline", "true")
 
-    assert_equal [3, true], [result.code, result.out.include?("changed since it was printed from the settings")]
+    assert_equal [3, true], [result.code, result.err.include?("changed since it was printed from the settings")]
   end
 
   def test_false_is_written_as_false

@@ -97,6 +97,15 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [2, "ok"]], [copy, [read_value(copy.first, "PRAGMA user_version"), read_value(copy.first, "PRAGMA quick_check")]]
   end
 
+  def test_a_local_db_already_at_the_newest_version_is_still_renamed_to_plastic_db
+    home = fresh_home
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    File.rename(File.join(home, "plastic.db"), File.join(home, "local.db"))
+    report = Runner.new(home:, now: NOW).call
+
+    assert_equal [true, false, []], [File.exist?(File.join(home, "plastic.db")), File.exist?(File.join(home, "local.db")), report.failed.keys]
+  end
+
   def test_a_plastic_db_at_the_newest_version_leaves_no_copy
     home = fresh_home
     Runner.new(home:, now: NOW).call

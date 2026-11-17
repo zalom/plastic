@@ -13,7 +13,16 @@ module Plastic
         class Set < CodeWorkflow
           clear_declarations
 
-          sets :harness_words, :saved
+          sets :harness_words, :saved, :problem
+
+          read "check the config file" do |context|
+            context[:problem] = ConfigSettings.new(context).problem
+          end
+
+          gate "%{problem}", stops: :refusal, offers: "plastic config set KEY VALUE",
+            because: "the file was edited by hand",
+            words: "config.yml changed after it was printed from the settings, or it cannot be read",
+            pass: ->(context) { context.problem.nil? }
 
           step "write the setting", done: ->(context) { context.saved },
             changes: { home: "The setting is written to the settings rows in plastic.db, and config.yml is printed from them" } do |context|

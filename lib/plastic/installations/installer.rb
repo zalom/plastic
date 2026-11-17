@@ -78,7 +78,8 @@ module Plastic
         prepare_config_import
         migrate_databases
         (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
-        Config::Store.new(plastic_home).print_once
+        line = Config::Store.new(plastic_home).print_once
+        puts "   #{line}" if line
       end
 
       def prepare_config_import
