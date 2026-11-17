@@ -117,6 +117,20 @@ the on/off settings on a choice screen. Each takes `--harness NAME` to work on t
 harness, and refuses a name the harness registry does not hold. See the
 [page of `config`](../reference/commands/config/README.md).
 
+## Chat history
+
+`plastic hook prompt` records each prompt you type in the `chat_messages` table of
+`~/.plastic/plastic.db`, with the session, the harness, the store and the intent in play. A call
+with no store records the prompt with an empty store and intent. Set `chat_sync` to `full` with
+`plastic config set chat_sync full` to record the reply at the end of each turn as well; the
+default, `user_only`, records prompts alone.
+
+`plastic chat list` prints the recorded messages of every store in time order, one row each with
+the time, the store, the intent and the text. `--since YYYY-MM-DD` leaves out older messages; the
+day starts at midnight in the zone of the clock. A message whose store folder is gone is still
+listed, and one line names the store. The command only reads: the text prints to the terminal and
+nothing is written. See the [page of `chat list`](../reference/commands/chat-list/README.md).
+
 ## Check the installation
 
 | Command | Result |

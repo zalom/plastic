@@ -37,6 +37,11 @@ failure, a question or an impediment goes in with `plastic node fail`, `plastic 
 `plastic node impede` instead. `plastic node release` sets a claimed or failed node back to
 `open`, and `plastic node resolve` reopens a `needs_info` or `impeded` node with its answer.
 
+Each of `node done`, `node fail`, `node ask` and `node impede` takes `--file PATH`, repeated for
+more than one file. The call reads the changed files of the intent folder, limited to the named
+paths, in the same transaction as the move, so the node's result and the files it changed land
+together. A call without `--file` reads every changed file of the folder.
+
 ## How a claim stays live
 
 A claim names the session that holds the node. The session renews it, and a claim lapses after

@@ -51,6 +51,9 @@ Every store database also has two bookkeeping tables:
   the origin. The log row is written in the same transaction as the write.
 - `printed` keeps the hash of every file printed from the rows, as of the last print.
 
+A node move writes four kinds of row in one transaction: the node's state, its run, the log line
+and the changed files of the intent folder it read.
+
 Every row carries `origin_id`, the id of the installation that wrote it. The id sits in a file
 at the home and is made on first use. Every stored time is UTC.
 
