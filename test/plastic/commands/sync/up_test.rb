@@ -83,7 +83,7 @@ class SyncUpFoldersTest < Plastic::TestCase
     write("store/index.json", JSON.generate(data))
   end
 
-  def intent_ids =retrieval.intents.map(&:intent_id)
+  def intent_ids = retrieval.intents.map(&:intent_id)
 
   def index_ids = JSON.parse(folder.read("store/index.json"))["intents"].map { |entry| entry["intent_id"] }
 

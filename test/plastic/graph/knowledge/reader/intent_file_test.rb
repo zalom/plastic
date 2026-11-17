@@ -27,17 +27,18 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal [node.id], retrieval.nodes("1").map(&:id)
   end
 
-def test_work_log_reads_one_row_per_line_and_a_loose_line_is_noted
-  assert_equal :work, read_in("work.log", "- #{AT} Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec written\nfree text\n")
-  assert_equal [[1, "wrote", "n3", "s-1", "Spec written"], [2, "noted", "", nil, "free text"]],
-    retrieval.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
-end
+  def test_work_log_reads_one_row_per_line_and_a_loose_line_is_noted
+    assert_equal :work, read_in("work.log", "- #{AT} Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec written\nfree text\n")
+    assert_equal [[1, "wrote", "n3", "s-1", "Spec written"], [2, "noted", "", nil, "free text"]],
+      retrieval.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
+  end
 
-def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
-  assert_equal :work, read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
-  assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
-    retrieval.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
-end
+  def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
+    assert_equal :work, read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
+    assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
+      retrieval.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
+  end
+
   def test_a_markdown_file_reads_into_a_document
     assert_equal :knowledge, read_in("notes.md", "# Notes\n")
     assert_equal "# Notes\n", retrieval.documents("1").find { |document| document.path == "notes.md" }.body
@@ -52,13 +53,14 @@ end
       row.values_at("body", "sha256", "position")
   end
 
-def test_sync_keeps_the_session_a_work_log_line_names
-  write("#{DIR}/work.log", "- #{AT} - - owner noted - - Original\n- #{AT} - - - noted - - new line\n")
-  Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/work.log"])
+  def test_sync_keeps_the_session_a_work_log_line_names
+    write("#{DIR}/work.log", "- #{AT} - - owner noted - - Original\n- #{AT} - - - noted - - new line\n")
+    Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/work.log"])
 
-  assert_equal ["owner", nil], retrieval.work_log("1").map(&:session_id)
-  assert_equal ["1"], retrieval.touched("owner")
-end
+    assert_equal ["owner", nil], retrieval.work_log("1").map(&:session_id)
+    assert_equal ["1"], retrieval.touched("owner")
+  end
+
   def test_any_other_file_is_kept_whole
     assert_equal :references, read_in("x.bin", "\x00\xFF".b)
     file = kept("x.bin")

@@ -26,7 +26,7 @@ module Plastic
         class IntentFile
           KEPT_MODE = 0o100644
           KINDS = { "graph.json" => %i[work graph], "context.json" => %i[knowledge context], "work.log" => %i[work work_log],
-                  "savepoint.md" => %i[work savepoint] }.freeze
+                    "savepoint.md" => %i[work savepoint] }.freeze
 
           def initialize(file, intent_id, writer:, retrieval: nil)
             @file = file

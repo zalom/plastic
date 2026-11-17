@@ -47,7 +47,7 @@ module Plastic
       def self.note(context, plan)
         note_refusals(context, plan)
         note_files(context, plan.unreadable_files, plan.rowless_files)
-        context[:lines] = plan.old_savepoints.kept_lines
+        context[:lines] = plan.old_savepoints.kept_lines.then { |kept| kept unless kept.empty? }
       end
 
       def self.note_refusals(context, plan)
