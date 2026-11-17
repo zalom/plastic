@@ -54,6 +54,28 @@ class SchemaMigratorTest < Plastic::TestCase
     second&.close
   end
 
+  class StampedBeforeLock < SimpleDelegator
+    def initialize(connection, other)
+      super(connection)
+      @other = other
+    end
+
+    def atomically(&)
+      @other.execute("PRAGMA main.user_version = 1")
+      super
+    end
+  end
+
+  def test_a_runner_that_finds_the_file_stamped_once_it_holds_the_write_lock_runs_no_statement
+    other = Connection.open(@path)
+    late = StampedBeforeLock.new(@connection, other)
+
+    assert_nil Migrator.new(late, migration("add_tickets")).call
+    assert_empty tables
+  ensure
+    other&.close
+  end
+
   def test_a_file_at_stamp_2_raises_ahead_with_the_message_to_restore_the_backup
     @connection.execute("PRAGMA main.user_version = 2")
 

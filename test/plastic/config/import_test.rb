@@ -52,6 +52,14 @@ class ConfigImportTest < Plastic::TestCase
     assert_empty setting_rows(home)
   end
 
+  def test_a_malformed_file_is_refused_and_imports_no_row
+    home = Dir.mktmpdir
+
+    assert_raises(Psych::SyntaxError) { import(home, "global: [unclosed\n") }
+
+    assert_empty setting_rows(home)
+  end
+
   def test_a_missing_file_imports_nothing
     home = Dir.mktmpdir
     Plastic::Config::Import.new(File.join(home, "config.yml"), into: local(home)).call

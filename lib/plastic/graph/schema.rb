@@ -13,10 +13,15 @@ module Plastic
     module Schema
       extend SchemaTriggers
 
+      class UnknownTable < KeyError; end
+
       def self.file(key) = databases.fetch(key).first
 
       # The file that holds the table `name`.
-      def self.file_of(name) = databases.values_at(*store, *derived).find { |_file, names| names.include?(name.to_sym) }&.first
+      def self.file_of(name)
+        absent = -> { raise UnknownTable, "no database file holds the table #{name}" }
+        databases.values_at(*store, *derived).find(absent) { |_file, names| names.include?(name.to_sym) }.first
+      end
 
       def self.fetch(key, schema: nil)
         names = databases.fetch(key).last

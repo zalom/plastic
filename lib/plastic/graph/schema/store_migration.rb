@@ -63,9 +63,11 @@ module Plastic
       def run_migration
         migrating = connection
         migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
-        SchemaMigrator.new(migrating, SchemaMigrations.path(:store)).call
-      ensure
-        migrating&.execute("DETACH DATABASE refs") unless migrating&.transaction_active?
+        begin
+          SchemaMigrator.new(migrating, SchemaMigrations.path(:store)).call
+        ensure
+          migrating.execute("DETACH DATABASE refs")
+        end
       end
 
       def retire_references

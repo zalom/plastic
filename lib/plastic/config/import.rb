@@ -25,11 +25,7 @@ module Plastic
 
       def scope_rows(scope, settings) = flat(settings).map { |key, value| { scope:, key:, value: JSON.generate(value) } }
 
-      def document
-        File.file?(@path) ? YAML.safe_load_file(@path, aliases: true) : nil
-      rescue Psych::Exception
-        nil
-      end
+      def document = File.file?(@path) ? YAML.safe_load_file(@path, aliases: true) : nil
 
       def data = document.is_a?(Hash) ? document : {}
 

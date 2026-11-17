@@ -9,6 +9,16 @@ class SchemaTest < Plastic::TestCase
 
   def table(name) = Schema.table_named(name)
 
+  def test_the_file_of_a_table_is_the_file_that_holds_it
+    assert_equal ["work_graph.db", "knowledge_graph.db", "retrieval_graph.db"], %i[nodes intents document_passages].map { |name| Schema.file_of(name) }
+  end
+
+  def test_the_file_of_an_unknown_table_raises_unknown_table
+    error = assert_raises(Schema::UnknownTable) { Schema.file_of("intnets") }
+
+    assert_equal "no database file holds the table intnets", error.message
+  end
+
   def test_the_schema_names_each_database_file
     assert_equal %w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db], %i[local work knowledge retrieval].map { |key| Schema.file(key) }
   end

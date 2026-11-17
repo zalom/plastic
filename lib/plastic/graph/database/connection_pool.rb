@@ -24,7 +24,7 @@ module Plastic
           connection.attach_all(path, attach) unless attach.empty?
           connection
         rescue Database::JournalModeRefused
-          connection&.close
+          connection.close
           raise
         end
 
