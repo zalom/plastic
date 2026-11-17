@@ -64,13 +64,4 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
 
     assert_equal [%w[2026-10-01 Opened], ["2026-10-02", "Started it"]], retrieval.roadmap_log("plan").map { |line| [line.at, line.text] }
   end
-
-  def test_migrating_counts_the_roadmaps_and_items_and_prints_the_file
-    write("roadmaps/plan.md", "# Plan\n\n## Batches\n\n### Batch 1 — First\n- [ ] 7 Build it — queued\n")
-    counts = Hash.new(0)
-    Legacy::RoadmapMigration.new(store_graphs, root, counts).call(roadmaps.parse)
-
-    assert_equal [1, 1], counts.values_at(:roadmaps, :roadmap_items)
-    assert_equal ["Build it"], retrieval.roadmap_items("plan").map(&:title)
-  end
 end

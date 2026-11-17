@@ -32,4 +32,22 @@ class KnowledgeReaderTest < Plastic::TestCase
 
     assert_equal ["store/1--alpha/savepoint.md", Digest::SHA256.hexdigest(""), nil], print.to_h.values
   end
+
+  def write_index(**parts) = write(Plastic::Graph::Knowledge::StoreFolder::INDEX, JSON.generate({ "intents" => [], "clusters" => [], "links" => [] }.merge(parts.transform_keys(&:to_s))))
+
+  def run_read(read) = store_graphs.databases.fetch(:store).transaction { |batch| read.apply.call(batch) }
+
+  def test_the_cluster_part_of_the_index_reads_its_clusters
+    write_index(clusters: [{ "name" => "Core", "intents" => ["1"] }])
+    run_read(reader.read(Plastic::Graph::Prints::ClusterPart::PATH, FixedClock::STAMP))
+
+    assert_equal [%w[Core 1]], retrieval.clusters.map { |cluster| [cluster.name, cluster.intent_id] }
+  end
+
+  def test_the_link_part_of_the_index_reads_its_links_stamped_with_the_given_time
+    write_index(links: [{ "from_ref" => "1", "to_ref" => "notes.md", "kind" => "source" }])
+    run_read(reader.read(Plastic::Graph::Prints::LinkPart::PATH, FixedClock::STAMP))
+
+    assert_equal [["notes.md", FixedClock::STAMP]], retrieval.links("1").map { |link| [link.to_ref, link.at] }
+  end
 end

@@ -81,4 +81,27 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
     assert_equal "Noted", retrieval.intent("1").title
   end
+
+  def printed_elsewhere(entries) = JSON.generate({ "origin_id" => "beef", "intents" => entries.map { |entry| entry.merge("origin_id" => "beef") }, "clusters" => [] })
+
+  def cross(entries) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(printed_elsewhere(entries), origin, nil, { "1" => retrieval.intent("1") }).apply(batch, FixedClock::STAMP) }
+
+  def test_an_index_another_home_printed_changes_the_title_of_the_row_of_this_home
+    cross([entry(title: "Renamed")])
+
+    assert_equal ["Renamed", FixedClock::STAMP], retrieval.intent("1").to_h.values_at(:title, :updated_at)
+  end
+
+  def test_an_index_another_home_printed_leaves_a_level_row_as_it_was
+    before = retrieval.intent("1").updated_at
+    cross([entry])
+
+    assert_equal before, retrieval.intent("1").updated_at
+  end
+
+  def test_an_index_another_home_printed_adds_no_row_for_an_intent_this_home_does_not_hold
+    cross([entry(intent_id: "9", slug: "ghost")])
+
+    assert_equal ["1"], retrieval.intents.map(&:intent_id)
+  end
 end

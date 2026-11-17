@@ -41,8 +41,6 @@ module Plastic
       def printing(value, ctx)
         print_files(ctx) if print_due?(value)
         value
-      rescue Usage, Failed, Refused
-        raise
       rescue => error
         raise Failed.raised(:print, "files", error)
       end
