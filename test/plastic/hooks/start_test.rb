@@ -206,12 +206,11 @@ class StartSessionRowTest < Plastic::TestCase
     end
   end
 
-  def test_a_work_log_line_a_cut_short_write_left_pending_prints_after_the_compaction
+  def test_a_work_log_line_prints_after_the_compaction
     session = "s-dead"
     work = Plastic::Graph.open(home: @plastic_home, store: "global", session:).work
     intent = work.write_intent(title: "Alpha")
     work.add_ruling(intent_id: intent.intent_id, text: "kept")
-    work.drain_logs
     result = plastic("hook", "start", input: JSON.generate(session_id: session, source: "compact"), env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE)
 
     refute_empty(result.out.lines.grep(/ ruled /), result.out)

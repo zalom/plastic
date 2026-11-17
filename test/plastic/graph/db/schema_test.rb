@@ -32,7 +32,6 @@ class DbSchemaTest < Plastic::TestCase
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",
     sqlar: "e009afa1c7e455192a87f15934d1082e9f304b49ceffeab8aece9948142713b1",
     printed: "eeb9e475e607f232e6c325c72d9de74debf78a53fa16b1bffd8839ba597c40be",
-    changes: "1f784ae1ffbda6d665262ef29dbec704842024b50fe79728eaea7c41cd50cb75",
     document_revisions: "3db553065bcfd4d055ff29aa476136e9d9bb74905dd82a03cd72ecc4c9a489a7",
     document_heads: "b87ad04e374493805bac7cc34d9b53cb5293bcef0ec5303a4dafc439047c33b6",
     document_passages: "0c8ed03255aace08648603941623217e717b8a1942850c648e7289c3356adb57",
@@ -48,10 +47,10 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed]],
-      work: ["work_graph.db", %i[nodes edges work_log printed changes roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
-      knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data
+      work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
+      knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
         document_revisions document_heads retrieval_contexts retrieval_discoveries
-        rulings links printed changes sqlar]],
+        rulings links printed sqlar]],
       retrieval: ["retrieval_graph.db", %i[document_passages document_fts]]
     }, Schema.databases)
   end
@@ -103,12 +102,11 @@ class DbSchemaTest < Plastic::TestCase
     assert_empty file.tables.fetch(:things).key
   end
 
-  def test_the_printed_table_is_neither_logged_nor_counted_and_command_runs_are_counted
-    assert_equal [false, false, true, true], [Schema.table_named(:printed).logged?, Schema.table_named(:printed).counted?,
-      Schema.table_named(:changes).logged?, Schema.table_named(:command_runs).counted?]
+  def test_the_printed_table_is_not_counted_and_command_runs_are_counted
+    assert_equal [false, true], [Schema.table_named(:printed).counted?, Schema.table_named(:command_runs).counted?]
   end
 
   def test_a_database_lists_tables_declared_once_and_shared
-    assert_equal %i[work knowledge], %i[work knowledge].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
+    assert_equal %i[local knowledge], %i[local work knowledge].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
   end
 end

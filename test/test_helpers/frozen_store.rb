@@ -34,7 +34,6 @@ module FrozenStore
       INSERT INTO verdicts (intent_id, round, origin_id, verdict, findings) VALUES ('1', 1, 'o', 'pass', '[]');
       INSERT INTO archives (intent_id, origin_id, at) VALUES ('2', 'o', 't');
       INSERT INTO archive_entries (intent_id, path, origin_id, kind, mode, mtime, data) VALUES ('2', 'a.md', 'o', 'file', 420, 't', x'00ff10');
-      INSERT INTO work_log_pending (write_id, intent_id, at, kind, text, origin_id) VALUES ('w-1', '1', 't', 'noted', 'owed', 'o');
     SQL
   end
 

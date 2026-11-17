@@ -6,7 +6,7 @@ require_relative "../../test_helper"
 class KnowledgeOwnsIntentTest < Plastic::TestCase
   fixtures :empty
 
-  MOVED = %w[intents clusters completions approvals verdicts archives archive_entries work_log_pending].freeze
+  MOVED = %w[intents clusters completions approvals verdicts archives archive_entries].freeze
 
   def graphs(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 

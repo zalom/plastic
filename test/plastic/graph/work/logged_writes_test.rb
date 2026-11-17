@@ -180,6 +180,6 @@ class WorkLoggedWritesTest < Plastic::TestCase
     forget
     graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
 
-    assert_equal [0, %w[noted]], [work.drain_log("1"), kinds]
+    assert_equal %w[noted], kinds
   end
 end

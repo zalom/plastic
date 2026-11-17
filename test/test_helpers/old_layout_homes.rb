@@ -46,7 +46,7 @@ module OldLayoutHomes
 
   def file_bytes(home) = database_files(home).to_h { |path| [path, File.binread(path)] }
 
-  MOVED_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries work_log_pending].freeze
+  MOVED_TABLES = %w[intents clusters completions approvals verdicts archives archive_entries].freeze
   LAYOUT = Plastic::Graph::SchemaStore1::Layout::TEXT
 
   private

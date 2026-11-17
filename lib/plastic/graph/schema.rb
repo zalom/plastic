@@ -20,7 +20,7 @@ module Plastic
 
       def self.fetch(key, schema: nil)
         names = databases.fetch(key).last
-        [*names.map { |name| ddl(name, schema) }, (migrations[key] unless schema), *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
+        [*names.map { |name| ddl(name, schema) }, *names.flat_map { |name| trigger_creates(name) }].join("\n")
       end
 
       def self.prepare(connection, schema) = connection.execute_batch(schema)
@@ -50,7 +50,6 @@ module Plastic
       def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)
       def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
 
-      def self.migrations = SchemaMetadata::MIGRATIONS
       def self.nouns = SchemaMetadata::NOUNS
     end
   end

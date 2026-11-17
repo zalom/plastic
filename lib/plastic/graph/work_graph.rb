@@ -27,7 +27,7 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
-      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :drain_log, :drain_logs, :add_ruling, :add_verdict,
+      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :add_ruling, :add_verdict,
         :revise_intent, :note_intent, :add_node, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
         :remove_node, :add_edge, :remove_edge
       def_delegators "@writers.nodes", :renew_claims
@@ -45,7 +45,7 @@ module Plastic
         @folder = folder
         @retrieval = retrieval
         @writers = Work::Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
-        @logged = Work::LoggedWrites.new(@writers, **seams.slice(:log))
+        @logged = Work::LoggedWrites.new(@writers)
       end
 
       # A command run is call memory, kept off the report.
