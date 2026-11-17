@@ -42,7 +42,7 @@ class SyncUpTest < Plastic::TestCase
   def test_sync_up_wrote_line_names_the_rows_and_leaves_out_the_command_run
     result = import
 
-    assert_includes result.out, "wrote:  2 intents and 2 savepoint lines in work_graph.db"
+    assert_includes result.out, "wrote:  2 intents and 2 work log lines in work_graph.db"
     refute_includes result.out, "command run"
   end
 

@@ -42,6 +42,8 @@ module Plastic
         def missing(intent_id)
           intent = @retrieval.intent(intent_id)
           have = @retrieval.work_log(intent_id)
+          return [] unless intent
+
           expected(intent, have).reject { |line| have.any? { |row| row.kind == line.kind } }
         end
 

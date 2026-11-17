@@ -57,7 +57,7 @@ class PrintsTest < Plastic::TestCase
     graphs.work.print_intent("1")
     printed = store_graphs.retrieval.printed
 
-    %w[store/index.json store/1--one/intent.md store/1--one/graph.json store/1--one/savepoint.md].each do |path|
+    %w[store/index.json store/1--one/intent.md store/1--one/graph.json store/1--one/work.log].each do |path|
       assert_equal Digest::SHA256.file(store_path(path)).hexdigest, printed.fetch(path)
     end
   end
@@ -80,9 +80,9 @@ class PrintsTest < Plastic::TestCase
     assert print.level?(folder)
   end
 
-  def test_an_intent_with_no_savepoint_lines_prints_no_savepoint_file
+  def test_an_intent_with_no_log_lines_prints_no_work_log
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.remove(:savepoints, intent_id: "1") }
+    store_graphs.databases[:work].transaction { |batch| batch.remove(:work_log, intent_id: "1") }
 
     assert_equal %w[store/1--one/intent.md store/1--one/graph.json],
       Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).map(&:path)
@@ -109,8 +109,8 @@ class PrintsTest < Plastic::TestCase
     open_intent("One")
     open_intent("Two")
 
-    assert_equal %w[store/index.json store/1--one/intent.md store/1--one/savepoint.md store/1--one/graph.json store/2--two/intent.md
-      store/2--two/savepoint.md store/2--two/graph.json], Plastic::Graph::Prints.of_store(retrieval).map(&:path)
+    assert_equal %w[store/index.json store/1--one/intent.md store/1--one/work.log store/1--one/graph.json store/2--two/intent.md
+      store/2--two/work.log store/2--two/graph.json], Plastic::Graph::Prints.of_store(retrieval).map(&:path)
   end
 
   def test_index_json_names_the_store_and_origin_and_ends_with_a_newline
@@ -119,11 +119,11 @@ class PrintsTest < Plastic::TestCase
     assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "archives" => [], "clusters" => [], "links" => [] }, "\n"], [JSON.parse(text), text[-1]]
   end
 
-  def test_the_savepoint_file_holds_one_line_per_row
+  def test_the_work_log_file_holds_one_line_per_row
     store_graphs.work.write_intent(title: "One")
     savepoint = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1"))[1]
 
-    assert_equal ["store/1--one/savepoint.md", "#{retrieval.savepoints("1").first.line}\n"], [savepoint.path, savepoint.text]
+    assert_equal ["store/1--one/work.log", "#{retrieval.work_log("1").first.line}\n"], [savepoint.path, savepoint.text]
   end
 
   def graph_text_with_node

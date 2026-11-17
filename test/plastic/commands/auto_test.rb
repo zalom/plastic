@@ -201,9 +201,9 @@ class AutoRoadmapTest < Plastic::TestCase
     intent_id
   end
 
-  def test_a_roadmap_whose_picked_intent_has_a_savepoint_changed_by_hand_is_refused_and_kept
+  def test_a_roadmap_whose_picked_intent_has_a_work_log_changed_by_hand_is_refused_and_kept
     intent_id = armed_item
-    path = "#{retrieval.intent(intent_id).dir}/savepoint.md"
+    path = "#{retrieval.intent(intent_id).dir}/work.log"
     write(path, "by hand\n")
 
     result = call("r1")
@@ -215,7 +215,7 @@ class AutoRoadmapTest < Plastic::TestCase
     roadmap
     item("a")
     other = open_intent("Other")
-    write("#{other.dir}/savepoint.md", "by hand\n")
+    write("#{other.dir}/work.log", "by hand\n")
 
     result = call("r1")
 

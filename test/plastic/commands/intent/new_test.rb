@@ -4,7 +4,7 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/new"
 
 class IntentNewCaseTest < Plastic::TestCase
-  FILES = %w[graph.json intent.md savepoint.md].freeze
+  FILES = %w[graph.json intent.md work.log].freeze
 
   def index_ids
     return [] unless File.exist?(store_path("store/index.json"))

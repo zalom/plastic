@@ -32,7 +32,7 @@ module DisposableCopyFixtures
 
   def rework(copy_path)
     File.write(alpha(copy_path, "notes.txt"), "changed\n")
-    File.delete(alpha(copy_path, "savepoint.md"))
+    File.delete(alpha(copy_path, "work.log"))
     File.write(File.join(copy_path, "stores", "global", "added.txt"), "new\n")
   end
 end
@@ -137,7 +137,7 @@ class DisposableCopyTest < Plastic::TestCase
       changes = copy_of(home).within { |copy| rework(copy.path).then { copy.changes } }
 
       assert_equal [["would add", File.join(store, "added.txt")], ["would change", alpha(home, "notes.txt")],
-        ["would remove", alpha(home, "savepoint.md")]], changes
+        ["would remove", alpha(home, "work.log")]], changes
     end
   end
 

@@ -69,13 +69,13 @@ class RoutinePrintingTest < Plastic::TestCase
     assert_equal "# by hand\n", File.read(store_path("#{intent.dir}/intent.md"))
   end
 
-  def test_an_edited_savepoint_refuses_auto_and_leaves_the_intent_unstarted
+  def test_an_edited_work_log_refuses_auto_and_leaves_the_intent_unstarted
     intent = specified
     cli("intent", "approve", "1")
-    write("#{intent.dir}/savepoint.md", "by hand\n")
+    write("#{intent.dir}/work.log", "by hand\n")
     result = cli("auto", "1")
 
-    assert_refused(result, "#{intent.dir}/savepoint.md")
+    assert_refused(result, "#{intent.dir}/work.log")
     refute_equal "in_progress", retrieval.intent("1").status
   end
 
@@ -275,10 +275,10 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     assert_equal [1, 0, 0], round_trip(method(:note))
   end
 
-  def test_an_edited_savepoint_is_cleared_by_the_command_the_refusal_names
+  def test_an_edited_work_log_is_cleared_by_the_command_the_refusal_names
     intent = specified
     cli("intent", "approve", "1")
-    write("#{intent.dir}/savepoint.md", "by hand\n")
+    write("#{intent.dir}/work.log", "by hand\n")
 
     assert_equal [1, 0, 0], round_trip(method(:note))
   end

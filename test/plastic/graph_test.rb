@@ -147,7 +147,7 @@ class HomesTest < Plastic::TestCase
   end
 
   def test_a_deleted_fixture_file_comes_back
-    path = store_path("savepoint.md")
+    path = store_path("work.log")
     original = File.read(path)
     File.delete(path)
 
