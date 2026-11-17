@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "digest"
-require_relative "../../test_helper"
+require_relative "../../../test_helper"
 
 # Every intent write stores its owning rows first and one work_log row second.
-class WorkLogTest < Plastic::TestCase
+class WorkLoggedWritesTest < Plastic::TestCase
   fixtures :empty
 
   def graphs(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)

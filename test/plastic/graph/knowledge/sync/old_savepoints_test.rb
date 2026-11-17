@@ -4,7 +4,7 @@ require "digest"
 require_relative "../../../../test_helper"
 
 # work.log is printed from the rows, read back by sync up, and replaces savepoint.md on a sync down.
-class SyncWorkLogFileTest < Plastic::TestCase
+class SyncOldSavepointsTest < Plastic::TestCase
   def sync_down = plastic("sync", "down", table: Plastic::CLI::TABLE)
 
   def log_path(intent) = "#{intent.dir}/work.log"
