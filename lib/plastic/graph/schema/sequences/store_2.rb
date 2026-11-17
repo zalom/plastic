@@ -41,7 +41,7 @@ module Plastic
 
       def apply(connection, key)
         return unless TEXT.key?(key)
-        return unless connection.execute("PRAGMA table_info(nodes)").any? { |column| column[1] == "by" }
+        return unless connection.get_first_value("SELECT count(*) FROM pragma_table_info('nodes') WHERE name = 'by'").positive?
 
         connection.execute_batch(TEXT.fetch(key))
       end
