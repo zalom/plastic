@@ -18,7 +18,8 @@ module Plastic
 
           def self.items_of(context)
             all = context.retrieval.roadmaps.items(context.slug)
-            context.position ? all.select { |item| item.batch == context.position.to_i } : all
+            position = context.position
+            position ? all.select { |item| item.batch == position.to_i } : all
           end
 
           def self.states_of(context)

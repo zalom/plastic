@@ -63,7 +63,8 @@ module Plastic
             return say(context, "plastic status", "no store has open work") unless found
 
             command, why = found.next_step
-            say(context, in_store(context.scope, command, found.slug), reports.one? ? why : format(SEVERAL, found.slug))
+            slug = found.slug
+            say(context, in_store(context.scope, command, slug), reports.one? ? why : format(SEVERAL, slug))
           end
 
           def self.say(context, command, why)

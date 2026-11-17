@@ -23,7 +23,9 @@ module Plastic
             return "no node #{context.id} in intent #{context.intent_id}" unless node
             return nil if node.held_by?(context.session)
 
-            (node.state == "claimed") ? "node #{node.id} is held by session #{node.claimed_by}" : "node #{node.id} is #{node.state}; it holds no claim"
+            id = node.id
+            state = node.state
+            (state == "claimed") ? "node #{id} is held by session #{node.claimed_by}" : "node #{id} is #{state}; it holds no claim"
           end
 
           gate "%{problem}", stops: :refusal,

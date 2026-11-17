@@ -40,9 +40,7 @@ module Plastic
 
       def download(version)
         directory = File.join(share, "download")
-        FileUtils.rm_rf(directory)
-        FileUtils.mkdir_p(directory)
-        source.files(version, directory).verify
+        fetch(version, directory)
         directory
       rescue
         FileUtils.rm_rf(directory)
@@ -52,6 +50,12 @@ module Plastic
       private
 
       attr_reader :share, :source
+
+      def fetch(version, directory)
+        FileUtils.rm_rf(directory)
+        FileUtils.mkdir_p(directory)
+        source.files(version, directory).verify
+      end
     end
   end
 end
