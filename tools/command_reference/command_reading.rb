@@ -16,7 +16,7 @@ module CommandReference
 
   # Reads one command from the kernel into a Page.
   class CommandReading
-    KINDS = [[Plastic::Routine, :routine], [Plastic::Hook, :hook]].freeze
+    KINDS = [[Plastic::Routine, :routine], [Plastic::CLI::Hook, :hook]].freeze
 
     def self.of(kit, value)
       table = kit.table
@@ -55,7 +55,7 @@ module CommandReference
 
     def routine? = @klass <= Plastic::Routine
 
-    def hook? = @klass <= Plastic::Hook
+    def hook? = @klass <= Plastic::CLI::Hook
 
     def chain = (@klass.chain if routine?)
 

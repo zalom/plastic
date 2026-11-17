@@ -16,7 +16,7 @@ module Plastic
                 @node = node
               end
 
-              def run
+              def run_row
                 worker = @node.delete("by").to_s
                 @node.delete("retries")
                 return nil if worker.empty?
@@ -53,7 +53,7 @@ module Plastic
               nodes = Array(@data["nodes"]).grep(Hash).select { |node| node.key?("by") || node.key?("retries") }
               return @data if nodes.empty?
 
-              runs = nodes.filter_map { |node| Node.new(node).run }
+              runs = nodes.filter_map { |node| Node.new(node).run_row }
               @data.merge("runs" => Array(@data["runs"]) + runs)
             end
           end

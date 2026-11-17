@@ -99,7 +99,7 @@ module Plastic
         yield batch
         connected do |connection|
           connection.atomically do
-            batch.run(connection) { nil }
+            batch.execute(connection) { nil }
             raise Undone
           end
         end
@@ -143,7 +143,7 @@ module Plastic
         raise Database.relabeled(file, error)
       end
 
-      def write(connection, batch) = @tally.keeping { batch.run(connection, &@tally.method(:count)) }
+      def write(connection, batch) = @tally.keeping { batch.execute(connection, &@tally.method(:count)) }
 
       def connected
         yield connection

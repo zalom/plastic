@@ -11,7 +11,7 @@ module Plastic
   module Hooks
     # Stop: stamps the session's last turn, renews its node claims, then runs
     # the stop gate.
-    class Stop < Hook
+    class Stop < CLI::Hook
       changes(local: "The last turn of the session is stamped", work: "The node claims of the session are renewed")
 
       def respond(event)

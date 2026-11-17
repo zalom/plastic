@@ -5,7 +5,7 @@ require_relative "../../test_helper"
 class WorkWritersTest < Plastic::TestCase
   def writers
     graphs = store_graphs
-    Plastic::Graph::Work::Writers.new(graphs.databases, graphs.retrieval, folder, "s-1")
+    Plastic::Graph::Writers.new(graphs.databases, graphs.retrieval, folder, "s-1")
   end
 
   def test_each_writer_is_built_once_and_kept

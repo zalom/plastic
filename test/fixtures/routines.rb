@@ -171,11 +171,11 @@ module Fixtures
     workflow :code_greet, next: :code_stamp
   end
 
-  class Echo < Plastic::Hook
+  class Echo < Plastic::CLI::Hook
     def respond(event) = "session #{event[:session_id]}"
   end
 
-  class Quiet < Plastic::Hook
+  class Quiet < Plastic::CLI::Hook
     def respond(_event) = nil
   end
 

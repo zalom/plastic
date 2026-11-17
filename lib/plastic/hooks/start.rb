@@ -17,7 +17,7 @@ module Plastic
     # fresh, one line naming plastic doctor when a doctor check fails or when
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no command run.
-    class Start < Hook
+    class Start < CLI::Hook
       changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
 
       def initialize(argv, health: method(:failing_checks), **rest)

@@ -30,9 +30,9 @@ class HookTest < Plastic::TestCase
 
   def test_a_hook_must_define_respond
     err = StringIO.new
-    code = Plastic::Hook.call([], words: "hook", environment: environment(err:))
+    code = Plastic::CLI::Hook.call([], words: "hook", environment: environment(err:))
 
     assert_equal 0, code
-    assert_equal "plastic hook: NoMethodError: Plastic::Hook must define respond\n", err.string
+    assert_equal "plastic hook: NoMethodError: Plastic::CLI::Hook must define respond\n", err.string
   end
 end

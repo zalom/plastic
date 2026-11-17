@@ -45,7 +45,7 @@ module Plastic
       def initialize(databases, folder:, retrieval:, session: nil, **seams)
         @folder = folder
         @retrieval = retrieval
-        @writers = Work::Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
+        @writers = Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
         @logged = Work::LoggedWrites.new(@writers)
       end
 

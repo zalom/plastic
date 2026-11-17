@@ -64,7 +64,7 @@ class WorkLoggedStructureWritesTest < Plastic::TestCase
     def claim_node(**) = [:capped, nil]
   end
 
-  class NodesThatCapNowhere < Plastic::Graph::Work::Writers
+  class NodesThatCapNowhere < Plastic::Graph::Writers
     def nodes = (@nodes ||= CappedNowhere.new)
   end
 

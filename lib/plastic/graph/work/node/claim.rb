@@ -55,7 +55,7 @@ module Plastic
             reason = node.rejection_at(now)
             return [reason, node] if reason
 
-            won = take(node, { by:, agent:, now: Plastic.timestamp(now), cutoff: Plastic.timestamp(now - Node::LAPSE) })
+            won = write_claim(node, { by:, agent:, now: Plastic.timestamp(now), cutoff: Plastic.timestamp(now - Node::LAPSE) })
             fresh = current(node)
             won ? [:claimed, fresh] : [fresh.claim_rejection, fresh]
           end
@@ -64,7 +64,7 @@ module Plastic
 
           def current(node) = @retrieval.node(*node.claim_key.values_at(:intent_id, :id))
 
-          def take(node, claimant)
+          def write_claim(node, claimant)
             bind = { **node.claim_key, origin: @retrieval.origin_id, **claimant }
             @databases.fetch(:store).transaction { |batch| batch.add_steps(STEPS, **bind) }.any?
           end
