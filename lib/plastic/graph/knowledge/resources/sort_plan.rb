@@ -19,6 +19,9 @@ module Plastic
 
           def empty? = moves.empty?
 
+          # Every move of the store by old path, the unchecked plan the links are recomputed against.
+          def moved = (@moved ||= intents.flat_map(&:moves).to_h { |move| [move.from, move.to] })
+
           def rewrites = intents.flat_map(&:rewrites)
 
           def unresolved = intents.flat_map(&:unresolved)
@@ -30,7 +33,7 @@ module Plastic
             raise Refused, conflicting.refusal if conflicting
           end
 
-          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir) })
+          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, method(:moved)) })
         end
       end
     end

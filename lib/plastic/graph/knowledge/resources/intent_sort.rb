@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "classification"
+require_relative "known_files"
 require_relative "link_rewrite"
 require_relative "move"
 require_relative "../legacy_path"
@@ -14,7 +15,7 @@ module Plastic
         class IntentSort
           Rewrite = Data.define(:path, :text, :was)
           Linked = Data.define(:rel, :was, :found) do
-            def rewrite(dir, destinations) = Rewrite.new("#{dir}/#{destinations.fetch(rel, rel)}", found.text, was)
+            def rewrite(dir, moved) = Rewrite.new(moved.fetch("#{dir}/#{rel}", "#{dir}/#{rel}"), found.text, was)
 
             def changed? = found.text != was
 
@@ -23,14 +24,15 @@ module Plastic
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
 
-          def initialize(folder, dir)
+          def initialize(folder, dir, moved)
             @folder = folder
             @dir = dir
+            @moved = moved
           end
 
           def moves = destinations.map { |from, to| Move.new("#{@dir}/#{from}", "#{@dir}/#{to}") }
 
-          def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, destinations) }
+          def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @moved.call) }
 
           def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
 
@@ -40,10 +42,12 @@ module Plastic
 
           def destinations = (@destinations ||= files.to_h { |rel| [rel, Classification.destination(rel)] }.compact)
 
+          def rewriter = (@rewriter ||= LinkRewrite.new(@moved.call, KnownFiles.new(@folder)))
+
           def results
             @results ||= files.select { |rel| IntentSort.linked?(rel) }.map do |rel|
               was = @folder.read("#{@dir}/#{rel}").force_encoding(Encoding::UTF_8)
-              Linked.new(rel, was, LinkRewrite.new(destinations, files).call(rel, was))
+              Linked.new(rel, was, rewriter.call("#{@dir}/#{rel}", was))
             end
           end
         end

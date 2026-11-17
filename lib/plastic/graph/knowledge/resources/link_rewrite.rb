@@ -6,9 +6,9 @@ module Plastic
   module Graph
     module Knowledge
       module Resources
-        # Rewrites the relative links of one file after the moves of a sort. A link is kept as it is when it
-        # leaves the intent folder, is a web or absolute link, or named no file before the move; the last kind
-        # is reported back. `moves` maps old to new paths and `known` lists the files of the folder before the move.
+        # Rewrites the relative links of one file after the moves of a sort. A link is kept as it is when it is a web or
+        # absolute link, or named no file in the store folder before the move; the last kind is reported back. Every path
+        # is relative to the store folder; `moves` maps old to new paths and `known` holds the files before the move.
         class LinkRewrite
           Result = Data.define(:text, :unresolved)
 
@@ -17,7 +17,7 @@ module Plastic
 
           def initialize(moves, known)
             @moves = moves
-            @known = known.to_set
+            @known = known
           end
 
           def call(path, text)
