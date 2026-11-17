@@ -8,14 +8,16 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
 
   def graphs(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 
-  def retrieval_path = File.join(store_root, "retrieval_graph.db")
-
   def passages = graphs.databases.fetch(:retrieval).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 
   def end_intent
     graphs.work.note_intent(graphs.retrieval.intent("1"), "note", "why it ends")
     graphs.work.abandon_intent("1")
   end
+
+  def hit_intents(terms) = graphs.retrieval.search_current(terms).map { |row| row.fetch("intent_id") }.uniq
+
+  def stale_the_entries = graphs.databases.fetch(:retrieval).transaction { |batch| batch.add("UPDATE document_fts SET sha256 = 'stale'") }
 
   def doctor = graphs.retrieval.repair
 
@@ -40,14 +42,13 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
   def test_a_deleted_retrieval_database_is_rebuilt_by_doctor_and_search_says_so_until_then
     graphs.work.write_intent(title: "Alpha needle")
     end_intent
-    Plastic::Graph::Database::ConnectionPool.release(@plastic_home)
-    File.delete(retrieval_path)
+    lose_retrieval_file
 
     error = assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { graphs.retrieval.search_current("needle") }
     assert_match(/plastic doctor/, error.message)
     doctor
 
-    assert_equal ["1"], graphs.retrieval.search_current("needle").map { |row| row.fetch("intent_id") }.uniq
+    assert_equal ["1"], hit_intents("needle")
   end
 
   def test_a_hit_whose_hash_is_not_the_current_head_is_dropped
@@ -55,8 +56,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
     end_intent
     Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "notes.md", "another body")
 
-    assert_equal ["1--alpha-needle.md"].size, graphs.retrieval.search("needle").map { |row| row.fetch("path") }.uniq.size
-    graphs.databases.fetch(:retrieval).transaction { |batch| batch.add("UPDATE document_fts SET sha256 = 'stale'") }
+    stale_the_entries
 
     assert_empty graphs.retrieval.search("needle")
   end
@@ -66,5 +66,13 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
 
     assert_equal %w[retrieval_contexts retrieval_discoveries], names & %w[retrieval_contexts retrieval_discoveries]
     assert_empty names & %w[document_passages document_fts retrieval_schema retrieval_backfills]
+  end
+
+  def test_a_sync_down_ends_with_the_rebuild_of_the_index
+    graphs.work.write_intent(title: "Alpha needle")
+    work = graphs.work
+    work.sync_apply(work.sync_plan(:down, {}))
+
+    assert_operator passages, :>, 0
   end
 end

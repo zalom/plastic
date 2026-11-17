@@ -20,7 +20,7 @@ class RetrievalRepairTest < Plastic::TestCase
   end
 
   def test_the_global_store_names_the_reinstall
-    assert_equal "retrieval maintenance is required before source global can be read; run plastic install --reinstall, then try again",
+    assert_equal "retrieval maintenance is required before source global can be read; run plastic doctor, then try again",
       problem(refusal("global"))
   end
 
@@ -39,10 +39,10 @@ class RetrievalRepairTest < Plastic::TestCase
     assert_nil check(["ready"])
   end
 
-  def test_a_check_names_the_repair_of_a_store_with_no_backfill_marker
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+  def test_a_check_names_doctor_for_a_store_whose_retrieval_file_is_gone
+    lose_retrieval_file
 
-    assert_equal "retrieval maintenance is required before source global can be read; run plastic install --reinstall, then try again", check(["global"])
+    assert_equal "retrieval maintenance is required before source global can be read; run plastic doctor, then try again", check(["global"])
   end
 
   private

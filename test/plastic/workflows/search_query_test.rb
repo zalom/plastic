@@ -9,7 +9,7 @@ class SearchQueryTest < Plastic::TestCase
     super
     open_intent
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", "falcon wings")
-    retrieval.backfill
+    retrieval.repair
   end
 
   def rows(limit: "5", terms: "falcon")

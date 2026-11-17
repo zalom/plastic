@@ -45,6 +45,7 @@ module Plastic
 
           def complete(intent)
             completion.call(intent)
+            retrieval.reindex(intent.intent_id)
             [true, nil, nil]
           end
 

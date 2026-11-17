@@ -36,8 +36,6 @@ class DbSchemaTest < Plastic::TestCase
     document_revisions: "3db553065bcfd4d055ff29aa476136e9d9bb74905dd82a03cd72ecc4c9a489a7",
     document_heads: "b87ad04e374493805bac7cc34d9b53cb5293bcef0ec5303a4dafc439047c33b6",
     document_passages: "0c8ed03255aace08648603941623217e717b8a1942850c648e7289c3356adb57",
-    retrieval_schema: "7d26b4c4bd93fd4be0042d0d37f1bb68a3902ed37de23716b7d7b9834be9c14f",
-    retrieval_backfills: "95369ff092103cf0a769e15407a401c1a49590454b00672af3ff6478cc98df75",
     retrieval_contexts: "6cf8985de162e5b6d0bb9518022145d4f1e29fded841fccc78e77886a03419d8",
     retrieval_discoveries: "c5007ca34c9bda2e98cca89774cc78f4547288623601395bd8997f4bc1e84491",
     document_fts: "cb79da3f2b5e36acc326b39310e72a0f4e33faa41eefa2940b986128654af325"
@@ -52,8 +50,9 @@ class DbSchemaTest < Plastic::TestCase
       local: ["plastic.db", %i[command_runs sessions settings printed]],
       work: ["work_graph.db", %i[nodes edges work_log printed changes roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents legacy_intents_data
-        document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries
+        document_revisions document_heads retrieval_contexts retrieval_discoveries
         rulings links printed changes]],
+      retrieval: ["retrieval_graph.db", %i[document_passages document_fts]],
       references: ["references.db", %i[sqlar printed changes]]
     }, Schema.databases)
   end

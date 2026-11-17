@@ -42,7 +42,7 @@ module Plastic
         # The newest folder marked done, or nil.
         def latest_done = folders.names.reverse.find { |name| folders.status(name) == "done" }
 
-        def restore(timestamp, databases: nil) = restorer.call(timestamp, databases:)
+        def restore(timestamp, databases: nil) = restorer.call(timestamp, databases:).tap { @retrieval.reindex }
 
         private
 

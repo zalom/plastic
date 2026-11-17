@@ -12,7 +12,10 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(names.map { |name| "#{DIR}/#{name}" })
   end
 
-  def fts(sql) = store_graphs.databases.fetch(:knowledge).rows(sql).map { |row| row.fetch("body") }
+  def fts(sql)
+    reindex
+    derived.rows(sql).map { |row| row.fetch("body") }
+  end
 
   def test_a_first_sync_of_documents_makes_them_searchable
     sync_read("notes.md", "other.md")

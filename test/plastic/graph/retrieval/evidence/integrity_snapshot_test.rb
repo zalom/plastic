@@ -39,5 +39,5 @@ class RetrievalEvidenceIntegritySnapshotTest < Plastic::TestCase
 
   def knowledge = store_graphs.databases.fetch(:knowledge)
 
-  def snapshot(digester) = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(knowledge, origin, digester:)
+  def snapshot(digester) = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(knowledge, derived, origin, digester:)
 end

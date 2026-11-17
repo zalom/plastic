@@ -10,13 +10,14 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
     super
     @calls = 0
     Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "Integrity evidence\n")
+    reindex
   end
 
   def knowledge = store_graphs.databases.fetch(:knowledge)
 
-  def integrity = Integrity.new(knowledge, origin, before_rebuild: -> { @calls += 1 })
+  def integrity = Integrity.new(knowledge, derived, origin, before_rebuild: -> { @calls += 1 })
 
-  def drop(table) = knowledge.transaction { |batch| batch.add("DELETE FROM #{table}") }
+  def drop(table) = (table.match?(/document_(passages|fts)/) ? derived : knowledge).transaction { |batch| batch.add("DELETE FROM #{table}") }
 
   def test_whole_evidence_reports_nothing_to_repair
     assert_equal({ repairable: false, missing: [] }, integrity.report)

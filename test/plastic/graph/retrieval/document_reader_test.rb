@@ -11,7 +11,7 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
     @path = @intent.file
   end
 
-  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_graphs.databases[:knowledge], origin)
+  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_graphs.databases[:knowledge], origin, retrieval: derived)
 
   def fields(**more) = { intent_id: "1", path: @path, **more }
 
@@ -43,12 +43,15 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
   end
 
   def test_a_passage_reads_its_body_and_lines
+    reindex
     passage = reader.passage(fields(revision: reader.current_revision("1", @path)), 1)
 
     assert_equal [1, true], [passage.fetch(:line_start), passage.fetch(:body).include?("Alpha")]
   end
 
   def test_a_passage_past_the_last_is_refused
+    reindex
+
     assert_equal "no passage 99", assert_raises(Missing) { reader.passage(fields(revision: reader.current_revision("1", @path)), 99) }.message
   end
 end

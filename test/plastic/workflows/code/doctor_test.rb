@@ -67,7 +67,7 @@ class CheckHealthTest < Plastic::TestCase
 
   def test_search_rows_out_of_step_are_rebuilt_and_the_row_says_so
     write_evidence(SLUG)
-    knowledge(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
+    derived(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
     outcome, context = check
 
     assert_equal [:done, "ok, rebuilt", 1], [outcome, printed_row(context, "search index #{SLUG}:"), search_rows(SLUG)]
@@ -92,7 +92,7 @@ class CheckHealthTest < Plastic::TestCase
 
   def test_the_start_hook_check_leaves_the_search_rows_as_they_are
     write_evidence(SLUG)
-    knowledge(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
+    derived(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
     harness = scoped_harness(session: "s-1", env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING), "CLAUDE_CODE_SESSION_ID" => "s-1" })
     Plastic::Doctor.failing(harness.scope, harness: "claude-code")
 
@@ -103,10 +103,13 @@ class CheckHealthTest < Plastic::TestCase
 
   def knowledge(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:knowledge)
 
+  def derived(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:retrieval)
+
   def write_evidence(store)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge(store), Plastic::Graph::Origin.new(@plastic_home).id)
-      .write("1", "plan.md", "Doctor evidence\n")
+    origin_id = Plastic::Graph::Origin.new(@plastic_home).id
+    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge(store), origin_id).write("1", "plan.md", "Doctor evidence\n")
+    Plastic::Graph::Retrieval::Index.new(knowledge(store), derived(store), origin_id).rebuild
   end
 
-  def search_rows(store) = knowledge(store).row("SELECT count(*) AS n FROM document_fts").fetch("n")
+  def search_rows(store) = derived(store).row("SELECT count(*) AS n FROM document_fts").fetch("n")
 end

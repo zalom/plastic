@@ -12,6 +12,7 @@ module Plastic
       TRIGGERS = SCHEMA_FILE.triggers.freeze
       DATABASES = SCHEMA_FILE.databases.freeze
       STORE = %i[work knowledge references].freeze
+      DERIVED = %i[retrieval].freeze
     end
   end
 end

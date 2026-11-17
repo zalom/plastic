@@ -7,7 +7,7 @@ module DiscoveryDocuments
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
-    graphs.retrieval.backfill
+    graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end
 end

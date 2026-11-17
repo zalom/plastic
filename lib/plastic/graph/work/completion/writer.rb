@@ -25,7 +25,10 @@ module Plastic
           # An open, in progress, parked or future intent ends as abandoned, with no completion row.
           def abandon(intent_id)
             intent = @retrieval.intent(intent_id)
-            write_abandon(intent_id) unless intent.status == "abandoned"
+            return if intent.status == "abandoned"
+
+            write_abandon(intent_id)
+            reindex(intent_id)
           end
 
           private
@@ -52,7 +55,10 @@ module Plastic
             raise Invalid, found.join(" ") if found.any?
 
             commit_completion(completion_row(intent_id, check))
+            reindex(intent_id)
           end
+
+          def reindex(intent_id) = @retrieval.reindex(intent_id)
 
           def completion_row(intent_id, check)
             criteria = check.criteria

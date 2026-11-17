@@ -53,7 +53,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_backup_without_the_new_table_restores
     path = File.join(Dir.mktmpdir, "knowledge_graph-1.db")
     database = SQLite3::Database.new(path)
-    database.execute_batch(Plastic::Graph::Schema.fetch(:knowledge))
+    database.execute_batch(Plastic::Graph::SchemaStore1::Layout::TEXT.fetch(:knowledge))
     database.execute("DROP TABLE legacy_intents_data")
     database.close
 

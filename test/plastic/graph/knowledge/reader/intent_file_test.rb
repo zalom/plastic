@@ -46,8 +46,9 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
   def test_a_document_write_keeps_an_immutable_revision_head_passage_and_fts_row
     read_in("notes.md", "# Retrieval\n\nIndexed evidence\n")
+    reindex
 
-    row = store_graphs.databases.fetch(:knowledge).row("SELECT body, sha256, position FROM document_fts WHERE document_fts MATCH 'evidence'")
+    row = derived.row("SELECT body, sha256, position FROM document_fts WHERE document_fts MATCH 'evidence'")
 
     assert_equal ["# Retrieval\n\nIndexed evidence\n", Digest::SHA256.hexdigest("# Retrieval\n\nIndexed evidence\n"), 1],
       row.values_at("body", "sha256", "position")
@@ -93,7 +94,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     knowledge = store_graphs.databases.fetch(:knowledge)
 
     assert_equal [0, 0], [knowledge.rows("SELECT * FROM document_heads WHERE path = 'plan.md'").size,
-      knowledge.rows("SELECT * FROM document_fts WHERE path = 'plan.md'").size]
+      derived.rows("SELECT * FROM document_fts WHERE path = 'plan.md'").size]
   end
 
   def test_a_legacy_read_logs_a_change_row

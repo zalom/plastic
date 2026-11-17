@@ -15,7 +15,7 @@ class RetrievalContextSourceTest < Plastic::TestCase
 
   def test_a_ready_store_opens_its_retrieval_graph
     keep_a_file
-    retrieval.backfill
+    retrieval.repair
 
     assert_equal "global", source.retrieval(REFERENCE).store
   end
@@ -26,8 +26,9 @@ class RetrievalContextSourceTest < Plastic::TestCase
     assert_equal "retrieval maintenance is required before source other can be read", error.message
   end
 
-  def test_a_store_not_yet_backfilled_needs_maintenance
+  def test_a_store_whose_retrieval_file_is_gone_needs_maintenance
     keep_a_file
+    lose_retrieval_file
 
     assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { source.retrieval(REFERENCE) }
   end

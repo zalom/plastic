@@ -72,10 +72,10 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_a_comma_list_restores_each_listed_database
     home = seeded_home
-    knowledge = bytes(home, "knowledge_graph")
-    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "work_graph,work_graph")
+    work = bytes(home, "work_graph")
+    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "knowledge_graph,knowledge_graph")
 
-    assert_equal [1, knowledge], [intent_count(home), bytes(home, "knowledge_graph")]
+    assert_equal [1, work], [intent_count(home), bytes(home, "work_graph")]
   end
 
   def test_latest_skips_a_backup_that_is_not_done
@@ -113,10 +113,10 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_databases_restores_only_that_database
     home = seeded_home
-    knowledge = bytes(home, "knowledge_graph")
-    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "work_graph")
+    work = bytes(home, "work_graph")
+    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "knowledge_graph")
 
-    assert_equal [1, knowledge], [intent_count(home), bytes(home, "knowledge_graph")]
+    assert_equal [1, work], [intent_count(home), bytes(home, "work_graph")]
   end
 
   def test_restore_says_which_backup_holds_the_replaced_databases_and_that_the_person_chooses_the_sync_direction

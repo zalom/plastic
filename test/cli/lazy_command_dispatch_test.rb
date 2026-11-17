@@ -18,7 +18,7 @@ class LazyCommandDispatchTest < Minitest::Test
     other = Plastic::Graph.create(home: ARGV.fetch(0), store: "other")
     other.databases.each_value { |database| database.rows("SELECT 1") }
     Plastic::Graph::Retrieval::Evidence::Writer.new(other.databases.fetch(:knowledge), other.retrieval.origin_id).write("1", "evidence.md", "selected evidence")
-    other.retrieval.backfill
+    other.retrieval.repair
   RUBY
 
   def test_each_dependency_family_dispatches_in_a_fresh_process

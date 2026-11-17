@@ -10,7 +10,7 @@ require_relative "knowledge/roadmap"
 require_relative "knowledge/archive"
 require_relative "retrieval/evidence/writer"
 require_relative "retrieval/evidence/integrity"
-require_relative "retrieval/reference_backfill"
+require_relative "retrieval/index"
 require_relative "retrieval/reference"
 require_relative "retrieval/search"
 require_relative "retrieval/store_read"
@@ -26,7 +26,7 @@ module Plastic
   # Persists and retrieves the graph records that describe Plastic work.
   module Graph
     # Provides ordinary retrieval reads from graph records. These methods do
-    # not write. Explicit owning-store backfill and repair rebuild derived
+    # not write. Explicit repair and reindex rebuild derived
     # tables. A selected-source read never runs either operation.
     class RetrievalGraph
       include Retrieval::RoadmapReads
@@ -55,7 +55,7 @@ module Plastic
 
       def_delegators :sessions, :command_run, :session, :previous_session, :predecessor, :last_run, :touched
       def_delegators :work, :ready_nodes, :claimed_nodes, :node, :rulings, :links, :every_link
-      def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :backfill, :repair, :search_index_report
+      def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :repair, :reindex, :search_index_report
       def_delegators "evidence.references", :reference, :search_reference
 
       def initialize(databases, store:, origin:)

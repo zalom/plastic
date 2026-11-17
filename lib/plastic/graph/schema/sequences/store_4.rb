@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "digest"
-require "sqlite3"
 require_relative "../../../invalid"
 require_relative "store_1"
 
@@ -59,6 +58,7 @@ module Plastic
       def moved_tables_in?(connection) = connection.get_first_value("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'intents'").positive?
 
       def move(connection, path, between)
+        require "sqlite3"
         knowledge = SQLite3::Database.new(path, results_as_hash: true)
         knowledge.busy_timeout = 5000
         plan = plan_for(connection)

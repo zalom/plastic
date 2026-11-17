@@ -16,6 +16,16 @@ module Plastic
 
       def knowledge = store_graphs.databases.fetch(:knowledge)
 
+      def derived = store_graphs.databases.fetch(:retrieval)
+
+      def lose_retrieval_file
+        path = derived.path
+        Plastic::Graph::Database::ConnectionPool.connections.delete(path)&.close
+        File.delete(path)
+      end
+
+      def reindex = Plastic::Graph::Retrieval::Index.new(knowledge, derived, origin).rebuild
+
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
       def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
@@ -29,6 +39,7 @@ module Plastic
         work = store_graphs.work
         intent = work.write_intent(title:, **fields)
         work.print_intent(intent.intent_id)
+        reindex
         intent
       end
 
@@ -45,6 +56,7 @@ module Plastic
       def sync_up
         work = store_graphs.work
         work.sync_apply(work.sync_plan(:up, {}))
+        reindex
       end
 
       # Writes the rows one read adds, in the database that owns them.

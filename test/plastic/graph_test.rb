@@ -70,7 +70,7 @@ class StoreDatabaseTest < Plastic::TestCase
   def test_creating_a_store_makes_the_store_files
     Plastic::Graph.create(home: @plastic_home, store: "fresh").work.write_intent(title: "Alpha")
 
-    assert_equal %w[knowledge_graph.db references.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
+    assert_equal %w[knowledge_graph.db references.db retrieval_graph.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
   end
 
   def test_the_databases_sit_in_the_store_folder
@@ -105,18 +105,10 @@ class StoreDatabaseTest < Plastic::TestCase
     refute_includes columns.map { |column| column["name"] }, "store"
   end
 
-  def retrieval_schema(graphs) = graphs.databases.fetch(:knowledge).rows("SELECT name, version, completed_at FROM retrieval_schema")
+  def test_a_store_made_by_create_has_its_retrieval_file_empty_and_built
+    graphs = Plastic::Graph.create(home: @plastic_home, store: "made")
 
-  def test_opening_a_knowledge_database_records_its_retrieval_schema_version_without_completing_it
-    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "opened"))
-
-    assert_equal [{ "name" => "retrieval", "version" => 1, "completed_at" => nil }],
-      retrieval_schema(Plastic::Graph.open(home: @plastic_home, store: "opened"))
-  end
-
-  def test_a_store_made_by_create_has_its_retrieval_backfill_complete
-    assert_equal [{ "name" => "retrieval", "version" => 1, "completed_at" => "complete" }],
-      retrieval_schema(Plastic::Graph.create(home: @plastic_home, store: "made"))
+    assert_equal [0, 0], %w[document_passages document_fts].map { |table| graphs.databases.fetch(:retrieval).rows("SELECT 1 FROM #{table}").size }
   end
 end
 

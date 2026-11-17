@@ -50,7 +50,7 @@ class SubmitContextTest < Plastic::TestCase
 
   def test_a_submission_that_stops_at_a_gate_saves_nothing
     discovered
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+    lose_retrieval_file
 
     submit(EMPTY.merge("evidence" => [@reference]))
 
@@ -82,12 +82,12 @@ class SubmitContextTest < Plastic::TestCase
     assert_raises(Plastic::CLI::Command::Usage) { submit(EMPTY.merge("evidence" => [])) }
   end
 
-  def test_a_store_with_no_backfill_marker_names_its_repair
+  def test_a_store_whose_retrieval_file_is_gone_names_its_repair
     discovered
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+    lose_retrieval_file
 
     outcome, = submit(EMPTY.merge("evidence" => [@reference]))
 
-    assert_includes outcome.message, "run plastic install --reinstall, then try again"
+    assert_includes outcome.message, "run plastic doctor, then try again"
   end
 end

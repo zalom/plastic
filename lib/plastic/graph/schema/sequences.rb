@@ -8,6 +8,7 @@ require_relative "sequences/store_1"
 require_relative "sequences/store_2"
 require_relative "sequences/store_3"
 require_relative "sequences/store_4"
+require_relative "sequences/store_5"
 
 module Plastic
   module Graph
@@ -43,7 +44,8 @@ module Plastic
         store: [Migration.new(1, SchemaStore1.method(:apply), SchemaStore1::TABLES),
           Migration.new(2, SchemaStore2.method(:apply), SchemaStore2::TABLES),
           Migration.new(3, SchemaStore3.method(:apply), SchemaStore3::TABLES),
-          Migration.new(4, SchemaStore4.method(:apply), SchemaStore4::TABLES)].freeze
+          Migration.new(4, SchemaStore4.method(:apply), SchemaStore4::TABLES),
+          Migration.new(5, SchemaStore5.method(:apply), SchemaStore5::TABLES)].freeze
       }.freeze
 
       VERSION = "PRAGMA user_version"

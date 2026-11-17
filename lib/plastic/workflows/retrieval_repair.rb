@@ -8,8 +8,8 @@ require_relative "../graph/retrieval/maintained_store"
 module Plastic
   module Workflows
     # The problem a read prints for a store it refused: a store that needs
-    # retrieval maintenance names the command that readies it, the installer
-    # for the global store and project new for a project store.
+    # retrieval maintenance names the command that readies it: doctor when only the retrieval file is gone,
+    # the installer for the global store and project new for a project store otherwise.
     class RetrievalRepair
       # Nil when every store in `slugs` is maintained; otherwise the problem
       # of the first store that is not.
@@ -36,6 +36,7 @@ module Plastic
       def slug = (error.slug if error.is_a?(Graph::RetrievalGraph::MaintenanceRequired))
 
       def command
+        return "plastic doctor" if Graph::Retrieval::MaintainedStore.new(scope.plastic_home, slug).only_derived_missing?
         return "plastic install --reinstall" if slug == CLI::Scope::GLOBAL
 
         folder = scope.projects[slug]

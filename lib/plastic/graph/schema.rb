@@ -41,6 +41,7 @@ module Plastic
 
       def self.databases = SchemaCatalog::DATABASES
       def self.store = SchemaCatalog::STORE
+      def self.derived = SchemaCatalog::DERIVED
       def self.tables = SchemaCatalog::TABLES
       def self.triggers = SchemaCatalog::TRIGGERS
       def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)

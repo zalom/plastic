@@ -4,7 +4,6 @@ require "shellwords"
 require_relative "check"
 require_relative "version_record"
 require_relative "database_check"
-require_relative "retrieval_marker"
 require_relative "instruction_line"
 require_relative "store_backups"
 require_relative "home_ignore"
@@ -59,7 +58,7 @@ module Plastic
       end
 
       def machine_database
-        key = (SCHEMA.databases.keys - STORE).first
+        key = (SCHEMA.databases.keys - STORE - SCHEMA.derived).first
         file = SCHEMA.file(key)
         Check.new("#{file}:", "every table present", "plastic install --reinstall").judged(DatabaseCheck.new(File.join(home, file), key).problem)
       end
@@ -84,7 +83,7 @@ module Plastic
 
       def global_store
         path = File.join(home, "stores", "global")
-        Check.new("global store:", path, "plastic install --reinstall").judged(File.directory?(path) ? marker_problem(path) : "#{path} is missing")
+        Check.new("global store:", path, "plastic install --reinstall").judged(File.directory?(path) ? nil : "#{path} is missing")
       end
 
       def plastic_md
@@ -101,9 +100,7 @@ module Plastic
           .judged(store_problem(File.join(home, "stores", slug)))
       end
 
-      def store_problem(folder) = Core.store_problem(folder) || marker_problem(folder)
-
-      def marker_problem(folder) = RetrievalMarker.new(home, folder).problem
+      def store_problem(folder) = Core.store_problem(folder)
     end
   end
 end

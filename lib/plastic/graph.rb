@@ -48,8 +48,8 @@ module Plastic
     end
 
     def self.ready(graphs)
-      graphs.databases.values_at(:knowledge, :work, :references, :local).each { |database| database.rows("SELECT 1") }
-      graphs.tap { graphs.retrieval.backfill }
+      graphs.databases.values_at(:knowledge, :work, :references, :retrieval, :local).each { |database| database.rows("SELECT 1") }
+      graphs
     end
   end
 end

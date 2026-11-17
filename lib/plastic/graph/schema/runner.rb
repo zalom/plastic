@@ -94,9 +94,19 @@ module Plastic
         return :current if files.all? { |database| database.version >= SchemaSequences.newest(:store) }
 
         reason = backup_failure(slug)
-        reason ? "its backup failed (#{reason})" : migrate_files(files)
+        reason ? "its backup failed (#{reason})" : migrate_store_files(slug, files)
       rescue SQLite3::Exception, Database::Error, Plastic::Invalid => error
         "it could not be migrated (#{first_line(error)})"
+      end
+
+      def migrate_store_files(slug, files)
+        migrate_files(files)
+        built = databases(slug).reject { |database| files.map(&:key).include?(database.key) }
+        return :migrated if built.empty?
+
+        migrate_files(databases(slug))
+        files.find { |database| database.key == :knowledge }&.vacuum
+        :migrated
       end
 
       def migrate_files(files)

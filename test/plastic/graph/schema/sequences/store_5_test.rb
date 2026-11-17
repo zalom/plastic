@@ -25,6 +25,8 @@ class SchemaStore5Test < Plastic::TestCase
       @knowledge.execute("INSERT INTO documents (intent_id, path, body, origin_id) VALUES ('1', '#{word}.md', '#{body}', 'o')")
       @knowledge.execute("INSERT INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id) VALUES ('#{sha}', '1', '#{word}.md', '#{body}', 't', 'o')")
       @knowledge.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES ('1', '#{word}.md', '#{sha}', 't', 'o')")
+      @knowledge.execute("INSERT INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) VALUES ('#{sha}', '1', '#{word}.md', 0, '#{body}', 1, 1, 'o')")
+      @knowledge.execute("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES ('#{body}', '1', '#{word}.md', '#{sha}', 0, 'o')")
     end
     @knowledge.execute("INSERT INTO retrieval_contexts (intent_id, origin_id, data, updated_at) VALUES ('1', 'o', '{}', 't')")
   end
@@ -38,7 +40,7 @@ class SchemaStore5Test < Plastic::TestCase
   def tables(database) = database.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'trigger')").map { |row| row["name"] }
 
   def test_the_text_of_the_landed_migration_is_pinned_by_its_digest
-    assert_equal "0" * 64, Digest::SHA256.hexdigest(Plastic::Graph::SchemaStore5.texts.join("\n--\n"))
+    assert_equal "d8bdfa692120d7dd7437a049a1648456417caffaaccb6f635bdff7ff4da4ef63", Digest::SHA256.hexdigest(Plastic::Graph::SchemaStore5.texts.join("\n--\n"))
   end
 
   def test_the_migration_never_reads_the_live_schema
@@ -84,7 +86,7 @@ class SchemaStore5Test < Plastic::TestCase
   end
 
   def test_a_connection_that_returns_rows_by_name_runs_the_migration_through_the_runner_sequence
-    Sequences.migrate(@knowledge, Sequences::SEQUENCES.fetch(:store).first(5), :knowledge)
+    Sequences.migrate(@knowledge, Sequences::SEQUENCES.fetch(:store).first(5), :knowledge, { knowledge: File.join(@folder, "knowledge_graph.db") })
 
     assert_equal [5, true], [@knowledge.get_first_value("PRAGMA user_version"), File.file?(retrieval_path)]
   end

@@ -12,7 +12,7 @@ module SearchTestSupport
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
-    graphs.retrieval.backfill
+    graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end
 
@@ -99,7 +99,7 @@ module SearchTestAssertionSupport
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin)
     writer.write("1", "evidence.md", "first evidence")
-    graphs.retrieval.backfill
+    graphs.retrieval.repair
     hit = sole(graphs.retrieval.search("evidence"))
     replace_and_remove(writer)
 
@@ -262,15 +262,15 @@ class SearchRepairTest < Plastic::TestCase
 
   def search = plastic("search", "evidence", "--source-project", OLD, table: Plastic::CLI::TABLE)
 
-  def test_a_search_on_a_store_with_no_backfill_marker_names_its_repair
+  def test_a_search_on_a_store_with_no_retrieval_file_names_its_repair
     old_store
     result = search
 
     assert_equal 1, result.code
-    assert_includes result.out + result.err, "run plastic project new old #{checkout}"
+    assert_includes result.out + result.err, "run plastic doctor"
   end
 
-  def test_after_project_new_a_search_reads_a_store_made_before_the_marker
+  def test_after_the_repair_a_search_reads_a_store_that_lost_its_retrieval_file
     old_store
     repair
     result = search
@@ -282,6 +282,7 @@ end
 class RetrievalContextResumeTest < Plastic::TestCase
   def test_resumes_only_the_matching_saved_discovery_context
     command("intent", "new", "Evidence delivery")
+    reindex
     submit_context(first_reference)
 
     assert_nil command("intent", "discover", "1", "Evidence").fetch("next")
@@ -290,6 +291,7 @@ class RetrievalContextResumeTest < Plastic::TestCase
 
   def test_documented_search_and_document_get_commands_run_against_a_temporary_store
     command("intent", "new", "Evidence delivery")
+    reindex
     reference = first_reference
 
     document = command("document", "get", reference)

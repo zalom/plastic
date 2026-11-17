@@ -50,13 +50,13 @@ class DiscoverRetrievalTest < Plastic::TestCase
     assert_nil saved_discovery
   end
 
-  def test_a_store_with_no_backfill_marker_names_its_repair
+  def test_a_store_whose_retrieval_file_is_gone_names_its_repair
     open_intent
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+    lose_retrieval_file
 
     outcome, = discover
 
-    assert_includes outcome.message, "run plastic install --reinstall, then try again"
+    assert_includes outcome.message, "run plastic doctor, then try again"
     assert_nil saved_discovery
   end
 end

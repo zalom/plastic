@@ -11,7 +11,7 @@ module IntentContextTestSupport
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
-    graphs.retrieval.backfill
+    graphs.retrieval.repair
     graphs.retrieval.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end
@@ -47,10 +47,9 @@ module IntentContextTestSupport
   end
 
   def mark_retrieval_incomplete
-    graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
-    graphs.databases.fetch(:knowledge).transaction do |batch|
-      batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
-    end
+    path = Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:retrieval).path
+    Plastic::Graph::Database::ConnectionPool.connections.delete(path)&.close
+    File.delete(path)
   end
 
   def submit_context(submission, json: false)

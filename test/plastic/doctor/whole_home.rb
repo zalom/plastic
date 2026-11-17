@@ -84,13 +84,6 @@ module WholeHome
     write(File.join(project_dir, "CLAUDE.md"), "# Alpha\n\n@AGENTS.md\n")
   end
 
-  def forget_backfill(store)
-    connection = SQLite3::Database.new(File.join(@plastic_home, "stores", store, schema.file(:knowledge)))
-    connection.execute("DELETE FROM retrieval_backfills")
-  ensure
-    connection&.close
-  end
-
   def drop_table(path, table)
     connection = SQLite3::Database.new(path)
     connection.execute("DROP TABLE #{table}")

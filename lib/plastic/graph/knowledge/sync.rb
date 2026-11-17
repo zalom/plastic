@@ -34,8 +34,12 @@ module Plastic
 
         # Applies every action of `plan` but the conflicts, and says what it did, one line per file.
         def apply(plan, rollback: Legacy::ImportRollback)
-          return LegacyImport.new(self, @folder, @retrieval, @databases, rollback:).call if plan.legacy
+          lines = plan.legacy ? LegacyImport.new(self, @folder, @retrieval, @databases, rollback:).call : applied(plan)
+          @retrieval.reindex if plan.legacy || plan.direction == :down
+          lines
+        end
 
+        def applied(plan)
           @folder.ignore_databases
 
           printer.record(plan.entries_for(:record).map(&:print))

@@ -129,11 +129,12 @@ class KnowledgeSyncLegacyImportCheckTest < Plastic::TestCase
 
   def gitignore = folder.exist?(".gitignore") ? folder.read(".gitignore") : nil
 
-  def test_a_failed_check_after_the_plan_leaves_no_database_file
+  def test_a_failed_check_after_the_plan_leaves_no_new_database_file
     break_the_store
+    before = database_files
     assert_raises(Plastic::Invalid) { planned_import }
 
-    assert_empty database_files
+    assert_empty database_files - before
   end
 
   def test_a_failed_check_after_the_plan_leaves_gitignore_as_it_was

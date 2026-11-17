@@ -25,6 +25,7 @@ class RetrievalReadCliTest < Minitest::Test
       FileUtils.mkdir_p(File.join(home, "stores", "global"))
 
       assert_success run_cli(home, "intent", "new", "Search target")
+      run_cli(home, "doctor", "--harness", "claude-code")
       search = run_cli(home, "search", "Search", "--json")
 
       assert_success search

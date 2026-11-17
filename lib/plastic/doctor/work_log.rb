@@ -7,7 +7,7 @@ require_relative "../cli/scope"
 module Plastic
   module Doctor
     # Whether each intent of one store has the work log lines its writes owe. It drains the lines a
-    # write left pending after its commit, names each intent that gained lines, opens no store that has no work database, and makes no database.
+    # write left pending after its commit, names each intent that gained lines, opens no store that has no knowledge database, and makes no database.
     class WorkLog
       OPEN = ->(home, slug) { Graph.open(home:, store: slug) }
 
@@ -24,7 +24,7 @@ module Plastic
 
       def check
         return unless File.directory?(folder)
-        return row("ok, no database in this store") unless File.file?(File.join(folder, Graph::Schema.file(:work)))
+        return row("ok, no database in this store") unless File.file?(File.join(folder, Graph::Schema.file(:knowledge)))
 
         drained = drain
         row(drained.empty? ? "ok, every intent has its lines" : "ok, drained #{Graph::Schema.tally(:work_log, drained.values.sum)}: #{named(drained)}")

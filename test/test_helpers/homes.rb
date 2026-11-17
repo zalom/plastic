@@ -30,7 +30,7 @@ module Plastic
 
         def self.build(name)
           dir = File.realpath(Dir.mktmpdir("plastic-home-#{name}"))
-          Minitest.after_run { FileUtils.rm_rf([dir, "#{dir}.files"]) }
+          Minitest.after_run { FileUtils.rm_rf([dir, "#{dir}.files", "#{dir}.databases"]) }
           Fixture.new(File.join(dir, ".plastic"), YAML.load_file(File.join(FIXTURES, "homes", "#{name}.yml"))).load
           new(dir)
         end
@@ -43,6 +43,7 @@ module Plastic
           [DATABASE_PATTERN, JOURNAL_PATTERN].each do |pattern|
             Dir.glob("#{@files}/**/#{pattern}", File::FNM_DOTMATCH).each { |path| File.delete(path) }
           end
+          keep_pristine_databases
           @snapshot = Snapshot.new(@databases)
           @state = @snapshot.scan(dir)
         end
@@ -53,6 +54,7 @@ module Plastic
         # what is new and puts back only what is missing or different from
         # the state recorded in `initialize`.
         def reset
+          restore_lost_databases
           rollback
           current = @snapshot.scan(@dir)
           remove_new(current)
@@ -60,6 +62,20 @@ module Plastic
         end
 
         private
+
+        def keep_pristine_databases
+          @databases.select { |path| File.exist?(path) }.each do |path|
+            copy = pristine(path)
+            FileUtils.mkdir_p(File.dirname(copy))
+            SQLite3::Database.new(path) { |database| database.execute("VACUUM INTO ?", copy) }
+          end
+        end
+
+        def restore_lost_databases
+          @databases.each { |path| FileUtils.cp(pristine(path), path) if !File.exist?(path) && File.exist?(pristine(path)) }
+        end
+
+        def pristine(path) = File.join("#{@dir}.databases", path.delete_prefix("#{@dir}/"))
 
         def rollback
           connections.each { |connection| connection.rollback if connection.transaction_active? }

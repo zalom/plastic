@@ -21,13 +21,11 @@ module Plastic
         "archive_entries" => ["archive entry", "archive entries"], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts],
         "changes" => %w[change changes], "document_revisions" => ["document revision", "document revisions"],
         "document_heads" => ["document head", "document heads"], "document_passages" => ["passage", "passages"],
-        "document_fts" => ["search entry", "search entries"], "retrieval_schema" => ["retrieval version", "retrieval versions"],
-        "retrieval_backfills" => ["retrieval backfill", "retrieval backfills"]
+        "document_fts" => ["search entry", "search entries"]
       }.freeze
 
       MIGRATIONS = {
-        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked'; CREATE UNIQUE INDEX IF NOT EXISTS \"work_log_write_id\" ON \"work_log\"(\"origin_id\", \"write_id\") WHERE \"write_id\" IS NOT NULL;",
-        knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
+        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked'; CREATE UNIQUE INDEX IF NOT EXISTS \"work_log_write_id\" ON \"work_log\"(\"origin_id\", \"write_id\") WHERE \"write_id\" IS NOT NULL;"
       }.freeze
     end
   end

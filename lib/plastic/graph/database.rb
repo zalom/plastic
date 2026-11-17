@@ -38,7 +38,7 @@ module Plastic
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
-        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
+        [*Schema.store, *Schema.derived].to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
       end
 
       # The error to raise for one that came from the file `file`, with the file named.
@@ -126,6 +126,9 @@ module Plastic
         unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key), siblings) }
         @schema = nil
       end
+
+      # Gives the freed pages of the file back to the disk. It runs outside a transaction.
+      def vacuum = unfenced { open_file.execute("VACUUM") }
 
       # The stamped version of the file, or nil when it does not exist.
       def version = File.exist?(path) ? unfenced { open_file.get_first_value("PRAGMA user_version").to_i } : nil

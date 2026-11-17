@@ -8,14 +8,13 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Writes one immutable text revision and its current derived search rows.
+        # Writes one immutable text revision and its current head. The passages and search entries are built apart.
         class Writer
           attr_reader :origin_id
 
-          def initialize(database, origin_id, after_passages: -> {})
+          def initialize(database, origin_id)
             @database = database
             @origin_id = origin_id
-            @after_passages = after_passages
           end
 
           def write(intent_id, path, body)
@@ -35,7 +34,7 @@ module Plastic
           private
 
           def apply_document(batch, document)
-            Evidence::Rows.new(batch, document, @origin_id).write { @after_passages.call }
+            Evidence::Rows.new(batch, document, @origin_id).write
           end
         end
       end

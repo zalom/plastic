@@ -185,41 +185,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   create_virtual_table :document_fts,
     using: "fts5(body, intent_id UNINDEXED, path UNINDEXED, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED)"
 
-  create_trigger :document_heads_search_insert, on: :document_heads, sql: <<~SQL
-    AFTER INSERT ON "document_heads" BEGIN
-      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
-      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
-      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
-    END;
-  SQL
-
-  create_trigger :document_heads_search_update, on: :document_heads, sql: <<~SQL
-    AFTER UPDATE ON "document_heads" BEGIN
-      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
-      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
-      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
-      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
-    END;
-  SQL
-
-  create_trigger :document_heads_search_delete, on: :document_heads, sql: <<~SQL
-    AFTER DELETE ON "document_heads" BEGIN
-      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
-    END;
-  SQL
-
-  create_table :retrieval_schema, key: %i[name] do |t|
-    t.kept :name
-    t.number :version
-    t.text :completed_at
-  end
-
-  create_table :retrieval_backfills, key: %i[name origin_id] do |t|
-    t.kept :name, :origin_id
-    t.number :version
-    t.kept :completed_at
-  end
-
   %i[retrieval_contexts retrieval_discoveries].each do |name|
     create_table name, key: %i[intent_id origin_id] do |t|
       t.kept :intent_id, :origin_id
@@ -251,7 +216,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   database :local, "plastic.db", %i[command_runs sessions settings printed]
   database :work, "work_graph.db", %i[nodes edges work_log printed changes roadmaps batches roadmap_items roadmap_edges roadmap_log runs]
   database :knowledge, "knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries work_log_pending documents
-    legacy_intents_data document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts
-    retrieval_discoveries rulings links printed changes]
+    legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed changes]
+  database :retrieval, "retrieval_graph.db", %i[document_passages document_fts]
   database :references, "references.db", %i[sqlar printed changes]
 end
