@@ -58,17 +58,17 @@ module Plastic
         end
 
         def revise_intent(change)
-          intent_id = change.intent.intent_id
           @log.recorded do
-            @writers.revisions.write(change).tap { @log.line(intent_id, "wrote", "title: #{change.line}", path: change.document.path, body: change.body) }
+            @writers.revisions.write(change).tap { @log.line(change.intent_id, "wrote", change.title_text, **change.log_fields) }
           end
         end
 
         def note_intent(intent, kind, text)
+          intent_id = intent.intent_id
           @log.recorded do
             noter.write(intent, kind, text).tap do
-              @log.line(intent.intent_id, "noted", "#{kind}: #{text}", path: Knowledge::Intent::Noter::FILE,
-                body: @writers.retrieval.fetch(intent.intent_id, Knowledge::Intent::Noter::FILE).body)
+              @log.line(intent_id, "noted", "#{kind}: #{text}", path: Knowledge::Intent::Noter::FILE,
+                body: @writers.retrieval.fetch(intent_id, Knowledge::Intent::Noter::FILE).body)
             end
           end
         end

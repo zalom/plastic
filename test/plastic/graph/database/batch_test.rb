@@ -53,6 +53,12 @@ class DatabaseBatchTest < Plastic::TestCase
     assert_equal ["SELECT :a", { a: "see :id" }], [batch.statements.first.sql, batch.statements.first.values]
   end
 
+  def test_add_steps_adds_each_step_in_order_with_the_shared_values
+    batch = Batch.new.add_steps([[nil, "SELECT :a"], [:clusters, "DELETE FROM clusters WHERE id = :a"]], a: 1)
+
+    assert_equal [["SELECT :a", nil, { a: 1 }], ["DELETE FROM clusters WHERE id = :a", "clusters", { a: 1 }]], batch.statements.map { |entry| [entry.sql, entry.table, entry.values] }
+  end
+
   def test_apply_adds_the_statements_of_each_read_in_order
     batch = Batch.new.apply([->(b) { b.add("SELECT 1") }, ->(b) { b.add("SELECT 2") }])
 

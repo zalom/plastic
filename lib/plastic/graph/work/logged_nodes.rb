@@ -34,8 +34,8 @@ module Plastic
         private
 
         def claim_line(intent_id, status, node)
-          entry = { claimed: ["claimed", node&.title], capped: ["capped", node&.question] }[status]
-          entry && node && @log.line(intent_id, entry.first, entry.last.to_s, node: node.id)
+          kind, text = node&.claim_note(status)
+          kind && @log.line(intent_id, kind, text, node: node.id)
         end
       end
     end

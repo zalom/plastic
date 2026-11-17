@@ -27,6 +27,29 @@ module Plastic
 
         def live? = state != "removed"
 
+        def open? = state == "open"
+
+        # The word and the text a claim leaves in the work log, or nil when the claim leaves none.
+        def claim_note(status) = { claimed: ["claimed", title.to_s], capped: ["capped", question.to_s] }[status]
+
+        # Why a claim on this node does not win: another session holds it, or it is in no state to claim.
+        def claim_rejection = (state == "claimed") ? :held : :refused
+
+        # Why a claim at `now` cannot even start, or nil when the node is open or its claim has lapsed.
+        def rejection_at(now) = (claim_rejection unless open? || lapsed?(now))
+
+        # The ids that find this node and the session that holds its claim, as the claim statements bind them.
+        def claim_key = { **to_h.slice(:intent_id, :id), holder: claimed_by }
+
+        def capped?(runs, cap) = open? && runs_after_answer(runs).size >= cap
+
+        # The runs of this node after the owner last answered; all of them when it was never answered.
+        def runs_after_answer(runs)
+          own = runs.select { |run| run.node_id == id }
+          answered = answered_at
+          answered ? own.select { |run| run.started_at > answered } : own
+        end
+
         # A claim the holder has not renewed within the lapse, at `now`.
         def lapsed?(now) = state == "claimed" && (last_seen.nil? || last_seen < now - Node::LAPSE)
 

@@ -39,15 +39,22 @@ module Plastic
 
         def values_at(*keys) = to_h.values_at(*keys)
 
-        def line = ["-", word(at), word(phase), word(node), word(session_id), kind, word(path), hash_word, one_line(text)].reject(&:empty?).join(" ")
+        def self.word(value)
+          text = value.to_s
+          text.empty? ? EMPTY : text.gsub(/\s+/, "_")
+        end
+
+        def self.one_line(value) = value.to_s.gsub(/\s*\R\s*/, " ").strip
+
+        def line
+          form = self.class
+          head = [at, phase, node, session_id].map { |value| form.word(value) }
+          ["-", *head, kind, form.word(path), hash_word, form.one_line(text)].reject(&:empty?).join(" ")
+        end
 
         private
 
-        def word(value) = value.to_s.empty? ? EMPTY : value.to_s.gsub(/\s+/, "_")
-
         def hash_word = sha256.to_s.empty? ? EMPTY : "#{HASH_PREFIX}#{sha256}"
-
-        def one_line(value) = value.to_s.gsub(/\s*\R\s*/, " ").strip
       end
     end
   end
