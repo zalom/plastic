@@ -33,4 +33,8 @@ class ResourcesClassificationTest < Plastic::TestCase
     assert_equal %w[resources/output/reports/notes.md resources/output/reports/page.html resources/output/files/data.csv resources/output/files/review.rb resources/tmp/runner-step.last],
       destinations("resources/notes.md", "page.html", "resources/data.csv", "review.rb", "runner-step.last")
   end
+
+  def test_a_file_directly_under_output_is_sorted_by_its_type
+    assert_equal %w[resources/output/reports/loose.md resources/output/files/loose.csv resources/tmp/loose.out], destinations("resources/output/loose.md", "resources/output/loose.csv", "resources/output/loose.out")
+  end
 end
