@@ -77,7 +77,7 @@ module Plastic
 
       def self.run_move(context, verb, shape)
         node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape))
-        settle(context, node || repeated_done?(context, verb), shape.fetch(:state))
+        settle(context, node || (verb == :done_node && repeated_done?(context)), shape.fetch(:state))
       end
 
       def self.settle(context, moved, state)
@@ -90,9 +90,10 @@ module Plastic
 
       def self.taken?(context)
         node = context.retrieval.node(context.intent_id, context.id)
-        return false if node.nil? || context.session.nil?
+        session = context.session
+        return false if node.nil? || session.nil?
 
-        held_by_other?(node, context.session) || finished_by_other?(context, node)
+        held_by_other?(node, session) || finished_by_other?(context, node)
       end
 
       def self.held_by_other?(node, session) = node.state == "claimed" && node.claimed_by != session
@@ -109,9 +110,9 @@ module Plastic
       end
 
       # The holder that finished the node asks again: nothing moves and nothing is written.
-      def self.repeated_done?(context, verb)
+      def self.repeated_done?(context)
         node = context.retrieval.node(context.intent_id, context.id)
-        verb == :done_node && !node.nil? && node.state == "done" && finisher_of(context, node) == context.session
+        !node.nil? && node.state == "done" && finisher_of(context, node) == context.session
       end
 
       def self.refusal(context, state)
