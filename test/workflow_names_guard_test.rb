@@ -4,6 +4,7 @@ require_relative "test_helper"
 require "json"
 require "plastic/cli"
 require "plastic/workflow"
+require "plastic/workflows/registry"
 require_relative "support/child_process"
 
 module WorkflowNameTable
@@ -163,8 +164,8 @@ class WorkflowNamesTest < Minitest::Test
   end
 
   PROBE = <<~RUBY
-    require "plastic/cli"; require "plastic/workflow"; require "json"
-    klass = Plastic::Workflow.fetch(ARGV.fetch(0).to_sym)
+    require "plastic/cli"; require "plastic/workflow"; require "plastic/workflows/registry"; require "json"
+    klass = Plastic::Workflow.fetch(ARGV.fetch(0).to_sym, from: Plastic::Workflows)
     parts = klass.name.delete_prefix("Plastic::Workflows::").split("::")
     kinds = parts.each_index.to_h do |index|
       [parts.first(index + 1).join("::"), parts.first(index + 1).inject(Plastic::Workflows) { |scope, part| scope.const_get(part, false) }.class.name]
