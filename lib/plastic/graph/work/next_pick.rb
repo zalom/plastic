@@ -6,9 +6,10 @@ module Plastic
       # The intent `plastic next` picks: the one this session holds a live claim
       # on in this store, else the only intent in progress, else the only open one.
       class NextPick
-        def initialize(retrieval, session)
+        def initialize(retrieval, session, now:)
           @retrieval = retrieval
           @session = session
+          @now = now
         end
 
         # The one intent to work on, nil when none stands out alone.
@@ -26,7 +27,7 @@ module Plastic
         private
 
         def claimed_intents
-          ids = @retrieval.claimed_nodes.select { |node| node.claimed_by == @session && !node.lapsed?(Time.now) }.map(&:intent_id)
+          ids = @retrieval.claimed_nodes.select { |node| node.claimed_by == @session && !node.lapsed?(@now) }.map(&:intent_id)
           @retrieval.intents.select { |intent| intent.open? && ids.include?(intent.intent_id) }
         end
 

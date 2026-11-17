@@ -61,7 +61,7 @@ module Plastic
           # Neither parked nor holding a node another session claimed.
           def self.free?(intent_id, context)
             retrieval = context.retrieval
-            held = retrieval.claimed_nodes.any? { |node| node.intent_id == intent_id && node.claimed_by != context.session && !node.lapsed?(Time.now) }
+            held = retrieval.claimed_nodes.any? { |node| node.intent_id == intent_id && node.claimed_by != context.session && !node.lapsed?(context.now) }
             retrieval.intent(intent_id).status != "parked" && !held
           end
 

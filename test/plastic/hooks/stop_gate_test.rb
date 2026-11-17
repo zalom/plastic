@@ -65,7 +65,7 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_an_error_while_reading_permits_the_stop
-    broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1")
+    broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1", now: Time.now)
 
     assert_nil broken.decision
   end

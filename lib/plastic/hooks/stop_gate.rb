@@ -9,7 +9,7 @@ module Plastic
     # hook already blocked, it permits, so the session can always end. Any
     # error permits.
     class StopGate
-      def initialize(event:, stop_hook:, retrieval:, session_id:, now: Time.now)
+      def initialize(event:, stop_hook:, retrieval:, session_id:, now:)
         @armed = event[:stop_hook_active] != true && stop_hook
         @retrieval = retrieval
         @session_id = session_id

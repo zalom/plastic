@@ -25,7 +25,7 @@ module Plastic
       end
 
       # The lines to print, first line first.
-      def lines(now: Time.now) = [first_line, *open_intent_lines, *lapsed_claim_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
+      def lines(now:) = [first_line, *open_intent_lines, *lapsed_claim_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
 
       private
 

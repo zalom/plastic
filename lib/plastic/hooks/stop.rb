@@ -33,7 +33,7 @@ module Plastic
         work = graphs.work
         work.stamp_turn(session_id, directory:)
         work.renew_claims(session_id)
-        decision = StopGate.new(event:, stop_hook: stop_hook?, retrieval: graphs.retrieval, session_id:).decision
+        decision = StopGate.new(event:, stop_hook: stop_hook?, retrieval: graphs.retrieval, session_id:, now: environment.now).decision
         decision && JSON.generate(decision)
       end
 

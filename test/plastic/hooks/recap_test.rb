@@ -9,7 +9,7 @@ class RecapTest < Plastic::TestCase
   def opened(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 
   def recap(source: nil, session: "s-1")
-    Plastic::Hooks::Recap.new(opened(session).retrieval, session_id: session, source:, directory: @home).lines
+    Plastic::Hooks::Recap.new(opened(session).retrieval, session_id: session, source:, directory: @home).lines(now: Time.now)
   end
 
   def printed_intent(title = "Alpha")

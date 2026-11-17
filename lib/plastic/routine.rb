@@ -84,7 +84,7 @@ module Plastic
     # A resumed command run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(command_run)
-      Context.new(declared: self.class.declared_facts, facts: command_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
+      Context.new(declared: self.class.declared_facts, facts: command_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope), clock: environment.clock)
     end
 
     def chain = self.class.chain

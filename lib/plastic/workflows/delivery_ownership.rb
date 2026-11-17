@@ -4,8 +4,8 @@ module Plastic
   module Workflows
     # Whether another session holds a live claim on a node of the intent.
     module DeliveryOwnership
-      def self.problem(context, now: Time.now)
-        node = foreign_claim(context, now)
+      def self.problem(context)
+        node = foreign_claim(context, context.now)
         "intent #{context.intent_id} has node #{node.id} claimed by session #{node.claimed_by}" if node
       end
 
