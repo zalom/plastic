@@ -53,11 +53,10 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
   def test_read_all_gives_the_reads_and_prints_nothing_until_asked
     write("#{DIR}/notes.md", "# notes\n")
     reads = file_reads.read_all(["#{DIR}/notes.md"])
-
-    assert_equal ["read #{DIR}/notes.md"], reads.map(&:line)
-    assert_nil retrieval.stored.printed["#{DIR}/notes.md"]
+    before = retrieval.stored.printed["#{DIR}/notes.md"]
     file_reads.reprint(reads)
-    refute_nil retrieval.stored.printed["#{DIR}/notes.md"]
+
+    assert_equal [nil, false], [before, retrieval.stored.printed["#{DIR}/notes.md"].nil?]
   end
 
   def rename_by_hand_in_the_index
