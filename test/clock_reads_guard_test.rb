@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
+require "plastic/clock"
 
 class ClockReadsGuardTest < Minitest::Test
   LIB = File.expand_path("../lib", __dir__)
