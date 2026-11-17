@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../../lib/plastic/graph/migration/runner"
 
 module StoreMigrationRuns
   include Beta2Store
