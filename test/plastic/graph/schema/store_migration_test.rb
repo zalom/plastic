@@ -123,6 +123,7 @@ class StoreMigrationTest < Plastic::TestCase
 
     assert_equal [["alpha"], {}], [report.migrated, report.failed]
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
+    assert_equal fresh_layouts, layouts_of(store_root(home))
   end
 
   def test_a_second_run_changes_nothing
