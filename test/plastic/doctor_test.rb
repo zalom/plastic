@@ -65,7 +65,7 @@ class DoctorTest < Plastic::TestCase
   end
 
   def test_a_registered_harness_that_declares_no_doctor_gets_the_core_checks_alone
-    checks = Plastic::Doctor.check(scope, harness: "hermes", now: FixedClock::AT)
+    checks = Plastic::Doctor.check(scope, harness: "hermes", running: RUNNING, now: FixedClock::AT)
 
     assert_equal Plastic::Doctor::Core.new(scope, running: RUNNING, now: FixedClock::AT).checks.map(&:label), checks.map(&:label)
   end
@@ -84,7 +84,7 @@ class DoctorTest < Plastic::TestCase
   end
 
   def test_a_broken_home_names_repair_commands_and_never_plastic_next
-    repairs = Plastic::Doctor.check(scope, harness: "claude-code", now: FixedClock::AT).filter_map(&:repair).uniq
+    repairs = Plastic::Doctor.check(scope, harness: "claude-code", running: RUNNING, now: FixedClock::AT).filter_map(&:repair).uniq
 
     refute_empty repairs
     refute(repairs.any? { |repair| repair.include?("plastic next") })
