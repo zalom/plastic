@@ -59,9 +59,14 @@ module Plastic
             Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmaps.find(slug)
           end
 
+          def printed_of(found, fresh)
+            path = found.path
+            fresh[path] || roadmap_print(path) || found.kept_print(@folder)
+          end
+
           def reprint(reads)
             fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| fresh[found.path] || roadmap_print(found.path) || found.kept_print(@folder) })
+            @printer.print(reads.map { |found| printed_of(found, fresh) })
           end
         end
       end

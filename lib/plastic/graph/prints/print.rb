@@ -15,6 +15,9 @@ module Plastic
 
         def text = source.call
 
+        # The file hash differs from this print.
+        def other_than?(file_sha) = sha256 != file_sha
+
         # The file holds these bytes already.
         def level?(folder) = folder.digest(path) == sha256
 

@@ -33,6 +33,9 @@ module Plastic
 
           def held? = TABLES.keys.any? { |part| data[part] }
 
+          # The file can be read and holds a part.
+          def usable? = problem.nil? && held?
+
           private
 
           def data

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "entry_list"
+require_relative "plan_builder"
 require_relative "resolution"
 require_relative "intent_folders"
 require_relative "../store_folder"
@@ -24,56 +25,14 @@ module Plastic
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def self.build(folder, retrieval, resolution, databases)
-            legacy = folder.legacy?
-            up = resolution.up?
-            folders = legacy ? nil : IntentFolders.new(folder, retrieval)
-            entries = entries(folder, retrieval, folders)
-            second_home = second_home_of(folder, retrieval, folders, up && !legacy)
-            new(resolution:, entries:, legacy: up && legacy,
-              problem: down_problem(legacy, up), unreadable: Array(folders&.problems),
-              archived: archived(folder, retrieval, resolution), second_home:, old_savepoints: old_savepoints(folder, retrieval, up),
-              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval, databases), entries, retrieval, up && !legacy, second_home))
-          end
-
-          def self.old_savepoints(folder, retrieval, up) = up ? OldSavepoints.none : OldSavepoints.find(folder, retrieval)
-
-          def self.down_problem(legacy, up) = (legacy_problem if legacy && !up)
-
-          def self.second_home_of(folder, retrieval, folders, reads) = reads ? SecondHome.new(folder, retrieval, folders) : SecondHome::NONE
-
-          # Only a sync up of a store that is not legacy reads files.
-          def self.unreadable_files_of(readability, entries, retrieval, reads, second_home)
-            reads ? unreadable_files(readability, retrieval, entries).merge(second_home.problems) : {}
-          end
-
-          # The changed files of `entries` that sync up would read and cannot.
-          def self.unreadable_files(readability, retrieval, entries)
-            rowed = retrieval.intents.map(&:dir)
-            found = readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
-            found.transform_keys { |path| owner(path) }
-          end
+          def self.build(folder, retrieval, resolution, databases) = PlanBuilder.new(folder, retrieval, resolution, databases).call
 
           # The file a path belongs to: the clusters and the links are parts of the index.
           def self.owner(path) = Prints::Parts.path?(path) ? StoreFolder::INDEX : path
 
-          # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
-          def self.readable?(entry, rowed)
-            path = entry.path
-            return path == StoreFolder::INDEX && entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
-
-            %i[read conflict].include?(entry.action(:up)) && readable_path?(path, rowed)
-          end
-
-          def self.readable_path?(path, rowed)
-            StoreFolder.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
-          end
-
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
-
-          def self.archived(folder, retrieval, resolution) = (resolution.up? && !folder.legacy?) ? ArchivedIntents.new(folder, retrieval).missing.size : 0
 
           def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
@@ -105,32 +64,29 @@ module Plastic
             "#{unknown} names no file and no rows of this store" if unknown
           end
 
+          # The index, and every file the plan prints, from the rows as the reads left them; `fresh` maps each path to its print.
+          def printed_up(fresh)
+            wanted = entries_for(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
+            index = fresh[StoreFolder::INDEX] unless unreadable_files.key?(StoreFolder::INDEX)
+            [index, *wanted].compact.uniq(&:path)
+          end
+
           private
 
           def settled(entry)
-            return generated_up(entry) if direction == :up && entry.generated?
-            path = entry.path
-            return :none if unreadable_files.key?(Plan.owner(path))
+            return entry.generated_up(unreadable_files) if direction == :up && entry.generated?
+            return :none if unreadable?(entry)
 
             action = entry.action(direction)
-            return resolution.side if action == :conflict && resolution.overwrites?(path)
+            return resolution.side if action == :conflict && resolution.overwrites?(entry.path)
 
             named_print?(entry) ? :print : action
           end
 
-          # The index prints from the rows when another home printed it and this home holds no print of it. An index
-          # that a person changed and that has rows is read into rows. When it cannot be read, it is kept as written
-          # if this home holds a print of it, and printed from the rows if not. Any other index is left as it is.
-          def generated_up(entry)
-            return :print if entry.reprinted?
-            return :none unless entry.hand_edited? && entry.rows_sha
-            return :read unless unreadable_files.key?(entry.path)
-
-            entry.printed_sha ? :none : :print
-          end
+          def unreadable?(entry) = unreadable_files.key?(Plan.owner(entry.path))
 
           # An overwrite that names this path prints it from its rows when the file differs from them.
-          def named_print?(entry) = direction == :down && resolution.names?(entry.path) && entry.rows_sha && !entry.level?
+          def named_print?(entry) = direction == :down && resolution.names?(entry.path) && entry.reprintable?
         end
       end
     end

@@ -153,7 +153,7 @@ class KnowledgeSyncEntryOriginTest < Plastic::TestCase
   def test_an_index_that_another_home_printed_is_a_hand_edit_on_a_home_that_holds_a_print_of_it
     entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }))
 
-    assert_equal [false, true, true], [entry.level?, entry.hand_edited?, entry.printed_elsewhere]
+    assert_equal [false, true, true], [entry.level?, entry.hand_edited?, entry.printed_by == "theirs"]
   end
 
   def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways_on_a_home_with_no_print_of_it
@@ -165,6 +165,29 @@ class KnowledgeSyncEntryOriginTest < Plastic::TestCase
   def test_an_index_that_is_a_json_array_is_a_hand_edit_and_raises_nothing
     entry = entry_of("[]")
 
-    assert_equal [true, false], [entry.hand_edited?, entry.printed_elsewhere]
+    assert_equal [true, nil], [entry.hand_edited?, entry.printed_by]
+  end
+end
+
+class KnowledgeSyncEntryDecisionTest < Plastic::TestCase
+  Entry = Plastic::Graph::Knowledge::Sync::Entry
+  Print = Plastic::Graph::Prints::Print
+
+  def entry(path, file, printed, rows) = Entry.new(path, file, printed, rows ? Print.new(path, rows, nil) : Entry::NO_PRINT)
+
+  def test_a_changed_file_in_a_rowed_intent_folder_is_readable_by_up
+    assert entry("intents/1--a/spec.md", "b", "a", "a").readable_by_up?(["intents/1--a"])
+  end
+
+  def test_a_level_file_is_not_readable_by_up
+    refute entry("intents/1--a/spec.md", "a", "a", "a").readable_by_up?(["intents/1--a"])
+  end
+
+  def test_a_file_that_differs_from_its_rows_is_reprintable
+    assert_equal [true, false], [entry("a.md", "b", nil, "a").reprintable?, entry("a.md", "a", "a", "a").reprintable?]
+  end
+
+  def test_a_hand_edit_in_an_unreadable_file_is_not_generated_up
+    assert_equal :none, entry("a.md", "b", "a", "a").generated_up({ "a.md" => "x" })
   end
 end

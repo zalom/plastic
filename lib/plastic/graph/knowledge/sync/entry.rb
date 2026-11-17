@@ -11,13 +11,47 @@ module Plastic
         # One path of a store folder, seen three ways: the hash of the file on
         # disk, the hash recorded when it was last printed, and the hash of the
         # print its rows give now. Each hash is nil when there is none.
-        # `printed_elsewhere` marks an index that another home printed.
-        Entry = Data.define(:path, :file_sha, :printed_sha, :print, :printed_elsewhere) do
-          def initialize(printed_elsewhere: false, **hashes) = super
+        # `printed_by` names the other home that printed an index, nil for any other file.
+        Entry = Data.define(:path, :file_sha, :printed_sha, :print, :printed_by) do
+          def initialize(printed_by: nil, **hashes) = super
         end
 
         # What a sync does with one path.
         class Entry
+          # What a sync in a direction does with the path.
+          module Decision
+            # :record a level file's hash, :read the file into rows, :print the rows into the
+            # file, stop on a :conflict, or :none. A missing file is never a
+            # change on the file side. An index another home printed prints from the rows
+            # when this home holds no print of the index, and is read when it does.
+            def action(direction)
+              return :print if reprinted?
+              return (printed_sha == file_sha) ? :none : :record if level?
+              return :conflict if conflict?
+
+              send(direction)
+            end
+
+            # The index prints from the rows when another home printed it and this home holds no print of it. An index
+            # that a person changed and that has rows is read into rows. When it cannot be read, it is kept as written
+            # if this home holds a print of it, and printed from the rows if not. Any other index is left as it is.
+            def generated_up(unreadable_files)
+              return :print if reprinted?
+              return :none unless hand_edited? && rows_sha
+              return :read unless unreadable_files.key?(path)
+
+              printed_sha ? :none : :print
+            end
+
+            private
+
+            def up = file_changed? ? :read : :none
+
+            def down = (rows_changed? || (rows_sha && !file_sha)) ? :print : :none
+          end
+
+          include Decision
+
           # The print of a path with no rows.
           NO_PRINT = Prints::Print.new(nil, nil, nil)
 
@@ -29,21 +63,24 @@ module Plastic
           # The index that another home printed, when this home holds no print of it, is no edit: the rows print it again.
           def self.for(folder, path, printed_sha, print)
             file_sha = level_sha(folder, path, print)
-            new(path, file_sha, printed_of(path, printed_sha, file_sha, print), print, printed_elsewhere?(folder, path, print))
+            new(path, file_sha, printed_of(path, printed_sha, file_sha, print), print, other_origin(folder, path, print))
           end
 
           # A part of the index, the clusters or the links, with no record of a print count as printed when the rows hold what the file does not.
           def self.printed_of(path, printed_sha, file_sha, print)
-            return printed_sha unless Prints::Parts.path?(path) && printed_sha.nil? && file_sha != print.sha256
-
-            print.sha256
+            unrecorded = Prints::Parts.path?(path) && printed_sha.nil?
+            (unrecorded && print.other_than?(file_sha)) ? print.sha256 : printed_sha
           end
 
-          def self.printed_elsewhere?(folder, path, print)
-            return false unless path == StoreFolder::INDEX && folder.exist?(path) && print.text
+          # The origin of the other home that printed the index, nil when this home printed it or the folder holds none.
+          def self.other_origin(folder, path, print)
+            return unless path == StoreFolder::INDEX && folder.exist?(path)
+
+            text = print.text
+            return unless text
 
             theirs = origin_of(folder.read(path))
-            !theirs.nil? && theirs != origin_of(print.text)
+            theirs unless theirs == origin_of(text)
           end
 
           # The top-level origin of an index, nil when the text is no JSON object.
@@ -71,7 +108,7 @@ module Plastic
           def rows_sha = print.sha256
 
           # An index another home printed, on a home that holds no print of the index: the rows print it again.
-          def reprinted? = printed_elsewhere && printed_sha.nil?
+          def reprinted? = !printed_by.nil? && printed_sha.nil?
 
           # The index: the rows print it again after a read. A roadmap and a context view are read like any file.
           def generated? = path == StoreFolder::INDEX
@@ -91,24 +128,19 @@ module Plastic
 
           def conflict? = !level? && file_changed? && rows_changed?
 
-          # What a sync in `direction` does with this path: :record a level
-          # file's hash, :read the file into rows, :print the rows into the
-          # file, stop on a :conflict, or :none. A missing file is never a
-          # change on the file side. An index another home printed prints from the rows
-          # when this home holds no print of the index, and is read when it does.
-          def action(direction)
-            return :print if reprinted?
-            return (printed_sha == file_sha) ? :none : :record if level?
-            return :conflict if conflict?
+          # The rows print something and the file does not hold it yet.
+          def reprintable? = !rows_sha.nil? && !level?
 
-            send(direction)
+          # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
+          def readable_by_up?(rowed)
+            return path == StoreFolder::INDEX && hand_edited? && !rows_sha.nil? if generated?
+
+            %i[read conflict].include?(action(:up)) && readable_path?(rowed)
           end
 
           private
 
-          def up = file_changed? ? :read : :none
-
-          def down = (rows_changed? || (rows_sha && !file_sha)) ? :print : :none
+          def readable_path?(rowed) = StoreFolder.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
         end
       end
     end

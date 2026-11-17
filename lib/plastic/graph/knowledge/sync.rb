@@ -14,6 +14,7 @@ require_relative "sync/legacy_import"
 require_relative "sync/intent_folders"
 require_relative "sync/archived_intents"
 require_relative "sync/old_savepoints"
+require_relative "sync/declared_prints"
 
 module Plastic
   module Graph
@@ -53,27 +54,20 @@ module Plastic
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
           ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
           lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths)
-          printer.print(printed_up(plan))
+          printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
           lines
-        end
-
-        # The index, and every file the plan prints, from the rows as the reads left them.
-        def printed_up(plan)
-          fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-          wanted = plan.entries_for(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
-          index = fresh[StoreFolder::INDEX] unless plan.unreadable_files.key?(StoreFolder::INDEX)
-          [index, *wanted].compact.uniq(&:path)
         end
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
 
         def print_down(plan)
           printer.print(plan.entries_for(:print).map(&:print))
-          [*plan.old_savepoints.remove(@folder, @databases), *plan.old_savepoints.kept_lines]
+          savepoints = plan.old_savepoints
+          [*savepoints.remove(@folder, @databases), *savepoints.kept_lines]
         end
 
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
-        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, @databases, kinds, facts).call
+        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, @databases, DeclaredPrints.new(@retrieval, kinds, facts).call).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end
