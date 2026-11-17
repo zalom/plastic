@@ -20,6 +20,14 @@ class RetrievalGraphTest < Plastic::TestCase
     assert_equal [origin, "global"], [retrieval.origin_id, retrieval.store]
   end
 
+  def test_the_record_reads_are_objects_the_graph_hands_out_not_mixins_it_includes
+    mixins = %w[RoadmapReads StoreReads ArchiveReads StructureReads]
+
+    assert_empty Plastic::Graph::RetrievalGraph.ancestors.map { |ancestor| ancestor.name.to_s.split("::").last } & mixins
+    assert_equal %w[RoadmapReader StoreRead ArchiveReader StructureReader],
+      [retrieval.roadmaps, retrieval.stored, retrieval.archives, retrieval.structure].map { |reader| reader.class.name.split("::").last }
+  end
+
   def test_intents_read_in_luhmann_order
     work = store_graphs.work
     %w[One Two].each { |title| work.write_intent(title:) }
