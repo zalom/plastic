@@ -9,9 +9,11 @@ module Plastic
       # the way the files are written; any other value is its text.
       class FrontMatter
         BLOCK = /\A---\n(.*?)\n---/m
-        FIELD = /^(\w+):[ \t]*(?:("(?:[^"\\\n]|\\.)*")|"?([^"\n]*?)"?)[ \t]*$/
+        FIELD = /^(\w+):[ \t]*(?:("(?:[^"\\\n]|\\.)*")|'((?:[^'\n]|'')*)'|"?([^"\n]*?)"?)[ \t]*$/
 
-        def self.fields(text) = text[BLOCK, 1].to_s.scan(FIELD).to_h { |name, quoted, plain| [name, quoted ? decoded(quoted) : plain] }
+        def self.fields(text)
+          text[BLOCK, 1].to_s.scan(FIELD).to_h { |name, double, single, plain| [name, double ? decoded(double) : single&.gsub("''", "'") || plain] }
+        end
 
         def self.decoded(quoted)
           JSON.parse(quoted)
