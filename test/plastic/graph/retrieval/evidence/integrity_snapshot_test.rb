@@ -33,6 +33,13 @@ class RetrievalEvidenceIntegritySnapshotTest < Plastic::TestCase
     assert_equal ["digest-immutable evidence"], digests(document)
   end
 
+  def test_a_store_whose_retrieval_file_is_gone_captures_no_derived_rows
+    lose_retrieval_file
+    captured = snapshot(CountingDigester.new).capture
+
+    assert_equal [[], []], captured.values_at(:passages, :fts)
+  end
+
   private
 
   def digests(document) = [document.head_row(origin), *document.fts_rows(origin)].map { |row| row[:sha256] }.uniq

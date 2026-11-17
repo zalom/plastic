@@ -59,13 +59,19 @@ module Plastic
       def move(connection, path, between)
         require "sqlite3"
         retrieval = SQLite3::Database.new(path, results_as_hash: true)
-        retrieval.busy_timeout = 5000
+        begin
+          retrieval.busy_timeout = 5000
+          carry(connection, retrieval, between)
+        ensure
+          retrieval.close
+        end
+      end
+
+      def carry(connection, retrieval, between)
         copy(connection, retrieval)
         verify(connection, retrieval)
         between&.call
         drop(connection)
-      ensure
-        retrieval&.close
       end
 
       def copy(knowledge, retrieval)

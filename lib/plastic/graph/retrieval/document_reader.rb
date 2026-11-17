@@ -5,7 +5,7 @@ module Plastic
     module Retrieval
       # Reads immutable document revisions and their passages from one origin.
       class DocumentReader
-        def initialize(knowledge, origin_id, retrieval: nil)
+        def initialize(knowledge, origin_id, retrieval:)
           @knowledge = knowledge
           @retrieval = retrieval
           @origin_id = origin_id
@@ -33,7 +33,7 @@ module Plastic
         attr_reader :knowledge, :origin_id
 
         def retrieval_rows(sql, **values)
-          raise RetrievalGraph::MaintenanceRequired, Search::MISSING unless @retrieval && File.file?(@retrieval.path)
+          raise RetrievalGraph::MaintenanceRequired, Search::MISSING unless File.file?(@retrieval.path)
 
           @retrieval.row(sql, **values)
         end

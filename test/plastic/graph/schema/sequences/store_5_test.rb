@@ -89,6 +89,16 @@ class SchemaStore5Test < Plastic::TestCase
     assert_includes tables(@knowledge), "document_passages"
   end
 
+  def test_a_connection_that_returns_rows_as_lists_builds_the_same_file
+    @knowledge.results_as_hash = false
+    apply
+    database = retrieval
+
+    assert_equal [2, 2], [database.get_first_value("SELECT count(*) FROM document_passages"), database.get_first_value("SELECT count(*) FROM document_fts")]
+  ensure
+    database&.close
+  end
+
   def test_the_other_files_take_no_part
     work = SQLite3::Database.new(":memory:", results_as_hash: true)
 

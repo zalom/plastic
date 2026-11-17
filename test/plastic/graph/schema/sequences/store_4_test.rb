@@ -93,6 +93,14 @@ class SchemaStore4Test < Plastic::TestCase
     assert_equal [2, 3], [count(@work, "intents"), @work.get_first_value("PRAGMA user_version")]
   end
 
+  def test_a_connection_that_returns_rows_as_lists_moves_the_same_rows
+    Plastic::Graph::SchemaStore4.apply(@knowledge, :knowledge, {})
+    @work.results_as_hash = false
+    migrate_work
+
+    assert_equal [2, 1, 1, 1, 1, 1, 1, 1], MOVED.map { |table| count(@knowledge, table) }
+  end
+
   def test_a_connection_that_returns_rows_by_name_runs_the_migration_through_the_runner_sequence
     Plastic::Graph::SchemaSequences.migrate(@knowledge, Sequences::SEQUENCES.fetch(:store).first(4), :knowledge)
     Plastic::Graph::SchemaSequences.migrate(@work, Sequences::SEQUENCES.fetch(:store).first(4), :work, { knowledge: knowledge_path })

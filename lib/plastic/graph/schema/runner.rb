@@ -120,7 +120,7 @@ module Plastic
         return :migrated if built.empty?
 
         migrate_files(databases(slug))
-        files.find { |database| database.key == :knowledge }&.vacuum
+        files.find { |database| database.key == :knowledge }.vacuum
         :migrated
       end
 

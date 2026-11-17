@@ -60,14 +60,20 @@ module Plastic
       def move(connection, path, between)
         require "sqlite3"
         knowledge = SQLite3::Database.new(path, results_as_hash: true)
-        knowledge.busy_timeout = 5000
+        begin
+          knowledge.busy_timeout = 5000
+          carry(connection, knowledge, between)
+        ensure
+          knowledge.close
+        end
+      end
+
+      def carry(connection, knowledge, between)
         plan = plan_for(connection)
         copy(connection, knowledge, plan)
         verify(connection, knowledge, plan)
         between&.call
         drop(connection)
-      ensure
-        knowledge&.close
       end
 
       # Each table with the condition on the work file and the condition on the knowledge file for the rows that move.

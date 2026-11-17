@@ -64,6 +64,15 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_nil retrieval.completion("1")
   end
 
+  def test_abandoning_an_abandoned_intent_changes_nothing
+    ready
+    writer.abandon("1")
+    before = retrieval.intent("1").to_h
+    writer.abandon("1")
+
+    assert_equal before, retrieval.intent("1").to_h
+  end
+
   def test_abandoning_a_done_intent_changes_nothing
     ready
     writer.close("1")

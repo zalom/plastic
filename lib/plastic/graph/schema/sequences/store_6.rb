@@ -56,14 +56,18 @@ module Plastic
       def copy_from(connection, path, between)
         require "sqlite3"
         source = SQLite3::Database.new(path, readonly: true, results_as_hash: true)
-        inside(connection) do
-          floor = connection.get_first_value("SELECT coalesce(max(seq), 0) FROM changes").to_i
-          present(source).each { |table| copy(connection, source, table) }
-          verify(connection, source, floor)
-          between&.call
+        begin
+          inside(connection) { carry(connection, source, between) }
+        ensure
+          source.close
         end
-      ensure
-        source&.close
+      end
+
+      def carry(connection, source, between)
+        floor = connection.get_first_value("SELECT coalesce(max(seq), 0) FROM changes").to_i
+        present(source).each { |table| copy(connection, source, table) }
+        verify(connection, source, floor)
+        between&.call
       end
 
       def present(source) = COLUMNS.keys.select { |table| source.get_first_value("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?", [table]).positive? }
@@ -120,10 +124,12 @@ module Plastic
       def check(knowledge_path, references_path)
         source = SQLite3::Database.new(references_path, readonly: true, results_as_hash: true)
         knowledge = SQLite3::Database.new(knowledge_path, readonly: true, results_as_hash: true)
-        present(source).include?("sqlar") && rows(source, "sqlar").each { |row| read_back(knowledge, row) }
-      ensure
-        source&.close
-        knowledge&.close
+        begin
+          present(source).include?("sqlar") && rows(source, "sqlar").each { |row| read_back(knowledge, row) }
+        ensure
+          source.close
+          knowledge.close
+        end
       end
 
       def read_back(knowledge, row)

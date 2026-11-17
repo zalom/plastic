@@ -15,6 +15,10 @@ class DatabaseTest < Plastic::TestCase
     assert_nil scratch("absent.db").version
   end
 
+  def test_a_database_with_no_schema_track_has_no_key
+    assert_nil scratch("untracked.db").key
+  end
+
   def test_rows_returns_the_rows_of_one_statement
     assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a")
   end
