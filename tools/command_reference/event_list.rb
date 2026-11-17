@@ -20,6 +20,10 @@ module CommandReference
     def label = LANE_LABELS.fetch(lane)
 
     def agent? = lane == :agent
+
+    def said? = !say.to_s.strip.empty?
+
+    def say_row = "| #{number} | #{Words.shown(say)} |"
   end
 
   # The stop a gate makes: a refusal or a failure, in the words of its reason.
@@ -30,7 +34,7 @@ module CommandReference
 
     def words
       reason = gate.reason
-      gate.because || (reason.match?(PageWords::PLACEHOLDER) ? gate.words : reason)
+      gate.because || (Words.placeholder?(reason) ? gate.words : reason)
     end
   end
 

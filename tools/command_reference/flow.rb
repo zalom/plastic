@@ -5,6 +5,8 @@ module CommandReference
   Flow = Data.define(:key, :klass, :lane, :file, :line, :facts, :rows, :outcomes) do
     def agent? = lane == "agent"
 
+    def pairs(items) = items.map { |item| [self, item] }
+
     def short = Words.short(klass)
 
     def path = Words.path(klass)

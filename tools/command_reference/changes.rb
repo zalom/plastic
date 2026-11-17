@@ -2,7 +2,9 @@
 
 module CommandReference
   # One thing a call changes, with the place it changes and how far the change travels.
-  Change = Data.define(:text, :place, :where, :reach)
+  Change = Data.define(:text, :place, :where, :reach) do
+    def table_row = "| #{Words.shown(text)} | #{where} | #{reach} |"
+  end
 
   # What one call changes, read from the words of its steps, its own words and its prints.
   class Changes

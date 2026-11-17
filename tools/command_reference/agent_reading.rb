@@ -18,7 +18,7 @@ module CommandReference
 
     def words
       say = @step.say
-      (@step.words if say.match?(PageWords::PLACEHOLDER)) || say
+      (@step.words if Words.placeholder?(say)) || say
     end
   end
 end
