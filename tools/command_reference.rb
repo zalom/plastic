@@ -7,7 +7,7 @@ module CommandReference
 
   require "plastic/cli"
   require "plastic/graph"
-  require "plastic/hook"
+  require "plastic/cli/hook"
   require "plastic/routine"
 
   %w[snippet source row outcome flow edge own_call call_closure ending reach page locator workflow_reading step_readings gate_reading read_reading step_reading agent_reading outcome_reading flow_reader own_call_reading hook_files file_endings endings changes reasons event_list command_reading model

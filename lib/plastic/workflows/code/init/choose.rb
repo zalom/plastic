@@ -5,7 +5,7 @@ require_relative "../../../answer"
 require_relative "../init"
 require_relative "../../../code_workflow"
 require_relative "../../../harnesses"
-require_relative "../../../wiring"
+require_relative "../../../cli/wiring"
 
 module Plastic
   module Workflows

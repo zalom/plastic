@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../hook"
-require_relative "../wiring"
+require_relative "../cli/hook"
+require_relative "../cli/wiring"
 require_relative "../graph"
 require_relative "../harnesses"
 require_relative "stop_gate"

@@ -7,7 +7,7 @@ require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
 require_relative "../installations/home_ignore"
-require_relative "../wiring"
+require_relative "../cli/wiring"
 require_relative "installation_health"
 
 module Plastic

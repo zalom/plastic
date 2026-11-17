@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "config"
-require_relative "graph"
-require_relative "graph/settings_database"
-require_relative "graph/knowledge/sync_selection"
-require_relative "graph/knowledge/sync_settings"
+require_relative "../config"
+require_relative "../graph"
+require_relative "../graph/settings_database"
+require_relative "../graph/knowledge/sync_selection"
+require_relative "../graph/knowledge/sync_settings"
 
 module Plastic
   # The one place that joins the settings to the graphs: the settings read and

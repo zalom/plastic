@@ -3,7 +3,7 @@
 require "forwardable"
 require "optparse"
 require_relative "command/environment"
-require_relative "../wiring"
+require_relative "wiring"
 require_relative "command/help"
 require_relative "command/invocation"
 require_relative "command/settlement"

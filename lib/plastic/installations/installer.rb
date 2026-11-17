@@ -3,7 +3,7 @@
 require "forwardable"
 require "tmpdir"
 require_relative "../config/upgrade"
-require_relative "../wiring"
+require_relative "../cli/wiring"
 require_relative "home_ignore"
 require_relative "../installations"
 require_relative "../graph"

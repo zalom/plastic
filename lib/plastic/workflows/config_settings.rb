@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../wiring"
+require_relative "../cli/wiring"
 require_relative "../errors"
 
 module Plastic

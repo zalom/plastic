@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "cli/command"
-require_relative "errors"
-require_relative "graph/missing_store"
+require_relative "command"
+require_relative "../errors"
+require_relative "../graph/missing_store"
 
 module Plastic
   # A tool the harness calls on an event. Plastic has three: the session

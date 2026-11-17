@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../hook"
+require_relative "../cli/hook"
 require_relative "../graph"
-require_relative "../wiring"
+require_relative "../cli/wiring"
 
 module Plastic
   module Hooks

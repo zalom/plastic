@@ -3,7 +3,7 @@
 require_relative "../../lib/plastic/code_workflow"
 require_relative "../../lib/plastic/agent_workflow"
 require_relative "../../lib/plastic/routine"
-require_relative "../../lib/plastic/hook"
+require_relative "../../lib/plastic/cli/hook"
 
 # Routines, workflows and hooks that exist only for the kernel tests. They
 # live in their own namespace, with their own registry and command table, so

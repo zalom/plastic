@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../wiring"
+require_relative "../cli/wiring"
 require_relative "hook_entries"
 require_relative "choices"
 require_relative "hook_launcher"

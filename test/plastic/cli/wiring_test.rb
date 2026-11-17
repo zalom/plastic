@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../test_helper"
-require_relative "../../lib/plastic/wiring"
+require_relative "../../test_helper"
+require_relative "../../../lib/plastic/cli/wiring"
 
 class WiringTest < Plastic::TestCase
   include ConfigHomes

@@ -2,7 +2,7 @@
 
 require_relative "../end"
 require_relative "../../../../code_workflow"
-require_relative "../../../../wiring"
+require_relative "../../../../cli/wiring"
 require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
 require_relative "../../../delivery_ownership"

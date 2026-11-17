@@ -4,7 +4,7 @@ require_relative "../../code_workflow"
 require_relative "../../harnesses"
 require_relative "../installation"
 require_relative "../../doctor/installation_hooks"
-require_relative "../../wiring"
+require_relative "../../cli/wiring"
 
 module Plastic
   module Workflows
