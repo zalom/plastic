@@ -13,7 +13,7 @@ module Plastic
       # under `sync` is on. `rel` is the path inside the intent folder.
       class SyncSelection
         OPTIONAL = %w[media documents references].freeze
-        NOTES = %w[graph.json context.json].freeze
+        NOTES = %w[graph.json context.json work.log].freeze
         REFERENCES = "references/"
         INTENT_FILE = %r{\Astore/[^/]*--[^/]*/(.+)\z}
         MEDIA = %w[.png .jpg .jpeg .gif .webp .svg .avif .heic .bmp .ico .tif .tiff

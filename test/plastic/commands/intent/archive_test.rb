@@ -187,6 +187,15 @@ module ArchiveFidelityFixtures
     File.utime(Time.at(1234), Time.at(1234), root)
   end
 
+  def reverted_trees
+    intent = populated_intent
+    before = tree(folder.path(intent.dir))
+
+    assert_archived(intent)
+    assert_reverted(intent)
+    [before, tree(folder.path(intent.dir))]
+  end
+
   def tree(root)
     paths = [root, *Dir.glob("#{root}/**/*", File::FNM_DOTMATCH)].uniq.reject { |path| File.basename(path) == "." }
     paths.sort.to_h { |path| [path.delete_prefix(root), entry(path)] }
@@ -235,14 +244,19 @@ class ArchiveFidelityTest < Plastic::TestCase
   include ArchiveFidelityFixtures
 
   def test_revert_preserves_bytes_links_directories_modes_and_times
-    intent = populated_intent
-    before = tree(folder.path(intent.dir))
+    before, after = reverted_trees
 
-    assert_archived(intent)
-    assert_reverted(intent)
-
-    assert_equal before, tree(folder.path(intent.dir))
+    assert_equal without_log(before), without_log(after)
   end
+
+  def test_revert_keeps_the_work_log_and_adds_the_archived_and_unarchived_lines
+    before, after = reverted_trees
+    log = after.fetch("/work.log").last
+
+    assert_equal [true, true], [log.start_with?(before.fetch("/work.log").last), log.match?(/archived - - Archived\n.*unarchived - - Unarchived\n\z/)]
+  end
+
+  def without_log(tree) = tree.except("", "/work.log")
 
   def test_revert_uses_snapshot_even_when_document_rows_change
     intent = future_intent

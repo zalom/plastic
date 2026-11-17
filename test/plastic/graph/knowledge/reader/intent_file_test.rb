@@ -27,10 +27,16 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal [node.id], retrieval.nodes("1").map(&:id)
   end
 
-  def test_savepoint_md_reads_one_row_per_line
+  def test_work_log_reads_one_row_per_line_and_a_loose_line_is_noted
+    assert_equal :work, read_in("work.log", "- #{AT} Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec written\nfree text\n")
+    assert_equal [[1, "wrote", "n3", "s-1", "Spec written"], [2, "noted", "", nil, "free text"]],
+      retrieval.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
+  end
+
+  def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
     assert_equal :work, read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
-    assert_equal [[1, AT, "Spec written"], [2, nil, "free text"]],
-      retrieval.savepoints("1").map { |line| line.to_h.values_at(:position, :at, :text) }
+    assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
+      retrieval.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
   end
 
   def test_a_markdown_file_reads_into_a_document
@@ -47,18 +53,11 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
       row.values_at("body", "sha256", "position")
   end
 
-  def attributed_savepoint
-    store_graphs.databases.fetch(:work).transaction do |batch|
-      batch.put(:savepoints, { intent_id: "1", position: 1, at: AT, text: "Original", session_id: "owner" })
-    end
-  end
+  def test_sync_keeps_the_session_a_work_log_line_names
+    write("#{DIR}/work.log", "- #{AT} - - owner noted - - Original\n- #{AT} - - - noted - - new line\n")
+    Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/work.log"])
 
-  def test_sync_preserves_attribution_only_for_existing_savepoint_lines
-    attributed_savepoint
-    write("#{DIR}/savepoint.md", "new line\n#{AT}  Original\n#{AT}  Original\n")
-    Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/savepoint.md"])
-
-    assert_equal [nil, "owner", nil], retrieval.savepoints("1").map(&:session_id)
+    assert_equal ["owner", nil], retrieval.work_log("1").map(&:session_id)
     assert_equal ["1"], retrieval.touched("owner")
   end
 
@@ -125,6 +124,13 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
     assert_equal ["data.json", "intent.md", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
+  end
+
+  def test_an_old_savepoint_md_numbers_its_lines_after_the_highest_position_not_after_the_count
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 3, at: AT, kind: "noted", text: "later line" }) }
+    read_in("savepoint.md", "#{AT}  Spec written\n")
+
+    assert_equal [4, "Spec written"], retrieval.work_log("1").last.values_at(:position, :text)
   end
 end
 

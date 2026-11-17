@@ -17,7 +17,7 @@ class WorkGraphTest < Plastic::TestCase
   def test_print_intent_prints_the_index_and_the_intent_files
     work.write_intent(title: "Alpha")
 
-    assert_equal %w[store/index.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/graph.json],
+    assert_equal %w[store/index.json store/1--alpha/intent.md store/1--alpha/work.log store/1--alpha/graph.json],
       work.print_intent("1")
     assert_empty work.print_intent("1")
   end
@@ -60,13 +60,13 @@ class WorkGraphTest < Plastic::TestCase
     assert folder.exist?(".gitignore")
   end
 
-  def test_a_second_session_rerunning_a_tool_moves_the_run_but_keeps_the_earlier_savepoint_lines
+  def test_a_second_session_rerunning_a_tool_moves_the_run_but_keeps_the_earlier_work_log_lines
     first = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
     first.print_intent(first.write_intent(title: "Alpha").intent_id)
     second = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2")
     second.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
 
     assert_equal "s-2", run_session(second)
-    assert_equal "s-1", second.retrieval.savepoints("1").first.session_id
+    assert_equal "s-1", second.retrieval.work_log("1").first.session_id
   end
 end

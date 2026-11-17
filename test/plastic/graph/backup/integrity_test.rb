@@ -15,7 +15,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_sound_backup_file_passes
     home = fresh_home
 
-    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: 1).call
+    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::SchemaSequences.newest(:store)).call
   end
 
   def test_a_file_that_is_not_a_database_is_rejected
@@ -76,6 +76,7 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     db = SQLite3::Database.new(path)
     db.execute_batch(Plastic::Graph::Schema.fetch(:work))
+    db.execute("CREATE TABLE savepoints (intent_id TEXT)")
     tables.each { |table| db.execute("DROP TABLE #{table}") }
     db.close
     path

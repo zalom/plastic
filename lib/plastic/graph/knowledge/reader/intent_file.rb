@@ -12,6 +12,7 @@ require_relative "context_file"
 require_relative "../../work/edge"
 require_relative "../../work/node"
 require_relative "../../work/savepoint"
+require_relative "../../work/log_line"
 require_relative "../../sql"
 
 module Plastic
@@ -19,12 +20,13 @@ module Plastic
     module Knowledge
       class Reader
         # One file of an intent folder and the rows it reads into: graph.json
-        # into nodes and edges, savepoint.md into savepoint lines, a Markdown
+        # into nodes and edges, work.log into work log lines, an old savepoint.md into noted lines, a Markdown
         # document into its row, a plan, checklist or action file into a legacy row,
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[knowledge context], "savepoint.md" => %i[work savepoint] }.freeze
+          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[knowledge context], "work.log" => %i[work work_log],
+                    "savepoint.md" => %i[work savepoint] }.freeze
 
           def initialize(file, intent_id, writer:, retrieval: nil)
             @file = file
@@ -64,16 +66,25 @@ module Plastic
             rows.each { |table, row| batch.put(table, row) }
           end
 
-          def savepoint(batch)
-            previous = Array(@retrieval&.savepoints(@intent_id)).group_by(&:line)
-            batch.remove(:savepoints, intent_id: @intent_id)
-            batch.put_all(:savepoints, text.lines(chomp: true).each_with_index.map { |line, index| savepoint_row(line, index, previous) })
+          def work_log(batch)
+            batch.remove(:work_log, intent_id: @intent_id)
+            batch.put_all(:work_log, text.lines(chomp: true).reject { |line| line.strip.empty? }.each_with_index.map { |line, index| log_row(line, index) })
           end
 
-          def savepoint_row(line, index, previous_lines)
+          def log_row(line, index) = { intent_id: @intent_id, position: index + 1, **Work::LogLine.parse(line) }
+
+          def savepoint(batch)
+            known = @retrieval.work_log(@intent_id)
+            added = old_rows.reject { |row| known.any? { |line| line.text == row[:text] } }
+            start = known.map(&:position).max.to_i
+            batch.put_all(:work_log, added.each_with_index.map { |row, index| { **row, position: start + index + 1 } })
+          end
+
+          def old_rows = text.lines(chomp: true).reject { |line| line.strip.empty? }.map { |line| old_row(line) }
+
+          def old_row(line)
             at, said = Work::Savepoint.parse(line)
-            previous = previous_lines.fetch(line, []).shift
-            { intent_id: @intent_id, position: index + 1, at:, text: said, session_id: previous&.session_id }
+            { intent_id: @intent_id, at:, kind: "noted", text: said }
           end
 
           def document(batch)

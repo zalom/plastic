@@ -13,6 +13,7 @@ require_relative "sync/resolution"
 require_relative "sync/legacy_import"
 require_relative "sync/intent_folders"
 require_relative "sync/archived_intents"
+require_relative "sync/old_savepoints"
 
 module Plastic
   module Graph
@@ -63,7 +64,7 @@ module Plastic
 
         def print_down(plan)
           printer.print(plan.entries_for(:print).map(&:print))
-          []
+          [*plan.old_savepoints.remove(@folder, @databases), *plan.old_savepoints.kept_lines]
         end
 
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.

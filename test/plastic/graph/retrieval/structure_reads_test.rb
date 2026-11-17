@@ -15,10 +15,10 @@ class RetrievalStructureReadsTest < Plastic::TestCase
     assert_equal [["n1"], ["n3"]], [retrieval.nodes("1").map(&:id), retrieval.edges("1").map(&:to)]
   end
 
-  def test_savepoints_read_for_one_intent
+  def test_work_log_reads_for_one_intent
     %w[One Two].each { |title| store_graphs.work.write_intent(title:) }
 
-    assert_equal ["2"], retrieval.savepoints("2").map(&:intent_id)
+    assert_equal ["2"], retrieval.work_log("2").map(&:intent_id)
   end
 
   def test_linking_finds_links_to_the_intent_and_to_its_files

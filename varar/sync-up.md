@@ -17,7 +17,7 @@ Each row gives the change, the exit code, the result and the rows:
 | graph.json that does not check | 1 | files that cannot be read into rows, the others were read: | |
 | title renamed in index.json | 0 | read store/index.json | Alpha, renamed |
 | cluster added in index.json | 0 | read store/index.json / read store/index.json#clusters | Core holds 1 |
-| savepoint.md emptied            |    0 | read store/1--alpha/savepoint.md                                                               | 0 savepoint lines    |
+| savepoint.md emptied            |    0 | read store/1--alpha/savepoint.md                                                               | 1 work log lines     |
 | a folder with no intent file | 1 | intent folders that could not be read, the others were read: | # Spec |
 | index.json of another origin | 1 | files that cannot be read into rows, the others were read: | Alpha |
 | index.json that does not parse | 1 | files that cannot be read into rows, the others were read: | Alpha |

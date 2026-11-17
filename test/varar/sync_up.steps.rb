@@ -35,7 +35,7 @@ module SyncUpAcceptance
     "cluster added in index.json" => [->(kernel) { edit_index(kernel, clusters: [{ "name" => "Core", "intents" => ["1"] }], &:itself) },
       "work_graph.db", "SELECT name || ' holds ' || intent_id FROM clusters"],
     "savepoint.md emptied" => [->(kernel) { kernel.write("store/1--alpha/savepoint.md", "") }, "work_graph.db",
-      "SELECT count(*) || ' savepoint lines' FROM savepoints"],
+      "SELECT count(*) || ' work log lines' FROM work_log"],
     "a folder with no intent file" => [->(kernel) { kernel.write("store/7--stray/spec.md", "# Stray\n") }, "knowledge_graph.db", SPEC],
     "index.json of another origin" => [->(kernel) { edit_index(kernel) { |entry| entry.merge("origin_id" => "beef") } },
       "work_graph.db", TITLE],

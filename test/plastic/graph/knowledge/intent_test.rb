@@ -64,14 +64,6 @@ class KnowledgeIntentTest < Plastic::TestCase
     assert_equal %i[intent_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], intent.new_row.keys
   end
 
-  def test_the_first_savepoint_line_names_the_title
-    assert_equal({ intent_id: "1a", position: 1, at: AT, text: "Opened: Build", session_id: nil }, intent.first_savepoint)
-  end
-
-  def test_the_first_savepoint_line_carries_the_session_that_opened_it
-    assert_equal "s-1", intent.first_savepoint("s-1").fetch(:session_id)
-  end
-
   def test_the_own_file_holds_the_front_matter_and_the_sections
     page = ["---", 'id: "1a"', 'intent: "Build"', 'parent: "1"', 'ref: "ENG-1"', 'origin: "o"', %(created: "#{AT}"), "---", "",
       "# 1a - Build", "", "## Intent", "", "Build", "", "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")

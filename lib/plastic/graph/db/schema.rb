@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_15_000000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_17_000000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -56,12 +56,26 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :intent_id, :from, :to, :kind, :origin_id
   end
 
-  create_table :savepoints, key: %i[intent_id position origin_id] do |t|
+  create_table :work_log, key: %i[intent_id position origin_id] do |t|
     t.kept :intent_id
     t.number :position
     t.text :at
-    t.kept :text, :origin_id
+    t.blank :phase, :node
     t.text :session_id
+    t.kept :kind
+    t.blank :path, :sha256, :text
+    t.kept :origin_id
+    t.text :write_id
+  end
+
+  create_table :work_log_pending, key: %i[write_id] do |t|
+    t.kept :write_id, :intent_id
+    t.text :at
+    t.blank :phase, :node
+    t.text :session_id
+    t.kept :kind
+    t.blank :path, :sha256, :text
+    t.kept :origin_id
   end
 
   create_table :completions, key: %i[intent_id origin_id] do |t|
@@ -235,7 +249,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   end
 
   database :local, "plastic.db", %i[command_runs sessions settings printed]
-  database :work, "work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
+  database :work, "work_graph.db", %i[intents clusters nodes edges work_log work_log_pending completions printed changes roadmaps batches roadmap_items
     roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]
   database :knowledge, "knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages
     document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]

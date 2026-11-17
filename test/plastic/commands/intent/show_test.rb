@@ -35,13 +35,13 @@ class IntentShowTest < Plastic::TestCase
     assert_call result, code: 0, err: "", out: ["intent: #{intent.intent_id} Alpha (open)", "criteria: 0", "Opened: Alpha"]
   end
 
-  def test_shows_a_ruling_and_the_last_savepoint
+  def test_shows_a_ruling_and_the_last_log_lines
     intent = open_intent
     plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "savepoint:"]
+    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "log:"]
   end
 
   def test_marks_a_superseded_ruling

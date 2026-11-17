@@ -172,7 +172,7 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
     write("store/1--alpha/spec.md", "# Spec\n")
     found = Plan.entries(folder, retrieval).to_h { |entry| [entry.path, absent(entry)] }
 
-    assert_equal %w[store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/spec.md
+    assert_equal %w[store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/spec.md store/1--alpha/work.log
       store/index.json store/index.json#clusters store/index.json#links], found.keys
     assert_equal [[false, false, false], [false, true, true]], found.values_at("store/index.json", "store/1--alpha/spec.md")
   end
@@ -181,6 +181,6 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
     assert_empty Plan.on_disk(folder)
     open_intent
 
-    assert_equal %w[store/index.json store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/savepoint.md], Plan.on_disk(folder)
+    assert_equal %w[store/index.json store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/work.log], Plan.on_disk(folder)
   end
 end

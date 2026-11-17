@@ -36,14 +36,14 @@ class StartTest < Plastic::TestCase
     assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
-  def test_a_compacted_session_names_the_compaction_the_savepoint_and_the_note_with_exit_0
-    printed_intent
-    opened_work.write_note("s-1", "note text")
+  def test_a_compacted_session_prints_its_intent_and_the_last_log_lines_with_exit_0
+    intent_id = printed_intent
     result = call(source: "compact")
     lines = result.out.lines(chomp: true)
 
-    assert_call result, code: 0, err: "", out: ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "Opened: Alpha", "note: note text"]
-    assert_equal ["note: note text", "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."], [lines.last, lines.first]
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "intent: #{intent_id} Alpha"], lines.first(2)
+    assert_equal "next: plastic next", lines.last
   end
 
   def test_an_empty_event_with_no_session_prints_the_recap_and_one_line_on_standard_error
@@ -180,6 +180,41 @@ class StartSessionRowTest < Plastic::TestCase
     clear_reply("s-2")
 
     assert_equal ["claude-code", "clear"], [store_graphs.retrieval.session("s-2").harness, store_graphs.retrieval.session("s-1").end_reason]
+  end
+
+  FIXTURES = File.expand_path("../../fixtures/hooks", __dir__)
+  COMPACT_FIRST = "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."
+
+  def held_claim(session)
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session:).work
+    intent = work.write_intent(title: "Alpha")
+    work.add_node(intent_id: intent.intent_id, title: "Build")
+    work.claim_node(intent_id: intent.intent_id, id: "n1", by: session)
+    intent
+  end
+
+  %w[claude_code codex].each do |harness|
+    define_method(:"test_the_#{harness}_compact_fixture_prints_the_short_recap_of_the_session_that_holds_a_claim") do
+      input = File.read(File.join(FIXTURES, "#{harness}_session_start_compact.documented.json"))
+      session = JSON.parse(input).fetch("session_id")
+      intent = held_claim(session)
+      lines = plastic("hook", "start", input:, env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE).out.lines(chomp: true)
+
+      assert_equal [COMPACT_FIRST, "intent: #{intent.intent_id} Alpha"], lines.first(2)
+      assert_equal "next: plastic graph resume", lines.last
+      refute_empty(lines.grep(/\A- \S+ - n1 #{session} claimed - - /), lines.inspect)
+    end
+  end
+
+  def test_a_work_log_line_a_cut_short_write_left_pending_prints_after_the_compaction
+    session = "s-dead"
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session:).work
+    intent = work.write_intent(title: "Alpha")
+    work.add_ruling(intent_id: intent.intent_id, text: "kept")
+    work.drain_logs
+    result = plastic("hook", "start", input: JSON.generate(session_id: session, source: "compact"), env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE)
+
+    refute_empty(result.out.lines.grep(/ ruled /), result.out)
   end
 end
 

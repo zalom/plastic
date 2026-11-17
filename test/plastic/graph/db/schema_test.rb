@@ -20,7 +20,6 @@ class DbSchemaTest < Plastic::TestCase
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
     nodes: "cfa14e4507a75f95cc241d0316046a819ab03b5fad0b179dbacbc2c53936dac8",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
-    savepoints: "e0ac00f61310e8ed8d5204c5ce7c599b53bee17a3bd57ef84c9717d22a708be9",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
     rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
     links: "1403ac943dc60477e4ad8e0dbd95027029fe8ae233064ca39a4a6540859e7c69",
@@ -51,7 +50,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed]],
-      work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
+      work: ["work_graph.db", %i[intents clusters nodes edges work_log work_log_pending completions printed changes roadmaps batches roadmap_items
         roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]],
       knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
         retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]],
@@ -78,7 +77,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261115000000", ""], [status.success?, out, err]
+    assert_equal [true, "20261117000000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

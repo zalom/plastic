@@ -2,7 +2,9 @@
 
 require_relative "../graph/knowledge/intent"
 require_relative "../graph/knowledge/intent/listing"
-require_relative "../graph/work/last_savepoints"
+require_relative "../graph/work/last_log_lines"
+require_relative "../graph/work/session_intent"
+require_relative "compact_recap"
 
 module Plastic
   module Hooks
@@ -11,10 +13,11 @@ module Plastic
     class Recap
       FIRST_LINES = {
         "clear" => "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.",
-        "compact" => "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.",
-        "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
+        "compact" => CompactRecap::FIRST_LINE,
+        "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume.",
+        "fork" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
-      SAVEPOINT_LINES = 5
+      LOG_LINES = 5
       LAPSED = "intent %<intent_id>s: the claim of this session on node %<id>s lapsed (last renewed %<seen_at>s); plastic node claim %<intent_id>s %<id>s takes it again"
 
       def initialize(retrieval, session_id:, source:, directory:)
@@ -25,9 +28,13 @@ module Plastic
       end
 
       # The lines to print, first line first.
-      def lines(now:) = [first_line, *open_intent_lines, *lapsed_claim_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
+      def lines(now:) = (@source == "compact") ? compact_lines : full_lines(now)
 
       private
+
+      def full_lines(now) = [first_line, *open_intent_lines, *lapsed_claim_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
+
+      def compact_lines = CompactRecap.new(@retrieval, session_id: @session_id).lines
 
       def first_line
         FIRST_LINES.fetch(@source) { "Plastic: a new session in store #{@retrieval.store}. Run plastic next before anything else." }
@@ -73,18 +80,17 @@ module Plastic
       end
 
       def in_progress_lines
-        Array(in_progress_intent).flat_map { |intent| ["in progress: #{intent.label}", *savepoint_lines(intent.intent_id)] }
+        Array(in_progress_intent).flat_map { |intent| ["in progress: #{intent.label}", *log_lines(intent.intent_id)] }
       end
 
-      def savepoint_lines(intent_id)
-        Graph::Work::LastSavepoints.new(@retrieval, SAVEPOINT_LINES).lines(intent_id).map { |line| "  #{line}" }
+      def log_lines(intent_id)
+        Graph::Work::LastLogLines.new(@retrieval, LOG_LINES).lines(intent_id).map { |line| "  #{line}" }
       end
 
-      # The first open intent this session touched, else the one its predecessor touched.
+      # The intent this session works on, else the one its predecessor worked on.
       def in_progress_intent
         sessions = [@session_id, predecessor&.session_id].compact
-        sessions.lazy.flat_map { |session_id| @retrieval.touched(session_id) }
-          .filter_map { |intent_id| @retrieval.intent(intent_id) }.find(&:open?)
+        sessions.lazy.filter_map { |session_id| Graph::Work::SessionIntent.new(@retrieval, session_id).intent }.first
       end
 
       def note_line

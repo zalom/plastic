@@ -35,8 +35,8 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_a_tally_names_one_and_many
-    assert_equal ["1 command run", "2 savepoint lines", "1 x"],
-      [Schema.tally(:command_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
+    assert_equal ["1 command run", "2 work log lines", "1 x"],
+      [Schema.tally(:command_runs, 1), Schema.tally("work_log", 2), Schema.tally(:x, 1)]
     assert_equal ["1 legacy file", "6 legacy files"], [Schema.tally(:legacy_intents_data, 1), Schema.tally(:legacy_intents_data, 6)]
   end
 

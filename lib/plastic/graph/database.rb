@@ -103,8 +103,11 @@ module Plastic
         end
       end
 
+      # Runs the block in one transaction on this file; a write inside it joins that transaction.
+      def atomically(&) = connection.atomically(&)
+
       # What this call wrote here, as the report says it:
-      # "1 intent and 1 savepoint line in work_graph.db". The command run row is left out,
+      # "1 intent and 1 work log line in work_graph.db". The command run row is left out,
       # and the phrase is nil when nothing else was written.
       def written_phrase = wrote_rows? ? "#{Schema.phrase(written.except(RUNS))} in #{file}" : nil
 

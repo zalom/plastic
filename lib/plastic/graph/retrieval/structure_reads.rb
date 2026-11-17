@@ -3,11 +3,18 @@
 module Plastic
   module Graph
     module Retrieval
-      # Exposes node, savepoint, edge, and link reads through a retrieval graph.
+      # Exposes node, work log, edge, and link reads through a retrieval graph.
       module StructureReads
+        LOGGED_SQL = "SELECT intent_id FROM work_log WHERE session_id = :session AND origin_id = :origin ORDER BY at DESC, rowid DESC"
         LINKING_SQL = "SELECT * FROM links WHERE origin_id = :origin AND (to_ref = :id OR to_ref LIKE :prefix)"
 
-        def savepoints(intent_id = nil) = read(:savepoints, intent_id)
+        def work_log(intent_id = nil) = read(:work_log, intent_id)
+
+        # The intents a session wrote lines to, the newest line first.
+        def logged_intent_ids(session_id)
+          @databases.fetch(:work).rows(LOGGED_SQL, session: session_id, origin: origin_id).map { |row| row.fetch("intent_id") }.uniq
+        end
+
         def nodes(intent_id = nil) = read(:nodes, intent_id)
         def runs(intent_id = nil) = read(:runs, intent_id)
         def edges(intent_id = nil) = read(:edges, intent_id)

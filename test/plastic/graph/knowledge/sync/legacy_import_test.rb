@@ -244,7 +244,7 @@ class KnowledgeSyncLegacyImportRowsTest < Plastic::TestCase
   end
 
   def test_the_import_metadata_line_names_the_legacy_files
-    assert_includes import.last, "2 intents, 6 documents, 6 legacy files, 2 savepoint lines"
+    assert_includes import.last, "2 intents, 6 documents, 6 legacy files, 2 work log lines"
   end
 
   def test_a_sync_up_plan_on_a_legacy_store_imports_it

@@ -4,8 +4,8 @@
 module SyncStepsHelper
   DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless lines].freeze
 
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files) do
-    def initialize(unreadable_files: {}, rowless_files: [], **fields) = super
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :old_savepoints) do
+    def initialize(unreadable_files: {}, rowless_files: [], old_savepoints: Plastic::Graph::Knowledge::Sync::OldSavepoints.none, **fields) = super
 
     def merging? = merging
   end

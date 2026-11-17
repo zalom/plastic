@@ -15,8 +15,9 @@ module Plastic
 
           def_delegators :@writers, :databases, :retrieval
 
-          def initialize(writers)
+          def initialize(writers, logged)
             @writers = writers
+            @logged = logged
           end
 
           # Returns [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
@@ -33,7 +34,7 @@ module Plastic
           end
 
           def open_intent(slug, item)
-            intent_id = @writers.intents.write(title: item.title).intent_id
+            intent_id = @logged.write_intent(title: item.title).intent_id
             write_spec(intent_id, item.spec_body(retrieval.batches(slug)))
             @writers.roadmaps.open_item(slug, item.item, intent_id)
             link_source(intent_id, slug)

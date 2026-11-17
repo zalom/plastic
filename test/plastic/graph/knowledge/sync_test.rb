@@ -87,11 +87,11 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal ["store/1--alpha/plan.md"], sync.printer.written
   end
 
-  def test_an_emptied_savepoint_drops_its_lines_and_keeps_its_file
-    write("store/1--alpha/savepoint.md", "")
+  def test_an_emptied_work_log_drops_its_lines_and_keeps_its_file
+    write("store/1--alpha/work.log", "")
 
-    assert_equal ["read store/1--alpha/savepoint.md"], run_sync(:up)
-    assert_equal [[], ""], [retrieval.savepoints("1"), folder.read("store/1--alpha/savepoint.md")]
+    assert_equal ["read store/1--alpha/work.log"], run_sync(:up)
+    assert_equal [[], ""], [retrieval.work_log("1"), folder.read("store/1--alpha/work.log")]
   end
 
   def test_print_says_each_path_it_wrote
