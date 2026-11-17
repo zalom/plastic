@@ -46,9 +46,8 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
     work.approve_intent("1")
     work.add_node(intent_id: "1", id: "n1", kind: "task", title: "First")
     work.print_intent("1")
-    text = File.read(Dir.glob(File.join(@plastic_home, "stores", "global", "store", "1--*", "graph.json")).first)
-    reread = JSON.parse(text)
+    reread = JSON.parse(File.read(Dir.glob(File.join(@plastic_home, "stores", "global", "store", "1--*", "graph.json")).first))
 
-    assert_equal [true, ["n1"]], [!reread.fetch("approval").nil?, reread.fetch("nodes").map { |node| node.fetch("id") }]
+    assert_equal [true, ["n1"]], [reread.key?("approval"), reread.fetch("nodes").map { |node| node.fetch("id") }]
   end
 end

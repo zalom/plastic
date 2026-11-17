@@ -21,6 +21,11 @@ module FrozenStore
   def knowledge_path = File.join(@folder, "knowledge_graph.db")
 
   def seed_moving_rows
+    seed_intent_rows
+    seed_node_rows
+  end
+
+  def seed_intent_rows
     @work.execute_batch(<<~SQL)
       INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at) VALUES ('1', 'o', 'alpha', 'Alpha', 'in_progress', '2026-11-01'), ('2', 'o', 'beta', 'Beta', 'done', '2026-11-02');
       INSERT INTO clusters (name, intent_id, origin_id) VALUES ('core', '1', 'o');
@@ -30,6 +35,11 @@ module FrozenStore
       INSERT INTO archives (intent_id, origin_id, at) VALUES ('2', 'o', 't');
       INSERT INTO archive_entries (intent_id, path, origin_id, kind, mode, mtime, data) VALUES ('2', 'a.md', 'o', 'file', 420, 't', x'00ff10');
       INSERT INTO work_log_pending (write_id, intent_id, at, kind, text, origin_id) VALUES ('w-1', '1', 't', 'noted', 'owed', 'o');
+    SQL
+  end
+
+  def seed_node_rows
+    @work.execute_batch(<<~SQL)
       INSERT INTO nodes (intent_id, id, kind, title, state, origin_id) VALUES ('1', 'n1', 'task', 'Node', 'open', 'o');
       INSERT INTO printed (path, sha256, at, origin_id) VALUES ('store/index.json', 'a', 't', 'o'), ('1--alpha/graph.json', 'b', 't', 'o'), ('1--alpha/work.log', 'c', 't', 'o'), ('roadmaps/r.md', 'd', 't', 'o');
       INSERT INTO changes ("table", "key", operation, at, origin_id) VALUES ('intents', '1', 'put', 't', 'o'), ('nodes', 'n1', 'put', 't', 'o');
