@@ -7,6 +7,7 @@ require_relative "version_record"
 require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
+require_relative "unsorted_stores"
 require_relative "../installations/home_ignore"
 require_relative "installation_health"
 
@@ -41,7 +42,7 @@ module Plastic
         @now = now
       end
 
-      def checks = [version, *release, sqlite, machine_database, *former_database, config_file, home_ignore, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups]
+      def checks = [version, *release, sqlite, machine_database, *former_database, config_file, home_ignore, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups, *UnsortedStores.checks(scope)]
 
       private
 
