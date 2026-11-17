@@ -33,6 +33,12 @@ module Plastic
         print
       end
 
+      # Copies the settings rows of another home into this one, and prints nothing.
+      def copy_rows_from(other)
+        rows = Rows.new(other).all
+        local.transaction { |batch| rows.each { |scope, key, value| batch.add(UPSERT, scope:, key:, value:) } }
+      end
+
       def print
         text = document
         File.write(@path, text)

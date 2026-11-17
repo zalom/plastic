@@ -27,6 +27,9 @@ module Plastic
       # The hash recorded when the file was last printed, or nil.
       def printed(file) = read("SELECT sha256 FROM printed_files WHERE path = :path", path: file).dig(0, 0)
 
+      # Every row as [scope, key, JSON value].
+      def all = read("SELECT scope, key, value FROM settings ORDER BY scope, key")
+
       # Every scope that holds a row.
       def scopes = read("SELECT DISTINCT scope FROM settings").flatten
 
