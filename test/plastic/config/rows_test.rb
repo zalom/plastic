@@ -35,6 +35,28 @@ class ConfigRowsTest < Plastic::TestCase
     end
   end
 
+  def failing_with(failure)
+    original = Plastic::Graph::Database.method(:open_local)
+    Plastic::Graph::Database.define_singleton_method(:open_local, &failure)
+    yield
+  ensure
+    Plastic::Graph::Database.define_singleton_method(:open_local, original)
+  end
+
+  def test_an_error_that_is_not_a_database_error_is_not_swallowed
+    seed_config(@plastic_home, "global:\n  screens: false\n")
+    broken = ->(*) { raise ArgumentError, "a bug" }
+
+    failing_with(broken) { assert_raises(ArgumentError) { rows.scope("global") } }
+  end
+
+  def test_a_locked_database_reads_as_empty
+    seed_config(@plastic_home, "global:\n  screens: false\n")
+    busy = ->(*) { raise SQLite3::BusyException, "locked" }
+
+    failing_with(busy) { assert_empty rows.scope("global") }
+  end
+
   def test_the_printed_hash_of_a_file_reads_back
     seed_config(@plastic_home, "global:\n  screens: false\n")
 
