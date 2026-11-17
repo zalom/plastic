@@ -40,9 +40,11 @@ class ChatListTest < Plastic::TestCase
   end
 
   def test_a_date_without_a_zone_is_read_in_the_zone_of_the_clock
-    record("global", Time.new(2026, 11, 17, 0, 30, 0, "+01:00"), "just after midnight")
+    in_zone("Europe/Berlin") do
+      record("global", Time.new(2026, 11, 17, 0, 30, 0, "+01:00"), "just after midnight")
 
-    assert_includes list("--since", "2026-11-17").out, "just after midnight"
+      assert_includes list("--since", "2026-11-17").out, "just after midnight"
+    end
   end
 
   def in_zone(name)
