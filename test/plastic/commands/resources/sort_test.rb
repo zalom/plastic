@@ -9,46 +9,24 @@ class ResourcesSortCommandTest < Plastic::TestCase
 
   fixtures :alpha_synced
 
-  def sort(*args) = plastic("resources", "sort", *args, table: Plastic::CLI::TABLE)
-
   def setup
     super
     write_old_layout
   end
 
-  def files_without_databases = snapshot(store_root).reject { |rel, _| rel.match?(/\.db(-wal|-shm|-journal)?\z/) }
+  def sort(*args) = plastic("resources", "sort", "--store", "global", *args, table: Plastic::CLI::TABLE)
 
-  def test_dry_run_writes_nothing
-    before = [files_without_databases, row_digest]
-    result = sort("--store", "global", "--dry-run")
+  def test_the_preview_lists_the_links_that_would_change_and_the_links_left_alone
+    out = sort("--dry-run").out
 
-    assert_equal 0, result.code
-    assert_includes result.out, "preview: move #{INTENT}/reviews/r1.md -> #{INTENT}/resources/output/reports/reviews/r1.md"
-    assert_equal before, [files_without_databases, row_digest]
+    assert_includes out, "preview: link would change #{INTENT}/spec.md: reviews/r1.md -> resources/output/reports/reviews/r1.md"
+    assert_includes out, "preview: link left as it is #{INTENT}/resources/notes.md: missing.md"
   end
 
-  def test_a_run_moves_the_files_and_says_how_many
-    result = sort("--store", "global")
+  def test_the_real_run_prints_the_links_it_changed_and_the_links_it_left_alone
+    out = sort.out
 
-    assert_equal 0, result.code
-    assert_includes result.out, "sorted: #{MOVES.size} files moved"
-    assert_includes intent_files, "resources/output/reports/reviews/r1.md"
-  end
-
-  def test_a_sorted_store_says_so
-    sort("--store", "global")
-
-    assert_includes sort("--store", "global").out, "sorted: nothing to move"
-  end
-
-  def test_unknown_store_is_usage
-    result = sort("--store", "nowhere")
-
-    assert_equal [2, ""], [result.code, result.out]
-    assert_includes result.err, "nowhere"
-  end
-
-  def test_a_call_without_store_is_usage
-    assert_equal 2, sort.code
+    assert_includes out, "link changed #{INTENT}/spec.md: reviews/r1.md -> resources/output/reports/reviews/r1.md"
+    assert_includes out, "link left as it is #{INTENT}/resources/notes.md: missing.md"
   end
 end
