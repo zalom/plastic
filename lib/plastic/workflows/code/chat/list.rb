@@ -19,7 +19,7 @@ module Plastic
           sets :messages
 
           read "read the messages" do |context|
-            since = start_of(context.since, context.now)
+            since = start_of(context.since, context.clock)
             home = Plastic::Graph::Database.open_local(context.scope.plastic_home).fetch(:local)
             context[:messages] = Plastic::Graph::Work::Chat::Reader.new(home).messages(since:)
           end
@@ -41,11 +41,11 @@ module Plastic
             [message["at"], message["store"] || "-", message["intent_id"] || "-", message["text"]].join("  ")
           end
 
-          def self.start_of(text, now)
+          def self.start_of(text, clock)
             return unless text
 
             day = Date.iso8601(text)
-            Time.new(day.year, day.month, day.day, 0, 0, 0, now.utc_offset)
+            clock.local(day.year, day.month, day.day)
           rescue Date::Error
             raise Usage, "--since takes a day as YYYY-MM-DD, not #{text.inspect}"
           end
