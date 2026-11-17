@@ -130,7 +130,7 @@ class GraphBackupRestorerTest < Plastic::TestCase
   def test_a_restore_ends_with_the_rebuild_of_the_retrieval_index
     open_store.work.print_intent("1")
     backup_at(@restore_home, at(2026, 2, 1, 10, 0, 0))
-    open_store.databases.fetch(:retrieval).transaction { |batch| batch.add("DELETE FROM document_passages") }
+    open_store.databases.fetch(:store).transaction { |batch| batch.add("DELETE FROM document_passages") }
     store_backups.restore("20260201100000")
     store_backups.rebuild_index
 
@@ -141,7 +141,7 @@ class GraphBackupRestorerTest < Plastic::TestCase
 
   def store_backups = Plastic::Graph::Backup::StoreBackups.new(local_db, root, open_store.retrieval, clock: Struct.new(:now).new(at(2026, 6, 1, 12, 0, 0)))
 
-  def passage_count = open_store.databases.fetch(:retrieval).row("SELECT count(*) AS n FROM document_passages").fetch("n")
+  def passage_count = open_store.databases.fetch(:store).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 end
 
 # A migration above the newest that adds a table, standing in for the next release: a backup restores at its own version and migrates forward.

@@ -59,7 +59,7 @@ class DoctorWorkLogTest < Plastic::TestCase
   end
 
   def convert_to_old_line
-    work = store_graphs.databases[:work]
+    work = store_graphs.databases.fetch(:store)
     work.transaction { |batch| batch.remove(:work_log, intent_id: "1") }
     work.transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
   end

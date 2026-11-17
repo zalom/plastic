@@ -17,7 +17,7 @@ module Plastic
 
           data = { "intent" => id, "discovery" => readable(held.first),
                    "context" => readable(held.last) }
-          [Print.text("#{intent.dir}/context.json", :knowledge, "#{JSON.pretty_generate(data)}\n")]
+          [Print.text("#{intent.dir}/context.json", "#{JSON.pretty_generate(data)}\n")]
         end
 
         def readable(row)

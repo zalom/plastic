@@ -51,7 +51,7 @@ class AutoTest < Plastic::TestCase
 
   def test_a_done_intent_exits_1_and_offers_plastic_next
     open_intent
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :intent_id", intent_id: "1")
     end
 

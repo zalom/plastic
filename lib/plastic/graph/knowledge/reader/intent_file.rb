@@ -25,8 +25,7 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => %i[knowledge graph], "context.json" => %i[knowledge context], "work.log" => %i[work work_log],
-                    "savepoint.md" => %i[work savepoint] }.freeze
+          KINDS = { "graph.json" => :graph, "context.json" => :context, "work.log" => :work_log, "savepoint.md" => :savepoint }.freeze
 
           def initialize(file, intent_id, writer:, retrieval: nil)
             @file = file
@@ -35,21 +34,19 @@ module Plastic
             @retrieval = retrieval
           end
 
-          def database = kind.first
-
-          def apply(batch) = send(kind.last, batch)
-
-          # The rows of the file that live in the other database, by database.
-          def beside = (kind.last == :graph) ? { work: graph_file.method(:apply_work) } : {}
+          def apply(batch)
+            send(kind, batch)
+            graph_file.apply_work(batch) if kind == :graph
+          end
 
           private
 
           def kind = KINDS.fetch(@file.rel) { text_kind }
 
           def text_kind
-            return %i[knowledge kept] unless document?
+            return :kept unless document?
 
-            LegacyPath.legacy?(@file.rel) ? %i[knowledge legacy] : %i[knowledge document]
+            LegacyPath.legacy?(@file.rel) ? :legacy : :document
           end
 
           def text = @file.bytes.force_encoding(Encoding::UTF_8)

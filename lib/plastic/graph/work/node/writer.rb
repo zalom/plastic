@@ -49,7 +49,7 @@ module Plastic
           def add_node(intent_id:, **fields)
             id = next_id(intent_id)
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.now(@clock.now) }.merge(fields)
-            @databases.fetch(:work).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
             @retrieval.node(intent_id, id)
           end
 
@@ -71,7 +71,7 @@ module Plastic
 
           def renew_claims(session)
             now = Plastic.now(@clock.now)
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.add("UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin",
                 now:, session:, origin: @retrieval.origin_id)
             end
@@ -101,7 +101,7 @@ module Plastic
           def moved(key, move, set: {}, holder: nil)
             now = @clock.now
             bound = SQL.move(to: move.fetch(:to), from: move.fetch(:from), set: RELEASED.merge(set), holder:, now:)
-            rows = @databases.fetch(:work).transaction do |batch|
+            rows = @databases.fetch(:store).transaction do |batch|
               close_run(batch, key, move, holder, now)
               batch.write(:nodes, bound.sql, **bound.values, **key, origin: @retrieval.origin_id)
             end

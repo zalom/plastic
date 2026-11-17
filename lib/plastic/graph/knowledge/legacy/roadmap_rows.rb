@@ -65,7 +65,7 @@ module Plastic
           def insert(table, row) = put(table, row, :insert)
 
           def put(table, row, statement)
-            @graphs.databases.fetch(:work).transaction { |batch| batch.put(table, row, statement:) }
+            @graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row, statement:) }
           end
         end
       end

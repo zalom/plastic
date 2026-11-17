@@ -17,7 +17,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def intent(title = "Alpha") = work.write_intent(title:)
 
-  def forget(id = "1") = graphs.databases.fetch(:work).transaction { |batch| batch.remove(:work_log, intent_id: id) }
+  def forget(id = "1") = graphs.databases.fetch(:store).transaction { |batch| batch.remove(:work_log, intent_id: id) }
 
   def test_a_new_intent_stores_its_rows_first_and_one_opened_line_second
     intent
@@ -113,7 +113,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
   def test_an_intent_converted_from_savepoints_is_not_given_an_opened_line
     intent
     forget
-    graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+    graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
     work.add_ruling(intent_id: "1", text: "x")
 
     assert_equal %w[noted ruled], kinds
@@ -129,7 +129,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
   def test_a_legacy_intent_gets_no_line_until_a_real_write
     intent
     forget
-    graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+    graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
 
     assert_equal [0, %w[noted]], [work.drain_log("1"), kinds]
   end

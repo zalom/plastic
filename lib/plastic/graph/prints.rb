@@ -61,23 +61,23 @@ module Plastic
         text_files(dir, rows.reject { |document| held.include?(document.path) })
       end
 
-      def text_files(dir, rows) = rows.map { |row| Print.text("#{dir}/#{row.path}", :knowledge, row.body) }
+      def text_files(dir, rows) = rows.map { |row| Print.text("#{dir}/#{row.path}", row.body) }
 
       # A kept file is compared by its hash; its bytes are read only to write it.
       def kept_files(retrieval, rows)
         rows.map do |kept|
           name = kept.name
-          Print.new(name, :knowledge, kept.sha256, -> { retrieval.kept_file_data(name) })
+          Print.new(name, kept.sha256, -> { retrieval.kept_file_data(name) })
         end
       end
 
       def work_log(intent, lines)
         return [] if lines.empty?
 
-        [Print.text("#{intent.dir}/#{WORK_LOG}", :work, lines.map { |line| "#{line.line}\n" }.join)]
+        [Print.text("#{intent.dir}/#{WORK_LOG}", lines.map { |line| "#{line.line}\n" }.join)]
       end
 
-      def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", :work, RoadmapPrint.new(retrieval, slug).text)
+      def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", RoadmapPrint.new(retrieval, slug).text)
     end
   end
 end

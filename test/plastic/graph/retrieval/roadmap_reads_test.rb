@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 
 class RetrievalRoadmapReadsTest < Plastic::TestCase
-  def put(table, row) = store_graphs.databases[:work].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def setup
     super

@@ -37,7 +37,7 @@ class KnowledgeArchiveOperationTest < Plastic::TestCase
   end
 
   def test_an_archived_intent_only_finishes_its_completion
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:archives, { intent_id: "1", at: STAMP, restored_at: nil, session_id: nil })
     end
 

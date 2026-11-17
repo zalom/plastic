@@ -6,7 +6,7 @@ require_relative "../../../../lib/plastic/commands/intent/discover"
 module DiscoveryDocuments
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", "evidence.md", body)
     graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end
@@ -138,7 +138,7 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def write_saved_context(data)
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:store).transaction do |batch|
       batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: STAMP })
     end
   end

@@ -14,9 +14,9 @@ class KnowledgeArchiveRestoreTest < Plastic::TestCase
 
   def writer = Archive::Writer.new(@graphs.databases, @graphs.retrieval, folder)
 
-  def snapshot(intent_id) = Archive::Snapshot.new(@graphs.databases[:work], intent_id, @graphs.retrieval.origin_id)
+  def snapshot(intent_id) = Archive::Snapshot.new(@graphs.databases.fetch(:store), intent_id, @graphs.retrieval.origin_id)
 
-  def restore = Archive::Restore.new(@graphs.databases[:work], @graphs.retrieval, folder, snapshot: method(:snapshot))
+  def restore = Archive::Restore.new(@graphs.databases.fetch(:store), @graphs.retrieval, folder, snapshot: method(:snapshot))
 
   def test_restoring_an_archived_intent_writes_its_folder_back_and_clears_the_marker
     writer.archive("1")
@@ -28,7 +28,7 @@ class KnowledgeArchiveRestoreTest < Plastic::TestCase
 
   def test_an_archived_intent_whose_snapshot_is_on_another_home_refuses_and_stays_archived
     writer.archive("1")
-    emptied = Archive::Restore.new(@graphs.databases[:work], @graphs.retrieval, folder, snapshot: ->(_id) { Struct.new(:entries).new([]) })
+    emptied = Archive::Restore.new(@graphs.databases.fetch(:store), @graphs.retrieval, folder, snapshot: ->(_id) { Struct.new(:entries).new([]) })
 
     assert_equal [false, "intent 1 is archived and its snapshot is on the first home; unarchive it there", :failure], emptied.call("1")
   end

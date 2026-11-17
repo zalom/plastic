@@ -13,7 +13,7 @@ module Plastic
         def self.open(home:, store:)
           origin = Origin.new(home)
           root = Database.store_root(home, store)
-          databases = Database.open_local(home).merge(Database.open_store(root, origin))
+          databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
           RetrievalGraph.new(databases, store:, origin:)
         end
       end

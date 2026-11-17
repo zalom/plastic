@@ -13,7 +13,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   def run_sync(direction, **options) = sync.apply(sync.plan(direction, options))
 
   def change_row(path, body)
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:documents, { intent_id: "1", path: File.basename(path), body:, updated_at: STAMP })
     end
   end
@@ -67,7 +67,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   end
 
   def with_legacy_plan
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:legacy_intents_data, { intent_id: "1", path: "plan.md", body: "# Plan\r\n", updated_at: STAMP })
     end
     run_sync(:down)
@@ -95,7 +95,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   end
 
   def test_print_says_each_path_it_wrote
-    print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
+    print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", "n\n")
 
     assert_equal [["store/1--alpha/notes.md"], []], [sync.printer.print([print]), sync.printer.print([print])]
   end
@@ -108,7 +108,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   end
 
   def test_a_level_file_with_no_record_is_recorded
-    store_graphs.databases[:knowledge].transaction { |batch| batch.remove(:printed, path: SPEC) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.remove(:printed, path: SPEC) }
 
     assert_equal [], run_sync(:up)
     assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
@@ -207,7 +207,7 @@ class KnowledgeSyncTwoHomesClusterPartTest < Plastic::TestCase
 
   def test_a_part_with_no_printed_row_gives_no_conflict_and_the_next_print_writes_the_row
     to_both_homes do |_a, b|
-      database_of(b, :work).transaction { |batch| batch.remove(:printed, path: PART) }
+      database_of(b).transaction { |batch| batch.remove(:printed, path: PART) }
       up = call_in(b, "sync", "up")
       call_in(b, "sync", "down")
 
@@ -644,7 +644,7 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
 
   def close_intent(home, intent_id)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(TwoHomesStatusHelper::CLOSED)
-    database_of(home, :knowledge).transaction { |batch| batch.put(:intents, row) }
+    database_of(home).transaction { |batch| batch.put(:intents, row) }
     call_in(home, "sync", "down")
   end
 end
@@ -737,7 +737,7 @@ class KnowledgeSyncTwoHomesRoadmapTest < Plastic::TestCase
   def test_the_same_change_on_both_homes_is_recorded_and_is_no_conflict
     to_both_homes do |a, b|
       call_in(a, "roadmap", "log", "r1", "same note")
-      put_log(b, rows_of(a, :work, "SELECT position, at, text, session_id FROM roadmap_log WHERE text = 'same note'").first.transform_keys(&:to_sym))
+      put_log(b, rows_of(a, "SELECT position, at, text, session_id FROM roadmap_log WHERE text = 'same note'").first.transform_keys(&:to_sym))
       pull(b, a)
       up = call_in(b, "sync", "up")
 
@@ -771,7 +771,7 @@ class KnowledgeSyncTwoHomesRoadmapTest < Plastic::TestCase
       pull(b, a)
       up = call_in(b, "sync", "up")
 
-      assert_equal [0, ["Road"]], [up.code, rows_of(b, :work, "SELECT title FROM roadmaps WHERE slug = 'r1'").map { |row| row["title"] }], said(up)
+      assert_equal [0, ["Road"]], [up.code, rows_of(b, "SELECT title FROM roadmaps WHERE slug = 'r1'").map { |row| row["title"] }], said(up)
     end
   end
 

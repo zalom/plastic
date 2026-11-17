@@ -19,7 +19,7 @@ module BackupHomes
   def seed_store(home, slug)
     graphs = Plastic::Graph.create(home:, store: slug)
     graphs.work.write_intent(title: slug.capitalize)
-    graphs.databases.values_at(:knowledge, :work).each { |database| database.rows("SELECT 1") }
+    graphs.databases.fetch(:store).rows("SELECT 1")
   end
 
   def at(*parts) = Time.utc(*parts)
@@ -45,7 +45,7 @@ module BackupHomes
   def store_file(home, name, slug = "alpha") = File.join(home, "stores", slug, "#{name}.db")
 
   def intent_count(home, slug = "alpha")
-    Plastic::Graph.open(home:, store: slug).databases.fetch(:knowledge).row("SELECT count(*) AS n FROM intents").fetch("n")
+    Plastic::Graph.open(home:, store: slug).databases.fetch(:store).row("SELECT count(*) AS n FROM intents").fetch("n")
   end
 
   def add_intent(home, slug = "alpha") = Plastic::Graph.open(home:, store: slug).work.write_intent(title: "More")

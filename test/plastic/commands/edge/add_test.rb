@@ -81,6 +81,6 @@ class EdgeAddTest < Plastic::TestCase
     result = call("1", "n2", "n1")
 
     assert_equal 1, result.code
-    assert_equal 1, store_graphs.databases.fetch(:work).rows("SELECT * FROM edges").size
+    assert_equal 1, store_graphs.databases.fetch(:store).rows("SELECT * FROM edges").size
   end
 end

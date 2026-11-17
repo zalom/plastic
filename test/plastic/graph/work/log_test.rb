@@ -29,9 +29,9 @@ class WorkLogTest < Plastic::TestCase
 
   def open_intent(title = "Alpha") = work.write_intent(title:)
 
-  def pending = graphs.databases.fetch(:knowledge).rows("SELECT * FROM work_log_pending ORDER BY rowid")
+  def pending = graphs.databases.fetch(:store).rows("SELECT * FROM work_log_pending ORDER BY rowid")
 
-  def rulings = graphs.databases.fetch(:knowledge).rows("SELECT id FROM rulings WHERE intent_id = '1'")
+  def rulings = graphs.databases.fetch(:store).rows("SELECT id FROM rulings WHERE intent_id = '1'")
 
   def die_after_commit(text = "kept", session: "s-dead") = assert_raises(Died) { dying(session).add_ruling(intent_id: "1", text:) }
 
@@ -87,7 +87,7 @@ class WorkLogTest < Plastic::TestCase
     columns = %i[write_id intent_id at session_id kind text origin_id]
     sql = "INSERT INTO work_log_pending(write_id, intent_id, at, phase, node, session_id, kind, path, sha256, text, origin_id) " \
           "VALUES (:write_id, :intent_id, :at, '', '', :session_id, :kind, '', '', :text, :origin_id)"
-    graphs.databases.fetch(:knowledge).transaction { |batch| batch.add(sql, **row.transform_keys(&:to_sym).slice(*columns)) }
+    graphs.databases.fetch(:store).transaction { |batch| batch.add(sql, **row.transform_keys(&:to_sym).slice(*columns)) }
   end
 
   def test_a_drained_line_keeps_its_own_write_id_and_a_replayed_write_id_adds_nothing

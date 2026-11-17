@@ -31,7 +31,7 @@ module Plastic
 
           def call(session_id)
             runs = @databases.fetch(:local).rows(RUNS_SQL, store: @store, session_id:)
-            Touched.latest_first(runs + @databases.fetch(:work).rows(SAVES_SQL, origin: @origin.id, session_id:))
+            Touched.latest_first(runs + @databases.fetch(:store).rows(SAVES_SQL, origin: @origin.id, session_id:))
           end
         end
       end

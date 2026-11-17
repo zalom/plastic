@@ -21,7 +21,7 @@ module TwoHomesContextHelper
   # Puts one part of the context as a row, with the origin of that home unless `origin` names another.
   def put_part(home, part, data, origin: nil)
     row = { intent_id: "1", data: JSON.pretty_generate(data), updated_at: Plastic::TestCase::STAMP }
-    database_of(home, :knowledge).transaction { |batch| batch.put(TABLES.fetch(part), origin ? row.merge(origin_id: origin) : row) }
+    database_of(home).transaction { |batch| batch.put(TABLES.fetch(part), origin ? row.merge(origin_id: origin) : row) }
   end
 
   # A change of the context on a home through its rows, printed to the file by sync down.
@@ -31,7 +31,7 @@ module TwoHomesContextHelper
   end
 
   def part_of(home, part, origin: origin_of(home))
-    row = rows_of(home, :knowledge, "SELECT data FROM #{TABLES.fetch(part)} WHERE intent_id = '1' AND origin_id = :origin", origin:).first
+    row = rows_of(home, "SELECT data FROM #{TABLES.fetch(part)} WHERE intent_id = '1' AND origin_id = :origin", origin:).first
     row && JSON.parse(row["data"])
   end
 

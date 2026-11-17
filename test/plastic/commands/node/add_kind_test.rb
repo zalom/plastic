@@ -35,7 +35,7 @@ class NodeAddKindTest < Plastic::TestCase
 
   def test_a_node_of_an_old_kind_stays_readable
     ran("node add 1 Build --criterion tests-pass")
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:nodes, "UPDATE nodes SET kind = 'test' WHERE id = 'n1'") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:nodes, "UPDATE nodes SET kind = 'test' WHERE id = 'n1'") }
 
     assert_equal "test", kind
   end

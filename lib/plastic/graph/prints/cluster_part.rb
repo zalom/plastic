@@ -18,7 +18,7 @@ module Plastic
 
         def path?(path) = path == PATH
 
-        def call(retrieval) = Part.new(PATH, :knowledge, digest(IndexPrint.clusters(retrieval.clusters)), nil)
+        def call(retrieval) = Part.new(PATH, digest(IndexPrint.clusters(retrieval.clusters)), nil)
 
         def digest(clusters) = Digest::SHA256.hexdigest(JSON.generate(normal(clusters)))
 

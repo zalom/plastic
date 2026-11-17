@@ -20,7 +20,7 @@ class PrintsTest < Plastic::TestCase
 
   def test_clusters_list_their_intents
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
 
     assert_equal [{ "name" => "Core", "intents" => ["1"] }], JSON.parse(index_text)["clusters"]
   end
@@ -64,7 +64,7 @@ class PrintsTest < Plastic::TestCase
   Print = Plastic::Graph::Prints::Print
 
   def test_a_text_print_hashes_its_text_and_compares_with_the_record
-    print = Print.text("a.md", :knowledge, "x\n")
+    print = Print.text("a.md", "x\n")
     sha = Digest::SHA256.hexdigest("x\n")
 
     assert_equal [sha, "x\n", true, false], [print.sha256, print.text, print.recorded?({ "a.md" => sha }), print.recorded?({})]
@@ -72,7 +72,7 @@ class PrintsTest < Plastic::TestCase
   end
 
   def test_a_print_is_level_once_written
-    print = Print.text("a.md", :knowledge, "x\n")
+    print = Print.text("a.md", "x\n")
 
     refute print.level?(folder)
     print.write_to(folder)
@@ -82,7 +82,7 @@ class PrintsTest < Plastic::TestCase
 
   def test_an_intent_with_no_log_lines_prints_no_work_log
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.remove(:work_log, intent_id: "1") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.remove(:work_log, intent_id: "1") }
 
     assert_equal %w[store/1--one/intent.md store/1--one/graph.json],
       Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).map(&:path)
@@ -90,7 +90,7 @@ class PrintsTest < Plastic::TestCase
 
   def test_the_graph_file_lists_nodes_and_edges_without_the_origin
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.put(:edges, { intent_id: "1", from: "a", to: "b", kind: "needs" }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:edges, { intent_id: "1", from: "a", to: "b", kind: "needs" }) }
     graph = JSON.parse(Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text)
 
     assert_equal({ "intent" => "1", "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "runs" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
@@ -99,10 +99,10 @@ class PrintsTest < Plastic::TestCase
   def test_a_kept_file_print_reads_its_bytes_only_to_write
     row = { name: "store/1--one/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("z"), intent_id: "1",
             sha256: "h" }
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:sqlar, row) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:sqlar, row) }
     print = Plastic::Graph::Prints.kept_files(retrieval, retrieval.kept_files("1")).first
 
-    assert_equal ["store/1--one/x.bin", :knowledge, "h", "z"], [print.path, print.database, print.sha256, print.text]
+    assert_equal ["store/1--one/x.bin", "h", "z"], [print.path, print.sha256, print.text]
   end
 
   def test_the_store_prints_the_index_first_then_each_intent
@@ -128,7 +128,7 @@ class PrintsTest < Plastic::TestCase
 
   def graph_text_with_node
     store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction { |batch| batch.put(:nodes, { intent_id: "1", id: "n1", kind: "build" }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:nodes, { intent_id: "1", id: "n1", kind: "build" }) }
     Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text
   end
 
@@ -148,7 +148,7 @@ class PrintsArchiveTest < Plastic::TestCase
   end
 
   def archive(intent_id, restored_at: nil)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:completions, completion_row(intent_id))
       batch.put(:archives, { intent_id:, at: "2026-10-21T09:00:00Z", origin_id: retrieval.origin_id, restored_at:, session_id: "s2" })
     end
@@ -158,7 +158,7 @@ class PrintsArchiveTest < Plastic::TestCase
 
   def test_the_graph_file_prints_the_completion_of_a_done_intent
     intent = open_intent("Alpha", status: "done")
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:completions, completion_row("1")) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:completions, completion_row("1")) }
 
     printed = JSON.parse(graph_text(retrieval.intent(intent.intent_id))).fetch("completion")
 
@@ -217,7 +217,7 @@ class PrintsChecklistTest < Plastic::TestCase
 
   def paths = printed.map(&:path)
 
-  def insert(*statements) = store_graphs.databases[:knowledge].transaction { |batch| statements.each { |sql| batch.add(sql, origin:) } }
+  def insert(*statements) = store_graphs.databases.fetch(:store).transaction { |batch| statements.each { |sql| batch.add(sql, origin:) } }
 
   def approved_graph
     store_graphs.work.write_intent(title: "One")
@@ -241,7 +241,7 @@ class PrintsChecklistTest < Plastic::TestCase
   def test_a_context_row_prints_context_json_into_the_intent_folder
     store_graphs.work.write_intent(title: "One")
     row = { intent_id: "1", data: JSON.generate("evidence" => []), updated_at: "2026-10-05T10:00:00+02:00" }
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:retrieval_contexts, row) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:retrieval_contexts, row) }
 
     assert_includes paths, "store/1--one/context.json"
   end
@@ -252,7 +252,7 @@ class PrintsLegacyTest < Plastic::TestCase
 
   def legacy_row(path, body) = { intent_id: "1", path:, body:, updated_at: STAMP }
 
-  def put(table, row) = store_graphs.databases[:knowledge].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def plan_prints = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).select { |print| print.path == PATH }
 
@@ -262,7 +262,7 @@ class PrintsLegacyTest < Plastic::TestCase
     put(:legacy_intents_data, legacy_row("plan.md", body))
     print = plan_prints.first
 
-    assert_equal [:knowledge, body, Digest::SHA256.hexdigest(body)], [print.database, print.text, print.sha256]
+    assert_equal [body, Digest::SHA256.hexdigest(body)], [print.text, print.sha256]
   end
 
   def test_a_path_with_a_document_and_a_legacy_row_prints_from_the_legacy_row
@@ -440,7 +440,7 @@ class PrintTriggerTest < Plastic::TestCase
 
   def test_archive_rewrites_the_index_to_list_the_intent_among_the_archives
     open_intent
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done'") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done'") }
     cli("intent", "archive", "1")
 
     assert_equal ["1"], JSON.parse(File.read(store_path("store/index.json"))).fetch("archives").map { |mark| mark.fetch("intent_id") }

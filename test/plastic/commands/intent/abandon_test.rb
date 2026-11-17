@@ -46,7 +46,7 @@ class IntentAbandonTest < Plastic::TestCase
   def abandon(*extra) = cli("intent", "abandon", "1", *extra)
 
   def supersede(from, to)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:links, { from_ref: from, to_ref: to, kind: "supersedes", at: LifecycleHelper::EARLY })
     end
   end

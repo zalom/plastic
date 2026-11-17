@@ -40,7 +40,7 @@ module Plastic
 
           private
 
-          def forget(databases, rel) = Graph::Schema.store.each { |key| databases.fetch(key).transaction { |batch| batch.remove(:printed, path: rel) } }
+          def forget(databases, rel) = databases.fetch(:store).transaction { |batch| batch.remove(:printed, path: rel) }
         end
       end
     end

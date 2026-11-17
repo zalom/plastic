@@ -43,7 +43,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     item("a")
     item("b")
     parked = started("a")
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'parked' WHERE intent_id = :intent_id", intent_id: parked)
     end
 

@@ -24,11 +24,11 @@ module TwoHomesLinksHelper
   # One link row on a home, with the origin of that home unless `origin` names another, and no print of the index.
   def put_link(home, from, kind, to, origin: nil)
     row = { from_ref: from, to_ref: to, kind:, at: Plastic::TestCase::STAMP }
-    database_of(home, :knowledge).transaction { |batch| batch.put(:links, origin ? row.merge(origin_id: origin) : row) }
+    database_of(home).transaction { |batch| batch.put(:links, origin ? row.merge(origin_id: origin) : row) }
   end
 
   def links(home, origin: origin_of(home))
-    rows_of(home, :knowledge, "SELECT from_ref, to_ref, kind FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind", origin:)
+    rows_of(home, "SELECT from_ref, to_ref, kind FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind", origin:)
       .map { |row| row.values_at("from_ref", "to_ref", "kind") }
   end
 
@@ -38,7 +38,7 @@ module TwoHomesLinksHelper
 
   def printed_part?(home) = home_graphs(home).retrieval.printed.key?(PART)
 
-  def forget_part(home) = database_of(home, :knowledge).transaction { |batch| batch.remove(:printed, path: PART) }
+  def forget_part(home) = database_of(home).transaction { |batch| batch.remove(:printed, path: PART) }
 
   def write_links_part(home, links)
     data = JSON.parse(read_file(home, FILE))

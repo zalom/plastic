@@ -23,8 +23,6 @@ module Plastic
 
           def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
 
-          def database = :knowledge
-
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
 

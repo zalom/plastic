@@ -19,7 +19,7 @@ module Plastic
           private
 
           def insert(intent_id, at)
-            @databases.fetch(:knowledge).transaction { |batch| batch.put(:approvals, { intent_id:, at:, session_id: @session }, statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:approvals, { intent_id:, at:, session_id: @session }, statement: :insert) }
             @retrieval.approval(intent_id)
           end
         end

@@ -17,10 +17,6 @@ class TableTest < Plastic::TestCase
                  '"origin_id" TEXT NOT NULL, UNIQUE("name", "intent_id", "origin_id"));', table(:clusters).ddl
   end
 
-  def test_a_table_with_no_key_has_no_unique_clause
-    refute_includes table(:changes).ddl, "UNIQUE"
-  end
-
   def test_an_upsert_updates_the_columns_outside_the_key
     expected = bound(%(INSERT INTO "printed" ("path", "sha256") VALUES (:v_path, :v_sha256) ON CONFLICT("path") DO UPDATE SET "sha256" = excluded."sha256"),
       { v_path: "p", v_sha256: "h" })
@@ -38,37 +34,9 @@ class TableTest < Plastic::TestCase
     assert_equal bound(CLUSTER_SQL, CLUSTER_VALUES), table(:clusters).insert(CLUSTER)
   end
 
-  def test_the_key_of_a_row_is_its_key_columns
-    assert_equal({ name: "C", intent_id: "1", origin_id: nil }, table(:clusters).key_of({ name: "C", intent_id: "1", x: 2 }))
-  end
+  def test_which_tables_carry_an_origin_and_a_count
+    flags = %i[clusters printed command_runs].map { |name| [table(name).origin?, table(name).counted?] }
 
-  def test_a_json_key_names_the_key_columns
-    assert_equal %(json_object('path', "path")), table(:printed).json_key
-  end
-
-  def test_which_tables_carry_an_origin_a_log_and_a_count
-    flags = %i[clusters printed command_runs].map { |name| [table(name).origin?, table(name).logged?, table(name).counted?] }
-
-    assert_equal [[true, true, true], [true, false, false], [false, true, true]], flags
-  end
-
-  def change_of(operation) = table(:printed).change(operation, { path: "p" }, "o")
-
-  def test_a_change_row_logs_a_remove_without_the_row
-    remove = change_of("remove")
-
-    assert_equal %(INSERT INTO changes("table", "key", operation, "row", at, origin_id) SELECT :c_table, json_object('path', "path"), :c_operation, NULL, :c_at, :c_origin FROM "printed" WHERE "path" IS :m_path), remove.sql
-    assert_equal({ c_table: "printed", c_operation: "remove", c_origin: "o", m_path: "p" }, remove.values.except(:c_at))
-  end
-
-  def test_a_change_row_stamps_the_time_with_an_offset
-    assert_match(/\A\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d\z/, change_of("remove").values.fetch(:c_at))
-  end
-
-  def test_a_change_row_logs_a_put_with_its_key_and_no_row
-    put = change_of("put")
-
-    assert_includes put.sql, %(SELECT :c_table, json_object('path', "path"), :c_operation, NULL, )
-    assert_equal "put", put.values.fetch(:c_operation)
+    assert_equal [[true, true], [true, false], [false, true]], flags
   end
 end

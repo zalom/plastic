@@ -18,12 +18,12 @@ class KnowledgeSyncReadabilityTest < Plastic::TestCase
 
   def unreadable = Readability.new(folder, retrieval, store_graphs.databases).call([@path])
 
-  def node_rows = store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+  def node_rows = store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
 
   def test_a_graph_whose_rows_the_database_refuses_is_unreadable_with_the_database_reason
     write_nodes([{ "id" => nil, "state" => "open", "title" => "T" }])
 
-    assert_equal({ @path => "work_graph.db: NOT NULL constraint failed: nodes.id" }, unreadable)
+    assert_equal({ @path => "knowledge_graph.db: NOT NULL constraint failed: nodes.id" }, unreadable)
   end
 
   def test_a_graph_the_database_accepts_is_readable_and_leaves_no_row

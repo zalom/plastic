@@ -5,7 +5,7 @@ require_relative "evidence/integrity_records"
 module Plastic
   module Graph
     module Retrieval
-      # Rebuilds the derived passages and search entries in retrieval_graph.db from the documents and revisions of knowledge.
+      # Rebuilds the derived passages and search entries in the retrieval file from the documents and revisions of knowledge.
       class Index
         REVISIONS_SQL = "SELECT intent_id, path, body, sha256 FROM document_revisions WHERE origin_id = :origin"
         DOCUMENTS_SQL = "SELECT intent_id, path, body, updated_at FROM documents WHERE origin_id = :origin"
@@ -13,9 +13,8 @@ module Plastic
                       "VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)"
         ENTRY_SQL = "INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, :position, :origin_id)"
 
-        def initialize(knowledge, retrieval, origin_id)
-          @knowledge = knowledge
-          @retrieval = retrieval
+        def initialize(store, origin_id)
+          @store = store
           @origin_id = origin_id
         end
 
@@ -30,7 +29,7 @@ module Plastic
         def replace(intent_id)
           revisions = read(REVISIONS_SQL, intent_id).map { |row| Evidence::IntegrityRevision.from_row(row) }
           documents = read(DOCUMENTS_SQL, intent_id).map { |row| Evidence::IntegrityDocument.from_row(row) }
-          @retrieval.transaction do |batch|
+          @store.rebuilding do |batch|
             clear(batch, intent_id)
             add_rows(batch, revisions.flat_map { |revision| revision.passage_rows(@origin_id) }, documents.flat_map { |document| document.fts_rows(@origin_id) })
           end
@@ -43,7 +42,7 @@ module Plastic
 
         def read(sql, intent_id)
           sql += " AND intent_id = :intent_id" if intent_id
-          @knowledge.rows(sql, origin: @origin_id, **{ intent_id: }.compact)
+          @store.rows(sql, origin: @origin_id, **{ intent_id: }.compact)
         end
 
         def clear(batch, intent_id)

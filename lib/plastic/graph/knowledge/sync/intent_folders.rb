@@ -32,7 +32,7 @@ module Plastic
           # Writes the rows of the readable folders that have none, in one transaction.
           def write_to(databases)
             rows = intents.map(&:new_row)
-            databases.fetch(:knowledge).transaction { |batch| batch.put_all(:intents, rows) } if rows.any?
+            databases.fetch(:store).transaction { |batch| batch.put_all(:intents, rows) } if rows.any?
           end
 
           # The intent files of the store that sit in a folder which can be read.

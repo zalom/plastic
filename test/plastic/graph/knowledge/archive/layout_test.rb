@@ -8,7 +8,7 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
     super
     @intent = open_intent("Paths", status: "future")
     graphs = store_graphs
-    @database = graphs.databases.fetch(:work)
+    @database = graphs.databases.fetch(:store)
     @snapshot = Plastic::Graph::Knowledge::Archive::Snapshot.new(@database, @intent.intent_id, origin)
     @root = folder.path(@intent.dir)
     @entries = Plastic::Graph::Knowledge::Archive::Tree.read(@root)

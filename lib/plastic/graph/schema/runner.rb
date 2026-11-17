@@ -86,7 +86,7 @@ module Plastic
 
       def databases(slug)
         root = File.join(@home, "stores", slug)
-        Database.open_store(root, Origin.new(@home)).select { |_key, database| File.exist?(database.path) }.values
+        Database.open_files(root, Origin.new(@home)).select { |_key, database| File.exist?(database.path) }.values
       end
 
       def migrate_store(slug)

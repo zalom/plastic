@@ -14,26 +14,20 @@ module Plastic
 
       def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
-      def knowledge = store_graphs.databases.fetch(:knowledge)
+      def store_database = store_graphs.databases.fetch(:store)
 
-      def derived = store_graphs.databases.fetch(:retrieval)
-
+      # Commits the test's own writes, closes the store connection and deletes the retrieval file, as a lost file is.
+      # The reset puts every database back from its pristine copy.
       def lose_retrieval_file
-        @lost_retrieval_path = derived.path
-        delete_database(@lost_retrieval_path)
+        path = store_database.path
+        retrieval_file = store_database.retrieval_path
+        Plastic::Graph::Database::ConnectionPool.connections[path].commit
+        @template.restore_every_database
+        Plastic::Graph::Database::ConnectionPool.connections.delete(path).close
+        File.delete(retrieval_file)
       end
 
-      # A rebuilt file commits outside the test's transaction, so it goes again for the reset to put the original back.
-      def forget_lost_retrieval_file
-        delete_database(@lost_retrieval_path) if @lost_retrieval_path && File.exist?(@lost_retrieval_path)
-      end
-
-      def delete_database(path)
-        Plastic::Graph::Database::ConnectionPool.connections.delete(path)&.close
-        File.delete(path)
-      end
-
-      def reindex = Plastic::Graph::Retrieval::Index.new(knowledge, derived, origin).rebuild
+      def reindex = Plastic::Graph::Retrieval::Index.new(store_database, origin).rebuild
 
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
@@ -68,10 +62,9 @@ module Plastic
         reindex
       end
 
-      # Writes the rows one read adds, in the database that owns them.
+      # Writes the rows one read adds.
       def apply_read(read)
-        store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
-        read.beside.each { |key, apply| store_graphs.databases.fetch(key).transaction { |batch| apply.call(batch) } }
+        store_database.transaction { |batch| batch.apply([read.apply]) }
       end
 
       # The one item of a list, asserted to be the only one.

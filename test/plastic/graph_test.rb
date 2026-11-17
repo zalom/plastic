@@ -77,9 +77,8 @@ class StoreDatabaseTest < Plastic::TestCase
     databases = store_graphs.databases
 
     assert_equal File.join(@plastic_home, "plastic.db"), databases[:local].path
-    %i[work knowledge].zip(%w[work_graph.db knowledge_graph.db]).each do |key, file|
-      assert_equal store_path(file), databases[key].path
-    end
+    assert_equal store_path("knowledge_graph.db"), databases.fetch(:store).path
+    assert_equal [store_path("work_graph.db"), store_path("retrieval_graph.db")], databases.fetch(:store).files.values
   end
 
   def test_the_store_folder_ignores_its_databases
@@ -108,7 +107,7 @@ class StoreDatabaseTest < Plastic::TestCase
   def test_a_store_made_by_create_has_its_retrieval_file_empty_and_built
     graphs = Plastic::Graph.create(home: @plastic_home, store: "made")
 
-    assert_equal [0, 0], %w[document_passages document_fts].map { |table| graphs.databases.fetch(:retrieval).rows("SELECT 1 FROM #{table}").size }
+    assert_equal [0, 0], %w[document_passages document_fts].map { |table| graphs.databases.fetch(:store).rows("SELECT 1 FROM #{table}").size }
   end
 end
 

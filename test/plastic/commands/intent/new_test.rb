@@ -97,7 +97,7 @@ class IntentNewTest < Plastic::TestCase
 
   def test_the_intent_gets_a_document_row_and_a_file_named_intent_md
     result = plastic("intent", "new", "Alpha thing", table: Plastic::CLI::TABLE)
-    row = store_graphs.databases.fetch(:knowledge).rows("SELECT path FROM documents WHERE intent_id = '1'").map { |doc| doc.fetch("path") }
+    row = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE intent_id = '1'").map { |doc| doc.fetch("path") }
 
     assert_equal 0, result.code
     assert_includes row, "intent.md"

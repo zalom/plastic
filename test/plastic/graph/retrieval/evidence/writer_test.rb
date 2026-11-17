@@ -16,17 +16,17 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
   end
 
   def test_keeps_separate_revision_membership_for_identical_bodies_at_distinct_identities
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
     writer.write("1", "first.md", "shared evidence")
     writer.write("2", "second.md", "shared evidence")
     writer.remove("1", "first.md")
 
     assert_equal [["1", "first.md", "shared evidence"], ["2", "second.md", "shared evidence"]],
-      knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY intent_id").map(&:values)
+      store_database.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY intent_id").map(&:values)
   end
 
   def test_a_removed_and_added_document_has_exactly_its_new_search_rows
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
     writer.write("1", "plan.md", "first evidence")
     writer.remove("1", "plan.md")
     writer.write("1", "plan.md", "again evidence")
@@ -47,14 +47,14 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
     write_evidence("first evidence")
     write_evidence("second evidence")
     reindex
-    found = ->(word) { derived.rows("SELECT body FROM document_fts WHERE document_fts MATCH :word", word:).size }
+    found = ->(word) { store_database.rows("SELECT body FROM document_fts WHERE document_fts MATCH :word", word:).size }
 
     assert_equal [0, 1], [found.call("first"), found.call("second")]
   end
 
   def test_a_document_removed_leaves_no_search_row
     write_evidence("first evidence")
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).remove("1", "plan.md")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).remove("1", "plan.md")
     reindex
 
     assert_empty rows("document_fts", "body")
@@ -62,18 +62,14 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
 
   private
 
-  def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", body)
+  def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", body)
 
   def assert_immutable_rows
     assert_equal ["first evidence", "second evidence"], rows("document_revisions", "body").sort
     assert_equal ["first evidence", "second evidence"], rows("document_passages", "body").sort
   end
+  
+  def rows(table, column) = store_database.rows("SELECT #{column} AS value FROM #{table}").map { |row| row.fetch("value") }
 
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
-  def home_of(table) = %w[document_passages document_fts].include?(table) ? derived : knowledge
-
-  def rows(table, column) = home_of(table).rows("SELECT #{column} AS value FROM #{table}").map { |row| row.fetch("value") }
-
-  def count(table) = home_of(table).row("SELECT count(*) AS n FROM #{table}").fetch("n")
+  def count(table) = store_database.row("SELECT count(*) AS n FROM #{table}").fetch("n")
 end

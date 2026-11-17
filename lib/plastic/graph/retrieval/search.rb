@@ -12,29 +12,28 @@ module Plastic
         HEADS_SQL = "SELECT intent_id, path, sha256 FROM document_heads WHERE origin_id = :origin"
         MISSING = "the search index is missing; run plastic doctor to rebuild it"
 
-        def initialize(knowledge, retrieval, origin:)
-          @knowledge = knowledge
-          @retrieval = retrieval
+        def initialize(store, origin:)
+          @store = store
           @origin = origin
         end
 
         def call(terms, limit: 20)
           require_valid(terms, limit)
-          raise RetrievalGraph::MaintenanceRequired, MISSING unless File.file?(retrieval.path)
+          raise RetrievalGraph::MaintenanceRequired, MISSING unless store.retrieval_present?
 
-          current(retrieval.rows(SEARCH_SQL, query: self.class.fts_query(terms), origin: origin.id, limit:))
+          current(store.rows(SEARCH_SQL, query: self.class.fts_query(terms), origin: origin.id, limit:))
         end
 
         def self.fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
 
         private
 
-        attr_reader :knowledge, :retrieval, :origin
+        attr_reader :store, :origin
 
         def current(hits)
           return hits if hits.empty?
 
-          heads = knowledge.rows(HEADS_SQL, origin: origin.id).to_set { |row| row.values_at("intent_id", "path", "sha256") }
+          heads = store.rows(HEADS_SQL, origin: origin.id).to_set { |row| row.values_at("intent_id", "path", "sha256") }
           hits.select { |hit| heads.include?(hit.values_at("intent_id", "path", "sha256")) }
         end
 

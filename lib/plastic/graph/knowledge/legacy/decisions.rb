@@ -40,7 +40,7 @@ module Plastic
           end
 
           def write_rulings(databases, intent_id, bullets, counts)
-            database = databases.fetch(:knowledge)
+            database = databases.fetch(:store)
             bullets.each do |id, text|
               row = { intent_id:, id:, text:, supersedes: nil, at: Plastic.now, session_id: @session }
               database.transaction { |batch| batch.put(:rulings, row, statement: :insert) }
@@ -54,7 +54,7 @@ module Plastic
           end
 
           def write_links(databases, intent_id, refs, kind, counts)
-            database = databases.fetch(:knowledge)
+            database = databases.fetch(:store)
             refs.each do |ref|
               row = { from_ref: intent_id, to_ref: ref, kind:, at: Plastic.now }
               database.transaction { |batch| batch.put(:links, row, statement: :insert) }

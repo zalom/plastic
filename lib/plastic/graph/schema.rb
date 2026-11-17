@@ -15,16 +15,19 @@ module Plastic
 
       def self.file(key) = databases.fetch(key).first
 
-      def self.fetch(key)
+      # The file that holds the table `name`.
+      def self.file_of(name) = databases.values_at(*store, *derived).find { |_file, names| names.include?(name.to_sym) }&.first
+
+      def self.fetch(key, schema: nil)
         names = databases.fetch(key).last
-        [*names.map { |name| ddl(name) }, migrations[key], *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
+        [*names.map { |name| ddl(name, schema) }, (migrations[key] unless schema), *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
       end
 
       def self.prepare(connection, schema) = connection.execute_batch(schema)
 
       def self.table_named(name) = tables.fetch(name.to_sym)
 
-      def self.ddl(name) = SchemaCatalog::VIRTUAL.fetch(name) { table_named(name).ddl }
+      def self.ddl(name, schema = nil) = SchemaCatalog::VIRTUAL.fetch(name) { table_named(name) }.ddl(schema)
 
       def self.tally(table, count)
         name = table.to_s

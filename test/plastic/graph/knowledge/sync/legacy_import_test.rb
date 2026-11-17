@@ -223,7 +223,7 @@ class KnowledgeSyncLegacyImportRowsTest < Plastic::TestCase
 
   fixtures :legacy
 
-  def rows_of(sql) = store_graphs.databases.fetch(:knowledge).rows(sql)
+  def rows_of(sql) = store_graphs.databases.fetch(:store).rows(sql)
 
   def test_a_first_import_keeps_plan_checklist_and_actions_in_legacy_rows
     import

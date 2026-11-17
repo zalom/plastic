@@ -17,7 +17,9 @@ class SchemaRunnerTest < Plastic::TestCase
 
   def store_files(home, slug = "alpha") = Dir.glob(File.join(home, "stores", slug, "*.db")).sort
 
-  def layouts(home) = database_files(home).to_h { |path| [path.delete_prefix(home), layout_of(path)] }
+  LEFTOVERS = { "work_graph.db" => %w[changes printed work_log_write_id], "knowledge_graph.db" => %w[changes] }.freeze
+
+  def layouts(home) = database_files(home).to_h { |path| [path.delete_prefix(home), layout_of(path).reject { |_type, name, _sql| LEFTOVERS.fetch(File.basename(path), []).include?(name) }] }
 
   def intent_status(home, slug)
     path = store_files(home, slug).find { |file| layout_of(file).any? { |_type, name, _sql| name == "intents" } }
@@ -129,7 +131,7 @@ class SchemaRunnerTest < Plastic::TestCase
   end
 
   def killed_store_sequences
-    killed = Sequences::Migration.new(1, ->(connection, key) { Sequences::CURRENT_LAYOUT.call(connection, key).then { raise "killed" } }, {})
+    killed = Sequences::Migration.new(1, ->(connection, key) { connection.execute_batch(Plastic::Graph::Schema.fetch(key)).then { raise "killed" } }, {})
     { home: Sequences::SEQUENCES.fetch(:home), store: [killed] }
   end
 

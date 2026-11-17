@@ -12,7 +12,7 @@ module Plastic
 
         # The intents a session wrote lines to, the newest line first.
         def logged_intent_ids(session_id)
-          @databases.fetch(:work).rows(LOGGED_SQL, session: session_id, origin: origin_id).map { |row| row.fetch("intent_id") }.uniq
+          @databases.fetch(:store).rows(LOGGED_SQL, session: session_id, origin: origin_id).map { |row| row.fetch("intent_id") }.uniq
         end
 
         def nodes(intent_id = nil) = read(:nodes, intent_id)
@@ -26,7 +26,7 @@ module Plastic
         def discoveries(intent_id = nil) = read(:discoveries, intent_id)
 
         def linking(id)
-          @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Knowledge::Link.from_h(row) }
+          @databases.fetch(:store).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Knowledge::Link.from_h(row) }
         end
       end
     end

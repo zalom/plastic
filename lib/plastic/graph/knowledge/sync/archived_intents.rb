@@ -25,7 +25,7 @@ module Plastic
 
           def write_to(databases)
             marks = missing
-            databases.fetch(:knowledge).transaction { |batch| write_all(batch, marks) } if marks.any?
+            databases.fetch(:store).transaction { |batch| write_all(batch, marks) } if marks.any?
           end
 
           private

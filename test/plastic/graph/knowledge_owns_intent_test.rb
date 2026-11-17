@@ -12,10 +12,10 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
 
   def work = graphs.work
 
-  def tables(key) = graphs.databases.fetch(key).rows("SELECT name FROM sqlite_master WHERE type = 'table'").map { |row| row["name"] }
+  def tables(schema) = graphs.databases.fetch(:store).rows("SELECT name FROM #{schema}.sqlite_master WHERE type = 'table'").map { |row| row["name"] }
 
   def test_a_new_store_holds_the_moved_tables_in_knowledge_and_none_in_work
-    assert_equal MOVED, MOVED & tables(:knowledge)
+    assert_equal MOVED, MOVED & tables(:main)
     assert_empty MOVED & tables(:work)
     assert_equal %w[edges nodes roadmaps runs work_log], %w[edges nodes roadmaps runs work_log] & tables(:work)
   end
@@ -23,15 +23,15 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
   def test_a_new_intent_is_one_knowledge_row_and_a_work_log_line_in_work
     work.write_intent(title: "Alpha")
 
-    assert_equal ["Alpha"], graphs.databases.fetch(:knowledge).rows("SELECT title FROM intents").map { |row| row["title"] }
-    assert_equal ["opened"], graphs.databases.fetch(:work).rows("SELECT kind FROM work_log").map { |row| row["kind"] }
+    assert_equal ["Alpha"], graphs.databases.fetch(:store).rows("SELECT title FROM intents").map { |row| row["title"] }
+    assert_equal ["opened"], graphs.databases.fetch(:store).rows("SELECT kind FROM work_log").map { |row| row["kind"] }
   end
 
   def test_the_go_ahead_and_the_cluster_rows_are_knowledge_rows
     work.write_intent(title: "Alpha")
     work.approve_intent("1")
 
-    assert_equal 1, graphs.databases.fetch(:knowledge).row("SELECT count(*) AS n FROM approvals").fetch("n")
+    assert_equal 1, graphs.databases.fetch(:store).row("SELECT count(*) AS n FROM approvals").fetch("n")
   end
 
   def test_an_intent_with_a_node_reads_back_through_the_graph_from_both_files

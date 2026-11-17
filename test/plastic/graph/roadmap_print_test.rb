@@ -33,7 +33,7 @@ class GraphRoadmapPrintTest < Plastic::TestCase
 
   def test_a_delivered_item_is_checked
     printed
-    store_graphs.databases[:work].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:roadmap_items, { roadmap: "plan", item: "1", batch: 1, position: 1, title: "First", mark: "delivered", updated_at: STAMP })
     end
 
@@ -52,6 +52,6 @@ class GraphRoadmapPrintTest < Plastic::TestCase
     printed
     print = Plastic::Graph::Prints.roadmap(retrieval, "plan")
 
-    assert_equal ["roadmaps/plan.md", :work], [print.path, print.database]
+    assert_equal "roadmaps/plan.md", print.path
   end
 end

@@ -13,7 +13,7 @@ module Plastic
   # The graphs of one store. The home keeps plastic.db, for the command runs of
   # this machine. The store folder keeps work_graph.db, knowledge_graph.db
   # and retrieval_graph.db, and the files printed from their rows. A writer
-  # writes its rows in one transaction per database; the retrieval graph
+  # writes its rows in one transaction over the store; the retrieval graph
   # reads them. The report reads what the call wrote from `wrote`.
   module Graph
     # The open graphs of one store, and the databases they sit on.
@@ -34,7 +34,7 @@ module Plastic
     def self.open(home:, store:, session: nil, clock: Time)
       root = Database.store_root(home, store)
       origin = Origin.new(home)
-      databases = Database.open_local(home).merge(Database.open_store(root, origin))
+      databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
       folder = Knowledge::StoreFolder.new(root, selection: Knowledge::SyncSelection.of(home))
       Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
@@ -48,7 +48,7 @@ module Plastic
     end
 
     def self.ready(graphs)
-      graphs.databases.values_at(:knowledge, :work, :retrieval, :local).each { |database| database.rows("SELECT 1") }
+      graphs.databases.each_value { |database| database.rows("SELECT 1") }
       graphs
     end
   end

@@ -32,14 +32,14 @@ module Plastic
           end
 
           def add_link(from_ref:, to_ref:, kind:)
-            @databases.fetch(:knowledge).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:links, { from_ref:, to_ref:, kind:, at: Plastic.now }, statement: :insert)
             end
             true
           end
 
           def remove_link(from_ref:, to_ref:, kind:)
-            database = @databases.fetch(:knowledge)
+            database = @databases.fetch(:store)
             written = database.written
             before = written["links"]
             database.transaction { |batch| batch.remove(:links, from_ref:, to_ref:, kind:, origin_id: @retrieval.origin_id) }

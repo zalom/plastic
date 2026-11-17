@@ -14,17 +14,17 @@ module Plastic
     module Knowledge
       # Reads one file of a store folder into rows: the other half of Prints.
       # Each read is the statements it adds to a transaction of the database
-      # that owns the file's rows, so the reads of one call commit together.
+      # of the store, so the reads of one call commit together.
       class Reader
-        # One file's read: the database it writes and the statements it adds.
-        Read = Data.define(:path, :database, :apply, :beside)
+        # One file's read: the statements it adds to a transaction.
+        Read = Data.define(:path, :apply)
 
         # A read file and the print that keeps it.
         class Read
           # A file whose rows print nothing, such as an empty work.log, keeps its own hash.
           def line = "read #{path}"
 
-          def kept_print(folder) = Prints::Print.new(path, database, folder.digest(path), nil)
+          def kept_print(folder) = Prints::Print.new(path, folder.digest(path), nil)
         end
 
         # The reader of the intents of the rows.
@@ -44,7 +44,7 @@ module Plastic
 
         def read(path)
           file = file_of(path)
-          Read.new(path, file.database, file.method(:apply), file.respond_to?(:beside) ? file.beside : {})
+          Read.new(path, file.method(:apply))
         end
 
         private

@@ -68,14 +68,14 @@ module Plastic
       def intents = read(:intents).sort_by(&:segments)
 
       def intent(intent_id)
-        row = @databases.fetch(:knowledge).row("SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
+        row = @databases.fetch(:store).row("SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
         row && Knowledge::Intent.from_h(row)
       end
 
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
 
       def completion(intent_id)
-        @databases.fetch(:knowledge).row("SELECT * FROM completions WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
+        @databases.fetch(:store).row("SELECT * FROM completions WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
       end
 
       def clusters = read(:clusters)
@@ -89,9 +89,9 @@ module Plastic
 
       def stored = (@stored ||= Retrieval::StoreRead.new(@databases))
 
-      def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases.fetch(:knowledge), origin_id))
+      def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases.fetch(:store), origin_id))
 
-      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:work), origin_id))
+      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:store), origin_id))
 
       def sessions = (@sessions ||= Work::Session::Reader.new(@databases, store:, origin: @origin))
 

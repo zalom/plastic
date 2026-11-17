@@ -16,8 +16,6 @@ module Plastic
             @replace = replace
           end
 
-          def database = :knowledge
-
           def apply(batch)
             batch.remove(:links) if @replace
             batch.put_all(:links, members)

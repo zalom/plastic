@@ -13,11 +13,7 @@ class KnowledgeReaderTest < Plastic::TestCase
     write("store/1--alpha/spec.md", "# Spec\n")
     read = reader.read("store/1--alpha/spec.md")
 
-    assert_equal ["store/1--alpha/spec.md", :knowledge, "read store/1--alpha/spec.md"], [read.path, read.database, read.line]
-  end
-
-  def test_index_json_reads_into_the_work_graph
-    assert_equal :knowledge, reader.read("store/index.json").database
+    assert_equal ["store/1--alpha/spec.md", "read store/1--alpha/spec.md"], [read.path, read.line]
   end
 
   def test_a_folder_with_no_intent_row_is_refused
@@ -34,6 +30,6 @@ class KnowledgeReaderTest < Plastic::TestCase
     write("store/1--alpha/savepoint.md", "")
     print = reader.read("store/1--alpha/savepoint.md").kept_print(folder)
 
-    assert_equal ["store/1--alpha/savepoint.md", :work, Digest::SHA256.hexdigest(""), nil], print.to_h.values
+    assert_equal ["store/1--alpha/savepoint.md", Digest::SHA256.hexdigest(""), nil], print.to_h.values
   end
 end

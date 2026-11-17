@@ -124,7 +124,7 @@ module Plastic
       end
 
       def forget_printed(paths)
-        Schema.store.each { |key| @databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } } }
+        @databases.fetch(:store).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } }
       end
 
       def local_db = @databases.fetch(:local)

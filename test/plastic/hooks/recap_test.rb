@@ -146,7 +146,7 @@ class RecapClaimTest < Plastic::TestCase
   end
 
   def close_intent(intent_id, status)
-    opened.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
   end
 
   def test_a_claim_on_a_done_intent_prints_no_lapsed_line
@@ -165,7 +165,7 @@ class RecapClaimTest < Plastic::TestCase
 
   def test_a_claim_on_an_intent_that_no_longer_exists_prints_no_lapsed_line
     intent_id, node = claim_node
-    opened.databases.fetch(:knowledge).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
 
     assert_empty lapsed_lines(lapsed_after(node))
   end

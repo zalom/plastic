@@ -11,11 +11,11 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
     @path = @intent.file
   end
 
-  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_graphs.databases[:knowledge], origin, retrieval: derived)
+  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_database, origin)
 
   def fields(**more) = { intent_id: "1", path: @path, **more }
 
-  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases[:knowledge], origin).write("1", @path, "changed")
+  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", @path, "changed")
 
   def test_the_current_revision_is_the_hash_of_the_current_body
     assert_equal reader.fetch(fields).fetch("sha256"), reader.current_revision("1", @path)

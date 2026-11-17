@@ -93,7 +93,7 @@ end
 class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
   RoadmapFile = Plastic::Graph::Knowledge::Reader::RoadmapFile
 
-  def work = store_graphs.databases.fetch(:work)
+  def work = store_graphs.databases.fetch(:store)
 
   def seed
     work.transaction do |batch|

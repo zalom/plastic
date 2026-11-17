@@ -32,7 +32,7 @@ module Plastic
           def find_ruling(intent_id, id) = @retrieval.rulings(intent_id).find { |ruling| ruling.id == id }
 
           def write_rows(rows)
-            @databases.fetch(:knowledge).transaction { |batch| batch.insert_rows(rows.compact) }
+            @databases.fetch(:store).transaction { |batch| batch.insert_rows(rows.compact) }
           end
 
           def next_id(intent_id) = NextId.after(@retrieval.rulings(intent_id), prefix: "D")

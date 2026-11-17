@@ -29,7 +29,7 @@ module Plastic
 
       def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
 
-      def claim_rows = store_graphs.databases.fetch(:work).rows("SELECT * FROM nodes WHERE state = 'claimed'")
+      def claim_rows = store_graphs.databases.fetch(:store).rows("SELECT * FROM nodes WHERE state = 'claimed'")
 
       def active_intent
         intent = open_intent

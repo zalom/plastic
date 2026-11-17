@@ -6,7 +6,7 @@ module SecondHomeHelper
   CONTEXT = "store/1--alpha/context.json"
   STAMP = Plastic::TestCase::STAMP
 
-  def work = store_graphs.databases.fetch(:work)
+  def work = store_graphs.databases.fetch(:store)
 
   def sync = (@sync ||= Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases))
 

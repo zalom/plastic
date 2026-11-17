@@ -22,7 +22,7 @@ class CheckRoadmapTest < Plastic::TestCase
   end
 
   def test_an_edge_to_an_item_off_the_roadmap_is_a_finding_that_fails_the_call
-    store_graphs.databases[:work].transaction { |batch| batch.put(:roadmap_edges, { roadmap: "r1", from: "a", to: "ghost", kind: "after" }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:roadmap_edges, { roadmap: "r1", from: "a", to: "ghost", kind: "after" }) }
 
     outcome, context = check
 

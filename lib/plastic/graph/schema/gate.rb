@@ -12,10 +12,9 @@ module Plastic
     # file ahead of this code is refused too. Nothing here migrates an old
     # file: the install and the update do, through SchemaRunner.
     class SchemaGate
-      VERSION = "PRAGMA user_version"
-
-      def initialize(connection, sequence:, key:, file:)
+      def initialize(connection, sequence:, key:, file:, schema: nil)
         @connection = connection
+        @schema = schema
         @sequence = sequence
         @key = key
         @file = file
@@ -36,9 +35,13 @@ module Plastic
 
       def newest = SchemaSequences.newest(@sequence)
 
-      def stamped = @connection.get_first_value(VERSION).to_i
+      def pragma = "PRAGMA #{prefix}user_version"
 
-      def empty? = @connection.get_first_value("SELECT COUNT(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").zero?
+      def prefix = @schema && "#{@schema}."
+
+      def stamped = @connection.get_first_value(pragma).to_i
+
+      def empty? = @connection.get_first_value("SELECT COUNT(*) FROM #{prefix}sqlite_master WHERE name NOT LIKE 'sqlite_%'").zero?
 
       def settle(version)
         return if empty? && build_layout
@@ -52,8 +55,8 @@ module Plastic
         under_write_lock do
           next false unless empty?
 
-          SchemaSequences::CURRENT_LAYOUT.call(@connection, @key)
-          @connection.execute("#{VERSION} = #{newest}")
+          @connection.execute_batch(Schema.fetch(@key, schema: @schema))
+          @connection.execute("#{pragma} = #{newest}")
           true
         end
       end

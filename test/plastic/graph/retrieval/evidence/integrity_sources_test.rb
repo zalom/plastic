@@ -9,19 +9,16 @@ class RetrievalEvidenceIntegritySourcesTest < Plastic::TestCase
 
   def setup
     super
-    Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "Body\n")
+    Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Body\n")
   end
-
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
   def in_transaction(sql)
     found = nil
-    knowledge.immediate_transaction { |_batch, connection| found = Evidence::IntegrityTransactionSource.new(connection).rows(sql) }
+    store_database.immediate_transaction { |_batch, connection| found = Evidence::IntegrityTransactionSource.new(connection).rows(sql) }
     found
   end
 
   def test_the_database_source_reads_rows
-    assert_equal [{ "path" => "plan.md" }], Evidence::IntegrityDatabaseSource.new(knowledge).rows(SQL_TEXT)
+    assert_equal [{ "path" => "plan.md" }], Evidence::IntegrityDatabaseSource.new(store_database).rows(SQL_TEXT)
   end
 
   def test_the_transaction_source_reads_rows_through_the_connection

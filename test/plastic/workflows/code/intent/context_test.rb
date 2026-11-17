@@ -28,7 +28,7 @@ class SubmitContextTest < Plastic::TestCase
     assert_equal [:done, [@reference]], [outcome, printed_row(context, "context").fetch("evidence")]
   end
 
-  def stored(column) = store_graphs.databases.fetch(:knowledge).row("SELECT #{column} FROM retrieval_contexts WHERE intent_id = '1'")&.fetch(column)
+  def stored(column) = store_graphs.databases.fetch(:store).row("SELECT #{column} FROM retrieval_contexts WHERE intent_id = '1'")&.fetch(column)
 
   def test_the_saved_context_is_read_back_from_the_knowledge_database
     discovered
@@ -41,7 +41,7 @@ class SubmitContextTest < Plastic::TestCase
   def test_the_same_submission_saved_again_leaves_the_stored_row_as_it_is
     discovered
     submit(EMPTY.merge("evidence" => [@reference]))
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = 'kept' WHERE intent_id = '1'") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = 'kept' WHERE intent_id = '1'") }
 
     submit(EMPTY.merge("evidence" => [@reference]))
 
@@ -50,9 +50,8 @@ class SubmitContextTest < Plastic::TestCase
 
   def test_a_submission_that_stops_at_a_gate_saves_nothing
     discovered
-    lose_retrieval_file
 
-    submit(EMPTY.merge("evidence" => [@reference]))
+    submit(EMPTY.merge("evidence" => [@reference.sub("intent.md", "missing.md")]))
 
     assert_nil stored("data")
   end
@@ -80,14 +79,5 @@ class SubmitContextTest < Plastic::TestCase
 
   def test_a_submission_without_a_discovery_is_a_usage_error
     assert_raises(Plastic::CLI::Command::Usage) { submit(EMPTY.merge("evidence" => [])) }
-  end
-
-  def test_a_store_whose_retrieval_file_is_gone_names_its_repair
-    discovered
-    lose_retrieval_file
-
-    outcome, = submit(EMPTY.merge("evidence" => [@reference]))
-
-    assert_includes outcome.message, "run plastic doctor, then try again"
   end
 end

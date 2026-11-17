@@ -19,7 +19,7 @@ module Plastic
         # What a sync does with one path.
         class Entry
           # The print of a path with no rows.
-          NO_PRINT = Prints::Print.new(nil, nil, nil, nil)
+          NO_PRINT = Prints::Print.new(nil, nil, nil)
 
           # A file printed from rows: the index, a context view or a roadmap.
           def self.generated?(path) = path == StoreFolder::INDEX || StoreFolder.context_view?(path) || StoreFolder.roadmap?(path)

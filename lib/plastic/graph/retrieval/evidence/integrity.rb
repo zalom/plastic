@@ -18,15 +18,15 @@ module Plastic
           # Holds the collaborators that read, assess, and rebuild derived rows.
           Components = Data.define(:snapshot, :audit, :rebuilder)
 
-          def initialize(knowledge, retrieval, origin_id, before_rebuild: -> {})
-            @database = knowledge
-            @index = Retrieval::Index.new(knowledge, retrieval, origin_id)
+          def initialize(store, origin_id, before_rebuild: -> {})
+            @database = store
+            @index = Retrieval::Index.new(store, origin_id)
             @before_rebuild = before_rebuild
-            @components = Components.new(Evidence::IntegritySnapshot.new(knowledge, retrieval, origin_id), Evidence::IntegrityAudit,
+            @components = Components.new(Evidence::IntegritySnapshot.new(store, origin_id), Evidence::IntegrityAudit,
               Evidence::IntegrityRebuilder.new(origin_id))
           end
 
-          # Rebuilds the heads in one immediate transaction of knowledge, then the passages and search entries of retrieval.
+          # Rebuilds the heads in one immediate transaction, then the passages and search entries in a deferred one.
           def repair
             @database.immediate_transaction { |batch, connection| repair_snapshot(batch, connection) }
             @index.rebuild

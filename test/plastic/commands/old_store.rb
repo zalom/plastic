@@ -12,14 +12,14 @@ module OldStore
 
   def old_store
     graphs = Plastic::Graph.create(home: @plastic_home, store: OLD)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "notes.md", "old evidence")
-    lose(graphs.databases.fetch(:retrieval).path)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", "notes.md", "old evidence")
+    lose(graphs.databases.fetch(:store))
     Plastic::CLI::ProjectsFile.new(File.join(@plastic_home, "projects.yml")).add(OLD, checkout)
   end
 
-  def lose(path)
-    Plastic::Graph::Database::ConnectionPool.connections.delete(path)&.close
-    File.delete(path)
+  def lose(store)
+    Plastic::Graph::Database::ConnectionPool.connections.delete(store.path)&.close
+    File.delete(store.retrieval_path)
   end
 
   def repair = Plastic::Graph.create(home: @plastic_home, store: OLD).retrieval.repair

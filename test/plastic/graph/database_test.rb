@@ -370,22 +370,14 @@ class DatabaseWriteLogTest < Plastic::TestCase
   Database = Plastic::Graph::Database
 
   def test_an_upsert_twice_with_different_values_leaves_the_second
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:store)
     %w[h1 h2].each { |sha| work.transaction { |batch| batch.put(:printed, { path: "p", sha256: sha, at: STAMP }) } }
 
     assert_equal [{ "sha256" => "h2" }], work.rows("SELECT sha256 FROM printed WHERE path = 'p'")
   end
 
-  def test_the_change_row_of_a_put_holds_the_key_as_json_data_and_no_row
-    work = store_graphs.databases.fetch(:knowledge)
-    work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
-    row = work.row("SELECT \"key\", \"row\" FROM changes WHERE \"table\" = 'clusters'")
-
-    assert_equal [["C", "1"], nil], [JSON.parse(row["key"]).values_at("name", "intent_id"), row["row"]]
-  end
-
   def test_the_counts_ignore_writes_that_changed_no_row
-    work = store_graphs.databases.fetch(:knowledge)
+    work = store_graphs.databases.fetch(:store)
     2.times { work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) } }
     work.transaction { |batch| batch.remove(:clusters, name: "missing", intent_id: "1") }
 
@@ -393,7 +385,7 @@ class DatabaseWriteLogTest < Plastic::TestCase
   end
 
   def test_a_log_then_a_remove_counts_the_remove_only
-    work = store_graphs.databases.fetch(:knowledge)
+    work = store_graphs.databases.fetch(:store)
     work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
     work.transaction { |batch| batch.remove(:clusters, name: "C", intent_id: "1") }
 

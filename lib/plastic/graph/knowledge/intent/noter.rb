@@ -21,7 +21,7 @@ module Plastic
           def write(intent, kind, text)
             id = intent.intent_id
             body = Notes.for(@retrieval.fetch(id, FILE)&.body).add(kind, text)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(id, FILE, body)
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id).write(id, FILE, body)
             @retrieval.reference(id, FILE).fetch(:uri)
           end
         end

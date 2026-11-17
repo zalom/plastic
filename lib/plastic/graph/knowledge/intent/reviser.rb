@@ -31,7 +31,7 @@ module Plastic
           # Writes the change and returns the qualified references of the old and the new revision.
           def write(change)
             key = key_of(change.intent)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(*key, change.body)
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id).write(*key, change.body)
             write_title(key.first, change.line)
             [change.history, uri(key)]
           end
@@ -45,7 +45,7 @@ module Plastic
           def uri(key) = @retrieval.reference(*key).fetch(:uri)
 
           def write_title(intent_id, title)
-            @databases.fetch(:knowledge).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.write(:intents, TITLE_SQL, title:, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
             end
           end

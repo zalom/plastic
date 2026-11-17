@@ -11,11 +11,11 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def entry(**fields) = retrieval.intent("1").index_h.merge(fields.transform_keys(&:to_s))
 
-  def apply(text) = store_graphs.databases[:knowledge].transaction { |batch| IndexFile.new(text.dup, origin).apply(batch) }
+  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text.dup, origin).apply(batch) }
 
-  def apply_in(dirs, text) = store_graphs.databases[:knowledge].transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch) }
+  def apply_in(dirs, text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch) }
 
-  def put_old_cluster = store_graphs.databases[:knowledge].transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
+  def put_old_cluster = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
   def test_a_hand_edit_renames_an_intent_and_leaves_the_clusters_to_their_own_part
     put_old_cluster

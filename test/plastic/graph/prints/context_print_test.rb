@@ -5,7 +5,7 @@ require_relative "../../../test_helper"
 class PrintsContextPrintTest < Plastic::TestCase
   def put(table, data)
     row = { intent_id: "1", data:, updated_at: "2026-10-05T10:00:00+02:00" }
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(table, row) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
   end
 
   def printed_context

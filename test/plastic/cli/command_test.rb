@@ -22,7 +22,7 @@ class CommandTest < Plastic::TestCase
 
   class Idle < Plastic::CLI::Command
     def call
-      graphs.databases.fetch(:work).define_singleton_method(:path) { "/missing/work_graph.db" }
+      graphs.databases.fetch(:store).define_singleton_method(:path) { "/missing/work_graph.db" }
       graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal made a database" }
     end
   end

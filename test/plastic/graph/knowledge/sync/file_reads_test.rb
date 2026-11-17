@@ -14,7 +14,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
 
   def fts(sql)
     reindex
-    derived.rows(sql).map { |row| row.fetch("body") }
+    store_database.rows(sql).map { |row| row.fetch("body") }
   end
 
   def test_a_first_sync_of_documents_makes_them_searchable
@@ -38,7 +38,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     write("#{DIR}/notes.md", "# notes\n")
 
     assert_equal ["read #{DIR}/notes.md"], file_reads.call([GRAPH, "#{DIR}/notes.md"])
-    assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
   end
 
   def rename_by_hand_in_the_index
@@ -61,7 +61,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     rename_by_hand_in_the_index
     file_reads.call([GRAPH, "store/index.json"])
 
-    assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
   end
 
   def test_a_read_the_reader_refuses_leaves_the_other_reads_written

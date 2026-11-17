@@ -30,7 +30,7 @@ module Plastic
           end
 
           def create_roadmap(slug, title:, goal:)
-            @databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.now).merge(title:, goal:), statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.now).merge(title:, goal:), statement: :insert) }
             @retrieval.roadmap(slug)
           end
 
@@ -40,7 +40,7 @@ module Plastic
           def write_batch(slug, position, fields:)
             now = Plastic.now
             kept = fields.over(find_batch(slug, position), "Batch #{position}")
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:roadmaps, roadmap_row(slug, now), statement: :insert) unless @retrieval.roadmap(slug)
               batch.put(:batches, batch_row(slug, position, kept, now), statement: :upsert)
             end
@@ -86,7 +86,7 @@ module Plastic
           def add_log(slug, text)
             now = Plastic.now
             row = { roadmap: slug, position: next_log_position(slug), at: now, text:, session_id: @session }
-            @databases.fetch(:work).transaction { |batch| batch.put(:roadmap_log, row, statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:roadmap_log, row, statement: :insert) }
             @retrieval.roadmap_log(slug).last
           end
 
@@ -95,7 +95,7 @@ module Plastic
           def origin_id = @retrieval.origin_id
 
           def changed(table)
-            database = @databases.fetch(:work)
+            database = @databases.fetch(:store)
             before = database.written[table.to_s]
             database.transaction { |batch| yield batch }
             database.written[table.to_s] > before
@@ -106,13 +106,13 @@ module Plastic
           def find_batch(slug, position) = @retrieval.batches(slug).find { |row| row.position == position }
 
           def loop?(slug, from, to)
-            from == to || !@databases.fetch(:work).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
+            from == to || !@databases.fetch(:store).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
           end
 
           def write_item(slug, item, batch_position, fields, needs)
             now = Plastic.now
             existing = @retrieval.roadmap_items(slug).any? { |row| row.item == item }
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:roadmap_items, item_row(slug, item, batch_position, fields, now), statement: :insert) unless existing
               Array(needs).each { |from| batch.put(:roadmap_edges, { roadmap: slug, from:, to: item, kind: "after" }, statement: :insert) }
             end

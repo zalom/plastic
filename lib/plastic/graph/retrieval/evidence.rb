@@ -56,7 +56,7 @@ module Plastic
         end
 
         def origin_id = @origin.id
-        def knowledge = @databases.fetch(:knowledge)
+        def knowledge = @databases.fetch(:store)
       end
     end
   end

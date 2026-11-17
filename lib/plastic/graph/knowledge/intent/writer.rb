@@ -61,7 +61,7 @@ module Plastic
           # Sets an open, parked or future intent in progress; a no-op guard against a
           # race with a status that moved to done or abandoned since the check.
           def activate(intent_id)
-            @databases.fetch(:knowledge).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
             end
           end
@@ -79,7 +79,7 @@ module Plastic
           DEFAULTS = { kind: "work", status: "open" }.freeze
 
           def write_rows(intent)
-            @databases.fetch(:knowledge).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:intents, intent.new_row, statement: :insert)
             end
             write_document(intent)
@@ -88,7 +88,7 @@ module Plastic
           def write_document(intent)
             origin_id = @retrieval.origin_id
             document = intent.document(origin_id)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), origin_id).write(*document.values_at(:intent_id, :path, :body))
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), origin_id).write(*document.values_at(:intent_id, :path, :body))
           end
 
           def next_id(parent_id)

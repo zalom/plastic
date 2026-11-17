@@ -50,10 +50,14 @@ module Plastic
 
         def begin = connections.each { |connection| connection.execute("BEGIN") }
 
+        # The test committed and deleted a file of its own; the next reset puts every database back from its pristine copy.
+        def restore_every_database = @restore_every_database = true
+
         # Rolls each database back, closes every other connection, removes
         # what is new and puts back only what is missing or different from
         # the state recorded in `initialize`.
         def reset
+          return_every_database if @restore_every_database
           restore_lost_databases
           rollback
           current = @snapshot.scan(@dir)
@@ -71,6 +75,15 @@ module Plastic
           end
         end
 
+        def return_every_database
+          @restore_every_database = false
+          Pool.disconnect
+          @databases.each do |path|
+            FileUtils.cp(pristine(path), path)
+            Dir.glob("#{path}-*").each { |journal| File.delete(journal) }
+          end
+        end
+
         def restore_lost_databases
           @databases.each { |path| FileUtils.cp(pristine(path), path) if !File.exist?(path) && File.exist?(pristine(path)) }
         end
@@ -79,7 +92,7 @@ module Plastic
 
         def rollback
           connections.each { |connection| connection.rollback if connection.transaction_active? }
-          Pool.disconnect(keep: @databases)
+          Pool.disconnect(keep: pooled_paths)
         end
 
         def remove_new(current)
@@ -95,7 +108,16 @@ module Plastic
           end
         end
 
-        def connections = @databases.map { |path| Pool.for(path) }
+        def connections = pooled_paths.map { |path| Pool.for(path, attach: attachments(path)) }
+
+        def attachments(path) = File.basename(path) == Plastic::Graph::Schema.file(:knowledge) ? Plastic::Graph::Database::Store.attachments(path) : {}
+
+        def pooled_paths = @databases.reject { |path| attached?(path) }
+
+        def attached?(path)
+          sibling = File.join(File.dirname(path), Plastic::Graph::Schema.file(:knowledge))
+          path != sibling && File.exist?(sibling)
+        end
 
         def clear(full)
           stat = File.lstat(full)

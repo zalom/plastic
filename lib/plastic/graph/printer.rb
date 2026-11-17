@@ -3,8 +3,7 @@
 module Plastic
   module Graph
     # Prints files from rows: writes each file whose bytes differ from its
-    # rows, and records the hash of every print in the `printed` table of the
-    # database that owns the rows. The next call compares a file with that
+    # rows, and records the hash of every print in the `printed` table of the store. The next call compares a file with that
     # hash to know whether it changed by hand.
     class Printer
       attr_reader :written
@@ -26,7 +25,7 @@ module Plastic
       def record(prints)
         recorded = @retrieval.printed
         fresh = with_part(prints).reject { |print| print.recorded?(recorded) }
-        fresh.group_by(&:database).each { |key, group| record_in(key, group.map(&:printed_row)) }
+        record_in(fresh.map(&:printed_row)) unless fresh.empty?
       end
 
       private
@@ -43,7 +42,7 @@ module Plastic
         paths
       end
 
-      def record_in(key, rows) = @databases.fetch(key).transaction { |batch| batch.put_all(:printed, rows) }
+      def record_in(rows) = @databases.fetch(:store).transaction { |batch| batch.put_all(:printed, rows) }
     end
   end
 end

@@ -53,11 +53,11 @@ module Plastic
 
         private
 
-        def work = @databases.fetch(:work)
+        def work = @databases.fetch(:store)
 
         def hash_of(body) = body ? Digest::SHA256.hexdigest(body) : ""
 
-        def knowledge = @databases.fetch(:knowledge)
+        def knowledge = @databases.fetch(:store)
 
         def append(owed)
           rows = line_rows(owed)

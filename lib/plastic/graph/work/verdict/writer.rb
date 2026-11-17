@@ -25,7 +25,7 @@ module Plastic
           private
 
           def insert(row)
-            @databases.fetch(:knowledge).transaction { |batch| batch.put(:verdicts, row, statement: :insert) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:verdicts, row, statement: :insert) }
             @retrieval.verdicts(row[:intent_id]).find { |found| found.round == row[:round] }
           end
         end

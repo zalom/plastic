@@ -5,7 +5,7 @@ require_relative "../../../../../lib/plastic/workflows/code/document/batch"
 
 class BatchDocumentsTest < Plastic::TestCase
   def write_document(path, body)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", path, body)
     retrieval.repair
     retrieval.reference("1", path).fetch(:uri)
   end

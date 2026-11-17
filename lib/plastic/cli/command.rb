@@ -144,7 +144,7 @@ module Plastic
         return unless session && @scope
 
         opened = @graphs || open_graphs
-        opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:work).path)
+        opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:store).path)
       rescue SQLite3::Exception, Graph::MissingStore, Graph::OutOfStep
         nil
       end

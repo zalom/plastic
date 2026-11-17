@@ -23,7 +23,7 @@ class RetrievalSearchTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin)
 end
 
 class RetrievalSearchOrderTest < Plastic::TestCase
@@ -44,16 +44,16 @@ class RetrievalSearchOrderTest < Plastic::TestCase
   end
 
   def legacy_rows
-    derived.rows(legacy_sql, query:, origin:, limit: 2)
+    store_database.rows(legacy_sql, query:, origin:, limit: 2)
   end
 
   def query_plan
-    derived.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
+    store_database.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
   end
 
   def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(database, origin)
 
-  def database = store_graphs.databases.fetch(:knowledge)
+  def database = store_graphs.databases.fetch(:store)
 
   def query = '"common" AND "term"'
 

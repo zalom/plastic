@@ -41,22 +41,22 @@ module Plastic
 
           def origin_id = @retrieval.origin_id
 
-          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:knowledge), intent_id, origin_id, files: @collaborators[:files])
+          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:store), intent_id, origin_id, files: @collaborators[:files])
 
           def remove_printed(dir) = PrintedCleanup.new(@databases, @retrieval).remove(dir)
 
-          def capture = Capture.new(@databases.fetch(:knowledge), @folder, origin_id, session: @collaborators[:session])
+          def capture = Capture.new(@databases.fetch(:store), @folder, origin_id, session: @collaborators[:session])
 
           def guard = Guard.new(@retrieval)
 
           def archive_operation = Operation.new(@retrieval, guard, capture, completion)
 
           def completion
-            Completion.new(SnapshotIndex.new(@databases.fetch(:knowledge), origin_id), @folder,
+            Completion.new(SnapshotIndex.new(@databases.fetch(:store), origin_id), @folder,
               snapshot: method(:snapshot), remove_printed: method(:remove_printed))
           end
 
-          def restore_operation = Restore.new(@databases.fetch(:knowledge), @retrieval, @folder, snapshot: method(:snapshot))
+          def restore_operation = Restore.new(@databases.fetch(:store), @retrieval, @folder, snapshot: method(:snapshot))
         end
       end
     end

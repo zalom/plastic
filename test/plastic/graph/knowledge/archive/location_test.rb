@@ -8,7 +8,7 @@ class KnowledgeArchiveLocationTest < Plastic::TestCase
     super
     @intent = open_intent("Location", status: "future")
     graphs = store_graphs
-    @database = graphs.databases.fetch(:knowledge)
+    @database = graphs.databases.fetch(:store)
     @writer = Plastic::Graph::Knowledge::Archive::Writer.new(graphs.databases, graphs.retrieval, folder, session: "archive-test")
   end
 

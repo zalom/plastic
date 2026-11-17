@@ -11,7 +11,7 @@ module SearchTestSupport
 
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", path, body)
     graphs.retrieval.repair
     graphs.retrieval.archived?("1")
   end
@@ -64,11 +64,11 @@ module SearchTestAssertionSupport
     assert_match(/unknown source projects: missing/, unknown.err)
   end
 
-  def assert_maintenance_result(result, root, knowledge)
+  def assert_maintenance_result(result, root, store_database)
     assert_equal 1, result.code
     assert_match(/maintenance/, result.out)
     refute_path_exists File.join(root, "work_graph.db")
-    assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
+    assert_equal store_database, File.binread(File.join(root, "knowledge_graph.db"))
   end
 
   def assert_pinned_document(hit, document)
@@ -96,7 +96,7 @@ module SearchTestAssertionSupport
 
   def historical_document
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin)
     writer.write("1", "evidence.md", "first evidence")
     graphs.retrieval.repair
     hit = sole(graphs.retrieval.search("evidence"))
@@ -214,12 +214,12 @@ class SearchScopeTest < Plastic::TestCase
     write_document("other", "other evidence")
     root = File.join(@plastic_home, "stores", "other")
     Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.archived?("1")
-    knowledge = File.binread(File.join(root, "knowledge_graph.db"))
+    store_database = File.binread(File.join(root, "knowledge_graph.db"))
     File.delete(File.join(root, "work_graph.db"))
 
     result = plastic("search", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 
-    assert_maintenance_result(result, root, knowledge)
+    assert_maintenance_result(result, root, store_database)
   end
 end
 

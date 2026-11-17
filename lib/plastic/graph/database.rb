@@ -9,7 +9,7 @@ require_relative "database/connection_pool"
 
 module Plastic
   module Graph
-    # One SQLite file through the sqlite3 gem. The rows are the authority;
+    # One SQLite database through the sqlite3 gem. The rows are the authority;
     # the files are printed from them.
     #
     # A write is one transaction. BEGIN IMMEDIATE takes the write lock first,
@@ -36,8 +36,11 @@ module Plastic
         root
       end
 
-      # The three databases of one store folder. `origin` stamps their rows and their change log.
-      def self.open_store(root, origin)
+      # The one database of a store folder: knowledge with work and retrieval attached. `origin` stamps its rows.
+      def self.open_store(root, origin) = Store.new(root, origin)
+
+      # The three files of a store folder as separate databases, for the migrations that move rows between them.
+      def self.open_files(root, origin)
         [*Schema.store, *Schema.derived].to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
       end
 
@@ -60,6 +63,7 @@ module Plastic
         @schema = schema
         @origin = origin
         @track = track
+        @unsettled = true
         @written = Hash.new(0)
       end
 
@@ -124,7 +128,7 @@ module Plastic
       # `siblings` names the path of each other file of the store, by key, for a step that moves rows between files.
       def migrate(sequences, siblings: {})
         unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key), siblings) }
-        @schema = nil
+        @unsettled = false
       end
 
       # Gives the freed pages of the file back to the disk. It runs outside a transaction.
@@ -173,8 +177,8 @@ module Plastic
       # The connection, checked on the first call: a new file gets its schema, a file behind its sequence is refused.
       def connection
         open_file.tap do |connection|
-          settle(connection) if @schema
-          @schema = nil
+          settle(connection) if @unsettled
+          @unsettled = false
         end
       end
 
@@ -187,4 +191,6 @@ module Plastic
   end
 end
 
+require_relative "database/journal_mode_refused"
 require_relative "database/local"
+require_relative "database/store"

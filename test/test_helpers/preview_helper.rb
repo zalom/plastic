@@ -108,7 +108,7 @@ module Plastic
       end
 
       def mark_done_in(home, intent_id)
-        home_graphs(home).databases.fetch(:knowledge).transaction do |batch|
+        home_graphs(home).databases.fetch(:store).transaction do |batch|
           batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent_id)
         end
       end

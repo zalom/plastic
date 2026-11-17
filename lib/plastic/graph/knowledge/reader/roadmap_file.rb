@@ -29,8 +29,6 @@ module Plastic
             check
           end
 
-          def database = :work
-
           # The read replaces the rows of this slug that this home's origin wrote, so a line cannot be read twice.
           def apply(batch)
             remove_rows(batch)

@@ -15,7 +15,7 @@ module Plastic
         def call(retrieval)
           data = { "store" => retrieval.store, "origin_id" => retrieval.origin_id,
                    "intents" => retrieval.intents.map(&:index_h), "archives" => archives(retrieval), "clusters" => clusters(retrieval.clusters), "links" => links(retrieval.every_link) }
-          Print.text(Knowledge::StoreFolder::INDEX, :knowledge, "#{JSON.pretty_generate(data)}\n")
+          Print.text(Knowledge::StoreFolder::INDEX, "#{JSON.pretty_generate(data)}\n")
         end
 
         def archives(retrieval)

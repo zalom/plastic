@@ -3,9 +3,9 @@
 require_relative "../../../test_helper"
 
 class RetrievalArchiveReaderTest < Plastic::TestCase
-  def archive(**row) = store_graphs.databases[:knowledge].transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP, **row }) }
+  def archive(**row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP, **row }) }
 
-  def reader = Plastic::Graph::Retrieval::ArchiveReader.new(store_graphs.databases[:knowledge], origin)
+  def reader = Plastic::Graph::Retrieval::ArchiveReader.new(store_graphs.databases.fetch(:store), origin)
 
   def test_an_intent_with_an_archive_row_is_archived
     archive

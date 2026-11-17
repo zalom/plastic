@@ -67,7 +67,7 @@ class PrepareEndingTest < PrepareEndingFixture
     accepted_intent
     cli("node", "add", "1", "Extra", "--criterion", KEY)
     cli("node", "remove", "1", "n2")
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at WHERE id = 'n2'", at: "2026-10-06T10:00:00+02:00") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at WHERE id = 'n2'", at: "2026-10-06T10:00:00+02:00") }
 
     assert_equal :ready, prepare.first
   end

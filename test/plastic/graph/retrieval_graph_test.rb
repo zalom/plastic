@@ -6,9 +6,9 @@ require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
 require "timeout"
 
 class RetrievalGraphTest < Plastic::TestCase
-  def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_database.transaction { |batch| batch.put(table, row) }
 
-  def saved_passages = derived.rows("SELECT position, body FROM document_passages ORDER BY position")
+  def saved_passages = store_database.rows("SELECT position, body FROM document_passages ORDER BY position")
 
   def index_text(intent, name, body)
     path = "#{intent.dir}/#{name}"
@@ -30,7 +30,7 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_rows_of_another_origin_stay_out
-    put(:knowledge, :intents, { intent_id: "1", origin_id: "beef", slug: "a", title: "A", status: "open" })
+    put(:intents, { intent_id: "1", origin_id: "beef", slug: "a", title: "A", status: "open" })
 
     assert_empty retrieval.intents
   end
@@ -44,9 +44,9 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_clusters_nodes_and_edges_read_back
-    put(:knowledge, :clusters, { name: "Core", intent_id: "1" })
-    put(:work, :nodes, { intent_id: "1", id: "n1", kind: "build" })
-    put(:work, :edges, { intent_id: "1", from: "n1", to: "n2", kind: "needs" })
+    put(:clusters, { name: "Core", intent_id: "1" })
+    put(:nodes, { intent_id: "1", id: "n1", kind: "build" })
+    put(:edges, { intent_id: "1", from: "n1", to: "n2", kind: "needs" })
 
     assert_equal [["Core"], ["n1"], ["n2"]], [retrieval.clusters.map(&:name), retrieval.nodes.map(&:id), retrieval.edges("1").map(&:to)]
   end
@@ -54,15 +54,15 @@ class RetrievalGraphTest < Plastic::TestCase
   def test_a_kept_file_reads_without_its_bytes_and_its_bytes_read_by_name
     row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("\x00\xFF".b),
             intent_id: "1", sha256: "h" }
-    put(:knowledge, :sqlar, row)
+    put(:sqlar, row)
 
     assert_equal [["store/1--a/x.bin", "h"]], retrieval.kept_files("1").map { |file| [file.name, file.sha256] }
     assert_equal "\x00\xFF".b, retrieval.kept_file_data("store/1--a/x.bin")
   end
 
-  def test_printed_maps_each_path_to_its_hash_across_the_databases
-    put(:work, :printed, { path: "store/index.json", sha256: "a", at: "t" })
-    put(:knowledge, :printed, { path: "store/1--a/spec.md", sha256: "b", at: "t" })
+  def test_printed_maps_each_path_to_its_hash
+    put(:printed, { path: "store/index.json", sha256: "a", at: "t" })
+    put(:printed, { path: "store/1--a/spec.md", sha256: "b", at: "t" })
 
     assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, retrieval.printed)
   end
@@ -96,7 +96,7 @@ class RetrievalGraphTest < Plastic::TestCase
     intent = open_intent("Repair")
     index_text(intent, "repair.txt", "Repairable evidence\n")
     retrieval.repair
-    derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
 
     retrieval.repair
 
@@ -161,9 +161,7 @@ class RetrievalReadTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
   def historical_reference
     writer.write("1", historical_path, "first body")
     reference = retrieval.reference("1", historical_path)
@@ -198,7 +196,7 @@ end
 class RetrievalRepairIntegrityTest < Plastic::TestCase
   def test_repair_rebuilds_wrong_values_and_orphans_without_losing_revisions
     writer.write("1", "repair.md", "repair evidence")
-    revision = knowledge.row("SELECT sha256, body FROM document_revisions")
+    revision = store_database.row("SELECT sha256, body FROM document_revisions")
     reindex
     corrupt_derived_rows
 
@@ -215,21 +213,21 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   end
 
   def test_repair_reports_missing_immutable_evidence_without_changing_canonical_documents
-    knowledge.transaction do |batch|
+    store_database.transaction do |batch|
       batch.add("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', 'missing.md', 'canonical evidence', 'then', :origin)", origin:)
     end
 
     error = assert_raises(Plastic::Graph::Retrieval::Evidence::Integrity::EvidenceLost) { repair }
 
     assert_includes error.message, "1:missing.md has no immutable revision"
-    assert_equal "canonical evidence", knowledge.row("SELECT body FROM documents WHERE path = 'missing.md'").fetch("body")
+    assert_equal "canonical evidence", store_database.row("SELECT body FROM documents WHERE path = 'missing.md'").fetch("body")
   end
 
-  def test_repair_rebuilds_derived_rows_without_writing_canonical_documents_or_change_log
+  def test_repair_rebuilds_derived_rows_without_writing_canonical_documents
     writer.write("1", "repair.md", "repair evidence")
     reindex
     before = canonical_state
-    derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
 
     repair
 
@@ -239,35 +237,34 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def test_repair_scales_past_sqlite_expression_depth
     1001.times { |index| writer.write(index.to_s, "#{index}.md", "evidence #{index}") }
     reindex
-    derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
 
     repair
 
-    assert_equal 1001, derived.row("SELECT count(*) AS n FROM document_fts").fetch("n")
+    assert_equal 1001, store_database.row("SELECT count(*) AS n FROM document_fts").fetch("n")
   end
 
   def test_repair_keeps_distinct_passages_for_identical_bodies_with_different_extraction
     writer.write("1", "first.txt", "<p>shared</p><p>evidence</p>")
     writer.write("2", "second.html", "<p>shared</p><p>evidence</p>")
     reindex
-    derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
 
     repair
 
     assert_equal [["1", "first.txt"], ["2", "second.html"]],
-      derived.rows("SELECT intent_id, path FROM document_passages ORDER BY intent_id").map(&:values)
+      store_database.rows("SELECT intent_id, path FROM document_passages ORDER BY intent_id").map(&:values)
   end
 
   private
 
   def assert_repaired(revision)
-    assert_equal revision, knowledge.row("SELECT sha256, body FROM document_revisions")
+    assert_equal revision, store_database.row("SELECT sha256, body FROM document_revisions")
     assert_equal ["repair evidence"], retrieval.search("repair").map { |row| row.fetch("body") }
-    assert_equal [[1, 1]], derived.rows("SELECT line_start, line_end FROM document_passages").map(&:values)
+    assert_equal [[1, 1]], store_database.rows("SELECT line_start, line_end FROM document_passages").map(&:values)
   end
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
-  def knowledge = store_graphs.databases.fetch(:knowledge)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
   def repair = retrieval.repair
 
   def concurrent_writer
@@ -283,18 +280,15 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def repair_after_concurrent_write
     writer.write("1", "repair.md", "old evidence")
     reindex
-    derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
-    Plastic::Graph::Retrieval::Evidence::Integrity.new(knowledge, derived, origin, before_rebuild: concurrent_writer).repair
+    store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    Plastic::Graph::Retrieval::Evidence::Integrity.new(store_database, origin, before_rebuild: concurrent_writer).repair
   end
 
-  def canonical_state
-    { documents: knowledge.rows("SELECT intent_id, path, body, updated_at FROM documents ORDER BY intent_id, path"),
-      changes: knowledge.rows("SELECT * FROM changes ORDER BY seq") }
-  end
+  def canonical_state = store_database.rows("SELECT intent_id, path, body, updated_at FROM documents ORDER BY intent_id, path")
 
   def corrupt_derived_rows
-    knowledge.transaction { |batch| batch.add("UPDATE document_heads SET sha256 = 'wrong'") }
-    derived.transaction do |batch|
+    store_database.transaction { |batch| batch.add("UPDATE document_heads SET sha256 = 'wrong'") }
+    store_database.transaction do |batch|
       batch.add("UPDATE document_passages SET body = 'wrong', line_start = 9, line_end = 9")
       batch.add("UPDATE document_fts SET body = 'wrong', sha256 = 'wrong'")
       batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES ('orphan', '9', 'orphan.md', 'orphan', 1, :origin)", origin:)
@@ -318,14 +312,14 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
 
   def repair_with_blocked_writer
     isolated_writer.write("1", "repair.md", "repair evidence")
-    Plastic::Graph::Retrieval::Index.new(isolated, isolated_derived, origin).rebuild
-    isolated_derived.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    Plastic::Graph::Retrieval::Index.new(isolated, origin).rebuild
+    isolated.transaction { |batch| batch.add("DELETE FROM document_fts") }
     @pipes = IO.pipe + IO.pipe
     blocked_repairer.repair
     [@writer, acquired]
   end
 
-  def blocked_repairer = Plastic::Graph::Retrieval::Evidence::Integrity.new(isolated, isolated_derived, origin, before_rebuild: method(:block_writer))
+  def blocked_repairer = Plastic::Graph::Retrieval::Evidence::Integrity.new(isolated, origin, before_rebuild: method(:block_writer))
 
   def block_writer
     @writer = fork { concurrent_update }
@@ -359,9 +353,9 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
   end
 
   def begin_and_update(connection)
-    connection.execute("BEGIN IMMEDIATE")
-    acquired_writer.write("acquired")
+    connection.execute("BEGIN DEFERRED")
     update_isolated_document(connection)
+    acquired_writer.write("acquired")
   end
 
   def close_pipes
@@ -372,8 +366,7 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
   def attempted_writer = @pipes.fetch(1)
   def acquired = @pipes.fetch(2)
   def acquired_writer = @pipes.fetch(3)
-  def isolated = (@isolated ||= Plastic::Graph::Database.new(File.join(@home, "isolated", "knowledge_graph.db"), Plastic::Graph::Schema.fetch(:knowledge), origin: Plastic::Graph::Origin.new(@plastic_home)))
-  def isolated_derived = (@isolated_derived ||= Plastic::Graph::Database.new(File.join(@home, "isolated", "retrieval_graph.db"), Plastic::Graph::Schema.fetch(:retrieval), origin: Plastic::Graph::Origin.new(@plastic_home)))
+  def isolated = (@isolated ||= Plastic::Graph::Database.open_store(File.join(@home, "isolated"), Plastic::Graph::Origin.new(@plastic_home)))
   def isolated_writer = Plastic::Graph::Retrieval::Evidence::Writer.new(isolated, origin)
 end
 
@@ -383,7 +376,7 @@ class RetrievalRepairTest < Plastic::TestCase
   def test_repairs_each_corrupted_derived_table_from_current_documents
     DERIVED_TABLES.each do |table|
       index_current_document
-      ((table == "document_heads") ? knowledge : derived).transaction { |batch| batch.add("DELETE FROM #{table}") }
+      store_database.transaction { |batch| batch.add("DELETE FROM #{table}") }
 
       audit = retrieval.repair
 
@@ -395,15 +388,12 @@ class RetrievalRepairTest < Plastic::TestCase
   private
 
   def index_current_document
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "repair.md", "repair evidence")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "repair.md", "repair evidence")
     reindex
   end
-
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
   def assert_repaired
     assert_equal ["repair evidence"], retrieval.search("repair").map { |row| row.fetch("body") }
-    assert_equal [1], DERIVED_TABLES.map { |table| ((table == "document_heads") ? knowledge : derived).row("SELECT count(*) AS n FROM #{table}").fetch("n") }.uniq
+    assert_equal [1], DERIVED_TABLES.map { |table| store_database.row("SELECT count(*) AS n FROM #{table}").fetch("n") }.uniq
   end
 end
 

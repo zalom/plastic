@@ -40,11 +40,11 @@ module Plastic
       end
 
       def set_node_times(at)
-        store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
+        store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
       end
 
       def put_verdict(round, verdict, at, findings: "Checked against the spec")
-        store_graphs.databases.fetch(:knowledge).transaction do |batch|
+        store_graphs.databases.fetch(:store).transaction do |batch|
           batch.add("INSERT INTO verdicts(intent_id, round, origin_id, verdict, findings, at, session_id) VALUES (:intent_id, :round, :origin, :verdict, :findings, :at, :session)",
             intent_id: "1", round:, origin:, verdict:, findings:, at:, session: "delivery")
         end

@@ -34,9 +34,6 @@ module Plastic
         "references" => %w[sqlar printed changes]
       }.freeze
 
-      # The declared schema as it is today, for a new, empty file: it is built whole and stamped with the newest number.
-      CURRENT_LAYOUT = ->(connection, key) { connection.execute_batch(Schema.fetch(key)) }
-
       SEQUENCES = {
         home: [Migration.new(1, SchemaHome1.method(:apply), SchemaHome1::TABLES),
           Migration.new(2, SchemaHome2.method(:apply), SchemaHome2::TABLES),
@@ -58,11 +55,19 @@ module Plastic
 
       def pending(sequence, version) = SEQUENCES.fetch(sequence).select { |migration| migration.number > version }
 
-      # The tables the database file `name` holds at `version` of the migrations.
+      # The tables the database file `name` holds at `version` of the migrations. The newest version holds what the schema declares.
       def tables(migrations, version, name)
         return BASELINE_TABLES.fetch(name) if version.zero?
 
-        migrations.find { |migration| migration.number == version }.tables.fetch(name)
+        migration = migrations.find { |each| each.number == version }
+        return migration.tables.fetch(name) unless SEQUENCES.values.any? { |sequence| sequence.last.equal?(migration) }
+
+        declared_in(name) || migration.tables.fetch(name)
+      end
+
+      def declared_in(name)
+        _file, names = Schema.databases.values.find { |file, _names| File.basename(file, ".db") == name }
+        names&.map(&:to_s)
       end
 
       # Runs the migrations above the stamped version in order. Each one commits

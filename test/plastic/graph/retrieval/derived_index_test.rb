@@ -8,7 +8,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
 
   def graphs(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 
-  def passages = graphs.databases.fetch(:retrieval).row("SELECT count(*) AS n FROM document_passages").fetch("n")
+  def passages = graphs.databases.fetch(:store).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 
   def end_intent
     graphs.work.note_intent(graphs.retrieval.intent("1"), "note", "why it ends")
@@ -17,7 +17,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
 
   def hit_intents(terms) = graphs.retrieval.search_current(terms).map { |row| row.fetch("intent_id") }.uniq
 
-  def stale_the_entries = graphs.databases.fetch(:retrieval).transaction { |batch| batch.add("UPDATE document_fts SET sha256 = 'stale'") }
+  def stale_the_entries = graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE document_fts SET sha256 = 'stale'") }
 
   def doctor = graphs.retrieval.repair
 
@@ -25,7 +25,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
     graphs.work.write_intent(title: "Alpha needle")
     doctor
     before = passages
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "notes.md", "a second needle document")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "notes.md", "a second needle document")
 
     assert_equal before, passages
   end
@@ -54,7 +54,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
   def test_a_hit_whose_hash_is_not_the_current_head_is_dropped
     graphs.work.write_intent(title: "Alpha needle")
     end_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "notes.md", "another body")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "notes.md", "another body")
 
     stale_the_entries
 
@@ -62,7 +62,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
   end
 
   def test_contexts_and_discoveries_stay_in_knowledge
-    names = graphs.databases.fetch(:knowledge).rows("SELECT name FROM sqlite_master WHERE type = 'table'").map { |row| row["name"] }
+    names = graphs.databases.fetch(:store).rows("SELECT name FROM sqlite_master WHERE type = 'table'").map { |row| row["name"] }
 
     assert_equal %w[retrieval_contexts retrieval_discoveries], names & %w[retrieval_contexts retrieval_discoveries]
     assert_empty names & %w[document_passages document_fts retrieval_schema retrieval_backfills]

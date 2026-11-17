@@ -41,6 +41,11 @@ module Plastic
         def drop = "DROP TRIGGER IF EXISTS #{SQL.name(name)};"
       end
 
+      # One virtual table: its name and the module it is built with.
+      VirtualTable = Data.define(:name, :using) do
+        def ddl(schema = nil) = "CREATE VIRTUAL TABLE IF NOT EXISTS #{SQL.qualified(schema, name)} USING #{using};"
+      end
+
       # What the block of SchemaFile.define declares: tables, virtual tables, triggers, marks and databases.
       class Declared
         attr_reader :tables, :virtual, :triggers, :databases
@@ -63,7 +68,7 @@ module Plastic
         end
 
         def create_virtual_table(name, using:)
-          virtual[name] = "CREATE VIRTUAL TABLE IF NOT EXISTS #{SQL.name(name)} USING #{using};"
+          virtual[name] = VirtualTable.new(name:, using:)
         end
 
         # A trigger on a table, kept apart from the tables: `sql` runs from its timing to END.

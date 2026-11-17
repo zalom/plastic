@@ -16,13 +16,11 @@ class RetrievalEvidenceRemovalTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
-  def current_rows = knowledge.rows("SELECT * FROM document_heads WHERE path = 'plan.md'") + derived.rows("SELECT * FROM document_fts WHERE path = 'plan.md'")
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin)
+  def current_rows = store_database.rows("SELECT * FROM document_heads WHERE path = 'plan.md'") + store_database.rows("SELECT * FROM document_fts WHERE path = 'plan.md'")
 
   def immutable_rows
-    knowledge.rows("SELECT body FROM document_revisions WHERE path = 'plan.md'")
+    store_database.rows("SELECT body FROM document_revisions WHERE path = 'plan.md'")
       .map { |row| row.fetch("body") }.sort
   end
 end

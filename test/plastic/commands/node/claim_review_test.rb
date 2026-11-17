@@ -68,7 +68,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_a_claimed_node_with_no_time_and_no_holder_is_taken
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.add("UPDATE nodes SET state = 'claimed', claimed_by = NULL, claimed_at = NULL, seen_at = NULL WHERE id = 'n1'")
     end
 

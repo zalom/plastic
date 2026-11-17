@@ -57,7 +57,7 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
   SPEC = "store/1--alpha/spec.md"
 
   def conflicting_spec
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP })
     end
     write(SPEC, "file change")

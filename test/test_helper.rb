@@ -64,7 +64,6 @@ module Plastic
     end
 
     def teardown
-      forget_lost_retrieval_file
       @template.reset
     end
   end

@@ -15,7 +15,7 @@ class SyncOldSavepointsTest < Plastic::TestCase
 
   def old_print(intent, text)
     write(old_path(intent), text)
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:printed, { path: old_path(intent), sha256: Digest::SHA256.hexdigest(text), at: Plastic.now }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:printed, { path: old_path(intent), sha256: Digest::SHA256.hexdigest(text), at: Plastic.now }) }
   end
 
   def test_an_intent_prints_work_log_and_no_savepoint_file

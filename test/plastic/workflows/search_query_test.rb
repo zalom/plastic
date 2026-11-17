@@ -8,7 +8,7 @@ class SearchQueryTest < Plastic::TestCase
   def setup
     super
     open_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", "falcon wings")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", "evidence.md", "falcon wings")
     retrieval.repair
   end
 

@@ -34,7 +34,7 @@ class KnowledgeReaderContextFileTest < Plastic::TestCase
   def written_context_text
     open_intent
     Plastic::Workflows::ContextPersistence.new(call_context(intent_id: "1")).persist({ "evidence" => [], "facts" => ["a fact"] })
-    store_graphs.databases[:knowledge].row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'").fetch("data")
+    store_graphs.databases.fetch(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'").fetch("data")
   end
 
   def test_the_context_row_read_from_the_printed_file_holds_the_text_the_writer_stores

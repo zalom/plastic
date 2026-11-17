@@ -33,7 +33,7 @@ class WorkReaderTest < Plastic::TestCase
   def test_nodes_sort_by_prefix_then_number_then_text_whatever_the_shape_of_the_id
     plan(*(1..6).map { |number| "Step #{number}" })
     ids = %w[n10 12 node-3 a2 n2 n1]
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       ids.each_with_index { |id, index| batch.add("UPDATE nodes SET id = :id WHERE id = :old", id:, old: "n#{index + 1}") }
     end
 

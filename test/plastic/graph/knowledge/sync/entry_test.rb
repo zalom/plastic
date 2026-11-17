@@ -9,7 +9,7 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
 
   # The action up and down for a file hash, a recorded hash and a rows hash.
   def actions(file, printed, rows)
-    entry = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT)
+    entry = Entry.new("p", file, printed, rows ? Print.new("p", rows, nil) : Entry::NO_PRINT)
     %i[up down].map { |direction| entry.action(direction) }
   end
 
@@ -43,7 +43,7 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
 
   GRAPH = "store/1--alpha/graph.json"
 
-  def graph_entry(file, printed, rows) = Entry.new(GRAPH, file, printed, Print.new(GRAPH, :work, rows, nil))
+  def graph_entry(file, printed, rows) = Entry.new(GRAPH, file, printed, Print.new(GRAPH, rows, nil))
 
   def graph_actions(*hashes) = %i[up down].map { |direction| graph_entry(*hashes).action(direction) }
 
@@ -76,7 +76,7 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
 
   def built(path, bytes, printed: "p", print_text: PRETTY)
     write(path, bytes)
-    Entry.for(folder, path, printed, Print.text(path, :work, print_text))
+    Entry.for(folder, path, printed, Print.text(path, print_text))
   end
 
   def test_a_generated_file_with_the_content_of_its_print_in_other_bytes_is_level
@@ -102,12 +102,12 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
   end
 
   def test_a_generated_file_missing_from_the_folder_is_not_level
-    entry = Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, PRETTY))
+    entry = Entry.for(folder, INDEX, "p", Print.text(INDEX, PRETTY))
 
     assert_equal [nil, false], [entry.file_sha, entry.level?]
   end
 
-  def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT).hand_edited?
+  def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", rows, nil) : Entry::NO_PRINT).hand_edited?
 
   def test_a_changed_file_that_the_print_does_not_match_is_hand_edited
     assert hand_edited("b", "a", "a")
@@ -147,7 +147,7 @@ class KnowledgeSyncEntryOriginTest < Plastic::TestCase
 
   def entry_of(bytes, printed_sha = "p")
     write(INDEX, bytes)
-    Entry.for(folder, INDEX, printed_sha, Print.text(INDEX, :work, OURS))
+    Entry.for(folder, INDEX, printed_sha, Print.text(INDEX, OURS))
   end
 
   def test_an_index_that_another_home_printed_is_a_hand_edit_on_a_home_that_holds_a_print_of_it

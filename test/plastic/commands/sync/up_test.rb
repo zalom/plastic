@@ -89,7 +89,7 @@ class SyncUpFoldersTest < Plastic::TestCase
   def index_ids = JSON.parse(folder.read("store/index.json"))["intents"].map { |entry| entry["intent_id"] }
 
   def document_bodies(intent_id)
-    store_graphs.databases[:knowledge].rows("SELECT body FROM documents WHERE intent_id = '#{intent_id}' AND path = 'spec.md'")
+    store_graphs.databases.fetch(:store).rows("SELECT body FROM documents WHERE intent_id = '#{intent_id}' AND path = 'spec.md'")
       .map { |row| row["body"] || row[:body] }
   end
 
@@ -172,8 +172,8 @@ class SyncUpFoldersTest < Plastic::TestCase
     write("store/2--beta/context.json", JSON.generate("intent" => "2", "context" => { "forged" => true }))
     sync
 
-    assert_equal [0, 1], [store_graphs.databases[:knowledge].rows("SELECT * FROM documents WHERE path = 'context.json'").size,
-      store_graphs.databases[:knowledge].rows("SELECT * FROM retrieval_contexts").size]
+    assert_equal [0, 1], [store_graphs.databases.fetch(:store).rows("SELECT * FROM documents WHERE path = 'context.json'").size,
+      store_graphs.databases.fetch(:store).rows("SELECT * FROM retrieval_contexts").size]
   end
 end
 
@@ -261,7 +261,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     spec = File.join(home, "stores", "global", "store/1--beta/spec.md")
     File.write(spec, "# Spec\n\n## Done criteria\n- [ ] [done] it is done\n")
     call_in(home, "sync", "up")
-    home_graphs(home).databases[:knowledge].transaction { |batch| batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP }) }
+    home_graphs(home).databases.fetch(:store).transaction { |batch| batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP }) }
     File.write(spec, "file change\n")
   end
 
@@ -297,9 +297,9 @@ class SyncUpSelectionTest < Plastic::TestCase
       .each { |rel, bytes| write("store/2--beta/#{rel}", bytes) }
   end
 
-  def kept = store_graphs.databases[:knowledge].rows("SELECT name FROM sqlar ORDER BY name").map { |row| row["name"] }
+  def kept = store_graphs.databases.fetch(:store).rows("SELECT name FROM sqlar ORDER BY name").map { |row| row["name"] }
 
-  def documents = store_graphs.databases[:knowledge].rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
+  def documents = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
 
   def test_a_sync_with_no_setting_reads_the_notes_and_leaves_the_other_files_on_disk
     result = sync
@@ -318,7 +318,7 @@ class SyncUpSelectionTest < Plastic::TestCase
 
   def media(value) = seed_config(@plastic_home, "global:\n  sync:\n    media: #{value}\n")
 
-  def kept_sizes = store_graphs.databases[:knowledge].rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
+  def kept_sizes = store_graphs.databases.fetch(:store).rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
 
   def test_a_kept_image_is_not_read_again_once_the_media_setting_is_off
     media(true)
@@ -561,11 +561,11 @@ class SyncUpGraphRepeatTest < Minitest::Test
     with_two_homes do |first, second|
       second.command!("sync", "up")
       bytes = second.read(GRAPH)
-      printed = second.rows("work_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")
+      printed = second.rows("knowledge_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")
       second.command!("sync", "up")
 
       assert_equal bytes, first.read(GRAPH)
-      assert_equal [bytes, printed], [second.read(GRAPH), second.rows("work_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")]
+      assert_equal [bytes, printed], [second.read(GRAPH), second.rows("knowledge_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")]
     end
   end
 end

@@ -7,11 +7,11 @@ module Plastic
     module Prints
       # One file and how to make it. `source` gives the bytes only when the
       # file must be written, so a kept file is compared by its hash alone.
-      Print = Data.define(:path, :database, :sha256, :source)
+      Print = Data.define(:path, :sha256, :source)
 
       # How a print compares with its file and its record.
       class Print
-        def self.text(path, database, text) = new(path, database, Digest::SHA256.hexdigest(text), -> { text })
+        def self.text(path, text) = new(path, Digest::SHA256.hexdigest(text), -> { text })
 
         def text = source.call
 

@@ -52,7 +52,7 @@ module Plastic
           private
 
           def moved(sql, **edge)
-            rows = @databases.fetch(:work).transaction do |batch|
+            rows = @databases.fetch(:store).transaction do |batch|
               batch.write(:edges, sql, **edge, kind: "needs", origin: @retrieval.origin_id)
             end
             rows.any?

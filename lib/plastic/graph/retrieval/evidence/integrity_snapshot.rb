@@ -12,14 +12,13 @@ module Plastic
           HEADS = ["document_heads", "intent_id, path, sha256"].freeze
           DERIVED = { passages: ["document_passages", "sha256, intent_id, path, position, body, line_start, line_end"], fts: ["document_fts", "intent_id, path, body, sha256, position"] }.freeze
 
-          def initialize(knowledge, retrieval, origin_id, digester: Digest::SHA256)
-            @knowledge = knowledge
-            @retrieval = retrieval
+          def initialize(store, origin_id, digester: Digest::SHA256)
+            @store = store
             @origin_id = origin_id
             @digester = digester
           end
 
-          def capture = capture_with(Evidence::IntegrityDatabaseSource.new(@knowledge), derived)
+          def capture = capture_with(Evidence::IntegrityDatabaseSource.new(@store), derived)
 
           # The canonical rows through the transaction connection; the derived rows are not read, as no rebuild needs them.
           def capture_transaction(connection) = capture_with(Evidence::IntegrityTransactionSource.new(connection), {})
@@ -27,9 +26,9 @@ module Plastic
           private
 
           def derived
-            return DERIVED.transform_values { [] } unless File.file?(@retrieval.path)
+            return DERIVED.transform_values { [] } unless @store.retrieval_present?
 
-            DERIVED.to_h { |name, (table, columns)| [name, select(Evidence::IntegrityDatabaseSource.new(@retrieval), table, columns)] }
+            DERIVED.to_h { |name, (table, columns)| [name, select(Evidence::IntegrityDatabaseSource.new(@store), table, columns)] }
           end
 
           def capture_with(reader, derived)

@@ -7,7 +7,7 @@ module Plastic
     module Knowledge
       class Sync
         # Which changed files a sync up can read into rows. A file is tried with the reader
-        # that sync up uses, against the database that owns its rows, in a dry run that
+        # that sync up uses, against the store, in a dry run that
         # takes every statement back.
         class Readability
           def initialize(folder, retrieval, databases)
@@ -23,8 +23,7 @@ module Plastic
 
           def problem(path)
             read = reader.read(path)
-            @databases.fetch(read.database).dry_run { |batch| read.apply.call(batch) }
-            read.beside.each { |other, apply| @databases.fetch(other).dry_run { |batch| apply.call(batch) } }
+            @databases.fetch(:store).dry_run { |batch| read.apply.call(batch) }
             nil
           rescue => error
             error.message

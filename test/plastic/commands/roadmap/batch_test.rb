@@ -74,7 +74,7 @@ class RoadmapBatchTest < Plastic::TestCase
 
   def test_a_batch_write_keeps_the_roadmap_title
     call("r1", "1", "--title", "First")
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, { slug: "r1", title: "Make it useful", goal: "G" }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:roadmaps, { slug: "r1", title: "Make it useful", goal: "G" }) }
     call("r1", "2", "--title", "Second")
 
     assert_equal "Make it useful", store_graphs.retrieval.roadmap("r1").title

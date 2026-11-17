@@ -10,7 +10,7 @@ module Plastic
       class Reference
         def initialize(databases, store:, origin:)
           @address = Address.new(store)
-          @documents = DocumentReader.new(databases.fetch(:knowledge), origin.id, retrieval: databases.fetch(:retrieval))
+          @documents = DocumentReader.new(databases.fetch(:store), origin.id)
         end
 
         def reference(intent_id, path)

@@ -68,7 +68,7 @@ module Plastic
             key = { intent_id: node.intent_id, id: node.id, origin: @retrieval.origin_id }
             values = { by:, agent:, now: Plastic.now(now), cutoff: Plastic.now(now - Node::LAPSE) }
             values = values.merge(holder: node.claimed_by) if lapsed
-            rows = @databases.fetch(:work).transaction do |batch|
+            rows = @databases.fetch(:store).transaction do |batch|
               batch.add(LAPSE_RUN_SQL, **key, **values) if lapsed
               batch.write(:nodes, format(TAKE_SQL, guard: lapsed ? TAKE_GUARD : OPEN_GUARD), **key, **values)
               batch.add(OPEN_RUN_SQL, **key, **values)

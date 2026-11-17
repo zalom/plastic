@@ -101,14 +101,14 @@ class CheckHealthTest < Plastic::TestCase
 
   private
 
-  def knowledge(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:knowledge)
+  def knowledge(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:store)
 
-  def derived(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:retrieval)
+  def derived(store) = Plastic::Graph.open(home: @plastic_home, store:).databases.fetch(:store)
 
   def write_evidence(store)
     origin_id = Plastic::Graph::Origin.new(@plastic_home).id
     Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge(store), origin_id).write("1", "plan.md", "Doctor evidence\n")
-    Plastic::Graph::Retrieval::Index.new(knowledge(store), derived(store), origin_id).rebuild
+    Plastic::Graph::Retrieval::Index.new(knowledge(store), origin_id).rebuild
   end
 
   def search_rows(store) = derived(store).row("SELECT count(*) AS n FROM document_fts").fetch("n")
