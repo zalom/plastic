@@ -31,10 +31,10 @@ module Plastic
 
               claimed = node["state"] == "claimed"
               node.merge!("claimed_by" => worker, "claimed_at" => node["updated_at"]) if claimed
-              run(node, worker, claimed)
+              run_row(node, worker, claimed)
             end
 
-            def run(node, worker, claimed)
+            def run_row(node, worker, claimed)
               { "node_id" => node["id"], "number" => 1, "agent" => "", "session_id" => worker, "started_at" => node["updated_at"],
                 "ended_at" => (node["updated_at"] unless claimed), "result" => (result(node) unless claimed) }
             end

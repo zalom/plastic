@@ -25,7 +25,6 @@ module WorkflowNameTable
     code_record_verdict: "Code::Intent::Verdict",
     code_start_auto: "Code::Auto",
     code_pick_delivery: "Code::Auto::Pick",
-    code_show_lock: "Code::Intent::Lock::Status",
     code_preview_sync: "Code::Sync::Up::Preview",
     code_preview_sync_down: "Code::Sync::Down::Preview",
     code_check_graph: "Code::Graph::Check",
@@ -132,8 +131,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic.snake(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_five_keys_in_order
-    assert_equal 95, MAPPING.size
+  def test_the_registry_holds_the_ninety_four_keys_in_order
+    assert_equal 94, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 
