@@ -109,6 +109,7 @@ Dir[File.join(__dir__, "../../lib/plastic/commands/**/*.rb")].each { |file| requ
 class PrintsDeclarationTest < Minitest::Test
   NO_FILE = {
     "Session::Note" => "its rows are the session ledger, which no file holds",
+    "Node::Renew" => "a renewal changes the time of a claim, which no printed file holds",
     "Backup" => "a backup copies the databases, which no printed file holds",
     "Backup::Purge" => "it removes backup records, which no printed file holds",
     "Backup::Restore" => "it restores databases and hands the files to sync down",
