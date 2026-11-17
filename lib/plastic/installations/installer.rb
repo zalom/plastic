@@ -8,7 +8,6 @@ require_relative "home_ignore"
 require_relative "../installations"
 require_relative "../graph"
 require_relative "../store_layout"
-require_relative "../workflows/schema_migration"
 require_relative "advisor_migration"
 require_relative "agent_run"
 require_relative "agent_set"
@@ -95,9 +94,7 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now).call.failed.each do |slug, reason|
-          puts "   #{Workflows::SchemaMigration.line(slug, reason)}"
-        end
+        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now).call.behind_lines.each { |line| puts "   #{line}" }
       end
 
       def report_config_upgrade

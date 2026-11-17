@@ -14,6 +14,8 @@ module Plastic
           grouped = results.group_by { |_slug, outcome| outcome.is_a?(String) ? :failed : outcome }
           new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h)
         end
+
+        def behind_lines = failed.map { |store, reason| "migrate: #{store} stays behind because #{reason}; fix the cause and run plastic update" }
       end
 
       # `only` names one store to migrate; the home database is checked either way.

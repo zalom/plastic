@@ -2,9 +2,9 @@
 
 require_relative "../database"
 require_relative "../backup/writer"
-require_relative "gate"
-require_relative "migrator"
-require_relative "migrations"
+require_relative "../schema/gate"
+require_relative "../schema/migrator"
+require_relative "../schema/migrations"
 require_relative "migration_reason"
 require_relative "store_age"
 

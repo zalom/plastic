@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "../database"
-require_relative "gate"
+require_relative "../schema/gate"
 require_relative "home_copy"
 require_relative "home_rename"
-require_relative "migrator"
+require_relative "../schema/migrator"
 require_relative "migration_reason"
 
 module Plastic

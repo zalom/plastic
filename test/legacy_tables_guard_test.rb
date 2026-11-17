@@ -12,6 +12,7 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/db/schema.rb
     plastic/graph/schema/metadata.rb
     plastic/graph/knowledge/reader/intent_file.rb
+    plastic/graph/knowledge/reader/text_file.rb
     plastic/graph/knowledge/archive/snapshot_index.rb
     plastic/graph/knowledge/legacy/store_import.rb
     plastic/graph/knowledge/legacy/import_metadata.rb

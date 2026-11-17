@@ -16,6 +16,17 @@ class SchemaRunnerTest < Plastic::TestCase
 
   def store_files(home, slug = "alpha") = Dir.glob(File.join(home, "stores", slug, "*.db")).sort
 
+  def test_a_report_names_each_store_that_stays_behind_in_one_line
+    report = Runner::Report.new(migrated: ["beta"], failed: { "alpha" => "its backup failed", "gamma" => "it is locked" })
+
+    assert_equal ["migrate: alpha stays behind because its backup failed; fix the cause and run plastic update",
+      "migrate: gamma stays behind because it is locked; fix the cause and run plastic update"], report.behind_lines
+  end
+
+  def test_a_report_with_no_store_behind_has_no_lines
+    assert_empty Runner::Report.new(migrated: ["alpha"], failed: {}).behind_lines
+  end
+
   def test_an_old_layout_home_migrated_through_every_migration_has_the_layout_of_a_new_database
     home = old_home
     run_runner(home)
