@@ -48,4 +48,16 @@ module ResourcesHomes
   def row_digest = %w[documents document_heads document_revisions printed].to_h { |table| [table, store_database.rows("SELECT * FROM #{table} ORDER BY 1, 2").map(&:values)] }
 
   def relative_targets(text) = text.scan(/\]\(([^)\s]+)\)/).flatten.reject { |target| target.match?(%r{\A(?:[a-z]+:|/)}) }
+
+  def files_without_databases = snapshot(store_root).reject { |rel, _| rel.match?(/\.db(-wal|-shm|-journal)?\z/) }
+
+  def failing_on_the_third
+    calls = 0
+    lambda do |from, to|
+      calls += 1
+      raise Errno::EACCES, to if calls == 3
+
+      File.rename(from, to)
+    end
+  end
 end

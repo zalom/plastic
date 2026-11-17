@@ -13,7 +13,9 @@ module Plastic
         # The sort of one intent folder: the files that move, and the text of the files whose links change.
         # Paths are relative to the store folder.
         class IntentSort
-          Rewrite = Data.define(:path, :text, :was)
+          Rewrite = Data.define(:path, :text, :was) do
+            def undo(folder) = (folder.write(path, was) if folder.exist?(path))
+          end
           Linked = Data.define(:rel, :was, :found) do
             def rewrite(dir, moved) = Rewrite.new(moved.fetch("#{dir}/#{rel}", "#{dir}/#{rel}"), found.text, was)
 

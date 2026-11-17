@@ -18,6 +18,10 @@ module Plastic
 
           def inside_to = Move.inside(to)
 
+          def row = [intent_id, inside_from, inside_to, from, to]
+
+          def onto_same_bytes?(folder) = folder.exist?(to) && folder.digest(to) == folder.digest(from)
+
           def onto_other_bytes?(folder) = folder.exist?(to) && folder.digest(to) != folder.digest(from)
 
           def refusal = "#{to} already holds other bytes than #{from}; move one of them away, then run plastic resources sort again"
