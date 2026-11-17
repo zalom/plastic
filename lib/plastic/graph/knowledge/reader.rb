@@ -8,6 +8,7 @@ require_relative "reader/intent_file"
 require_relative "reader/roadmap_file"
 require_relative "../prints"
 require_relative "store_folder"
+require_relative "store_path"
 
 module Plastic
   module Graph
@@ -52,7 +53,7 @@ module Plastic
         def file_of(path)
           return index_file(path) if path == StoreFolder::INDEX
           return part_file(path) if Prints::Parts.path?(path)
-          return roadmap_file(path) if StoreFolder.roadmap?(path)
+          return roadmap_file(path) if StorePath.roadmap?(path)
 
           intent_file(path)
         end

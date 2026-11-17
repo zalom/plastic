@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../store_folder"
+require_relative "../store_path"
 require_relative "originals"
 require_relative "roadmap_rows"
 
@@ -29,7 +30,7 @@ module Plastic
           end
 
           def write(slug, path, result)
-            RoadmapRows.new(@graphs, slug, result).call(StoreFolder.roadmap_log(path))
+            RoadmapRows.new(@graphs, slug, result).call(StorePath.roadmap_log(path))
             @graphs.work.print_roadmap(slug)
           end
 

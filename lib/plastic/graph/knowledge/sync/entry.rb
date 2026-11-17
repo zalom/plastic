@@ -3,6 +3,7 @@
 require "json"
 require_relative "../../prints"
 require_relative "../store_folder"
+require_relative "../store_path"
 
 module Plastic
   module Graph
@@ -56,7 +57,7 @@ module Plastic
           NO_PRINT = Prints::Print.new(nil, nil, nil)
 
           # A file printed from rows: the index, a context view or a roadmap.
-          def self.generated?(path) = path == StoreFolder::INDEX || StoreFolder.context_view?(path) || StoreFolder.roadmap?(path)
+          def self.generated?(path) = path == StoreFolder::INDEX || StorePath.context_view?(path) || StorePath.roadmap?(path)
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
@@ -124,7 +125,7 @@ module Plastic
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 
-          def bare_graph? = !printed_sha && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
+          def bare_graph? = !printed_sha && StorePath.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
 
           def conflict? = !level? && file_changed? && rows_changed?
 
@@ -140,7 +141,7 @@ module Plastic
 
           private
 
-          def readable_path?(rowed) = StoreFolder.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
+          def readable_path?(rowed) = StorePath.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
         end
       end
     end
