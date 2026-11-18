@@ -33,9 +33,11 @@ module Plastic
 
         def status_action(intent)
           return [nil, "intent #{@intent_id} is closed", nil] if intent.closed?
-          return [nil, "intent #{@intent_id} is parked: #{intent.reason}; plastic intent start #{@intent_id} resumes the work once the reason is resolved", nil] if intent.status == "parked"
 
-          ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{intent.status}", nil]
+          status = intent.status
+          return [nil, "intent #{@intent_id} is parked: #{intent.reason}; plastic intent start #{@intent_id} resumes the work once the reason is resolved", nil] if status == "parked"
+
+          ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{status}", nil]
         end
 
         def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
