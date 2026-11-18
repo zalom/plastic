@@ -54,7 +54,8 @@ class IntentAutoTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "in_progress", "next: plastic intent brief 1"], [result.code, status_of("1"), next_line(result)]
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent brief 1"
+    assert_equal "in_progress", status_of("1")
   end
 
   def test_a_parked_intent_resumes_in_progress
@@ -62,7 +63,8 @@ class IntentAutoTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "in_progress"], [result.code, status_of("1")]
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent brief 1"
+    assert_equal "in_progress", status_of("1")
   end
 
   def test_a_done_intent_exits_1_and_offers_plastic_next

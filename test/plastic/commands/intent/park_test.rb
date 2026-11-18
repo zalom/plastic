@@ -48,7 +48,8 @@ class IntentParkTest < Plastic::TestCase
 
     result = park("1", "waits on review")
 
-    assert_equal [1, "future"], [result.code, status_of("1")]
+    assert_call result, code: 1, out: "", err: "plastic: intent 1 is future; only an intent in progress parks\n"
+    assert_equal "future", status_of("1")
   end
 
   def test_a_parked_intent_exits_1_and_keeps_its_first_reason
@@ -56,21 +57,24 @@ class IntentParkTest < Plastic::TestCase
 
     result = park("1", "second")
 
-    assert_equal [1, "parked", "first"], [result.code, status_of("1"), retrieval.intent("1").reason]
+    assert_call result, code: 1, out: "", err: "plastic: intent 1 is parked; only an intent in progress parks\n"
+    assert_equal %w[parked first], [status_of("1"), retrieval.intent("1").reason]
   end
 
   def test_a_done_intent_exits_1_and_stays_done
     open_intent
     set_status("1", "done")
 
-    assert_equal [1, "done"], [park("1", "late").code, status_of("1")]
+    assert_call park("1", "late"), code: 1, out: "", err: "plastic: intent 1 is done; only an intent in progress parks\n"
+    assert_equal "done", status_of("1")
   end
 
   def test_an_abandoned_intent_exits_1_and_stays_abandoned
     open_intent
     set_status("1", "abandoned")
 
-    assert_equal [1, "abandoned"], [park("1", "late").code, status_of("1")]
+    assert_call park("1", "late"), code: 1, out: "", err: "plastic: intent 1 is abandoned; only an intent in progress parks\n"
+    assert_equal "abandoned", status_of("1")
   end
 
   def test_no_reason_exits_2_and_parks_nothing
@@ -78,15 +82,14 @@ class IntentParkTest < Plastic::TestCase
 
     result = park("1")
 
-    assert_equal [2, "in_progress"], [result.code, status_of("1")]
-    assert_includes result.err, "missing"
+    assert_call result, code: 2, out: "", err: ["missing REASON"]
+    assert_equal "in_progress", status_of("1")
   end
 
   def test_a_missing_intent_exits_1
     result = park("9", "gone")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "no intent 9 in this store"
+    assert_call result, code: 1, out: "", err: "plastic: no intent 9 in this store\n"
   end
 
   def test_a_parked_intent_resumes_with_intent_start
@@ -95,6 +98,7 @@ class IntentParkTest < Plastic::TestCase
 
     result = start("1")
 
-    assert_equal [0, "in_progress"], [result.code, status_of("1")]
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent brief 1"
+    assert_equal "in_progress", status_of("1")
   end
 end
