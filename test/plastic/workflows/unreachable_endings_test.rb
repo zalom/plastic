@@ -3,17 +3,17 @@
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/registry"
 require_relative "../../../lib/plastic/workflows/agent/intent/end"
-require_relative "../../../lib/plastic/workflows/agent/intent/end/check_merge"
+require_relative "../../../lib/plastic/workflows/agent/intent/end/check_delivery"
 require_relative "../../../lib/plastic/workflows/agent/shared/wind_down_intent"
 require_relative "../../../lib/plastic/workflows/code/intent/end"
 require_relative "../../../lib/plastic/workflows/code/intent/end/prepare"
 
 # Each agent workflow of intent end is entered by an edge of the chain whose condition leaves a step of the workflow to do, so its done ending cannot be reached.
 class UnreachableEndingsTest < Minitest::Test
-  Facts = Struct.new(:requirements, :judged, :merge_recorded, :map_recorded)
+  Facts = Struct.new(:requirements, :judged, :delivery_recorded, :map_recorded)
 
   FINISH = Plastic::Workflows::Agent::Intent::End
-  CHECK_MERGE = Plastic::Workflows::Agent::Intent::End::CheckMerge
+  CHECK_DELIVERY = Plastic::Workflows::Agent::Intent::End::CheckDelivery
   WIND_DOWN = Plastic::Workflows::Agent::Shared::WindDownIntent
   PREPARE = Plastic::Workflows::Code::Intent::End::Prepare
   CLOSE = Plastic::Workflows::Code::Intent::End
@@ -26,7 +26,7 @@ class UnreachableEndingsTest < Minitest::Test
 
   def finishing_facts = [{ requirements: ["a record"], judged: true }, { requirements: [], judged: false }, { requirements: ["a record"], judged: false }].map { |each| Facts.new(**each) }
 
-  def merge_facts = [[true, false], [false, true], [false, false]].map { |merge, map| Facts.new(requirements: [], judged: true, merge_recorded: merge, map_recorded: map) }
+  def delivery_facts = [[true, false], [false, true], [false, false]].map { |delivery, map| Facts.new(requirements: [], judged: true, delivery_recorded: delivery, map_recorded: map) }
 
   def test_the_done_ending_of_finishing_the_records_is_marked_unreachable
     assert outcome(FINISH, :done).unreachable
@@ -46,22 +46,22 @@ class UnreachableEndingsTest < Minitest::Test
     assert_empty left(FINISH, facts)
   end
 
-  def test_the_done_ending_of_checking_the_merge_is_marked_unreachable
-    assert outcome(CHECK_MERGE, :done).unreachable
+  def test_the_done_ending_of_checking_the_delivery_is_marked_unreachable
+    assert outcome(CHECK_DELIVERY, :done).unreachable
   end
 
-  def test_the_edge_into_checking_the_merge_holds_only_while_a_step_of_it_is_left
-    merge_facts.each do |facts|
+  def test_the_edge_into_checking_the_delivery_holds_only_while_a_step_of_it_is_left
+    delivery_facts.each do |facts|
       assert entered(:unverified, facts)
-      refute_empty left(CHECK_MERGE, facts)
+      refute_empty left(CHECK_DELIVERY, facts)
     end
   end
 
-  def test_the_edge_into_checking_the_merge_does_not_hold_once_no_step_of_it_is_left
-    facts = Facts.new(requirements: [], judged: true, merge_recorded: true, map_recorded: true)
+  def test_the_edge_into_checking_the_delivery_does_not_hold_once_no_step_of_it_is_left
+    facts = Facts.new(requirements: [], judged: true, delivery_recorded: true, map_recorded: true)
 
     refute entered(:unverified, facts)
-    assert_empty left(CHECK_MERGE, facts)
+    assert_empty left(CHECK_DELIVERY, facts)
   end
 
   def test_the_done_ending_of_winding_down_is_marked_unreachable

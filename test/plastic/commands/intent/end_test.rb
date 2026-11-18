@@ -284,6 +284,37 @@ class IntentEndMergeTest < Plastic::TestCase
     assert_includes result.err + result.out, "Approved: <person> on <YYYY-MM-DD>"
   end
 
+  def test_a_direct_commit_with_the_architecture_map_closes_the_intent
+    accepted_intent(records: "- Committed: main at 4f2a9c1\n- Architecture map: enola at 4f2a9c1\n")
+    review_off
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_delivered_files_in_the_intent_folder_close_the_intent_with_no_architecture_map
+    accepted_intent(records: "- Delivered: resources/output/files/resume.pdf because the resume lives outside version control\n")
+    write("#{retrieval.intent("1").dir}/resources/output/files/resume.pdf", "%PDF")
+    review_off
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_delivered_files_missing_from_the_intent_folder_hand_over_the_delivery_check_naming_the_path
+    accepted_intent(records: "- Delivered: resources/output/files/resume.pdf because the resume lives outside version control\n")
+    review_off
+    result = finish
+
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "resources/output/files/resume.pdf"
+  end
+
+  def test_the_delivery_handoff_names_the_three_lines_and_the_output_folders
+    lacking_merge_record
+    out = finish.out
+
+    ["- Merged: ", "- Committed: ", "- Delivered: ", "resources/output/reports", "resources/output/files"].each { |part| assert_includes out, part }
+  end
+
   def test_a_second_end_after_the_merge_record_resumes_and_closes
     lacking_merge_record
     first = finish

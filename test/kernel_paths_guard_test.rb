@@ -33,7 +33,7 @@ module RetiredNames
     "Workflows::RemoveLink", "Workflows::CreateRoadmap", "Workflows::WriteRoadmapBatch", "Workflows::AddRoadmapItem", "Workflows::ShowRoadmap",
     "Workflows::NextRoadmap", "Workflows::DropRoadmapItem", "Workflows::OpenRoadmapItem", "Workflows::CheckRoadmap", "Workflows::LogRoadmap",
     "Workflows::RemoveRoadmapEdge", "Workflows::AdvanceDelivery", "Workflows::CloseIntent", "Workflows::PrepareEnding", "Workflows::FinishIntent",
-    "Workflows::CheckMerge", "Workflows::WindDownIntent", "Workflows::DiscoverRetrieval", "Workflows::ExternalAgentWorkflow", "Workflows::Search",
+    "Workflows::CheckDelivery", "Workflows::WindDownIntent", "Workflows::DiscoverRetrieval", "Workflows::ExternalAgentWorkflow", "Workflows::Search",
     "Workflows::GetDocument", "Workflows::BatchDocuments", "Workflows::SubmitContext", "Workflows::CheckContextOwner", "Workflows::ReadContext",
     "Workflows::CheckArchitecture", "Workflows::RefreshArchitecture", "Workflows::AbandonIntent", "Workflows::PrepareAbandon", "Workflows::RevertIntent",
     "Workflows::WriteNote", "Workflows::ArchiveIntent", "Workflows::UnarchiveIntent", "Workflows::Backup", "Workflows::PreviewBackup",

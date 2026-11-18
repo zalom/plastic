@@ -66,7 +66,7 @@ module Plastic
       code_submit_context: "Code::Intent::Context",
       # Architecture: prompts only; the agent maps the code with the tool it chose.
       agent_check_architecture: "Agent::Architecture::Status",
-      agent_check_merge: "Agent::Intent::End::CheckMerge",
+      agent_check_delivery: "Agent::Intent::End::CheckDelivery",
       code_prepare_abandon: "Code::Intent::Abandon::Prepare",
       agent_revert_intent: "Agent::Intent::Abandon",
       code_abandon_intent: "Code::Intent::Abandon",

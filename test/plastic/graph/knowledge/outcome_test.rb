@@ -8,7 +8,7 @@ module OutcomeHelpers
     @intent = open_intent
   end
 
-  def read_outcome = Plastic::Graph::Knowledge::Outcome.new(retrieval, "1")
+  def read_outcome = Plastic::Graph::Knowledge::Outcome.new(retrieval, "1", folder:)
 
   def outcome(body)
     write("#{@intent.dir}/outcome.md", body)
@@ -188,15 +188,83 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
     assert_equal ["Approved: none", nil, nil], [read.rejected("Approved"), read.rejected("Merged"), read.rejected("Pull request")]
   end
 
-  def test_the_missing_record_message_asks_for_a_merged_line_when_none_is_there
+  def test_the_missing_record_message_asks_for_one_of_the_three_delivery_lines_when_none_is_there
     message = outcome("## Verification\n- Architecture map: enola at abc123\n").missing_records.first
 
-    assert_equal "Add a line starting Merged: to the Verification section of outcome.md and run plastic sync up.", message
+    ["Merged: <branch> into <base> at <commit or pull request>", "Committed: <branch> at <commit>",
+      "Delivered: resources/output/<path> because <reason>", "plastic sync up"].each { |part| assert_includes message, part }
   end
 
   def test_missing_pull_request_approval_and_revert_bullets_read_false
     read = outcome("# Outcome\n\n## Verification\n- Merged: into alpha\n")
 
     assert_equal [false, false, false], [read.pull_request?, read.approved?, read.reverted?]
+  end
+end
+
+class KnowledgeOutcomeDeliveryTest < Plastic::TestCase
+  include OutcomeHelpers
+
+  RESUME = "resources/output/files/resume.pdf"
+
+  def delivered_file = write("#{@intent.dir}/#{RESUME}", "%PDF")
+
+  def delivered_line = "- Delivered: #{RESUME} because the resume lives outside version control\n"
+
+  def test_a_direct_commit_is_a_delivery_record_and_not_a_merge
+    read = outcome("## Verification\n- Committed: main at 4f2a9c1\n")
+
+    assert_equal [true, true, false], [read.delivery_recorded?, read.committed?, read.merged?]
+  end
+
+  def test_delivered_files_that_exist_in_the_intent_folder_are_a_delivery_record
+    delivered_file
+
+    assert_predicate outcome("## Verification\n#{delivered_line}"), :delivery_recorded?
+  end
+
+  def test_delivered_files_that_are_not_in_the_intent_folder_are_refused_and_named
+    read = outcome("## Verification\n#{delivered_line}")
+
+    assert_equal [false, true], [read.delivery_recorded?, read.missing_records.first.include?(RESUME)]
+  end
+
+  def test_a_path_that_climbs_out_of_its_folder_is_refused_even_when_the_file_exists
+    delivered_file
+
+    refute_predicate outcome("## Verification\n- Delivered: resources/output/../output/files/resume.pdf because x\n"), :delivery_recorded?
+  end
+
+  def test_a_delivery_line_that_starts_with_a_denying_word_is_refused
+    delivered_file
+    lines = ["Committed: not yet at 4f2a9c1", "Delivered: n/a #{RESUME} because x", "Committed: pending at 4f2a9c1"]
+
+    assert_empty(lines.select { |line| outcome("## Verification\n- #{line}\n").delivery_recorded? })
+  end
+
+  def test_the_architecture_map_is_asked_for_after_a_merge_or_a_commit
+    lines = ["Merged: plastic/1 into alpha at abc1234", "Committed: main at 4f2a9c1"]
+
+    assert_equal [false, false], lines.map { |line| outcome("## Verification\n- #{line}\n").map_recorded? }
+  end
+
+  def test_delivered_files_alone_need_no_architecture_map
+    delivered_file
+    read = outcome("## Verification\n#{delivered_line}")
+
+    assert_equal [true, []], [read.map_recorded?, read.missing_records]
+  end
+
+  def test_delivered_files_beside_a_commit_still_need_the_architecture_map
+    delivered_file
+    read = outcome("## Verification\n- Committed: main at 4f2a9c1\n#{delivered_line}")
+
+    assert_equal [false, ["Architecture map"]], [read.map_recorded?, read.missing_records.map { |message| message[/Architecture map/] }]
+  end
+
+  def test_a_rejected_delivery_line_is_named_with_the_form_of_its_label
+    read = outcome("## Verification\n- Committed: main at PR 57\n")
+
+    assert_equal ["Committed: main at PR 57", true], [read.delivery_rejection, read.missing_records.first.include?("Committed: <branch> at <commit>")]
   end
 end
