@@ -60,16 +60,35 @@ class IntentAbandonTest < Plastic::TestCase
     assert_includes result.err, "invalid option: --judge"
   end
 
-  def test_without_the_reverted_bullet_it_hands_over_the_revert_steps
+  def test_a_started_intent_without_the_reverted_bullet_hands_over_the_revert_steps
+    droppable(reverted: false, status: "in_progress")
+    result = abandon
+
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "Reverted:"
+  end
+
+  def test_an_open_intent_with_a_node_without_the_reverted_bullet_hands_over_the_revert_steps
     droppable(reverted: false)
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
     result = abandon
 
     assert_equal [0, "open"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "Reverted:"
   end
 
+  %w[future open].each do |status|
+    define_method(:"test_an_unstarted_#{status}_intent_with_no_node_closes_with_no_reverted_bullet") do
+      droppable(reverted: false, status:)
+      result = abandon
+
+      assert_equal [0, "", "abandoned"], [result.code, result.err, retrieval.intent("1").status]
+      assert_includes result.out, "intent: 1 abandoned"
+    end
+  end
+
   def test_the_revert_step_tells_the_agent_to_use_version_control_as_the_project_defines_it
-    droppable(reverted: false)
+    droppable(reverted: false, status: "in_progress")
     result = abandon
 
     refute_includes result.out, "your own"
