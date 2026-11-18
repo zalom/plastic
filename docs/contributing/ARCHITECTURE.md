@@ -343,15 +343,32 @@ is followed by the purge of the folders older than three days; the purge keeps t
 done backup and the newest backup the runner took before a migration. The writer records the
 verdict of each live check in `backups/last-check.yml`, and `plastic doctor` prints it beside
 each store's backup age; a failed check is a finding that names `plastic backup --store SLUG`.
-A backup is checked against the tables of the version it records. A restore of one database
-across a version boundary is refused and names the restore of the whole store.
+A backup at version 0 is checked against the tables of beta.2, and a backup at the newest
+version against the declared tables. A backup at an earlier known version passes on the quick
+check alone, and the migrations move it forward after a restore of the whole store. A version
+this code does not know is refused. A restore of one database across a version boundary is
+refused and names the restore of the whole store.
 
-The schema runner brings the home and each store to the newest version from the install
-workflow, `plastic update` and `plastic backup restore`, after a backup: a store is backed up
-with the writer, and the home database is copied with `VACUUM INTO` to
-`backups/local-<UTC time>.db` and checked first. Each migration and its version stamp commit
-in one transaction. A database behind its sequence makes a
-command exit 3 with `plastic update` as the next step, and a hook print one line and exit 0.
+Each database layout changes through migrations, the way Rails migrates. A migration is a
+plain SQL file named by its UTC time, `YYYYMMDDHHMMSS_snake_name.sql`, in
+`lib/plastic/graph/db/migrate/home/` or `lib/plastic/graph/db/migrate/store/`. Each database
+records the migrations it has applied in a `schema_migrations` table with one `version` column:
+`plastic.db` holds the home's table, and `knowledge_graph.db` holds the table of its store.
+
+| State | What the file holds | What the gate does |
+| ----- | ------------------- | ------------------ |
+| Empty | No tables | Builds every file from `db/schema.rb` and records every migration as applied. No migration runs. |
+| Current | Every known migration, and nothing unknown | Passes. |
+| Behind | A known migration with no row, or a legacy `user_version` stamp of 0 or 1 | Exits 3 with `plastic update` as the next step. A hook prints one line and exits 0. |
+| Ahead | A migration this code does not know, or another legacy stamp | Exits 3 and names the versions: the file is newer than this code. |
+
+The schema runner brings the home and each store to current from the install workflow,
+`plastic update` and `plastic backup restore`, after a backup: a store is backed up with the
+writer, and the home database is copied with `VACUUM INTO` to `backups/local-<UTC time>.db`
+and checked first. The runner reads the state again under the write lock, so a runner that
+waited runs nothing. The pending migrations run in ascending order, and every one of them and
+its row commit in one transaction, so a failure leaves the database as it was backed up.
+`docs/contributing/MIGRATIONS.md` says how to add a migration.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,
 skips a missing database by name, copies the other files of the home, and checks that the real

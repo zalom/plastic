@@ -8,6 +8,7 @@ commits and releases. This page points to the rest.
 | [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | The system architecture in drawings, and how the `plastic` command is built. |
 | [docs/contributing/CODING_PRACTICES.md](docs/contributing/CODING_PRACTICES.md) | How Ruby is written, linted and scored here. |
 | [docs/contributing/TECHNICAL.md](docs/contributing/TECHNICAL.md) | The gates, the byte budget and the test layout. |
+| [docs/contributing/MIGRATIONS.md](docs/contributing/MIGRATIONS.md) | How to add a database migration, and the rules the gate enforces on it. |
 
 ## Test a change
 
