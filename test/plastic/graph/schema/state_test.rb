@@ -53,8 +53,8 @@ class SchemaStateTest < Plastic::TestCase
     @database.execute("PRAGMA user_version = #{stamp}")
   end
 
-  def test_a_file_with_no_table_reads_empty
-    assert_equal [:empty, [], [], 0], summary(state)
+  def test_a_file_with_no_table_reads_empty_with_every_version_pending
+    assert_equal [:empty, [BASELINE], [], 0], summary(state)
   end
 
   def test_a_file_that_records_every_version_reads_current_at_the_newest_version
