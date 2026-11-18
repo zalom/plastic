@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/graph/resume"
 require_relative "../../../../lib/plastic/commands/next"
-require_relative "../../../../lib/plastic/commands/auto"
+require_relative "../../../../lib/plastic/commands/intent/auto"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/node/claim"
 require_relative "../../../../lib/plastic/commands/node/done"

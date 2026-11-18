@@ -13,7 +13,7 @@ require_relative "../../../../lib/plastic/commands/edge/add"
 class NodeClaimCaseTest < Plastic::TestCase
   def chained
     alpha_specified(TWO_CRITERIA)
-    ran("intent approve 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
+    ran("intent approve 1", "intent start 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
   end
 
   def test_claiming_a_ready_node_prints_it_with_its_criterion_and_offers_done
@@ -53,11 +53,12 @@ class NodeClaimTest < Plastic::TestCase
     refute_includes out, "--judge"
   end
 
-  def add_node(title)
+  def add_node(title, *options)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
     store_graphs.work.approve_intent("1") unless structure.approval("1")
-    plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
+    store_graphs.work.activate_intent("1")
+    plastic("node", "add", "1", title, "--criterion", "done", *options, table: Plastic::CLI::TABLE)
   end
 
   def two_linked_nodes
@@ -72,9 +73,7 @@ class NodeClaimTest < Plastic::TestCase
   def test_the_brief_includes_the_last_reason
     open_intent
     add_node("a")
-    claim("n1")
-    plastic("node", "fail", "1", "n1", "boom", table: Plastic::CLI::TABLE)
-    plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
+    fail_and_release
 
     result = claim("n1")
 
@@ -137,10 +136,7 @@ class NodeClaimTest < Plastic::TestCase
 
   def test_the_brief_names_the_input_file
     open_intent
-    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
-    sync_up
-    store_graphs.work.approve_intent("1") unless structure.approval("1")
-    plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
+    add_node("a", "--input", "docs/a.md")
 
     call = claim("n1")
 
@@ -150,6 +146,7 @@ class NodeClaimTest < Plastic::TestCase
 
   def unapproved_claim
     open_intent
+    store_graphs.work.activate_intent("1")
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
     plastic("node", "add", "1", "a", "--criterion", "done", table: Plastic::CLI::TABLE)
@@ -181,6 +178,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
     store_graphs.work.approve_intent("1") unless structure.approval("1")
+    store_graphs.work.activate_intent("1")
     plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
   end
 

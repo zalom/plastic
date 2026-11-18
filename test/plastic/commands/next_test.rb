@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/next"
-require_relative "../../../lib/plastic/commands/auto"
+require_relative "../../../lib/plastic/commands/intent/auto"
 require_relative "../../../lib/plastic/commands/node/add"
 require_relative "../../../lib/plastic/commands/node/claim"
 require_relative "../../../lib/plastic/commands/node/done"
@@ -22,7 +22,7 @@ class NextPlanStepCaseTest < Plastic::TestCase
 
   def test_a_locked_intent_with_no_plan_hands_the_agent_the_plan_step
     alpha_specified(UNKEYED_CRITERION)
-    ran("intent approve 1", "auto 1")
+    ran("intent approve 1", "intent auto 1")
 
     assert_case line("next"), code: 0, out: [PLAN_STEP]
   end

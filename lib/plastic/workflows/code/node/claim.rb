@@ -7,8 +7,8 @@ module Plastic
   module Workflows
     module Code
       module Node
-        # Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth run of a
-        # node moves it to needs_info instead, with the owner's question, and refuses. A node another
+        # Claims an open node whose needed nodes are done, once the intent is in progress and the owner gave the
+        # go-ahead. The fourth run of a node moves it to needs_info instead, with the owner's question, and refuses. A node another
         # session holds, its claim renewed within 15 minutes, refuses and names the holder. A refused
         # claim keeps its command run open, so the next call claims again.
         class Claim < CodeWorkflow
@@ -16,14 +16,18 @@ module Plastic
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :result, :node, :problem, :approval_problem
+          sets :intent, :status, :result, :node, :problem, :approval_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
+            context[:status] = context.intent&.status
           end
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "node claim names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
+          gate "intent %{intent_id} is %{status}; start it with plastic intent start %{intent_id}, or with plastic intent auto %{intent_id} for agent delivery",
+            stops: :failure, offers: "plastic intent start %{intent_id}", because: "a node is claimed only in an intent in progress",
+            pass: ->(context) { context.status == "in_progress" }
 
           read "check the go-ahead" do |context|
             context[:approval_problem] = Intent::Start.approval_problem(context.intent_id, context)
