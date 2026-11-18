@@ -20,7 +20,7 @@ around broken data. A legitimately absent value is not broken data.
 - Version file: package.json
 - Tag format: v{{version}}
 - All bash scripts must work under macOS /bin/bash 3.2 (no bash 4.x features)
-- Bump all 3 version files on every fix/feature release
+- Each branch carries its own version suffix; `docs/release-lines.md` says when to raise it
 
 ## Searching Plastic's stores
 
@@ -119,7 +119,7 @@ written.
   `commit-msg` git hook refuses the commit if one slips through; if it rejects you, rewrite the
   message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
-- Bump all version files listed in Defaults on every fix or feature release.
+- `package.json` is the one version file. Raise it only to cut a release, as `docs/release-lines.md` says.
 - A push to `alpha`, `beta` or `main` is the release. `.github/workflows/publish.yml`
   creates the tag and the GitHub release for a version with no tag yet. It builds the release
   files with `bin/build-release`. Do not create a tag or a release by hand.

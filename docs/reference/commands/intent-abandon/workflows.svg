@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 544" width="834" height="544" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 558" width="834" height="558" role="img" xml:space="preserve">
 <title>The workflows of one call of plastic intent abandon, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -117,26 +117,27 @@
 <text x="169" y="458" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="169" y="478" class="t" text-anchor="start">The revert is recorded.</text>
 <path d="M 417 139 L 417 178 L 550 178 L 550 186" class="wire"/>
-<text x="550" y="200" class="k" text-anchor="middle">the work is reverted, so the</text>
-<text x="550" y="214" class="k" text-anchor="middle">intent can be marked abandoned</text>
-<path d="M 550 224 L 550 238" class="wire"/>
-<path d="M 545 230 L 550 238 L 555 230 Z" class="head"/>
-<rect x="423" y="238" width="254" height="66" rx="6" class="lane-code"/>
-<text x="435" y="258" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="435" y="278" class="t" text-anchor="start">Marks the intent abandoned and</text>
-<text x="435" y="295" class="t" text-anchor="start">ends its run of work.</text>
-<path d="M 550 304 L 550 326 L 550 326 L 550 334" class="wire"/>
-<text x="550" y="348" class="k" text-anchor="middle">intent &lt;intent id&gt; is abandoned</text>
-<path d="M 550 358 L 550 372" class="wire"/>
-<path d="M 545 364 L 550 372 L 555 364 Z" class="head"/>
-<rect x="423" y="372" width="254" height="66" rx="6" class="lane-agent"/>
-<text x="435" y="392" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="435" y="412" class="t" text-anchor="start">Has the agent stop what the</text>
-<text x="435" y="429" class="t" text-anchor="start">intent started.</text>
-<path d="M 550 438 L 550 464" class="wire"/>
-<path d="M 545 456 L 550 464 L 555 456 Z" class="head"/>
-<rect x="423" y="464" width="254" height="66" rx="6" class="stop-end"/>
-<text x="435" y="484" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="435" y="504" class="t" text-anchor="start">The agent stops the processes</text>
-<text x="435" y="521" class="t" text-anchor="start">and agents the intent started.</text>
+<text x="550" y="200" class="k" text-anchor="middle">no work of the intent is left to</text>
+<text x="550" y="214" class="k" text-anchor="middle">revert, so the intent can be</text>
+<text x="550" y="228" class="k" text-anchor="middle">marked abandoned</text>
+<path d="M 550 238 L 550 252" class="wire"/>
+<path d="M 545 244 L 550 252 L 555 244 Z" class="head"/>
+<rect x="423" y="252" width="254" height="66" rx="6" class="lane-code"/>
+<text x="435" y="272" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="435" y="292" class="t" text-anchor="start">Marks the intent abandoned and</text>
+<text x="435" y="309" class="t" text-anchor="start">ends its run of work.</text>
+<path d="M 550 318 L 550 340 L 550 340 L 550 348" class="wire"/>
+<text x="550" y="362" class="k" text-anchor="middle">intent &lt;intent id&gt; is abandoned</text>
+<path d="M 550 372 L 550 386" class="wire"/>
+<path d="M 545 378 L 550 386 L 555 378 Z" class="head"/>
+<rect x="423" y="386" width="254" height="66" rx="6" class="lane-agent"/>
+<text x="435" y="406" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="435" y="426" class="t" text-anchor="start">Has the agent stop what the</text>
+<text x="435" y="443" class="t" text-anchor="start">intent started.</text>
+<path d="M 550 452 L 550 478" class="wire"/>
+<path d="M 545 470 L 550 478 L 555 470 Z" class="head"/>
+<rect x="423" y="478" width="254" height="66" rx="6" class="stop-end"/>
+<text x="435" y="498" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="435" y="518" class="t" text-anchor="start">The agent stops the processes</text>
+<text x="435" y="535" class="t" text-anchor="start">and agents the intent started.</text>
 </svg>
