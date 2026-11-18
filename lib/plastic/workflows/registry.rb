@@ -24,7 +24,7 @@ module Plastic
       code_prepare_verdict: "Code::Intent::Verdict::Prepare",
       agent_judge_intent: "Agent::Intent::Judge",
       code_record_verdict: "Code::Intent::Verdict",
-      code_start_auto: "Code::Auto",
+      code_start_auto: "Code::Intent::Start",
       code_pick_delivery: "Code::Auto::Pick",
       code_preview_sync: "Code::Sync::Up::Preview",
       code_preview_sync_down: "Code::Sync::Down::Preview",

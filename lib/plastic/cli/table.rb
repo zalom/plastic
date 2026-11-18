@@ -19,7 +19,6 @@ module Plastic
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
         "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
-        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: set the intent in progress and print the worktree"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
         "search" => ["Commands::Search", "Search literal indexed passages across selected stores"]
@@ -28,6 +27,8 @@ module Plastic
         "intent abandon" => ["Commands::Intent::Abandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
         "intent end" => ["Commands::Intent::End", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
         "intent new" => ["Commands::Intent::New", "Open an intent: write its rows and its folder"],
+        "intent start" => ["Commands::Intent::Start", "Start an intent for guided work: set it in progress and print its worktree"],
+        "intent auto" => ["Commands::Intent::Auto", "Start an intent for agent delivery: set it in progress and print its worktree"],
         "intent rule" => ["Commands::Intent::Rule", "Write an owner ruling, with --supersedes to replace an older one"],
         "intent revise" => ["Commands::Intent::Revise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
         "intent note" => ["Commands::Intent::Note", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
-require_relative "../auto"
+require_relative "../intent/start"
 
 module Plastic
   module Workflows
@@ -26,7 +26,7 @@ module Plastic
           gate "node claim names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
 
           read "check the go-ahead" do |context|
-            context[:approval_problem] = Auto.approval_problem(context.intent_id, context)
+            context[:approval_problem] = Intent::Start.approval_problem(context.intent_id, context)
           end
 
           gate "%{approval_problem}", stops: :refusal,
