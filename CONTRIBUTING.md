@@ -98,5 +98,5 @@ on your machine.
 2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
    `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
    no tag yet. The release carries the three files `install.sh` downloads.
-3. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
-   lanes and the stable-line guarantees.
+3. Read [docs/release-lines.md](docs/release-lines.md) for the light trunk rules, how to cut
+   a beta and the stable-line guarantees.

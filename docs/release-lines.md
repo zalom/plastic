@@ -1,47 +1,56 @@
 # Release lines and channels
 
+Plastic is developed on a light trunk: `alpha` is the one line that all work merges into, and
+a beta is a snapshot of it.
+
 A push to `alpha`, `beta`, or `main` is the release: `.github/workflows/publish.yml` creates
 the tag and the GitHub release for a version that has no tag yet. `install.sh` and
 `plastic update` install from those releases.
 
 | Branch | Channel | Version | What it is |
 | --- | --- | --- | --- |
-| `alpha` | `alpha` | `-alpha.N` | Development. Feature and stage pull requests stack on it. |
-| `beta` | `beta` | `-beta.N` | Local testing. It is reset from `alpha` when a whole feature is merged there. |
-| `main` | `latest` | no suffix | Everyday use, and what an external user should run. |
+| `alpha` | `alpha` | `-alpha.N` | The trunk. Every change and every fix merges here once CI passes. |
+| `beta` | `beta` | `-beta.N` | A snapshot of `alpha`, cut on the owner's word. It takes no changes of its own. |
+| `main` | `latest` | no suffix | Stable. Frozen while Plastic is being shaped. |
 
 `bin/release-check` enforces the branch-to-suffix pairing.
 
-## The two lanes
+## The four rules
 
-**Default lane.** The change merges to `main` by its own pull request, the version is bumped,
-and the push to `main` makes a release on the `latest` channel. `main` is merged into `alpha`
-after. It is the path for additive, low-risk work that a green suite fully vouches for.
+1. **One trunk.** A change merges to `alpha` by its own pull request as soon as CI passes.
+2. **Fixes land on the trunk.** A bug found in a beta is fixed on `alpha`, and the next beta
+   carries the fix. No commit lands on `beta` except the cut itself.
+3. **Switches only where they pay off.** A change that alters stored data, the storage
+   layer or the lock, or one that may be dropped, ships behind a config switch that is off by
+   default. Every other change goes straight in.
+4. **Stable waits.** `main` takes no release until the shaping ends and the owner opens it.
 
-**Beta-verified lane.** The change reaches `beta`, releases on the `beta` channel, is verified
-in real use, and then reaches `main` and a stable release.
+## Cut a beta
 
-## Routing rule
+1. Branch from `alpha`. Set `package.json` to the next `-beta.N` version, add its
+   `CHANGELOG.md` entry, and commit `chore: release X.Y.Z-beta.N`.
+2. Merge that commit into `beta` as `chore: beta follows alpha at X.Y.Z-beta.N`, and push
+   `beta`. The push publishes the beta.
 
-Work rides the beta-verified lane when it changes the operational substrate, carries data,
-migration, lock or state-format risk, or cannot be fully validated by a hermetic suite alone.
-A change to the database layer or the lock is the typical case: a green suite proves the code
-correct, but it cannot prove the new substrate survives real use. Everything else takes the
-default lane.
+The owner decides when a beta is cut. A switched-off change rides along in every cut, and
+turning its switch on in a later commit is what releases it.
 
 ## Stable-line guarantees
 
 What a user on the `latest` channel can rely on:
 
 1. `main` is always green and releasable. No pending revert awaiting re-land sits on `main`.
-   When something needs beta verification, it comes out of `main` the same day, never left
-   half-landed.
 2. A stable release carries no pre-release suffix, releases on the `latest` channel, and the
    newest stable release always carries the GitHub "Latest" badge.
 3. The release tag always matches the version in `package.json`. `bin/lib/release_guard.rb`
    checks it.
-4. A stable release collects only intents that cleared their lane's bar: a default-lane intent
-   by a green suite, a beta-lane intent by a green suite plus real-use verification and the
-   owner's sign-off.
+4. A stable release collects only work that a beta carried in real use, with the owner's
+   sign-off.
 5. The channels keep their meaning: `latest` is stable, `beta` is the verification line,
-   published but expected to move, and `alpha` is experimental.
+   published but expected to move, and `alpha` is the trunk.
+
+## After the shaping
+
+When Plastic settles, it moves to full trunk-based development: `alpha` becomes `main`, the
+channels become tags instead of branches, a feature-switch module gives each switch a stage
+(off, beta, on), and a release branch exists only to patch a published release.

@@ -126,9 +126,11 @@ written.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
-- Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
-  channel, real-use verification, then main). Read
-  `docs/release-lines.md` for the routing rule and the stable-line
+- Plastic runs on a light trunk. Every change and every fix merges to `alpha` once CI passes.
+  A beta is a snapshot of `alpha`, cut only on the owner's word. `beta` takes no commits of
+  its own, and `main` is frozen until the shaping ends. A change to stored data, the storage
+  layer or the lock, or one that may be dropped, ships behind a config switch that is off by
+  default. Read `docs/release-lines.md` for the rules, how to cut a beta and the stable-line
   guarantees.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
