@@ -61,7 +61,7 @@ module Plastic
             claimed || (retrieval.sessions_on(intent_id, since: Plastic.timestamp(now - Plastic::Graph::Work::Node::LAPSE)) - [session]).any?
           end
 
-          outcome :intent, if: ->(context) { !context.intent_id.nil? }, because: "an item of %{slug} in flight is free to deliver"
+          outcome :intent, if: ->(context) { !context.intent_id.nil? }, because: "an item of %{slug} with an intent is free to deliver"
           outcome :ready, if: ->(context) { !context.item_id.nil? }, because: "item %{item_id} of %{slug} is ready"
           outcome :delivered, if: ->(context) { context.open.empty? }, offers: "plastic roadmap show %{slug}",
             because: "every item of %{slug} is done or dropped"

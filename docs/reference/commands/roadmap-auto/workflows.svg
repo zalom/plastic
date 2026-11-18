@@ -115,9 +115,9 @@
 <path d="M 544 106 L 588 106" class="wire-failure"/>
 <path d="M 580 101 L 588 106 L 580 111 Z" class="head"/>
 <path d="M 417 156 L 417 311 L 417 311 L 417 319" class="wire"/>
-<text x="417" y="333" class="k" text-anchor="middle">an item of &lt;slug&gt; in flight is</text>
-<text x="417" y="347" class="k" text-anchor="middle">free to deliver or item &lt;item id&gt;</text>
-<text x="417" y="361" class="k" text-anchor="middle">of &lt;slug&gt; is ready</text>
+<text x="417" y="333" class="k" text-anchor="middle">an item of &lt;slug&gt; with an intent</text>
+<text x="417" y="347" class="k" text-anchor="middle">is free to deliver or item &lt;item</text>
+<text x="417" y="361" class="k" text-anchor="middle">id&gt; of &lt;slug&gt; is ready</text>
 <path d="M 417 371 L 417 385" class="wire"/>
 <path d="M 412 377 L 417 385 L 422 377 Z" class="head"/>
 <rect x="290" y="385" width="254" height="100" rx="6" class="lane-code"/>
