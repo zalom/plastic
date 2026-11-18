@@ -9,8 +9,8 @@ module Plastic
     module Code
       module Intent
         # Starts an intent for `intent start` and `intent auto`, which differ only in
-        # their words: fails a done or abandoned intent, no session named or a session
-        # that ended; otherwise sets a future, open or parked intent in progress, prints
+        # their words: fails a done, abandoned or archived intent, no session named or a
+        # session that ended; otherwise sets a future, open or parked intent in progress, prints
         # the code worktree when the store's project names a repository, and names the
         # worktree to create when its folder is missing. An unsettled spec or a missing
         # go-ahead ends on `intent spec`.
@@ -60,6 +60,9 @@ module Plastic
             pass: ->(context) { context.session_problem.nil? }
           gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot start; pick other work",
             pass: ->(context) { context.closed_problem.nil? }
+          gate "intent %{intent_id} is archived", stops: :failure, offers: "plastic intent unarchive %{intent_id}",
+            because: "an archived intent cannot start; unarchive it first",
+            pass: ->(context) { !context.retrieval.archives.archived?(context.intent_id) }
 
           def self.delivery_started?(context) = context.retrieval.intent(context.intent_id).status == "in_progress"
 
