@@ -15,8 +15,8 @@ why the intent is dropped and a `Reverted:` line.
 
 `plastic intent end ID` takes no options. It closes the intent when the rows allow it:
 every live node done, every criterion covered, an accepted verdict at or after the newest live
-node change, and `Merged:` and `Architecture map:` bullets under `## Verification` in
-outcome.md. With `review.pull_request` set to `required`, it also needs a
+node change, and one delivery line under `## Verification` in outcome.md, as
+[Store the delivered work](#store-the-delivered-work) describes. With `review.pull_request` set to `required`, it also needs a
 `Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
 (exit 3), and a live node claim of another session is a refusal (exit 3). Anything else that is
 missing comes back as a handoff with exit 1, and nothing closes. The close does not reindex
@@ -39,6 +39,25 @@ no other step restates either.
 Plastic writes no commit itself and runs no version control. The agent commits in the
 project's repository the way that repository's own `AGENTS.md` says, and records what landed
 with `plastic intent note ID TEXT --kind Commit`, a line under Notes in `outcome.md`.
+
+## Store the delivered work
+
+`plastic intent end` closes an intent once outcome.md records how its work was delivered. The
+Verification section holds one of three delivery lines:
+
+| Line | Records | Also needs |
+| --- | --- | --- |
+| `Merged: <branch> into <base> at <commit or pull request>` | Code merged by a pull request | `Architecture map: <tool> at <source revision>` |
+| `Committed: <branch> at <commit>` | Code committed straight to its branch, with a commit of 7 to 40 hexadecimal characters | `Architecture map: <tool> at <source revision>` |
+| `Delivered: resources/output/<path> because <reason>` | Work that no version control holds, such as a report or a document | Nothing more |
+
+Delivered files go in the intent folder: reports under `resources/output/reports`, and other
+files under `resources/output/files`. The `Delivered:` line counts only when the path it names
+exists there. Code always takes `Merged:` or `Committed:`, never `Delivered:`.
+
+A line counts only when it is filled in: one that starts with a denying word such as `no`,
+`pending` or `n/a`, or still holds a placeholder such as `<commit>`, is refused, and the handoff
+names it. Run `plastic sync up` after editing outcome.md, then `plastic intent end ID` again.
 
 ## The pull request description
 

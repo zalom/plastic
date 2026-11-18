@@ -10,17 +10,24 @@ module Plastic
         MARKS = /\A[\s\x60"'(\[{_~“‘«<>\\\-–—]+/
         FORMS = {
           "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|\x60?\h{7,40}\b)/,
+          "Committed" => /\A\S+ +at +\x60?\h{7,40}\x60?(?![\w#])/,
+          "Delivered" => %r{\A\x60?(resources/output/[^\s\x60]+)\x60? +because +\S},
           "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
         }.freeze
         SHOWN = {
           "Merged" => "Merged: <branch> into <base> at <commit or pull request>",
+          "Committed" => "Committed: <branch> at <commit>",
+          "Delivered" => "Delivered: resources/output/<path> because <reason>",
           "Approved" => "Approved: <person> on <YYYY-MM-DD>"
         }.freeze
-        PLACEHOLDER = /<(?:branch|base|commit or pull request|person|YYYY-MM-DD)>/
+        PLACEHOLDER = /<(?:branch|base|commit or pull request|commit|path|reason|person|YYYY-MM-DD)>/
 
         def self.in_form?(label, value) = !NEGATIVE.match?(value.sub(MARKS, "")) && FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
 
         def self.shown(label) = SHOWN.fetch(label)
+
+        # The path a Delivered line in its form names, read without its code marks, else nil.
+        def self.delivered_path(value) = value[FORMS.fetch("Delivered"), 1]
       end
     end
   end

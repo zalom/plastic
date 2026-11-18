@@ -15,7 +15,7 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_a_routine_lists_its_workflows_in_order
-    assert_equal %i[code_prepare_ending agent_finish_intent agent_check_merge code_close_intent agent_wind_down_intent], page("intent end").flows.map(&:key)
+    assert_equal %i[code_prepare_ending agent_finish_intent agent_check_delivery code_close_intent agent_wind_down_intent], page("intent end").flows.map(&:key)
     assert_equal :routine, page("intent end").kind
   end
 
