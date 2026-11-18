@@ -46,13 +46,6 @@ module Plastic
             "intent #{id} has no go-ahead" unless retrieval.structure.approval(id)
           end
 
-          # The refusal a node claim gives before the owner's go-ahead.
-          def self.approval_problem(id, context)
-            return nil if context.retrieval.structure.approval(id)
-
-            "intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}"
-          end
-
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "%{start_words} names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
           gate "%{session_problem}", stops: :failure,
