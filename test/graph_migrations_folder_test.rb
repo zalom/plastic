@@ -28,6 +28,13 @@ class GraphMigrationsFolderTest < Minitest::Test
     assert_empty migration_files.map { |path| File.basename(path) }.grep_v(NAME)
   end
 
+  def test_each_kind_holds_one_migration_per_version
+    versions = migration_files.map { |path| [File.basename(File.dirname(path)), File.basename(path)[0, 14]] }
+
+    refute_empty versions
+    assert_equal versions.uniq, versions
+  end
+
   def test_the_version_of_the_schema_file_is_the_newest_migration_of_any_kind
     newest = migration_files.map { |path| File.basename(path)[0, 14] }.max
 

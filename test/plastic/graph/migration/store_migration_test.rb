@@ -162,6 +162,16 @@ class PartialStoreMigrationTest < Plastic::TestCase
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
     assert_equal fresh_layouts, layouts_of(store_root(home))
   end
+
+  def test_a_compaction_that_fails_after_the_commit_keeps_the_new_knowledge_file_and_its_rows
+    home = beta_2_home
+    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
+    full_disk = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
+    answer = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, compaction: full_disk).call
+
+    assert_equal "it could not be migrated (database or disk is full)", answer
+    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
+  end
 end
 
 class StoreMigrationFailureTest < Plastic::TestCase

@@ -95,10 +95,22 @@ class SchemaStateTest < Plastic::TestCase
     assert_equal [:behind, [LATER], [], BASELINE.to_i], summary(state(migrations: longer))
   end
 
-  def test_an_alpha_file_at_stamp_1_names_its_stamp
+  def test_an_alpha_file_at_stamp_1_adopts_the_baseline
     with_tables(1)
 
-    assert_equal 1, state.stamp
+    assert_equal [BASELINE], state.adopted
+  end
+
+  def test_the_kind_of_an_unknown_schema_key_is_refused
+    assert_raises(KeyError) { SchemaState.kind_of(:nowhere) }
+  end
+
+  def test_a_file_ahead_of_this_code_is_refused_as_newer_than_this_code
+    with_tables(7)
+
+    error = assert_raises(Plastic::Graph::Ahead) { state.due?(Plastic::Graph::Ahead) }
+
+    assert_equal "the database is newer than this code (it records user_version 7); run plastic update", error.message
   end
 
   def test_a_file_with_no_table_and_another_stamp_reads_ahead_and_names_the_stamp

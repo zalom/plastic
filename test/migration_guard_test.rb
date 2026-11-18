@@ -54,6 +54,25 @@ class MigrationGuardTest < Minitest::Test
     assert_empty MigrationGuard.check(base: tip, head: tip.merge(LATER => "ALTER TABLE a ADD COLUMN owner TEXT;\n"))
   end
 
+  def test_a_base_tip_file_missing_at_the_head_and_at_the_merge_base_asks_for_a_rebase
+    tip = base.merge(LATER => "ALTER TABLE a ADD COLUMN owner TEXT;\n")
+
+    assert_equal ["#{LATER} was merged to the base after this branch was cut; rebase onto the base"], MigrationGuard.check(base: tip, head: base, merge_base: base)
+  end
+
+  def test_a_base_tip_file_the_branch_removed_since_the_merge_base_is_caught_as_deleted
+    tip = base.merge(LATER => "ALTER TABLE a ADD COLUMN owner TEXT;\n")
+
+    assert_equal ["#{LATER} is a merged migration and was changed, renamed or deleted; add a new migration instead"], MigrationGuard.check(base: tip, head: base, merge_base: tip)
+  end
+
+  def test_two_added_migrations_of_one_kind_that_share_a_version_are_caught
+    twin = "#{FOLDER}/store/20261201000000_add_tickets.sql"
+    head = base.merge(LATER => "ALTER TABLE a ADD COLUMN owner TEXT;\n", twin => "CREATE TABLE tickets (id INTEGER);\n")
+
+    assert_equal ["#{LATER} and #{twin} share the store version 20261201000000; give one a later timestamp"], MigrationGuard.check(base:, head:)
+  end
+
   def test_a_base_with_no_migrations_passes_every_added_file
     assert_empty MigrationGuard.check(base: {}, head: base)
   end

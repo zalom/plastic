@@ -168,7 +168,9 @@ class SchemaGateAheadTest < Plastic::TestCase
     home = created_home
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
 
-    assert_raises(Behind) { store_database(home).rows("SELECT 1") }
+    error = assert_raises(Behind) { store_database(home).rows("SELECT 1") }
+
+    assert_includes error.message, "(it lacks #{Plastic::Graph::MIGRATIONS.baseline(:store)})"
   end
 
   def test_a_fresh_build_runs_no_migration_and_records_every_version_of_the_list

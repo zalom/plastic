@@ -211,14 +211,29 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
 
   STAMP = "20260101100000"
 
+  def setup
+    super
+    @backup_home = fresh_home
+    backup_at(@backup_home, at(2026, 1, 1, 10, 0, 0))
+  end
+
+  def root = File.join(@backup_home, "stores", "alpha")
+
+  def restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home: @backup_home, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home: @backup_home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
+  end
+
   def test_a_listed_database_is_not_refused_when_the_store_holds_no_knowledge_database
-    home = fresh_home
-    backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local), File.join(home, "stores", "alpha"), "alpha", nil)
-    restorer = Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home:, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
-    File.delete(store_file(home, "knowledge_graph"))
+    File.delete(store_file(@backup_home, "knowledge_graph"))
 
     assert_nil restorer.refusal(STAMP, databases: %w[work_graph])
+  end
+
+  def test_a_listed_database_from_a_backup_an_alpha_build_stamped_1_is_not_refused_in_a_store_at_the_baseline
+    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 1)
+
+    assert_nil restorer.refusal(STAMP, databases: %w[knowledge_graph])
   end
 end
 
