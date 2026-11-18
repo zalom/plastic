@@ -6,7 +6,7 @@ module Plastic
   module Graph
     module Work
       # The next concrete action for a delivery, or instructions for the harness. An intent that is
-      # not in progress yet, or parked, is started first.
+      # not in progress yet is started first; a parked one offers no command until its reason is resolved.
       class DeliveryAction
         def self.worker_clause(node)
           worker = node.claimed_by.to_s
@@ -33,6 +33,7 @@ module Plastic
 
         def status_action(intent)
           return [nil, "intent #{@intent_id} is closed", nil] if intent.closed?
+          return [nil, "intent #{@intent_id} is parked: #{intent.reason}; plastic intent start #{@intent_id} resumes the work once the reason is resolved", nil] if intent.status == "parked"
 
           ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{intent.status}", nil]
         end
