@@ -8,11 +8,10 @@ module Plastic
         NEGATIVE = %r{\A(?:\z|(?:no|not|none|pending|n/a|tbd|false|rejected|awaiting|waiting|requested|changes|declined|denied|never|unapproved)[[:punct:]]*(?:\s|\z))}i
         # The marks a person writes before a word in Markdown or plain text, and the spaces between them, read past before the first word is judged.
         MARKS = /\A[\s\x60"'(\[{_~“‘«<>\\\-–—]+/
-        DELIVERED_PATH = %r{\A\x60?(resources/output/[^\s\x60]+)\x60?}
         FORMS = {
           "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|\x60?\h{7,40}\b)/,
           "Committed" => /\A\S+ +at +\x60?\h{7,40}\x60?(?![\w#])/,
-          "Delivered" => /#{DELIVERED_PATH} +because +\S/,
+          "Delivered" => %r{\A\x60?(resources/output/[^\s\x60]+)\x60? +because +\S},
           "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
         }.freeze
         SHOWN = {
@@ -27,8 +26,8 @@ module Plastic
 
         def self.shown(label) = SHOWN.fetch(label)
 
-        # The path a Delivered line names, read without its code marks.
-        def self.delivered_path(value) = value[DELIVERED_PATH, 1]
+        # The path a Delivered line in its form names, read without its code marks, else nil.
+        def self.delivered_path(value) = value[FORMS.fetch("Delivered"), 1]
       end
     end
   end
