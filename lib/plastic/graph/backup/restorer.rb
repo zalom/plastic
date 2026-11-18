@@ -36,10 +36,11 @@ module Plastic
           raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
         end
 
-        def initialize(target, retrieval, now:)
+        def initialize(target, retrieval, now:, migrations: MIGRATIONS)
           @target = target
           @retrieval = retrieval
           @now = now
+          @migrations = migrations
         end
 
         # A store file that cannot be read holds no claim a restore could honour: a restore is what repairs it.
@@ -108,7 +109,7 @@ module Plastic
         def source(name, timestamp) = File.join(@target.folders.path(timestamp), "#{name}-#{timestamp}.db")
 
         def verified(timestamp, names)
-          names.each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp)).call }
+          names.each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp), migrations: @migrations).call }
         end
 
         def replacement(name, timestamp) = Replacement.new(source(name, timestamp), @target.file(name))
