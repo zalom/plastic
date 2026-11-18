@@ -46,20 +46,17 @@ module Plastic
 
         def for_intent(intent)
           id = intent.intent_id
-          return open_offer(id) if approved_open?(intent)
-
-          gap = gap_of(id)
+          open = intent.status == "open"
+          gap = gap_of(id) unless open && approved?(id)
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
-          return open_offer(id) if intent.status == "open"
+          return self.class.go_ahead_offer(@retrieval, id) if open
 
           DeliveryAction.new(@retrieval, id).call
         end
 
         def gap_of(id) = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
 
-        def open_offer(id) = self.class.go_ahead_offer(@retrieval, id)
-
-        def approved_open?(intent) = intent.status == "open" && !@retrieval.structure.approval(intent.intent_id).nil?
+        def approved?(id) = !@retrieval.structure.approval(id).nil?
       end
     end
   end

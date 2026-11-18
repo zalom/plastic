@@ -22,9 +22,7 @@ module Plastic
 
         def call
           intent = @retrieval.intent(@intent_id)
-          return [nil, "intent #{@intent_id} is closed", nil] if intent.closed?
-          return ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{intent.status}", nil] unless intent.status == "in_progress"
-
+          return status_action(intent) unless intent.status == "in_progress"
           return planning if live.empty?
           return ["plastic intent end #{@intent_id}", "the nodes are done; verify the intent's criteria", nil] if live.all? { |node| node.state == "done" }
 
@@ -32,6 +30,12 @@ module Plastic
         end
 
         private
+
+        def status_action(intent)
+          return [nil, "intent #{@intent_id} is closed", nil] if intent.closed?
+
+          ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{intent.status}", nil]
+        end
 
         def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
 

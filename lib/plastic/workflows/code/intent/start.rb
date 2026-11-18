@@ -38,11 +38,12 @@ module Plastic
           def self.spec_problem(id, context)
             return nil unless context.intent
 
-            spec = Plastic::Graph::Knowledge::Spec.new(context.retrieval, id)
+            retrieval = context.retrieval
+            spec = Plastic::Graph::Knowledge::Spec.new(retrieval, id)
             return "intent #{id} names no done criterion" if spec.done_criteria.empty?
             return "intent #{id} has an open decision" if spec.open_decisions.any?
 
-            "intent #{id} has no go-ahead" unless context.retrieval.structure.approval(id)
+            "intent #{id} has no go-ahead" unless retrieval.structure.approval(id)
           end
 
           # The refusal a node claim gives before the owner's go-ahead.
