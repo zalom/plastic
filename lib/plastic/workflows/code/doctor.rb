@@ -3,7 +3,6 @@
 require_relative "../../code_workflow"
 require_relative "../../doctor"
 require_relative "../../doctor/search_index"
-require_relative "../../doctor/work_log"
 require_relative "../installation"
 
 module Plastic
@@ -18,7 +17,8 @@ module Plastic
         sets :repairs
 
         read "check the installation, the databases, the hooks and the instruction files of the harness" do |context|
-          checks = Plastic::Doctor.check(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session))
+          checks = Plastic::Doctor.check(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session),
+            running: Installation.running(context.scope), now: context.now, store: context.settings.store)
           checks.each { |check| context.row(check.label, check.value) }
           repairs = checks.filter_map(&:repair).uniq
           context.row("repair:", repairs) unless repairs.empty?
@@ -31,11 +31,6 @@ module Plastic
           repairs = checks.filter_map(&:repair).uniq
           context.row("repair:", [*repairs]) unless repairs.empty?
           context[:repairs] = context.repairs + repairs.size
-        end
-
-        read "add the work log line that a failed write left out of each intent" do |context|
-          checks = Plastic::Doctor::WorkLog.checks(context.scope)
-          checks.each { |check| context.row(check.label, check.value) }
         end
 
         gate "a check found a problem; run the repairs named above, then run plastic doctor again", stops: :failure,

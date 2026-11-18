@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../../../code_workflow"
+require_relative "../../../graph"
 require_relative "../../../graph/retrieval/context/source"
 require_relative "../../../graph/retrieval_graph"
 require_relative "../../context_documents"
@@ -24,15 +25,15 @@ module Plastic
 
           def self.submission(context)
             discovery = ContextDocuments.new(context).read(:discovery)
-            source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home)
+            source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home, opener: Plastic::Graph.method(:open))
             ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
           end
 
           read "validate the submitted context" do |context|
             submission(context)
           rescue Errno::ENOENT, JSON::ParserError => error
-            raise CLI::Command::Usage, error.message
-          rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, CLI::Command::Failure => error
+            raise Usage, error.message
+          rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, Failed => error
             context[:problem] = RetrievalRepair.new(context.scope, error).problem
           end
 

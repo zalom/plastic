@@ -39,7 +39,7 @@ module Plastic
 
       def owned?(command) = @layout.plastic?(command) || package.entries.own?(command.to_s)
 
-      def package = Package.new(@installer.package_root, @installer.plastic_home, @installer.version)
+      def package = @installer.package
 
       def replaced
         original = Files.read_json(File.join(@installer.plastic_home, ".cache", "original-statusline.json"))

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "workflow"
-require_relative "failed"
+require_relative "errors"
 require_relative "handed_off"
 require_relative "agent_workflow/step"
 
@@ -55,8 +55,10 @@ module Plastic
     def call
       left = steps_left
       left.empty? ? :done : hand_off(left)
+    rescue Usage, Failed, Refused
+      raise
     rescue => error
-      Failed.raised(key, "handoff", error)
+      raise Failed.raised(key, "handoff", error)
     end
 
     private

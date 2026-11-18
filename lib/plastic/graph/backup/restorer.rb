@@ -2,6 +2,7 @@
 
 require_relative "../backup"
 require_relative "../database"
+require_relative "../schema/gate"
 require_relative "databases"
 require_relative "integrity"
 require_relative "publisher"
@@ -34,18 +35,22 @@ module Plastic
           raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
         end
 
-        def initialize(target, retrieval, now:, sequences: SchemaSequences::SEQUENCES)
-          @sequences = sequences
+        def initialize(target, retrieval, now:)
           @target = target
           @retrieval = retrieval
           @now = now
         end
 
-        def claimed? = @retrieval.claimed_nodes.any? { |node| !node.lapsed?(@now) }
+        # A store file that cannot be read holds no claim a restore could honour: a restore is what repairs it.
+        def claimed?
+          @retrieval.claimed_nodes.any? { |node| !node.lapsed?(@now) }
+        rescue Database::Error
+          false
+        end
 
         # The database names a restore would replace.
         def held_in(timestamp, names: nil)
-          held = held_names(timestamp)
+          held = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
           chosen = Array(names)
           self.class.require_held(timestamp, chosen - held)
           chosen.empty? ? held : chosen
@@ -58,26 +63,22 @@ module Plastic
           status = @target.folders.status(timestamp)
           return "the backup #{timestamp} is #{status}; only a done backup restores" unless status == "done"
 
-          mismatch(timestamp) if databases
+          databases&.then { mismatch(timestamp) }
         end
 
         # Returns the folder of the safety backup.
         def call(timestamp, databases: nil)
-          refuse(timestamp, databases)
-          names = verified(timestamp, databases)
+          held = held_in(timestamp, names: databases)
+          message = refusal(timestamp, databases:)
+          raise(error_for(message), message) if message
+
+          names = verified(timestamp, held)
           safety = Publisher.new(@target, now: @now, reason: "backup restore").call
-          swap(names, timestamp)
+          swap(names.map { |name| replacement(name, timestamp) })
           safety.fetch(:name).split("/").last
         end
 
         private
-
-        def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
-
-        def refuse(timestamp, databases)
-          message = refusal(timestamp, databases:)
-          raise(error_for(message), message) if message
-        end
 
         def error_for(message)
           return Claimed if claimed?
@@ -89,31 +90,31 @@ module Plastic
 
         def mismatch(timestamp)
           live = live_version
-          return if live.nil? || live == recorded(timestamp)
+          recorded = recorded(timestamp)
+          return if live.nil? || live == recorded
 
-          "the backup #{timestamp} is at schema version #{recorded(timestamp)} and the store is at #{live}; restore the whole store, which migrates it forward"
+          "the backup #{timestamp} is at schema version #{recorded} and the store is at #{live}; restore the whole store, which migrates it forward"
         end
 
-        # The lowest stamp among the live files that can be read; a damaged file is what a restore repairs, so it does not count.
-        def live_version = Databases.all.filter_map { |name| stamp(@target.file(name)) }.min
-
-        def stamp(path)
-          return unless File.file?(path)
-
-          SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("PRAGMA user_version") }
+        # The stamp of the live knowledge database; a damaged file is what a restore repairs, so it does not count.
+        def live_version
+          path = @target.file("knowledge_graph")
+          SchemaGate.stamp_of(path) if File.file?(path)
         rescue SQLite3::Exception
           nil
         end
 
         def source(name, timestamp) = File.join(@target.folders.path(timestamp), "#{name}-#{timestamp}.db")
 
-        def verified(timestamp, databases)
-          held_in(timestamp, names: databases).each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp), migrations: @sequences.fetch(:store)).call }
+        def verified(timestamp, names)
+          names.each { |name| Integrity.new(source(name, timestamp), name, version: recorded(timestamp)).call }
         end
 
-        def swap(names, timestamp)
+        def replacement(name, timestamp) = Replacement.new(source(name, timestamp), @target.file(name))
+
+        def swap(replacements)
           Database::ConnectionPool.release(@target.root)
-          Replacement.apply_all(names.map { |name| Replacement.new(source(name, timestamp), @target.file(name)) })
+          Replacement.apply_all(replacements)
         end
       end
     end

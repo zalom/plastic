@@ -20,13 +20,13 @@ class DocumentLookupTest < Plastic::TestCase
   end
 
   def test_a_passage_that_is_not_a_number_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { lookup.selected(@reference, "first") }
+    error = assert_raises(Plastic::Usage) { lookup.selected(@reference, "first") }
 
     assert_equal "passage must be a positive integer", error.message
   end
 
   def test_an_unknown_store_is_refused_by_name
-    error = assert_raises(Plastic::CLI::Scope::UnknownProject) { lookup.fetch("plastic://missing/1/spec.md") }
+    error = assert_raises(Plastic::Scope::UnknownProject) { lookup.fetch("plastic://missing/1/spec.md") }
 
     assert_equal 'no project named "missing"', error.message
   end

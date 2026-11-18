@@ -21,18 +21,18 @@ class ClaimNodeTest < Plastic::TestCase
   end
 
   def test_an_unknown_node_fails_the_call
-    outcome, = claim("n9")
+    error = assert_raises(Plastic::Failed) { claim("n9") }
 
-    assert_equal "code_claim_node, gate: no node n9 in intent 1", outcome.message
+    assert_equal "no node n9 in intent 1", error.message
   end
 
   def test_a_node_waiting_on_an_open_node_is_blocked
     store_graphs.work.add_node(intent_id: "1", title: "Ship", criterion: "it ships")
     store_graphs.work.add_edge(intent_id: "1", from: "n1", to: "n2")
 
-    outcome, = claim("n2")
+    error = assert_raises(Plastic::Failed) { claim("n2") }
 
-    assert_match(/node n2 needs a node that is not done/, outcome.message)
+    assert_match(/node n2 needs a node that is not done/, error.message)
     assert_equal "open", retrieval.node("1", "n2").state
   end
 
@@ -42,12 +42,12 @@ class ClaimNodeTest < Plastic::TestCase
       store_graphs.work.release_node(intent_id: "1", id: "n1")
     end
 
-    outcome, = claim
+    error = assert_raises(Plastic::Refused) { claim }
 
-    assert_equal [Plastic::Refused, "node n1 claimed 3 times; the owner decides"], [outcome.class, outcome.message]
+    assert_equal [Plastic::Refused, "node n1 claimed 3 times; the owner decides"], [error.class, error.message]
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_claim_node, gate: no intent 9 in this store", claim(intent_id: "9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { claim(intent_id: "9") }.message
   end
 end

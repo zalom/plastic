@@ -11,11 +11,11 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
     @path = @intent.file
   end
 
-  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_graphs.databases[:knowledge], origin)
+  def reader = Plastic::Graph::Retrieval::DocumentReader.new(store_database, origin)
 
   def fields(**more) = { intent_id: "1", path: @path, **more }
 
-  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases[:knowledge], origin).write("1", @path, "changed")
+  def rewrite = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", @path, "changed")
 
   def test_the_current_revision_is_the_hash_of_the_current_body
     assert_equal reader.fetch(fields).fetch("sha256"), reader.current_revision("1", @path)
@@ -43,12 +43,23 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
   end
 
   def test_a_passage_reads_its_body_and_lines
+    reindex
     passage = reader.passage(fields(revision: reader.current_revision("1", @path)), 1)
 
     assert_equal [1, true], [passage.fetch(:line_start), passage.fetch(:body).include?("Alpha")]
   end
 
   def test_a_passage_past_the_last_is_refused
+    reindex
+
     assert_equal "no passage 99", assert_raises(Missing) { reader.passage(fields(revision: reader.current_revision("1", @path)), 99) }.message
+  end
+
+  def test_a_passage_read_with_the_retrieval_file_gone_asks_for_the_repair
+    reindex
+    fields = fields(revision: reader.current_revision("1", @path))
+    lose_retrieval_file
+
+    assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { reader.passage(fields, 1) }
   end
 end

@@ -12,7 +12,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def closed_run(subject, at: nil)
-    run = Plastic::CommandRun.fresh("intent end", subject).close(Plastic::Finished.new(next_command: nil, because: "done"), {})
+    run = Plastic::CommandRun.fresh("intent end", subject, FixedClock::AT).close(Plastic::Finished.new(next_command: nil, because: "done"), {}, FixedClock::AT)
     at ? run.with(updated_at: at) : run
   end
 
@@ -50,7 +50,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_command_run_reads_the_run_of_one_tool_on_one_subject
-    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
 
     assert_equal ["intent end", "1"], reader.command_run("intent end", "1").then { |run| [run.tool, run.subject] }
   end
@@ -68,8 +68,8 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_touched_counts_a_run_whose_subject_is_a_title_through_its_facts_intent_id
-    run = Plastic::CommandRun.fresh("intent new", "Alpha")
-      .close(Plastic::Finished.new(next_command: "plastic continue", because: "done"), { intent_id: "1" })
+    run = Plastic::CommandRun.fresh("intent new", "Alpha", FixedClock::AT)
+      .close(Plastic::Finished.new(next_command: "plastic continue", because: "done"), { intent_id: "1" }, FixedClock::AT)
     graphs(session: "s-1").work.save_command_run(run)
 
     assert_equal ["1"], reader.touched("s-1")
@@ -84,7 +84,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_last_run_reads_the_latest_command_run_naming_the_intent
-    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
 
     assert_equal "1", reader.last_run("1").subject
   end
@@ -94,7 +94,7 @@ class WorkSessionReaderTest < Plastic::TestCase
   end
 
   def test_last_run_stays_in_its_own_store
-    graphs(store: "other").work.save_command_run(Plastic::CommandRun.fresh("intent end", "1"))
+    graphs(store: "other").work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
 
     assert_nil reader.last_run("1")
   end

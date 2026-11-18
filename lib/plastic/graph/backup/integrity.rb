@@ -3,7 +3,7 @@
 require "sqlite3"
 require_relative "../backup"
 require_relative "../schema"
-require_relative "../schema/sequences"
+require_relative "../schema/migrator"
 
 module Plastic
   module Graph
@@ -15,11 +15,19 @@ module Plastic
         # A backup file failed its check.
         class Rejected < StandardError; end
 
-        def initialize(path, name, version:, migrations: SchemaSequences::SEQUENCES.fetch(:store))
+        # The tables of each database file of a beta.2 store, which no stamp marks.
+        BETA_2_TABLES = {
+          "work_graph" => %w[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
+            roadmap_edges roadmap_log archives archive_entries],
+          "knowledge_graph" => %w[documents document_revisions document_heads document_passages document_fts retrieval_schema
+            retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
+          "references" => %w[sqlar printed changes]
+        }.freeze
+
+        def initialize(path, name, version:)
           @path = path
           @name = name
           @version = version
-          @migrations = migrations
           @database = nil
         end
 
@@ -37,7 +45,7 @@ module Plastic
         def reject(reason) = raise(Rejected, "#{@path} #{reason}")
 
         def verify
-          newest = @migrations.last.number
+          newest = SchemaMigrator::VERSION
           reject("records the version #{@version}, which is newer than this code (version #{newest})") if @version > newest
           reject("fails the integrity check") unless @database.get_first_value("PRAGMA quick_check") == "ok"
           missing = expected - tables
@@ -46,7 +54,12 @@ module Plastic
 
         def tables = @database.execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten
 
-        def expected = SchemaSequences.tables(@migrations, @version, @name)
+        def expected = @version.zero? ? BETA_2_TABLES.fetch(@name) : declared
+
+        def declared
+          _file, names = Schema.databases.values.find { |file, _names| File.basename(file, ".db") == @name }
+          names.to_a.map(&:to_s)
+        end
       end
     end
   end

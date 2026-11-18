@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalSearchTest < Plastic::TestCase
   def test_searches_literal_terms_with_bounded_results_and_stable_ties
     writer.write("1", "z.md", "needle -- quoted \"term\"")
     writer.write("2", "a.md", "needle -- quoted \"term\"")
+    reindex
 
     rows = retrieval.search('needle -- quoted "term"')
 
@@ -22,7 +23,7 @@ class RetrievalSearchTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
 end
 
 class RetrievalSearchOrderTest < Plastic::TestCase
@@ -30,6 +31,7 @@ class RetrievalSearchOrderTest < Plastic::TestCase
     index("1", "z.md")
     index("2", "a.md")
     index("2", "b.md")
+    reindex
 
     assert_equal legacy_rows, retrieval.search("common term", limit: 2)
     assert query_plan.any? { |row| row.fetch("detail").include?("USE TEMP B-TREE") }
@@ -42,16 +44,16 @@ class RetrievalSearchOrderTest < Plastic::TestCase
   end
 
   def legacy_rows
-    database.rows(legacy_sql, query:, origin:, limit: 2)
+    store_database.rows(legacy_sql, query:, origin:, limit: 2)
   end
 
   def query_plan
-    database.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
+    store_database.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
   end
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(database, origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(database, origin, clock: FixedClock::CLOCK)
 
-  def database = store_graphs.databases.fetch(:knowledge)
+  def database = store_graphs.databases.fetch(:store)
 
   def query = '"common" AND "term"'
 

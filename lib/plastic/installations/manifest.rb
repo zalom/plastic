@@ -22,10 +22,10 @@ module Plastic
 
       def files_and_path = files + [path].select { |file| File.file?(file) }
 
-      def write(paths)
+      def write(paths, time)
         FileUtils.mkdir_p(File.dirname(@path))
         listed = paths.select { |path| File.exist?(path) }.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] }
-        Files.write_json(@path, { "version" => "1", "created" => Plastic.now, "files" => listed })
+        Files.write_json(@path, { "version" => "1", "created" => Plastic.timestamp(time), "files" => listed })
         self
       end
 

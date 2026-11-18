@@ -10,6 +10,9 @@ module Plastic
     # A database whose layout is older than this code.
     class Behind < OutOfStep; end
 
+    # A store older than the beta.2 release, which no migration reads: opening it once with beta.2 brings it forward.
+    class TooOld < Behind; end
+
     # A database whose layout is newer than this code.
     class Ahead < OutOfStep; end
   end

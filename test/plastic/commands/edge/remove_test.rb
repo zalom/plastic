@@ -32,7 +32,7 @@ class EdgeRemoveTest < Plastic::TestCase
     result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 0, out: ["edge: n1 to n2 removed"]
-    assert_empty store_graphs.retrieval.edges("1")
+    assert_empty store_graphs.retrieval.structure.edges("1")
   end
 
   def test_removing_an_existing_edge_succeeds
@@ -45,7 +45,7 @@ class EdgeRemoveTest < Plastic::TestCase
 
     assert_call result, code: 0,
       out: "edge: n1 to n2 removed\nwrote:  1 edge and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic graph show 1\nbecause: edge n1 to n2 is gone\n"
-    assert_empty store_graphs.databases.fetch(:work).rows("SELECT * FROM edges")
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT * FROM edges")
   end
 
   def test_preview_matches_apply_on_an_identical_home

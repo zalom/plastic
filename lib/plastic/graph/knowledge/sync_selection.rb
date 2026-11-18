@@ -1,57 +1,51 @@
 # frozen_string_literal: true
 
-require_relative "../../config"
 require_relative "legacy_path"
 
 module Plastic
   module Graph
     module Knowledge
-      # Which files of an intent folder a sync reads into rows. The notes are
-      # always read: every Markdown file outside references/, the graph, the
-      # context and the legacy action files. Images and videos, other
-      # documents and the references/ folder are read only when their setting
-      # under `sync` is on. `rel` is the path inside the intent folder.
+      # Which files of an intent folder a sync reads into rows. The notes in the
+      # intent root, the graph, the context and the legacy action files are
+      # always read. Under resources/, the output folders are read by file type,
+      # references/ only when its setting is on, and tmp/ never. `rel` is the
+      # path inside the intent folder.
       class SyncSelection
-        OPTIONAL = %w[media documents references].freeze
         NOTES = %w[graph.json context.json work.log].freeze
-        REFERENCES = "references/"
+        REFERENCES = "resources/references/"
+        OUTPUT = %w[resources/output/reports/ resources/output/files/].freeze
         INTENT_FILE = %r{\Astore/[^/]*--[^/]*/(.+)\z}
-        MEDIA = %w[.png .jpg .jpeg .gif .webp .svg .avif .heic .bmp .ico .tif .tiff
-          .mp4 .mov .webm .m4v .avi .mkv].freeze
 
-        def self.of(home)
-          config = Config.new(home)
-          new(OPTIONAL.select { |kind| config.flag(["sync", kind], default: false) })
-        end
+        def self.none = new(types: [], references: false, asked: [])
 
-        def self.none = new([])
+        def self.output?(rel) = OUTPUT.any? { |folder| rel.start_with?(folder) }
 
-        def self.all = new(OPTIONAL)
+        def self.root_note?(rel) = !rel.include?("/") && type_of(rel) == "md"
 
-        def self.kind_of(rel)
-          return "references" if rel.start_with?(REFERENCES)
-          return "notes" if note?(rel)
+        def self.note?(rel) = root_note?(rel) || NOTES.include?(rel) || LegacyPath.legacy?(rel)
 
-          MEDIA.include?(File.extname(rel).downcase) ? "media" : "documents"
-        end
+        def self.type_of(rel) = File.extname(rel).delete_prefix(".").downcase
 
-        def self.note?(rel) = File.extname(rel).casecmp?(".md") || NOTES.include?(rel) || LegacyPath.legacy?(rel)
-        private_class_method :note?
-
-        def initialize(kinds)
-          @kinds = kinds
+        def initialize(types:, references:, asked:)
+          @types = types
+          @references = references
+          @asked = asked
         end
 
         def read?(rel)
-          kind = SyncSelection.kind_of(rel)
-          kind == "notes" || @kinds.include?(kind)
+          return true if SyncSelection.note?(rel)
+          return @references if rel.start_with?(REFERENCES)
+
+          SyncSelection.output?(rel) && @types.include?(SyncSelection.type_of(rel))
         end
 
-        # A path of the store folder: a file of an intent folder by its kind,
-        # every other file of the store always.
         def selects?(path)
           rel = path[INTENT_FILE, 1]
           rel.nil? || read?(rel)
+        end
+
+        def new_types(rels)
+          rels.select { |rel| SyncSelection.output?(rel) }.map { |rel| SyncSelection.type_of(rel) }.uniq - @types - @asked - [""]
         end
       end
     end

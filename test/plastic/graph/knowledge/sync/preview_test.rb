@@ -57,7 +57,7 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
   SPEC = "store/1--alpha/spec.md"
 
   def conflicting_spec
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP })
     end
     write(SPEC, "file change")
@@ -71,13 +71,13 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal before, snapshot(store_root)
   end
 
-  def test_the_preview_reads_the_sync_settings_of_the_home
-    write("store/1--alpha/resources/shot.png", "image bytes")
+  def test_the_preview_reads_the_sync_selection_of_the_graph_that_runs_it
+    write("store/1--alpha/resources/output/files/shot.png", "image bytes")
     without = preview.grep(/shot\.png/)
-    seed_config(@plastic_home, "global:\n  sync:\n    media: true\n")
-    with = preview.grep(/shot\.png/)
+    seed_config(@plastic_home, "global:\n  sync:\n    types: [md, png]\n")
+    with = Plastic::Wiring.graphs(home: @plastic_home, store: "global").work.preview_sync({}).lines.grep(/shot\.png/)
 
-    assert_equal [true, true], [without.empty?, !with.empty?], preview.inspect
+    assert_equal [true, true], [without.empty?, !with.empty?]
   end
 
   def test_an_overwrite_path_that_names_no_file_is_refused_naming_the_path
@@ -178,7 +178,7 @@ class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
     off = listed_paths(preview)
     seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
     before = states
-    on = listed_paths(preview)
+    on = listed_paths(Plastic::Wiring.graphs(home: @plastic_home, store: "global").work.preview_sync({}).lines)
 
     assert_equal [off, before], [on, states]
     assert folder.exist?("INDEX.md")

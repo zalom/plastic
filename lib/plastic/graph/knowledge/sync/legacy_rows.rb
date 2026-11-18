@@ -2,9 +2,10 @@
 
 require_relative "../intent"
 require_relative "../legacy/index"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../../schema"
 require_relative "../store_folder"
+require_relative "../store_path"
 
 module Plastic
   module Graph
@@ -43,9 +44,9 @@ module Plastic
           end
 
           def write(parsed)
-            now = Plastic.now
+            now = Plastic.timestamp(@retrieval.clock.now)
             rows = parsed.entries.map { |entry| entry.row(FrontMatter.new(@folder).read(entry.dir), now) }
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))
             end
           end
@@ -55,7 +56,7 @@ module Plastic
             dirs.each_with_index.flat_map { |dir, index| [*@sync.read(readable_paths(dir)), "imported intent #{index + 1} of #{dirs.size}: #{File.basename(dir).split("--", 2).first}"] }
           end
 
-          def readable_paths(dir) = @folder.files(dir).reject { |path| Graph::Knowledge::StoreFolder.context_view?(path) }
+          def readable_paths(dir) = @folder.files(dir).reject { |path| Graph::Knowledge::StorePath.context_view?(path) }
 
           def finish
             @sync.printer.print(Prints.of_store(@retrieval))

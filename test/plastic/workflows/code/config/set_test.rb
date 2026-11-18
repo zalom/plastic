@@ -32,18 +32,18 @@ class WorkflowSetConfigTest < Plastic::TestCase
   end
 
   def test_a_key_that_does_not_exist_is_refused_and_writes_nothing
-    assert_raises(Plastic::CLI::Command::Usage) { write("no.such", "1") }
+    assert_raises(Plastic::Usage) { write("no.such", "1") }
     refute_path_exists File.join(@plastic_home, "config.yml")
   end
 
   def test_an_on_off_setting_refuses_a_value_that_is_not_true_or_false
-    error = assert_raises(Plastic::CLI::Command::Usage) { write("statusline", "maybe") }
+    error = assert_raises(Plastic::Usage) { write("statusline", "maybe") }
 
     assert_equal "statusline takes true or false", error.message
   end
 
   def test_a_list_value_is_refused
-    error = assert_raises(Plastic::CLI::Command::Usage) { write("review.pull_request", "[a, b]") }
+    error = assert_raises(Plastic::Usage) { write("review.pull_request", "[a, b]") }
 
     assert_equal "a setting takes one value, not [a, b]", error.message
   end

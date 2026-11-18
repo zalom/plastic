@@ -17,7 +17,7 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## What runs and where it keeps data
 
-![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
+![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and retrieval_graph.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
 
 One program, `active/bin/plastic` of the install, serves every command and the three hooks.
 Everything it keeps lives under the Plastic home.
@@ -31,25 +31,25 @@ Everything it keeps lives under the Plastic home.
 | `config.yml`, `projects.yml` | The settings, printed from the `settings` rows, and the list of projects from slug to repository. |
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
-| `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
+| `stores/SLUG/backups/` | Copies of the work and knowledge databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
 | `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
 | `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
 
-A store keeps its rows in three SQLite databases. The store folder's `.gitignore` lists them,
+A store keeps its rows in three SQLite databases: work, knowledge and retrieval. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `work_log`, `work_log_pending`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
-| `knowledge_graph.db` | `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, and the search tables of the retrieval graph |
-| `references.db` | `sqlar` |
+| `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
+| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
+| `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
 
-Every store database also has two bookkeeping tables:
+The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
+as of the last print. No table logs the history of a row.
 
-- `changes` logs every write: the table, the row key, put or remove, the whole row, the time and
-  the origin. The log row is written in the same transaction as the write.
-- `printed` keeps the hash of every file printed from the rows, as of the last print.
+A node move writes four kinds of row in one transaction: the node's state, its run, the log line
+and the changed files of the intent folder it read.
 
 Every row carries `origin_id`, the id of the installation that wrote it. The id sits in a file
 at the home and is made on first use. Every stored time is UTC.
@@ -62,7 +62,7 @@ open, in_progress, parked, future, done or abandoned. The states fall in three g
 
 ## The components of the kernel
 
-![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Work::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
+![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a CLI::Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
 
 The kernel lives under `lib/plastic/`, and `lib/plastic.rb` loads it. A class
 loads on first use, so `plastic help` reads the table and loads no command.
@@ -72,7 +72,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `CLI` | `lib/plastic/cli.rb` | Finds the longest entry in the table that starts the arguments, answers `--help`, and names an unknown command and points at `plastic help`. |
 | `CLI::TABLE` | `lib/plastic/cli/table.rb` and `lib/plastic/cli/table/work_families.rb` | The whole command line in one frozen hash: the words, the class and the help line. The work graph and hook families are written in `work_families.rb`, and `table.rb` adds them in order. |
 | `CLI::Command` | `lib/plastic/cli/command.rb` | The base class. It parses the arguments, runs the call, prints and maps errors to exit codes. |
-| `CLI::Scope` | `lib/plastic/cli/scope.rb` | Which project and store a command works on. |
+| `Scope` | `lib/plastic/scope.rb` | Which project and store a command works on. |
 | `CLI::Output` | `lib/plastic/cli/output.rb` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
 | `Routine` | `lib/plastic/routine.rb` | A command whose work is a chain of workflows, written as data in the class body. |
 | `Routine::Chain` | `lib/plastic/routine/chain.rb` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |
@@ -82,10 +82,10 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_auto` is `Workflows::Code::Auto`, in `lib/plastic/workflows/code/auto.rb`. |
 | `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
-| `Hook` | `lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
-| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `CLI::Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap`, `Hooks::StopGate` | `lib/plastic/hooks/` | The text `hook start` prints and the decision whether `hook stop` blocks a stop. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
-| `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
+| `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
 | `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, intents, nodes, runs and edges. |
@@ -117,16 +117,16 @@ To retire a kind of data:
 
 ## The three graphs
 
-![The three graphs and their databases. Graph::WorkGraph is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, and the knowledge graph and the retrieval graph live in knowledge_graph.db. Graph::RetrievalGraph is the read side: it reads those rows and writes nothing. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
+![The three graphs and their databases. Graph::WorkGraph is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, and the knowledge graph live in knowledge_graph.db, and the retrieval graph lives in retrieval_graph.db. Graph::RetrievalGraph is the read side: it reads those rows and writes nothing. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
 
 `Graph::WorkGraph` is the write side of every database. `Graph::RetrievalGraph` is the read side:
 it reads every database and writes nothing. The commands below reach them through these two.
 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
-| Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, the work log, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
+| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
-| Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
 ![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
 
@@ -277,17 +277,21 @@ A plain sync with a conflict writes nothing, exits 3 and lists every conflict. W
 file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
 `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
 
-A sync reads only the kinds of file that `Graph::Knowledge::SyncSelection` selects. Other
-files stay on disk and get no rows.
+A sync reads only the files that `Graph::Knowledge::SyncSelection` selects. Other files stay on
+disk and get no rows.
 
-| Kind | Files of an intent folder | Read |
-| ---- | ------------------------- | ---- |
-| Notes | Every Markdown file outside `references/`, `graph.json`, `context.json` and the legacy plan, checklist and `actions/` files | Always |
-| Images and videos | Image and video files outside `references/` | When `sync.media` is on. `plastic init` offers it picked. |
-| Documents | Every other file outside `references/` | When `sync.documents` is on |
-| References | Every file under `references/` | When `sync.references` is on |
+| Place in an intent folder | Files | Read |
+| ------------------------- | ----- | ---- |
+| Intent root | Every Markdown file, `graph.json`, `context.json`, `work.log` and the legacy plan, checklist and `actions/` files | Always |
+| `resources/output/reports/` and `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
+| `resources/references/` | Every file | When `sync.references` is on |
+| `resources/tmp/` and every other place | Every file | Never |
 
-A file of a kind the settings leave out is not read, even when an earlier sync put it in rows.
+A sync up skips the first file of a type that `sync.types` and `sync.asked` do not name, prints one
+line that names the `plastic config set` command adding the type to `sync.types`, and adds the type to
+`sync.asked`.
+
+A file the selection leaves out is not read, even when an earlier sync put it in rows.
 Its rows stay, and nothing on disk is removed.
 
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a
@@ -310,9 +314,9 @@ is never stored: it is derived on each read as done, dropped, in flight, blocked
 | Command | What it does |
 | ------- | ------------ |
 | `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
-| `plastic intent archive ID` | Saves the whole intent folder in `work_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent archive ID` | Saves the whole intent folder in `knowledge_graph.db`, then removes it. Open and linked intents are refused. |
 | `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
-| `plastic backup --store SLUG` | Copies the three databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
+| `plastic backup --store SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic backup list --store SLUG` | Lists the backups of a store. |
 | `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
 | `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live. |

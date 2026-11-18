@@ -3,7 +3,7 @@
 require "digest"
 require_relative "../../../test_helper"
 
-# Every intent write stores its owning rows and one pending row together, and one work_log line follows.
+# Every intent write stores its owning rows and its one work_log line.
 class WorkLoggedWritesTest < Plastic::TestCase
   fixtures :empty
 
@@ -11,13 +11,13 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def work = graphs.work
 
-  def lines(id = "1") = graphs.retrieval.work_log(id)
+  def lines(id = "1") = graphs.retrieval.structure.work_log(id)
 
   def kinds(id = "1") = lines(id).map(&:kind)
 
   def intent(title = "Alpha") = work.write_intent(title:)
 
-  def forget(id = "1") = graphs.databases.fetch(:work).transaction { |batch| batch.remove(:work_log, intent_id: id) }
+  def forget(id = "1") = graphs.databases.fetch(:store).transaction { |batch| batch.remove(:work_log, intent_id: id) }
 
   def test_a_new_intent_stores_its_rows_first_and_one_opened_line_second
     intent
@@ -113,7 +113,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
   def test_an_intent_converted_from_savepoints_is_not_given_an_opened_line
     intent
     forget
-    graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+    graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.timestamp(FixedClock::AT), kind: "noted", text: "old line" }) }
     work.add_ruling(intent_id: "1", text: "x")
 
     assert_equal %w[noted ruled], kinds
@@ -129,8 +129,68 @@ class WorkLoggedWritesTest < Plastic::TestCase
   def test_a_legacy_intent_gets_no_line_until_a_real_write
     intent
     forget
-    graphs.databases.fetch(:work).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.now, kind: "noted", text: "old line" }) }
+    graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 1, at: Plastic.timestamp(FixedClock::AT), kind: "noted", text: "old line" }) }
 
-    assert_equal [0, %w[noted]], [work.drain_log("1"), kinds]
+    assert_equal %w[noted], kinds
   end
+end
+
+# The owning rows and the work_log row land in one transaction, or neither lands.
+class WorkLoggedWritesOneTransactionTest < Plastic::TestCase
+  fixtures :empty
+
+  OUTBOX_WORDS = /work_log_pending|write_id|drain_log/
+  LIB = File.expand_path("../../../../lib", __dir__)
+  FROZEN = File.join(LIB, "plastic/graph/schema/sequences")
+
+  # A store whose work_log inserts fail, as on a full disk.
+  class FailingLogStore < SimpleDelegator
+    def transaction(*) = super { |batch| yield FailingLogBatch.new(batch) }
+  end
+
+  class FailingLogBatch < SimpleDelegator
+    def put(table, *) = (table == :work_log) ? raise(Plastic::Graph::Database::Error, "disk full") : super
+  end
+
+  def failing
+    open = graphs
+    Plastic::Graph::WorkGraph.new(open.databases.merge(store: FailingLogStore.new(open.databases.fetch(:store))), folder:, retrieval: open.retrieval, session: "s-1")
+  end
+
+  def log_rows = graphs.databases.fetch(:store).rows("SELECT kind FROM work_log WHERE intent_id = '1'").map { |row| row["kind"] }
+
+  def test_a_failing_work_log_insert_leaves_no_owning_row
+    intent
+
+    assert_raises(Plastic::Graph::Database::Error) { failing.add_ruling(intent_id: "1", text: "Flowbite styles every delivery") }
+    assert_empty graphs.retrieval.rulings("1")
+    assert_equal %w[opened], log_rows
+  end
+
+  def test_a_failing_owning_write_leaves_no_work_log_row
+    intent
+
+    assert_raises(Plastic::Invalid) { work.close_intent("1") }
+    assert_equal %w[opened], log_rows
+  end
+
+  def test_one_write_adds_exactly_one_work_log_row
+    intent
+    work.add_ruling(intent_id: "1", text: "a")
+
+    assert_equal %w[opened ruled], log_rows
+  end
+
+  def test_lib_and_the_schema_text_name_no_outbox_word
+    named = Dir.glob(File.join(LIB, "**/*.rb")).reject { |path| path.start_with?(FROZEN) }.select { |path| File.read(path).match?(OUTBOX_WORDS) }
+
+    assert_empty named.map { |path| path.delete_prefix("#{LIB}/") }
+    assert_empty %i[knowledge work retrieval].select { |key| Plastic::Graph::Schema.fetch(key).match?(OUTBOX_WORDS) }
+  end
+
+  def graphs(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
+
+  def work = graphs.work
+
+  def intent(title = "Alpha") = work.write_intent(title:)
 end

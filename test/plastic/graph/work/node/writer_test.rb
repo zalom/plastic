@@ -17,14 +17,14 @@ class WorkNodeWriterTest < Plastic::TestCase
     add
     added = add("Test")
 
-    assert_equal ["n2", "open", 0], [added.id, added.state, retrieval.runs("1").size]
+    assert_equal ["n2", "open", 0], [added.id, added.state, retrieval.structure.runs("1").size]
   end
 
   def test_a_claim_moves_an_open_node_and_opens_a_run
     add
     state, claimed = @work.claim_node(intent_id: "1", id: "n1", by: "executor")
 
-    assert_equal [:claimed, "claimed", "executor", [1]], [state, claimed.state, claimed.claimed_by, retrieval.runs("1").map(&:number)]
+    assert_equal [:claimed, "claimed", "executor", [1]], [state, claimed.state, claimed.claimed_by, retrieval.structure.runs("1").map(&:number)]
   end
 
   def test_a_claim_of_a_missing_node_is_refused_with_no_node
@@ -73,7 +73,7 @@ class WorkNodeWriterTest < Plastic::TestCase
     end
     state, claimed = @work.claim_node(intent_id: "1", id: "n1", by: "a")
 
-    assert_equal [:claimed, 3, nil], [state, retrieval.runs("1").size, claimed.question]
+    assert_equal [:claimed, 3, nil], [state, retrieval.structure.runs("1").size, claimed.question]
   end
 
   def test_the_question_of_a_capped_node_reads_back_from_the_rows
@@ -91,7 +91,7 @@ class WorkNodeWriterTest < Plastic::TestCase
     add
 
     assert_nil @work.release_node(intent_id: "1", id: "n1")
-    assert_equal ["open", 0], [node("n1").state, retrieval.runs("1").size]
+    assert_equal ["open", 0], [node("n1").state, retrieval.structure.runs("1").size]
   end
 
   def test_done_records_the_judge_and_findings

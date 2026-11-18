@@ -23,7 +23,7 @@ class CommandReferenceModelTest < Minitest::Test
     own = page("update").own_call
 
     assert_equal "lib/plastic/commands/update.rb", own.file
-    assert_includes own.code.join("\n"), "raise CLI::Command::Usage"
+    assert_includes own.code.join("\n"), "raise Usage"
     assert_nil page("intent end").own_call
   end
 

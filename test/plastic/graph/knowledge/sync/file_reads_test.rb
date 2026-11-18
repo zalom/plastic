@@ -12,7 +12,10 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(names.map { |name| "#{DIR}/#{name}" })
   end
 
-  def fts(sql) = store_graphs.databases.fetch(:knowledge).rows(sql).map { |row| row.fetch("body") }
+  def fts(sql)
+    reindex
+    store_database.rows(sql).map { |row| row.fetch("body") }
+  end
 
   def test_a_first_sync_of_documents_makes_them_searchable
     sync_read("notes.md", "other.md")
@@ -35,7 +38,25 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     write("#{DIR}/notes.md", "# notes\n")
 
     assert_equal ["read #{DIR}/notes.md"], file_reads.call([GRAPH, "#{DIR}/notes.md"])
-    assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
+  end
+
+  def test_read_all_raises_instead_of_falling_back
+    write_null_id_graph
+    write("#{DIR}/notes.md", "# notes\n")
+    error = assert_raises(Plastic::Failed) { file_reads.read_all([GRAPH, "#{DIR}/notes.md"]) }
+
+    assert_includes error.message, GRAPH
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT path FROM document_heads WHERE path = 'notes.md'")
+  end
+
+  def test_read_all_gives_the_reads_and_prints_nothing_until_asked
+    write("#{DIR}/notes.md", "# notes\n")
+    reads = file_reads.read_all(["#{DIR}/notes.md"])
+    before = retrieval.stored.printed["#{DIR}/notes.md"]
+    file_reads.reprint(reads)
+
+    assert_equal [nil, false], [before, retrieval.stored.printed["#{DIR}/notes.md"].nil?]
   end
 
   def rename_by_hand_in_the_index
@@ -58,7 +79,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     rename_by_hand_in_the_index
     file_reads.call([GRAPH, "store/index.json"])
 
-    assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT id FROM nodes")
   end
 
   def test_a_read_the_reader_refuses_leaves_the_other_reads_written

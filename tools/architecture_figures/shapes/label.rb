@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # One line of text.

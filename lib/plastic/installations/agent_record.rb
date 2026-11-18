@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "forwardable"
 require_relative "manifest"
+require_relative "recorded_version"
 
 module Plastic
   module Installations
@@ -10,10 +12,17 @@ module Plastic
     # is installed when the record has a version, and registered when a file
     # its manifest lists exists.
     class AgentRecord
+      extend Forwardable
+
       attr_reader :config
+
+      def_delegators :@recorded_version, :installed?
+      def_delegator :@recorded_version, :read, :version
+      def_delegator :@recorded_version, :write, :write_version
 
       def initialize(config)
         @config = config
+        @recorded_version = RecordedVersion.new(dir)
       end
 
       def key = config[:key]
@@ -28,12 +37,6 @@ module Plastic
 
       def legacy = Manifest.new(File.join(root, "plastic-manifest.json"))
 
-      def version_path = File.join(dir, "VERSION")
-
-      def version = installed? ? File.read(version_path).strip : nil
-
-      def installed? = File.exist?(version_path)
-
       def registered? = manifest.files.any? { |path| File.exist?(path) }
 
       # Codex keeps its own folder apart from the shared skills folder, so its
@@ -47,12 +50,6 @@ module Plastic
       def retire_legacy = FileUtils.rm_f(legacy.path)
 
       def roots(fragments) = [root, config[:home_dir], *fragments].compact
-
-      def write_version(version)
-        FileUtils.mkdir_p(dir)
-        File.write(version_path, "#{version}\n")
-        version_path
-      end
     end
   end
 end

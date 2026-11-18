@@ -24,7 +24,7 @@ module Plastic
 
       attr_reader :context
 
-      def knowledge = context.database(:knowledge)
+      def knowledge = context.database(:store)
 
       def parameters = { intent_id: context.intent_id, origin: context.retrieval.origin_id }
     end

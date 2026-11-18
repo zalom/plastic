@@ -1,44 +1,69 @@
 # frozen_string_literal: true
 
 require_relative "../behind"
-require_relative "sequences"
 
 module Plastic
   module Graph
-    # The check a database passes on its first use in a process. A new, empty
-    # file gets the declared schema and the newest stamp. A file at the newest
-    # version passes. A file behind its sequence is refused after one wait
-    # for the write lock, because another session may be migrating it; a
-    # file ahead of this code is refused too. Nothing here migrates an old
+    # The check a database passes on its first use in a process. The stamp of the main file says whether the whole
+    # database is current. A new, empty database gets the declared schema of each of its files and the newest stamp. A
+    # database at the newest version passes. A database behind is refused after one wait for the write lock, because
+    # another session may be migrating it; a database ahead of this code is refused too. Nothing here migrates an old
     # file: the install and the update do, through SchemaRunner.
     class SchemaGate
-      VERSION = "PRAGMA user_version"
+      MAIN = "main"
 
-      def initialize(connection, sequence:, key:, file:)
+      # True when a file of the store holds tables and the main file is unstamped, which no new store is.
+      def self.behind?(path, files)
+        existing = [path, *files].select { |file| File.file?(file) }
+        return false if existing.empty? || (File.file?(path) && stamp_of(path) != 0)
+
+        existing.any? { |file| holding_tables?(file) }
+      rescue SQLite3::Exception
+        false
+      end
+
+      def self.stamp_of(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("PRAGMA user_version") }
+
+      def self.holding_tables?(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").positive? }
+
+      # `layouts` maps each schema of the connection, nil for a database of one file, to the schema key that builds it; the first is the main file.
+      def initialize(connection, layouts:, file:)
         @connection = connection
-        @sequence = sequence
-        @key = key
+        @layouts = layouts
         @file = file
       end
 
       def call
         version = stamped
-        return if version == newest
+        return build_missing_files if version == SchemaMigrator::VERSION
 
-        raise Ahead, refusal("is newer than this code (version #{version}, code #{newest})") if version > newest
+        raise Ahead, refusal("is newer than this code (version #{version}, code #{SchemaMigrator::VERSION})") if version > SchemaMigrator::VERSION
 
         settle(version)
       rescue SQLite3::BusyException
-        raise Behind, refusal("is busy and behind this code (version #{version}, code #{newest})")
+        raise Behind, refusal("is busy and behind this code (version #{version}, code #{SchemaMigrator::VERSION})")
       end
 
       private
 
-      def newest = SchemaSequences.newest(@sequence)
+      def pragma = "PRAGMA #{prefix(@layouts.keys.first)}user_version"
 
-      def stamped = @connection.get_first_value(VERSION).to_i
+      def prefix(schema) = schema && "#{schema}."
 
-      def empty? = @connection.get_first_value("SELECT COUNT(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").zero?
+      def stamped = @connection.get_first_value(pragma).to_i
+
+      def empty? = @layouts.keys.all? { |schema| empty_schema?(schema) }
+
+      def empty_schema?(schema) = @connection.get_first_value("SELECT COUNT(*) FROM #{prefix(schema)}sqlite_master WHERE name NOT LIKE 'sqlite_%'").zero?
+
+      # An attached file that was lost, such as the derived retrieval file, is built again empty; the stamp of the main file stays.
+      def build_missing_files
+        return if lost_schemas.empty?
+
+        under_write_lock { lost_schemas.each { |schema| @connection.execute_batch(Schema.fetch(@layouts.fetch(schema), schema:)) } }
+      end
+
+      def lost_schemas = @layouts.keys.compact.select { |schema| empty_schema?(schema) }
 
       def settle(version)
         return if empty? && build_layout
@@ -46,21 +71,21 @@ module Plastic
         verify_current(version)
       end
 
-      # Builds the declared schema and stamps it in one transaction under the write lock. A second session
-      # that waited for the lock finds the tables there and builds nothing.
+      # Builds the declared schema of every file and stamps it in one transaction under the write lock. A second
+      # session that waited for the lock finds the tables there and builds nothing.
       def build_layout
         under_write_lock do
           next false unless empty?
 
-          SchemaSequences::CURRENT_LAYOUT.call(@connection, @key)
-          @connection.execute("#{VERSION} = #{newest}")
+          @layouts.each { |schema, key| @connection.execute_batch(Schema.fetch(key, schema:)) }
+          @connection.execute("#{pragma} = #{SchemaMigrator::VERSION}")
           true
         end
       end
 
       def verify_current(version)
         current = under_write_lock { stamped }
-        raise Behind, refusal("is behind this code (version #{version}, code #{newest})") unless current == newest
+        raise Behind, refusal("is behind this code (version #{version}, code #{SchemaMigrator::VERSION})") unless current == SchemaMigrator::VERSION
       end
 
       # A call already inside a transaction holds the write lock or will; a call outside one takes it here.

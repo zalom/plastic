@@ -31,28 +31,37 @@ module Plastic
 
           def visit(relative)
             path = relative.empty? ? @root : File.join(@root, relative)
-            stat = File.lstat(path)
-            entry = entry_for(relative, path, stat)
-            children = stat.directory? ? children_of(path, relative) : []
-            [entry, *children]
+            node = Node.new(relative, path, File.lstat(path))
+            [node.entry, *(node.directory? ? children_of(path, relative) : [])]
           end
 
           def children_of(path, relative)
             Dir.children(path).sort.flat_map { |name| visit(relative.empty? ? name : File.join(relative, name)) }
           end
 
-          def entry_for(relative, path, stat)
-            raise Error, "cannot archive special file #{path}" unless stat.file? || stat.directory? || stat.symlink?
+          # One path of the tree with its link-free stat, which becomes one snapshot entry.
+          class Node
+            def initialize(relative, path, stat)
+              @relative = relative
+              @path = path
+              @stat = stat
+            end
 
-            { path: relative, kind: stat.ftype, mode: stat.mode & 0o7777,
-              mtime: stat.mtime.to_r.to_s, data: content(path, stat) }
-          end
+            def directory? = @stat.directory?
 
-          def content(path, stat)
-            return File.binread(path) if stat.file?
-            return File.readlink(path).b if stat.symlink?
+            def entry
+              raise Error, "cannot archive special file #{@path}" unless @stat.file? || @stat.directory? || @stat.symlink?
 
-            nil
+              { path: @relative, kind: @stat.ftype, mode: @stat.mode & 0o7777, mtime: @stat.mtime.to_r.to_s, data: content }
+            end
+
+            private
+
+            def content
+              return File.binread(@path) if @stat.file?
+
+              File.readlink(@path).b if @stat.symlink?
+            end
           end
         end
       end

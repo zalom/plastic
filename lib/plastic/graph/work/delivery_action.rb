@@ -29,7 +29,7 @@ module Plastic
 
         private
 
-        def live = @live ||= @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
+        def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
 
         def live_in(state) = live.find { |node| node.state == state }
 

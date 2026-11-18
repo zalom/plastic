@@ -44,6 +44,9 @@ module Plastic
 
         def restore(timestamp, databases: nil) = restorer.call(timestamp, databases:)
 
+        # Rebuilds the search rows of every intent from the restored and migrated knowledge file.
+        def rebuild_index = @retrieval.reindex
+
         private
 
         def entry(number, name)

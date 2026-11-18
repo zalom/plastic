@@ -20,9 +20,9 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
   end
 
   def test_an_unknown_roadmap_fails
-    outcome, = pick("r9")
+    error = assert_raises(Plastic::Failed) { pick("r9") }
 
-    assert_equal "code_pick_delivery, gate: no roadmap r9", outcome.message
+    assert_equal "no roadmap r9", error.message
   end
 
   def test_the_first_in_flight_item_is_picked
@@ -43,7 +43,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     item("a")
     item("b")
     parked = started("a")
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'parked' WHERE intent_id = :intent_id", intent_id: parked)
     end
 
@@ -144,7 +144,9 @@ class WorkflowPickIntentForTest < Plastic::TestCase
   end
 
   def test_the_intent_for_a_missing_roadmap_is_nothing_and_raises_nothing
-    assert_nil intent_for("r9")
+    _error, context = stop_workflow(PICK, harness: scoped_harness(session: "s-1"), graphs: session_graphs, id: "r9")
+
+    assert_nil PICK.intent_for(context)
   end
 
   def test_the_intent_for_a_roadmap_with_only_a_ready_item_is_nothing

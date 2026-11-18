@@ -17,9 +17,9 @@ module Plastic
           @maintenance = Maintenance.new(databases, origin)
         end
 
-        def documents(intent_id = nil) = @maintenance.ready_documents { read_documents(intent_id) }
+        def documents(intent_id = nil) = read_documents(intent_id)
 
-        def fetch(intent_id, path) = @maintenance.ready_documents { document(intent_id, path) }
+        def fetch(intent_id, path) = document(intent_id, path)
 
         def fetch_reference(reference) = references.fetch(reference)
 
@@ -29,12 +29,12 @@ module Plastic
 
         def search(terms, limit: 20) = @maintenance.search(terms, limit:)
 
-        def search_current(terms, limit: 20) = @maintenance.search_current(terms, limit:)
+        def search_current(terms, limit: 20) = @maintenance.search(terms, limit:)
 
-        # Mutates only derived retrieval rows; this operation has no safe counterpart.
-        def backfill = @maintenance.backfill
-        # Rebuilds only derived retrieval rows from immutable evidence.
+        # Rebuilds only derived rows from immutable evidence.
         def repair = @maintenance.repair
+        # Rebuilds the passages and search entries of one intent, or of every intent when none is named.
+        def reindex(intent_id = nil) = @maintenance.reindex(intent_id)
         # Whether the derived rows match the evidence, and which evidence is gone.
         def search_index_report = @maintenance.search_index_report
 
@@ -56,7 +56,7 @@ module Plastic
         end
 
         def origin_id = @origin.id
-        def knowledge = @databases.fetch(:knowledge)
+        def knowledge = @databases.fetch(:store)
       end
     end
   end

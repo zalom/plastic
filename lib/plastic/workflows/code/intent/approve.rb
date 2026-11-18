@@ -25,7 +25,7 @@ module Plastic
             because: "an approval needs a done criterion to judge the delivery by; write one in spec.md",
             pass: ->(context) { !Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty? }
 
-          step "write the go-ahead", done: ->(context) { !context.retrieval.approval(context.intent_id).nil? },
+          step "write the go-ahead", done: ->(context) { !context.retrieval.structure.approval(context.intent_id).nil? },
             changes: { work: "The approval of the intent is recorded" } do |context|
             context.work.approve_intent(context.intent_id)
           end

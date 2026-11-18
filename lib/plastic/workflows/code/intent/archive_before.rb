@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require "time"
 require_relative "../../../graph/backup/older_than"
 
@@ -13,51 +14,64 @@ module Plastic
         class ArchiveBefore
           OlderThan = Plastic::Graph::Backup::OlderThan
 
+          # An intent set against the cutoff date: the reason it is skipped, true
+          # when it is to be archived, nil when it is passed over.
+          Candidate = Data.define(:intent, :cutoff) do
+            extend Forwardable
+
+            def_delegators :intent, :status, :opened_at, :closed_at, :closed?
+            def_delegator :intent, :intent_id, :id
+
+            def self.moment(stamp) = (OlderThan.read(stamp) if stamp)
+
+            def line(work)
+              reason = verdict
+              return "intent: #{id} skipped, #{reason}" if reason.is_a?(String)
+
+              archived(work) if reason
+            end
+
+            private
+
+            def verdict
+              return settled if closed? && status != "future"
+
+              stale = older?(opened_at)
+              (status == "future") ? stale : ("it is #{status}; end it first" if stale)
+            end
+
+            def archived(work)
+              ok, problem, = work.archive_intent(id)
+              ok ? "intent: #{id} archived" : "intent: #{id} skipped, #{problem}"
+            end
+
+            def settled
+              return "it is #{status} with no close date" unless self.class.moment(closed_at)
+
+              older?(closed_at)
+            end
+
+            def older?(stamp) = (time = self.class.moment(stamp)) && time < cutoff
+          end
+
           def initialize(context)
-            @work = context.work
-            @intents = context.retrieval.unarchived_intents
-            @cutoff = OlderThan.parse(context.older_than)
+            @context = context
           end
 
           # One line for each intent archived or skipped; one line when none was.
           def lines
-            found = intents.filter_map { |intent| line(intent) }
+            found = candidates.filter_map { |candidate| candidate.line(context.work) }
             found.empty? ? ["intent: nothing to archive"] : found
           end
 
           private
 
-          attr_reader :work, :intents, :cutoff
+          attr_reader :context
 
-          def line(intent)
-            reason = skipped(intent)
-            return "intent: #{intent.intent_id} skipped, #{reason}" if reason.is_a?(String)
-
-            archive(intent) if reason
+          def candidates
+            cutoff = OlderThan.parse(context.older_than)
+            context.retrieval.unarchived_intents.map { |intent| Candidate.new(intent, cutoff) }
           end
-
-          # True when the intent is to archive, a String when it is skipped, nil when passed over.
-          def skipped(intent)
-            return older?(intent.opened_at) if intent.status == "future"
-            return closed(intent) if intent.closed?
-
-            "it is #{intent.status}; end it first" if older?(intent.opened_at)
-          end
-
-          def closed(intent)
-            return "it is #{intent.status} with no close date" unless moment(intent.closed_at)
-
-            older?(intent.closed_at)
-          end
-
-          def archive(intent)
-            ok, problem, = work.archive_intent(intent.intent_id)
-            ok ? "intent: #{intent.intent_id} archived" : "intent: #{intent.intent_id} skipped, #{problem}"
-          end
-
-          def older?(stamp) = (time = moment(stamp)) && time < cutoff
-
-          def moment(stamp) = (OlderThan.read(stamp) if stamp)
         end
       end
     end

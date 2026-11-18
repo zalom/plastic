@@ -48,7 +48,7 @@ class BootstrapTest < Plastic::TestCase
   def test_a_first_install_creates_the_three_store_databases
     bootstrap
 
-    assert_equal %w[knowledge_graph.db references.db work_graph.db], Dir.children(File.dirname(global)).grep(/\.db\z/).sort
+    assert_equal %w[knowledge_graph.db retrieval_graph.db work_graph.db], Dir.children(File.dirname(global)).grep(/\.db\z/).sort
   end
 
   def test_a_first_install_leaves_the_store_ready_for_intent_new

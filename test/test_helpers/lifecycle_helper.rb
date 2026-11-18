@@ -40,17 +40,17 @@ module Plastic
       end
 
       def set_node_times(at)
-        store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
+        store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
       end
 
       def put_verdict(round, verdict, at, findings: "Checked against the spec")
-        store_graphs.databases.fetch(:work).transaction do |batch|
+        store_graphs.databases.fetch(:store).transaction do |batch|
           batch.add("INSERT INTO verdicts(intent_id, round, origin_id, verdict, findings, at, session_id) VALUES (:intent_id, :round, :origin, :verdict, :findings, :at, :session)",
             intent_id: "1", round:, origin:, verdict:, findings:, at:, session: "delivery")
         end
       end
 
-      def work_rows(table) = store_graphs.databases.fetch(:work).rows("SELECT * FROM #{table}")
+      def work_rows(table) = store_graphs.databases.fetch(:store).rows("SELECT * FROM #{table}")
 
       def accepted_intent(keys = { KEY => CRITERION }, **specified_options)
         intent = specified(keys, **specified_options)

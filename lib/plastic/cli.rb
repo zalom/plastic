@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../plastic"
 require_relative "cli/command"
 require_relative "cli/table"
 require_relative "cli/listing"
@@ -43,7 +44,7 @@ module Plastic
     end
     private_class_method :loaded?
 
-    def self.file_of(klass) = klass.split("::").map { |part| Plastic.snake(part) }.join("/")
+    def self.file_of(klass) = klass.split("::").map { |part| Plastic::Inflector.underscore(part) }.join("/")
 
     Context = Struct.new(:environment, :table, :topics) do
       def environment_and_table = [environment, table]
@@ -99,7 +100,8 @@ module Plastic
       return print_topic(text, context) if text
 
       family = words.reject { |word| %w[--json --help -h].include?(word) }
-      return family_list(family.first, words, context) if family.one? && FAMILIES.key?(family.first)
+      head = family.first
+      return family_list(head, words, context) if family.one? && FAMILIES.key?(head)
 
       dispatch([*words, "--help"], context) { "plastic: no command #{family.join(" ").inspect}; plastic help lists them" }
     end

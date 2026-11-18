@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   Integrity = Plastic::Graph::Retrieval::Evidence::Integrity
@@ -9,14 +9,13 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   def setup
     super
     @calls = 0
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "Integrity evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Integrity evidence\n")
+    reindex
   end
 
-  def knowledge = store_graphs.databases.fetch(:knowledge)
+  def integrity = Integrity.new(store_database, origin, before_rebuild: -> { @calls += 1 })
 
-  def integrity = Integrity.new(knowledge, origin, before_rebuild: -> { @calls += 1 })
-
-  def drop(table) = knowledge.transaction { |batch| batch.add("DELETE FROM #{table}") }
+  def drop(table) = store_database.transaction { |batch| batch.add("DELETE FROM #{table}") }
 
   def test_whole_evidence_reports_nothing_to_repair
     assert_equal({ repairable: false, missing: [] }, integrity.report)

@@ -10,7 +10,7 @@ class WorkflowFailNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs")
   end
 
-  def fail_node = run_workflow(Plastic::Workflows::Code::Node::Fail, intent_id: "1", id: "n1", text: "red")
+  def fail_node = run_workflow(Plastic::Workflows::Code::Node::Fail, intent_id: "1", id: "n1", text: "red", files: [])
 
   def test_a_claimed_node_fails_with_its_reason
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
@@ -22,6 +22,6 @@ class WorkflowFailNodeTest < Plastic::TestCase
   end
 
   def test_an_open_node_cannot_fail
-    assert_equal "code_fail_node, gate: node n1 is open; it cannot move to failed", fail_node.first.message
+    assert_equal "node n1 is open; it cannot move to failed", assert_raises(Plastic::Failed) { fail_node }.message
   end
 end

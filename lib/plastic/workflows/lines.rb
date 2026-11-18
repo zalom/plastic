@@ -9,16 +9,24 @@ module Plastic
 
       def self.node(node) = "node: #{node.id} #{node.state} #{node.title}#{holder(node)}"
 
-      def self.holder(node) = (node.state == "claimed" && node.claimed_by) ? ", held by #{node.claimed_by}" : ""
+      def self.holder(node)
+        return "" unless node.state == "claimed"
+
+        claimant = node.claimed_by
+        claimant ? ", held by #{claimant}" : ""
+      end
 
       def self.ready_node(node) = "ready: #{node.id} #{node.title}"
 
       def self.rulings(rulings)
         superseded = rulings.filter_map(&:supersedes).to_set
-        rulings.sort_by { |ruling| ruling.id[/\d+/].to_i }.map { |ruling| ruling_line(ruling, superseded.include?(ruling.id) ? " (superseded)" : "") }
+        rulings.sort_by { |ruling| ruling.id[/\d+/].to_i }.map { |ruling| ruling_line(ruling, superseded) }
       end
 
-      def self.ruling_line(ruling, mark) = "ruling: #{ruling.id} #{ruling.text}#{mark}"
+      def self.ruling_line(ruling, superseded)
+        id = ruling.id
+        "ruling: #{id} #{ruling.text}#{" (superseded)" if superseded.include?(id)}"
+      end
     end
   end
 end

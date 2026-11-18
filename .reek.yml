@@ -49,11 +49,10 @@ detectors:
     - ContextBudget
   TooManyMethods:
     exclude:
-    - Plastic::CLI::Scope
+    - Plastic::Scope
   TooManyStatements:
     max_statements: 10
     exclude:
-    - Plastic::Config::AgentModels#models_section
     - Plastic::Installations::EnginePermissions#merge_into
     - ContextBudget#self.render
   UncommunicativeVariableName:

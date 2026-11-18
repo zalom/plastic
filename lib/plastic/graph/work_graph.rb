@@ -4,9 +4,9 @@ require "forwardable"
 require_relative "knowledge/roadmap/item_open"
 require_relative "backup/store_backups"
 require_relative "printer"
-require_relative "prints"
+require_relative "knowledge/prints"
 require_relative "knowledge/sync/preview"
-require_relative "work/writers"
+require_relative "writers"
 require_relative "work/logged_writes"
 require_relative "work/session_intent"
 require_relative "knowledge/intent/noter"
@@ -27,7 +27,7 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
-      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :drain_log, :drain_logs, :add_ruling, :add_verdict,
+      def_delegators :@logged, :close_intent, :abandon_intent, :approve_intent, :add_ruling, :add_verdict,
         :revise_intent, :note_intent, :add_node, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
         :remove_node, :add_edge, :remove_edge
       def_delegators "@writers.nodes", :renew_claims
@@ -39,25 +39,22 @@ module Plastic
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       def_delegator "@writers.sync", :hand_edited
+      def_delegator "@writers.sync.printer", :written, :printed
+      def_delegator :@folder, :ignore_databases
 
       def initialize(databases, folder:, retrieval:, session: nil, **seams)
-        @databases = databases
         @folder = folder
         @retrieval = retrieval
-        @writers = Work::Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
-        @logged = Work::LoggedWrites.new(@writers, **seams.slice(:log))
+        @writers = Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
+        @logged = Work::LoggedWrites.new(@writers)
       end
 
       # A command run is call memory, kept off the report.
       def save_command_run(command_run)
         row = command_run.to_h.merge(store: @retrieval.store, subject: command_run.subject.to_s, session_id: @writers.session)
-        @databases.fetch(:local).transaction { |batch| batch.put(:command_runs, row) }
+        @writers.databases.fetch(:local).transaction { |batch| batch.put(:command_runs, row) }
         command_run
       end
-
-      # Keeps the store's own databases out of its versioning; a hook calls
-      # this before any read, because a read alone can create the files.
-      def ignore_databases = @folder.ignore_databases
 
       def write_intent(**intent)
         @folder.ignore_databases
@@ -74,7 +71,7 @@ module Plastic
       # The snapshot restores exact bytes; the work.log it holds lacks the line this call just wrote, so that one file is printed again.
       # Returns [ok, problem, kind]; kind is :failure, nil on success.
       def unarchive_intent(intent_id)
-        @logged.unarchive_intent(intent_id).tap { |ok,| reprint_log(intent_id) if ok }
+        @logged.unarchive_intent(intent_id).tap { |ok,| @writers.sync.printer.reprint(Prints.log_of(@retrieval, intent_id)) if ok }
       end
 
       # Prints a roadmap's file from its rows; returns the paths written.
@@ -96,11 +93,8 @@ module Plastic
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
-      # The paths this call printed, relative to the store folder.
-      def printed = @writers.sync.printer.written
-
       def preview_sync(options, direction: :up)
-        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).preview
+        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).preview(@folder.sync)
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
@@ -117,17 +111,7 @@ module Plastic
 
       private
 
-      def reprint_log(intent_id)
-        prints = Prints.of_intent(@retrieval, @retrieval.intent(intent_id)).select { |print| print.path.end_with?("/work.log") }
-        forget_printed(prints.map(&:path))
-        @writers.sync.printer.print(prints)
-      end
-
-      def forget_printed(paths)
-        Schema.store.each { |key| @databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } } }
-      end
-
-      def local_db = @databases.fetch(:local)
+      def local_db = @writers.databases.fetch(:local)
 
       def home_dir = File.dirname(local_db.path)
     end

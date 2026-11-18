@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command/usage"
+require_relative "../errors"
 
 module Plastic
   module Workflows
@@ -9,7 +9,7 @@ module Plastic
       SHAPE = /\A\d+[a-z0-9]*\z/
 
       def self.validate(id)
-        raise CLI::Command::Usage, "invalid intent id #{id.inspect}" unless SHAPE.match?(id)
+        raise Usage, "invalid intent id #{id.inspect}" unless SHAPE.match?(id)
       end
     end
   end

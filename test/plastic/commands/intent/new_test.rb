@@ -92,12 +92,12 @@ class IntentNewTest < Plastic::TestCase
   end
 
   def test_the_command_writes_the_three_store_graphs_through_one_workflow
-    assert_equal [%i[work knowledge references], true, [:code_write_intent]], [description[:writes], IntentNew.verify, IntentNew.chain.keys]
+    assert_equal [%i[work knowledge], true, [:code_write_intent]], [description[:writes], IntentNew.verify, IntentNew.chain.keys]
   end
 
   def test_the_intent_gets_a_document_row_and_a_file_named_intent_md
     result = plastic("intent", "new", "Alpha thing", table: Plastic::CLI::TABLE)
-    row = store_graphs.databases.fetch(:knowledge).rows("SELECT path FROM documents WHERE intent_id = '1'").map { |doc| doc.fetch("path") }
+    row = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE intent_id = '1'").map { |doc| doc.fetch("path") }
 
     assert_equal 0, result.code
     assert_includes row, "intent.md"

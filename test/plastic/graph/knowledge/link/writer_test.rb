@@ -10,7 +10,7 @@ class KnowledgeLinkWriterTest < Plastic::TestCase
     @graphs.work.write_intent(title: "Beta")
   end
 
-  def writer = Plastic::Graph::Knowledge::Link::Writer.new(@graphs.databases, @graphs.retrieval)
+  def writer = Plastic::Graph::Knowledge::Link::Writer.new(@graphs.databases, @graphs.retrieval, clock: FixedClock::CLOCK)
 
   def test_a_link_between_two_intents_of_the_store_has_no_problem
     assert_nil writer.target_problem("1", "2")

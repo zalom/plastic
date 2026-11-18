@@ -35,13 +35,13 @@ module Plastic
       private
 
       def failed_check
-        last = @folders.last_check
-        "the live check of #{last["file"]} failed at #{last["at"]}: #{last["reason"]}" if last["verdict"] == "failed"
+        file, at, reason, verdict = @folders.last_check.values_at("file", "at", "reason", "verdict")
+        "the live check of #{file} failed at #{at}: #{reason}" if verdict == "failed"
       end
 
       def live_check
-        last = @folders.last_check
-        ", live check #{last["at"]} #{last["verdict"]}" if last["verdict"]
+        at, verdict = @folders.last_check.values_at("at", "verdict")
+        ", live check #{at} #{verdict}" if verdict
       end
 
       def described(name)

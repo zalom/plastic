@@ -31,19 +31,19 @@ class WorkflowResumeGraphTest < Plastic::TestCase
 
   def test_a_store_that_is_not_registered_is_a_usage_error_naming_the_projects
     register("blog")
-    error = assert_raises(Plastic::CLI::Command::Usage) { resume(stores: "nosuch") }
+    error = assert_raises(Plastic::Usage) { resume(stores: "nosuch") }
 
     assert_equal "no registered project named \"nosuch\"; the projects are blog", error.message
   end
 
   def test_no_store_name_after_stores_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { resume(stores: ",") }
+    error = assert_raises(Plastic::Usage) { resume(stores: ",") }
 
     assert_equal "name at least one store after --stores", error.message
   end
 
   def test_stores_and_a_project_together_are_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { resume(stores: "global", slug: "blog") }
+    error = assert_raises(Plastic::Usage) { resume(stores: "global", slug: "blog") }
 
     assert_equal "--stores names the stores; --project does not apply", error.message
   end

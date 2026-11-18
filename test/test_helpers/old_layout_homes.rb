@@ -1,28 +1,26 @@
 # frozen_string_literal: true
 
 require "sqlite3"
+require_relative "beta_2_store"
 
 # Turns a throwaway home made by BackupHomes into the layout of an older
-# release: every database unstamped, the intents table with the old word for
-# work under way, and the locks table with the old time column.
+# release: each store becomes the beta.2 fixture store, and the home database
+# is unstamped with the tables of local.db.
 module OldLayoutHomes
-  OLD_INTENTS = <<~SQL
-    DROP TABLE intents;
-    CREATE TABLE "intents"("id" INTEGER PRIMARY KEY AUTOINCREMENT, "intent_id" TEXT NOT NULL, "parent_id" TEXT, "ref" TEXT,
-      "origin_id" TEXT NOT NULL, "slug" TEXT NOT NULL, "title" TEXT NOT NULL, "kind" TEXT,
-      "status" TEXT NOT NULL CHECK(status IN ('open', 'active', 'parked', 'future', 'done', 'abandoned')),
-      "disposition" TEXT, "opened_at" TEXT, "closed_at" TEXT, "updated_at" TEXT, UNIQUE("intent_id", "origin_id"));
-    INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('7', 'o-1', 'seven', 'Seven', 'active');
-  SQL
+  include Beta2Store
 
   OLD_HOME_TABLES = <<~SQL
     ALTER TABLE command_runs RENAME TO routine_runs;
+    DROP TABLE "settings";
+    DROP TABLE "printed";
+    CREATE TABLE "locks"("store" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "session_id" TEXT NOT NULL, "mode" TEXT, "taken_at" TEXT, "renewed_at" TEXT, UNIQUE("store", "intent_id"));
     CREATE TABLE "backups"("name" TEXT NOT NULL, "files" INTEGER, "bytes" INTEGER, "sha256" TEXT, "at" TEXT, "session_id" TEXT, UNIQUE("name"));
   SQL
 
   def old_layout(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
-    database_files(home).each { |path| downgrade(path) }
+    Dir.glob(File.join(home, "{local.db,plastic.db}")).each { |path| downgrade(path) }
+    old_stores(home)
     File.rename(File.join(home, "plastic.db"), File.join(home, "local.db")) if File.exist?(File.join(home, "plastic.db"))
     home
   end
@@ -43,16 +41,24 @@ module OldLayoutHomes
     end
   end
 
+  def layouts(home) = database_files(home).to_h { |path| [path.delete_prefix(home), layout_of(path)] }
+
   def file_bytes(home) = database_files(home).to_h { |path| [path, File.binread(path)] }
 
   private
 
   def downgrade(path)
     with_database(path) do |db|
-      db.execute_batch(OLD_INTENTS) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'intents' AND type = 'table'")
-      db.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'locks' AND type = 'table'")
       db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
       db.execute("PRAGMA user_version = 0")
+    end
+  end
+
+  def old_stores(home)
+    origin = Plastic::Graph::Origin.new(home).id
+    Dir.glob(File.join(home, "stores", "*")).each do |store|
+      Dir.glob(File.join(store, "*.db*")).each { |file| File.delete(file) }
+      Beta2Store::FILES.each { |file, name| build_beta_2_file(File.join(store, file), name, origin, true) }
     end
   end
 

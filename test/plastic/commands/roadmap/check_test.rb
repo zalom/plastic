@@ -41,7 +41,7 @@ class RoadmapCheckTest < Plastic::TestCase
   end
 
   def test_a_dangling_edge_exits_1_naming_it
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:roadmap_edges, { roadmap: "r1", from: "ghost", to: "a", kind: "after" }, statement: :insert)
     end
 

@@ -32,7 +32,7 @@ class RoadmapOpenTest < Plastic::TestCase
       table: Plastic::CLI::TABLE)
   end
 
-  def item_row(item) = store_graphs.retrieval.roadmap_items("r1").find { |row| row.item == item }
+  def item_row(item) = store_graphs.retrieval.roadmaps.items("r1").find { |row| row.item == item }
 
   def spec_of(item) = store_graphs.retrieval.documents(item.intent_id).find { |candidate| candidate.path == "spec.md" }
 

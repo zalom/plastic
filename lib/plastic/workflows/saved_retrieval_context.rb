@@ -13,7 +13,7 @@ module Plastic
       end
 
       def complete?
-        row = @context.database(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
+        row = @context.database(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
           intent_id: @context.intent_id, origin: @context.retrieval.origin_id)
         row ? matches?(JSON.parse(row.fetch("data")).fetch("discovery")) : false
       rescue JSON::ParserError, KeyError

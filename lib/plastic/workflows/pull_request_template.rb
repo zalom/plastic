@@ -17,6 +17,16 @@ module Plastic
 
       def self.fact(scope, intent) = new(Worktree.of(scope, intent)).fact
 
+      def self.child_named(at, wanted) = (Dir.children(at).find { |each| each.casecmp?(wanted) } if File.directory?(at))
+
+      def self.spelled(wanted, at)
+        names = []
+        found = wanted.all? { |wanted_name| (name = child_named(File.join(at, *names), wanted_name)) && names << name }
+        names if found
+      end
+
+      def self.holds_markdown?(path) = File.directory?(path) && Dir.children(path).any? { |each| each.downcase.end_with?(".md") && File.file?(File.join(path, each)) }
+
       def initialize(worktree)
         @worktree = worktree
       end
@@ -33,25 +43,16 @@ module Plastic
       def folder = (@worktree.path if @worktree&.then { |tree| File.directory?(tree.path) }) || @worktree&.repo
 
       def on_disk(place)
-        names = spelled(place.chomp("/").split("/"), folder)
+        names = PullRequestTemplate.spelled(place.chomp("/").split("/"), folder)
         return unless names
 
         folder_place = place.end_with?("/")
         path = File.join(folder, *names)
-        return unless folder_place ? holds_markdown?(path) : File.file?(path)
+        return unless folder_place ? PullRequestTemplate.holds_markdown?(path) : File.file?(path)
 
-        folder_place ? "#{names.join("/")}/" : names.join("/")
+        label = names.join("/")
+        folder_place ? "#{label}/" : label
       end
-
-      def spelled(wanted, at)
-        return [] if wanted.empty?
-
-        name = Dir.children(at).find { |each| each.casecmp?(wanted.first) } if File.directory?(at)
-        rest = name && spelled(wanted.drop(1), File.join(at, name))
-        [name, *rest] if rest
-      end
-
-      def holds_markdown?(path) = File.directory?(path) && Dir.children(path).any? { |each| each.downcase.end_with?(".md") && File.file?(File.join(path, each)) }
     end
   end
 end

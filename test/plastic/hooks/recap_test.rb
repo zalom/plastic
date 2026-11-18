@@ -83,7 +83,7 @@ class RecapTest < Plastic::TestCase
 
   def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
     intent_id = opened.work.write_intent(title: "Beta").intent_id
-    run = Plastic::CommandRun.fresh("intent show", intent_id).with(status: "finished", next_command: "plastic next")
+    run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
     opened.work.save_command_run(run)
 
     assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
@@ -100,6 +100,21 @@ class RecapTest < Plastic::TestCase
 
   def test_a_resumed_session_says_so
     assert_equal ["Plastic: a resumed session. The rows below carry the state; run plastic graph resume."], recap(source: "resume")
+  end
+
+  def test_a_recap_prints_no_note_line_when_no_session_left_a_note
+    printed_intent
+
+    refute(recap.any? { |line| line.start_with?("note:") })
+  end
+
+  def test_a_new_session_prints_the_note_of_its_predecessor
+    opened.work.open_session("s-1", harness: "claude-code", directory: @home)
+    printed_intent
+    opened.work.write_note("s-1", "left behind")
+    opened.work.end_session("s-1", reason: "clear")
+
+    assert_includes recap(session: "s-2"), "note: left behind"
   end
 end
 
@@ -146,7 +161,7 @@ class RecapClaimTest < Plastic::TestCase
   end
 
   def close_intent(intent_id, status)
-    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
   end
 
   def test_a_claim_on_a_done_intent_prints_no_lapsed_line
@@ -165,7 +180,7 @@ class RecapClaimTest < Plastic::TestCase
 
   def test_a_claim_on_an_intent_that_no_longer_exists_prints_no_lapsed_line
     intent_id, node = claim_node
-    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
 
     assert_empty lapsed_lines(lapsed_after(node))
   end

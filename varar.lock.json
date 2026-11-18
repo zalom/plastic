@@ -11,7 +11,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:1d54665c",
+      "sourceHash": "fnv1a:6f2224bd",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -20,7 +20,7 @@
       ]
     },
     "varar/backup.md": {
-      "sourceHash": "fnv1a:dd8f7b72",
+      "sourceHash": "fnv1a:41278b79",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

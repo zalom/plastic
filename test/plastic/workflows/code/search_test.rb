@@ -2,7 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/workflows/code/search"
-require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 class WorkflowSearchTest < Plastic::TestCase
   def search(source_projects)
@@ -12,8 +12,8 @@ class WorkflowSearchTest < Plastic::TestCase
 
   def test_the_found_passages_are_printed_as_results
     open_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", "falcon wings")
-    retrieval.backfill
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", "falcon wings")
+    retrieval.repair
 
     outcome, context = search([])
 
@@ -21,8 +21,8 @@ class WorkflowSearchTest < Plastic::TestCase
   end
 
   def test_a_store_without_its_databases_fails_the_call
-    outcome, = search(["empty"])
+    error = assert_raises(Plastic::Failed) { search(["empty"]) }
 
-    assert_equal "code_search, gate: retrieval maintenance is required before source empty can be read; run plastic project new empty PATH, then try again", outcome.message
+    assert_equal "retrieval maintenance is required before source empty can be read; run plastic project new empty PATH, then try again", error.message
   end
 end

@@ -12,14 +12,14 @@ module Plastic
 
       def persist(document)
         intent_id = context.intent_id
-        context.database(:knowledge).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.now })
+        context.database(:store).transaction do |batch|
+          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.timestamp(context.now) })
         end
         document
       end
 
       def saved?(document)
-        row = context.database(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: context.intent_id)
+        row = context.database(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: context.intent_id)
         !row.nil? && row.fetch("data") == JSON.pretty_generate(document)
       end
 

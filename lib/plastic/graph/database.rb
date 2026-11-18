@@ -1,15 +1,21 @@
 # frozen_string_literal: true
 
+require "forwardable"
+require_relative "../errors"
 require_relative "missing_store"
 require_relative "schema"
 require_relative "schema/gate"
+require_relative "schema/migrator"
+require_relative "schema/migrations"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
+require_relative "database/check"
+require_relative "database/tally"
 
 module Plastic
   module Graph
-    # One SQLite file through the sqlite3 gem. The rows are the authority;
+    # One SQLite database through the sqlite3 gem. The rows are the authority;
     # the files are printed from them.
     #
     # A write is one transaction. BEGIN IMMEDIATE takes the write lock first,
@@ -18,8 +24,10 @@ module Plastic
     # database counts the rows that this call wrote, and the report prints
     # the counts on its `wrote:` line.
     class Database
+      extend Forwardable
+
       # A statement failed, or the file cannot be opened.
-      class Error < StandardError; end
+      class Error < Failed; end
 
       # Ends a dry run, which takes its statements back.
       class Undone < StandardError; end
@@ -36,10 +44,8 @@ module Plastic
         root
       end
 
-      # The three databases of one store folder. `origin` stamps their rows and their change log.
-      def self.open_store(root, origin)
-        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, track: { sequence: :store, key: })] }
-      end
+      # The one database of a store folder: knowledge with work and retrieval attached. `origin` stamps its rows.
+      def self.open_store(root, origin) = Store.new(root, origin)
 
       # The error to raise for one that came from the file `file`, with the file named.
       def self.relabeled(file, error)
@@ -52,15 +58,21 @@ module Plastic
       # A call saves its command run at each step, and it is still one row.
       RUNS = "command_runs"
 
-      attr_reader :path, :written
+      attr_reader :path, :origin
 
-      # `track` names the migration sequence and the schema key of a database that is stamped; one without it is built from its schema alone.
-      def initialize(path, schema, origin: nil, track: nil)
+      def_delegators :@tally, :wrote_rows?, :phrases
+      def_delegator :@tally, :to_h, :written
+      def_delegator :@tally, :phrase, :written_phrase
+      def_delegator :@check, :key
+      def_delegator :connection, :atomically
+
+      # `key` names the schema of a database that is stamped; one without it is built from its schema alone. `layouts` maps each attached schema to its key.
+      def initialize(path, schema, origin: nil, key: nil, layouts: { nil => key })
+        name = File.basename(path)
         @path = path
-        @schema = schema
         @origin = origin
-        @track = track
-        @written = Hash.new(0)
+        @check = Check.for(schema, key, name, layouts)
+        @tally = Tally.new(name)
       end
 
       def file = File.basename(path)
@@ -75,17 +87,22 @@ module Plastic
       # come back in the order the statements were added. A failed statement
       # rolls the whole batch back and raises Error.
       def transaction
-        batch = Batch.new(origin: @origin)
+        batch = Batch.new(origin:)
         yield batch
-        batch.empty? ? [] : commit(batch)
+        batch.empty? ? [] : connected { |connection| connection.atomically { write(connection, batch) } }
       end
 
       # Runs the statements of the batch and always takes them back, so a
       # statement the database refuses raises Error and no row is written or counted.
       def dry_run
-        batch = Batch.new(origin: @origin)
+        batch = Batch.new(origin:)
         yield batch
-        connected { |connection| connection.atomically { try(connection, batch) } }
+        connected do |connection|
+          connection.atomically do
+            batch.execute(connection) { nil }
+            raise Undone
+          end
+        end
       rescue Undone
         nil
       end
@@ -94,7 +111,7 @@ module Plastic
       # transaction. The reader uses the same connection as the eventual
       # commit, so no writer can change the source rows between them.
       def immediate_transaction
-        batch = Batch.new(origin: @origin)
+        batch = Batch.new(origin:)
         connected do |connection|
           connection.atomically do
             yield batch, connection
@@ -103,25 +120,14 @@ module Plastic
         end
       end
 
-      # Runs the block in one transaction on this file; a write inside it joins that transaction.
-      def atomically(&) = connection.atomically(&)
-
-      # What this call wrote here, as the report says it:
-      # "1 intent and 1 work log line in work_graph.db". The command run row is left out,
-      # and the phrase is nil when nothing else was written.
-      def written_phrase = wrote_rows? ? "#{Schema.phrase(written.except(RUNS))} in #{file}" : nil
-
-      # Whether this call wrote a row other than its command run.
-      def wrote_rows? = written.keys.any? { |table| table != RUNS }
-
-      # What the report says of this database: what this call wrote.
-      def phrases = [written_phrase].compact
-
-      # Brings the file to the newest version of its sequence. Only the install and the update call this.
-      def migrate(sequences)
-        unfenced { SchemaSequences.migrate(open_file, sequences.fetch(@track.fetch(:sequence)), @track.fetch(:key)) }
-        @schema = nil
+      # Brings the home database to the newest version by its SQL file. Only the install and the update call this.
+      def migrate
+        unfenced { SchemaMigrator.new(open_file, SchemaMigrations.path(:home)).call }
+        @check.pass
       end
+
+      # Gives the freed pages of the file back to the disk. It runs outside a transaction.
+      def vacuum = unfenced { open_file.execute("VACUUM") }
 
       # The stamped version of the file, or nil when it does not exist.
       def version = File.exist?(path) ? unfenced { open_file.get_first_value("PRAGMA user_version").to_i } : nil
@@ -137,25 +143,7 @@ module Plastic
         raise Database.relabeled(file, error)
       end
 
-      def commit(batch) = connected { |connection| connection.atomically { write(connection, batch) } }
-
-      def write(connection, batch)
-        counted = @written.dup
-        batch.statements.filter_map { |entry| entry.execute(connection, &method(:count)) }
-      rescue
-        @written.replace(counted)
-        raise
-      end
-
-      def try(connection, batch)
-        batch.statements.each { |entry| entry.execute(connection) { nil } }
-        raise Undone
-      end
-
-      def count(table, rows)
-        before = @written[table]
-        @written[table] = (table == RUNS) ? [before, rows].max : before + rows
-      end
+      def write(connection, batch) = @tally.keeping { batch.execute(connection, &@tally.method(:count)) }
 
       def connected
         yield connection
@@ -164,20 +152,11 @@ module Plastic
       end
 
       # The connection, checked on the first call: a new file gets its schema, a file behind its sequence is refused.
-      def connection
-        open_file.tap do |connection|
-          settle(connection) if @schema
-          @schema = nil
-        end
-      end
-
-      def settle(connection)
-        return Schema.prepare(connection, @schema) unless @track
-
-        SchemaGate.new(connection, **@track, file:).call
-      end
+      def connection = open_file.tap { |connection| @check.call(connection) }
     end
   end
 end
 
+require_relative "database/journal_mode_refused"
 require_relative "database/local"
+require_relative "database/store"

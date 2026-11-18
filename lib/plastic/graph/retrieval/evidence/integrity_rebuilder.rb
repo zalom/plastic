@@ -1,31 +1,24 @@
 # frozen_string_literal: true
 
-require_relative "text"
+require_relative "../../evidence/text"
 
 module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Rebuilds derived search rows from verified immutable evidence.
+        # Rebuilds the document heads from verified immutable evidence.
         class IntegrityRebuilder
           def initialize(origin_id) = @origin_id = origin_id
 
           def rebuild(batch, snapshot)
             clear(batch)
-            snapshot.fetch(:revisions).each { |revision| rebuild_passages(batch, revision) }
             snapshot.fetch(:documents).each { |document| rebuild_current(batch, document) }
           end
 
           private
 
           def clear(batch)
-            %w[document_fts document_heads document_passages].each { |table| batch.add("DELETE FROM #{table} WHERE origin_id = :origin", origin: @origin_id) }
-          end
-
-          def rebuild_passages(batch, revision)
-            revision.passage_rows(@origin_id).each do |row|
-              batch.add("INSERT INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)", **row)
-            end
+            batch.add("DELETE FROM document_heads WHERE origin_id = :origin", origin: @origin_id)
           end
 
           def rebuild_current(batch, document)

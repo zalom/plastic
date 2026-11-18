@@ -89,13 +89,13 @@ class DoctorDamageCaseTest < Plastic::TestCase
   end
 
   def test_a_store_without_the_intents_table_names_the_project_repair
-    drop_table(store_path(:work), "intents")
+    drop_table(store_path(:knowledge), "intents")
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
 
-  def test_a_store_without_references_db_names_the_project_repair
-    File.delete(store_path(:references))
+  def test_a_store_without_retrieval_graph_db_names_the_project_repair
+    File.delete(store_path(:work))
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
@@ -164,8 +164,8 @@ class CodexDoctorDamageCaseTest < Plastic::TestCase
     assert_includes result.err, DoctorCommandTest::GATE
   end
 
-  def test_a_store_without_references_db_names_the_project_repair
-    File.delete(store_path(:references))
+  def test_a_store_without_retrieval_graph_db_names_the_project_repair
+    File.delete(store_path(:work))
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
@@ -215,7 +215,7 @@ class DoctorRepairTest < Plastic::TestCase
   def damaged(project)
     command("project", "new", "alpha", project)
     Pool.release(@home)
-    FileUtils.rm_f(File.join(@plastic_home, "stores", "alpha", "references.db"))
+    FileUtils.rm_f(File.join(@plastic_home, "stores", "alpha", "work_graph.db"))
     command("doctor", "--harness", "claude-code")
   end
 end

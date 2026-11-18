@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../node"
+require_relative "../../rows/node"
 require_relative "../../sql"
 
 module Plastic
@@ -26,7 +26,8 @@ module Plastic
 
           TAKE_SQL = <<~SQL
             UPDATE nodes SET state = 'claimed', claimed_by = :by, claimed_at = :now, seen_at = :now, updated_at = :now
-            WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND %<guard>s
+            WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin
+              AND (state = 'open' OR (state = 'claimed' AND claimed_by IS :holder AND #{LAPSED}))
             RETURNING id
           SQL
 
@@ -39,8 +40,7 @@ module Plastic
               AND state = 'claimed' AND claimed_by IS :by AND claimed_at = :now)
           SQL
 
-          OPEN_GUARD = "state = 'open'"
-          TAKE_GUARD = "state = 'claimed' AND claimed_by IS :holder AND #{LAPSED}".freeze
+          STEPS = [[nil, LAPSE_RUN_SQL], [:nodes, TAKE_SQL], [nil, OPEN_RUN_SQL]].freeze
 
           def initialize(databases, retrieval, clock)
             @databases = databases
@@ -52,28 +52,21 @@ module Plastic
           # session's claim stands, or [:refused, node] when the node is in no state to claim.
           def call(node, by:, agent:)
             now = @clock.now
-            lapsed = node.lapsed?(now)
-            return [contested(node), node] unless node.state == "open" || lapsed
+            reason = node.rejection_at(now)
+            return [reason, node] if reason
 
-            won = win_claim(node, by:, agent:, now:, lapsed:)
-            fresh = @retrieval.node(node.intent_id, node.id)
-            [won ? :claimed : contested(fresh), fresh]
+            won = write_claim(node, { by:, agent:, now: Plastic.timestamp(now), cutoff: Plastic.timestamp(now - Node::LAPSE) })
+            fresh = current(node)
+            won ? [:claimed, fresh] : [fresh.claim_rejection, fresh]
           end
 
           private
 
-          def contested(node) = (node.state == "claimed") ? :held : :refused
+          def current(node) = @retrieval.node(*node.claim_key.values_at(:intent_id, :id))
 
-          def win_claim(node, by:, agent:, now:, lapsed:)
-            key = { intent_id: node.intent_id, id: node.id, origin: @retrieval.origin_id }
-            values = { by:, agent:, now: Plastic.now(now), cutoff: Plastic.now(now - Node::LAPSE) }
-            values = values.merge(holder: node.claimed_by) if lapsed
-            rows = @databases.fetch(:work).transaction do |batch|
-              batch.add(LAPSE_RUN_SQL, **key, **values) if lapsed
-              batch.write(:nodes, format(TAKE_SQL, guard: lapsed ? TAKE_GUARD : OPEN_GUARD), **key, **values)
-              batch.add(OPEN_RUN_SQL, **key, **values)
-            end
-            rows.any?
+          def write_claim(node, claimant)
+            bind = { **node.claim_key, origin: @retrieval.origin_id, **claimant }
+            @databases.fetch(:store).transaction { |batch| batch.add_steps(STEPS, **bind) }.any?
           end
         end
       end

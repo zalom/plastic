@@ -7,7 +7,7 @@ module RoadmapFileHelper
   TRICKY = "# Not a title\n## Batch 9\n- [x] 3 Other \\ back — done\n  item: fake"
   STAMP = Plastic::TestCase::STAMP
 
-  def work = store_graphs.databases.fetch(:work)
+  def work = store_graphs.databases.fetch(:store)
 
   def seed(title: TRICKY, item_title: "Hello — world — ready", goal: "Line one\nLine two")
     work.transaction do |batch|
@@ -30,5 +30,5 @@ module RoadmapFileHelper
     end
   end
 
-  def read(text) = work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch) }
+  def read(text) = work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch, FixedClock::STAMP) }
 end

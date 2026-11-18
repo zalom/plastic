@@ -14,6 +14,21 @@ module Plastic
 
       def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
+      def store_database = store_graphs.databases.fetch(:store)
+
+      # Commits the test's own writes, closes the store connection and deletes the retrieval file, as a lost file is.
+      # The reset puts every database back from its pristine copy.
+      def lose_retrieval_file
+        path = store_database.path
+        retrieval_file = store_database.retrieval_path
+        Plastic::Graph::Database::ConnectionPool.connections[path].commit
+        @template.restore_every_database
+        Plastic::Graph::Database::ConnectionPool.connections.delete(path).close
+        File.delete(retrieval_file)
+      end
+
+      def reindex = Plastic::Graph::Retrieval::Index.new(store_database, origin).rebuild
+
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
       def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
@@ -22,11 +37,18 @@ module Plastic
 
       def retrieval = store_graphs.retrieval
 
+      def structure = retrieval.structure
+
+      def roadmaps = retrieval.roadmaps
+
+      def archived?(intent_id) = retrieval.archives.archived?(intent_id)
+
       # A new intent with its files printed, as plastic intent new leaves it.
       def open_intent(title = "Alpha", **fields)
         work = store_graphs.work
         intent = work.write_intent(title:, **fields)
         work.print_intent(intent.intent_id)
+        reindex
         intent
       end
 
@@ -43,10 +65,13 @@ module Plastic
       def sync_up
         work = store_graphs.work
         work.sync_apply(work.sync_plan(:up, {}))
+        reindex
       end
 
-      # Writes the rows one read adds, in the database that owns them.
-      def apply_read(read) = store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
+      # Writes the rows one read adds.
+      def apply_read(read)
+        store_database.transaction { |batch| batch.apply([read.apply]) }
+      end
 
       # The one item of a list, asserted to be the only one.
       def sole(list)

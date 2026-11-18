@@ -20,11 +20,11 @@ class DocumentGetTest < Plastic::TestCase
   end
 
   def test_prints_a_historical_qualified_document_as_structured_json
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
     writer.write("1", "plan.md", "second")
-    retrieval.backfill
+    retrieval.repair
 
     result = get(reference, "--json")
 
@@ -53,7 +53,7 @@ class DocumentGetTest < Plastic::TestCase
   end
 
   def test_a_reference_to_a_missing_document_fails
-    retrieval.backfill
+    retrieval.repair
 
     assert_call get("plastic://global/1/missing.md"), code: 1, err: /document/
   end
@@ -88,7 +88,7 @@ class DocumentGetTest < Plastic::TestCase
     assert_json_error(get(reference.sub("long.md", "missing.md"), "--passage", "1", "--json"), 1, "failed")
   end
 
-  def test_after_project_new_document_get_reads_a_store_made_before_the_marker
+  def test_after_the_repair_document_get_reads_a_store_that_lost_its_retrieval_file
     old_store
     refused = get("plastic://old/1/notes.md")
     repair
@@ -100,8 +100,8 @@ class DocumentGetTest < Plastic::TestCase
 
   def write_document(store, intent_id, path, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write(intent_id, path, body)
-    graphs.retrieval.backfill
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write(intent_id, path, body)
+    graphs.retrieval.repair
     graphs.retrieval.reference(intent_id, path).fetch(:uri)
   end
 

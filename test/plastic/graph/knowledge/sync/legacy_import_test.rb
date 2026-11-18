@@ -129,11 +129,12 @@ class KnowledgeSyncLegacyImportCheckTest < Plastic::TestCase
 
   def gitignore = folder.exist?(".gitignore") ? folder.read(".gitignore") : nil
 
-  def test_a_failed_check_after_the_plan_leaves_no_database_file
+  def test_a_failed_check_after_the_plan_leaves_no_new_database_file
     break_the_store
+    before = database_files
     assert_raises(Plastic::Invalid) { planned_import }
 
-    assert_empty database_files
+    assert_empty database_files - before
   end
 
   def test_a_failed_check_after_the_plan_leaves_gitignore_as_it_was
@@ -192,7 +193,7 @@ class KnowledgeSyncLegacyImportGraphTest < Plastic::TestCase
     lines = import
 
     assert_includes lines, "read store/1--alpha-service/graph.json"
-    assert_equal [%w[n1 done]], retrieval.nodes("1").map { |node| [node.id, node.state] }
+    assert_equal [%w[n1 done]], retrieval.structure.nodes("1").map { |node| [node.id, node.state] }
   end
 
   def test_a_graph_file_with_an_edge_to_a_missing_node_is_a_problem_of_the_check_pass
@@ -222,7 +223,7 @@ class KnowledgeSyncLegacyImportRowsTest < Plastic::TestCase
 
   fixtures :legacy
 
-  def rows_of(sql) = store_graphs.databases.fetch(:knowledge).rows(sql)
+  def rows_of(sql) = store_graphs.databases.fetch(:store).rows(sql)
 
   def test_a_first_import_keeps_plan_checklist_and_actions_in_legacy_rows
     import
@@ -280,6 +281,6 @@ class KnowledgeSyncLegacyImportLinksTest < Plastic::TestCase
   def test_the_import_of_a_store_with_links_ends_with_an_index_that_lists_them_and_a_part_row
     import
 
-    assert_equal [[%w[1 1a chain], %w[1 global:51 source], %w[1a 1 source]], held, true], [listed, listed, retrieval.printed.key?("store/index.json#links")]
+    assert_equal [[%w[1 1a chain], %w[1 global:51 source], %w[1a 1 source]], held, true], [listed, listed, retrieval.stored.printed.key?("store/index.json#links")]
   end
 end

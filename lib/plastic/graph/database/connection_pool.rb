@@ -16,12 +16,25 @@ module Plastic
       class Connection < SQLite3::Database
         BUSY_TIMEOUT = 5000
 
-        def self.open(path)
+        def self.open(path, attach: {})
           FileUtils.mkdir_p(File.dirname(path))
-          new(path, results_as_hash: true).tap do |connection|
-            connection.foreign_keys = true
-            connection.busy_timeout = BUSY_TIMEOUT
-          end
+          connection = new(path, results_as_hash: true)
+          connection.foreign_keys = true
+          connection.busy_timeout = BUSY_TIMEOUT
+          connection.attach_all(path, attach) unless attach.empty?
+          connection
+        rescue Database::JournalModeRefused
+          connection.close
+          raise
+        end
+
+        # Attaches each file not yet attached under its schema name, then keeps its schema in a delete journal with full synchronous.
+        def attach_all(main, files)
+          pending = files.except(*attached)
+          return if pending.empty?
+
+          pending.each { |schema, file| execute("ATTACH DATABASE ? AS #{schema}", [file]).tap { attached << schema } }
+          { main: main, **pending }.each { |schema, file| keep_delete_journal(schema, file) }
         end
 
         def read(sql, values = {})
@@ -37,7 +50,25 @@ module Plastic
         # Inside an open transaction, such as a test's, it is a savepoint.
         def atomically(&) = transaction_active? ? savepoint(&) : immediately(&)
 
+        # Runs the block in one transaction that takes no lock until its first write.
+        def deferred(&) = transaction_active? ? savepoint(&) : deferring(&)
+
         private
+
+        def attached = (@attached ||= [])
+
+        def keep_delete_journal(schema, file)
+          mode = get_first_value("PRAGMA #{schema}.journal_mode")
+          mode = get_first_value("PRAGMA #{schema}.journal_mode = DELETE") unless mode == "wal"
+          raise Database::JournalModeRefused, "#{File.basename(file)} is in #{mode} journal mode; a store keeps every file in delete mode" unless mode == "delete"
+
+          execute("PRAGMA #{schema}.synchronous = FULL")
+        end
+
+        def deferring(&)
+          execute("BEGIN DEFERRED TRANSACTION")
+          undoing("ROLLBACK TRANSACTION") { yield.tap { execute("COMMIT TRANSACTION") } }
+        end
 
         def immediately(&)
           execute("BEGIN IMMEDIATE TRANSACTION")
@@ -63,7 +94,10 @@ module Plastic
       # a Rails process keeps one connection per database. A connection opens
       # on first use and closes at exit. A forked child starts with none.
       module ConnectionPool
-        def self.for(path) = connections[path] ||= connect(path)
+        # A connection opened plain gains the files of a later call that attaches them, so one connection serves every caller of the path.
+        def self.for(path, attach: {})
+          (connections[path] ||= connect(path, attach)).tap { |connection| attach_missing(connection, path, attach) }
+        end
 
         # The database files this process made, by full path; a file that was on the disk before is not one.
         def self.created = (@created ||= [])
@@ -75,11 +109,22 @@ module Plastic
           made.uniq.product(["", "-wal", "-shm", "-journal"]).map(&:join).select { |file| File.file?(file) }.each { |file| File.delete(file) }
         end
 
-        def self.connect(path)
-          created << File.expand_path(path) unless File.exist?(path)
-          Connection.open(path)
+        def self.connect(path, attach)
+          remember_missing([path, *attach.values])
+          Connection.open(path, attach:)
         end
         private_class_method :connect
+
+        def self.attach_missing(connection, path, attach)
+          return if attach.empty?
+
+          remember_missing(attach.values)
+          connection.attach_all(path, attach)
+        end
+        private_class_method :attach_missing
+
+        def self.remember_missing(files) = files.each { |file| created << File.expand_path(file) unless File.exist?(file) }
+        private_class_method :remember_missing
 
         # Closes every connection except those of the `keep` paths.
         def self.disconnect(keep: [])

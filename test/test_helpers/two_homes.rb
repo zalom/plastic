@@ -39,7 +39,7 @@ module TwoHomes
 
   def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, claimed_by, answered_at, updated_at, findings FROM nodes ORDER BY id")
 
-  def query(kernel, sql) = kernel.rows("work_graph.db", sql)
+  def query(kernel, sql) = kernel.rows(sql.match?(/\bFROM (intents|clusters|completions|approvals|verdicts|archives)\b/) ? "knowledge_graph.db" : "work_graph.db", sql)
 
   def home_command(directory) = HomeCommand.new(directory)
 

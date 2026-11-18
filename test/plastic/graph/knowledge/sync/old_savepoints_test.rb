@@ -11,11 +11,11 @@ class SyncOldSavepointsTest < Plastic::TestCase
 
   def old_path(intent) = "#{intent.dir}/savepoint.md"
 
-  def log_lines(id = "1") = retrieval.work_log(id)
+  def log_lines(id = "1") = retrieval.structure.work_log(id)
 
   def old_print(intent, text)
     write(old_path(intent), text)
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:printed, { path: old_path(intent), sha256: Digest::SHA256.hexdigest(text), at: Plastic.now }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:printed, { path: old_path(intent), sha256: Digest::SHA256.hexdigest(text), at: Plastic.timestamp(FixedClock::AT) }) }
   end
 
   def test_an_intent_prints_work_log_and_no_savepoint_file
@@ -97,9 +97,9 @@ class SyncOldSavepointsTest < Plastic::TestCase
     intent = open_intent
     old_print(intent, "2026-10-01T10:00:00+02:00  Opened: Alpha\n")
 
-    assert retrieval.printed.key?(old_path(intent))
+    assert retrieval.stored.printed.key?(old_path(intent))
     sync_down
 
-    refute retrieval.printed.key?(old_path(intent))
+    refute retrieval.stored.printed.key?(old_path(intent))
   end
 end

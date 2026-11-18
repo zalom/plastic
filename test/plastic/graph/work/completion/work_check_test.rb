@@ -49,7 +49,7 @@ class WorkCompletionWorkCheckTest < Plastic::TestCase
   def test_a_done_node_with_blank_findings_is_unverified
     specified
     delivered_nodes
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET findings = NULL") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET findings = NULL") }
 
     assert_match(/findings/, problem)
   end
@@ -57,7 +57,7 @@ class WorkCompletionWorkCheckTest < Plastic::TestCase
   def test_the_texts_do_not_name_a_judge_option
     specified
     delivered_nodes
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET findings = NULL") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET findings = NULL") }
 
     refute_includes problem, "--judge"
   end

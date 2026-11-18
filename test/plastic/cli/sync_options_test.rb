@@ -18,11 +18,11 @@ class SyncOptionsTest < Plastic::TestCase
   end
 
   def test_sync_up_says_that_overwrite_reads_files_into_rows
-    assert_equal [expected(:up), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
+    assert_equal [expected(:up), %i[work knowledge]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
   end
 
   def test_sync_down_says_that_overwrite_prints_rows_over_files
-    assert_equal [expected(:down), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
+    assert_equal [expected(:down), %i[work knowledge]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
   end
 
   def test_each_direction_runs_its_own_workflow

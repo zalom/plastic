@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../workflow"
-require_relative "../failed"
-require_relative "../refused"
+require_relative "../errors"
 
 module Plastic
   class CodeWorkflow < Workflow
@@ -15,16 +14,14 @@ module Plastic
 
       def templates = [reason, offers, because].compact
 
-      # Nil when the gate lets the call through; otherwise the value that ends it.
       def call(ctx, workflow)
         return if pass.call(ctx)
 
-        ending(workflow.key, ctx.fill(reason), [offers, because].map { |template| template && ctx.fill(template) })
+        next_command, why = [offers, because].map { |template| template && ctx.fill(template) }
+        raise stop.new(ctx.fill(reason), next_command:, because: why, source: "#{workflow.key}, #{name}")
       end
 
-      def ending(key, message, lines)
-        (stops == :refusal) ? Refused.new(key, message, *lines) : Failed.new(key, name, message, *lines)
-      end
+      def stop = (stops == :refusal) ? Refused : Failed
     end
   end
 end

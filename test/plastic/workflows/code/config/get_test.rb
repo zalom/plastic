@@ -34,7 +34,7 @@ class WorkflowGetConfigTest < Plastic::TestCase
   end
 
   def test_a_key_that_does_not_exist_is_a_usage_error_that_points_to_the_list
-    error = assert_raises(Plastic::CLI::Command::Usage) { read("no.such") }
+    error = assert_raises(Plastic::Usage) { read("no.such") }
 
     assert_equal "no setting no.such; plastic config list names them", error.message
   end

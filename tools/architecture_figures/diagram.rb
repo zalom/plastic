@@ -47,7 +47,7 @@ module ArchitectureFigures
       zones.each_with_object(cards) { |zone, found| found["the title of #{zone.name}"] = zone.title_bounds }
     end
 
-    def zones =@boxes.values.grep(Shapes::Zone)
+    def zones = @boxes.values.grep(Shapes::Zone)
 
     def others = @boxes.values.reject { |shape| shape.is_a?(Shapes::Zone) }
 

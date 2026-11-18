@@ -2,7 +2,7 @@
 
 require_relative "../backup"
 require_relative "../../../code_workflow"
-require_relative "../../../cli/command/usage"
+require_relative "../../../errors"
 require_relative "../../../graph/backup/databases"
 require_relative "../../schema_migration"
 
@@ -21,7 +21,7 @@ module Plastic
           # The backup folder the call names, or a usage error that names what is missing.
           def self.choose(context)
             folder = context.latest ? context.work.backups.latest_done : context.timestamp
-            raise CLI::Command::Usage, "no done backup of #{context.store} to restore" unless folder
+            raise Usage, "no done backup of #{context.store} to restore" unless folder
 
             present(context, folder)
           end
@@ -29,7 +29,7 @@ module Plastic
           def self.present(context, folder)
             return folder if context.work.backups.folders.exist?(folder)
 
-            raise CLI::Command::Usage, "no backup #{folder.inspect} of #{context.store}"
+            raise Usage, "no backup #{folder.inspect} of #{context.store}"
           end
 
           # The database names the restore replaces; a name the backup lacks is a usage error.
@@ -37,7 +37,7 @@ module Plastic
             names = Plastic::Graph::Backup::Databases.parse(context.databases)
             context.work.backups.restorer.held_in(folder, names:)
           rescue Plastic::Graph::Backup::Restorer::Missing => error
-            raise CLI::Command::Usage, error.message
+            raise Usage, error.message
           end
 
           read "choose the backup" do |context|
@@ -60,6 +60,7 @@ module Plastic
           step "bring the restored store to the newest layout", done: ->(context) { !context.migrated.nil? },
             changes: { databases: "The restored databases are migrated to the newest layout" } do |context|
             context[:migrated] = SchemaMigration.bring_current(context, slug: context.store).migrated
+            context.work.backups.rebuild_index
           end
 
           read "say what was replaced" do |context|

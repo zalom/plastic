@@ -15,18 +15,18 @@ class KnowledgeArchivePrintedCleanupTest < Plastic::TestCase
   def test_the_printed_records_under_the_folder_are_removed
     cleanup.remove("store/1--alpha")
 
-    assert_empty(retrieval.printed.keys.grep(%r{\Astore/1--alpha/}))
+    assert_empty(retrieval.stored.printed.keys.grep(%r{\Astore/1--alpha/}))
   end
 
   def test_the_printed_records_of_other_folders_stay
     cleanup.remove("store/1--alpha")
 
-    refute_empty(retrieval.printed.keys.grep(%r{\Astore/2--beta/}))
+    refute_empty(retrieval.stored.printed.keys.grep(%r{\Astore/2--beta/}))
   end
 
   def test_a_folder_prefix_does_not_match_a_longer_name
     cleanup.remove("store/1--alph")
 
-    refute_empty(retrieval.printed.keys.grep(%r{\Astore/1--alpha/}))
+    refute_empty(retrieval.stored.printed.keys.grep(%r{\Astore/1--alpha/}))
   end
 end

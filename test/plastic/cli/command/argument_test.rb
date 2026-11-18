@@ -25,7 +25,7 @@ class CommandArgumentTest < Plastic::TestCase
   end
 
   def test_a_blank_required_argument_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { argument.read(["  "], 0) }
+    error = assert_raises(Plastic::Usage) { argument.read(["  "], 0) }
 
     assert_equal "missing ID", error.message
   end

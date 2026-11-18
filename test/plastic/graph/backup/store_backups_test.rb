@@ -12,7 +12,7 @@ class GraphBackupStoreBackupsTest < Plastic::TestCase
   def test_a_preview_names_the_folder_and_the_databases_that_exist
     plan = backups(fresh_home).plan
 
-    assert_equal %w[knowledge_graph references work_graph], plan.fetch(:databases).sort
+    assert_equal %w[knowledge_graph work_graph], plan.fetch(:databases).sort
     assert_match(/\A\d{14}\z/, plan.fetch(:folder))
   end
 

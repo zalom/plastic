@@ -27,7 +27,7 @@ class RetrievalSearchResultsResultTest < Plastic::TestCase
   end
 
   def test_a_result_says_whether_its_intent_is_archived
-    store_graphs.databases[:work].transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
 
     assert result.fetch("archived")
   end

@@ -13,7 +13,7 @@ module Plastic
         subject :intent_id
         argument :intent_id, label: "ID", text: "the intent to archive", optional: true
         option :older_than, switch: "--older-than DATE", text: "archive every intent older than this date or time instead of one"
-        writes :work, :knowledge, :references
+        writes :work, :knowledge
         prints :index
         previews
         backs_up_first
@@ -29,16 +29,17 @@ module Plastic
 
         def check_choice
           given = [parsed[:intent_id], parsed[:older_than]].count { |value| value }
-          raise CLI::Command::Usage, "give an intent ID or --older-than DATE" if given.zero?
-          raise CLI::Command::Usage, "an intent ID and --older-than exclude each other" if given > 1
+          raise Usage, "give an intent ID or --older-than DATE" if given.zero?
+          raise Usage, "an intent ID and --older-than exclude each other" if given > 1
 
           read_date
         end
 
         def read_date
-          Plastic::Graph::Backup::OlderThan.parse(parsed[:older_than]) if parsed[:older_than]
+          text = parsed[:older_than]
+          Plastic::Graph::Backup::OlderThan.parse(text) if text
         rescue Plastic::Graph::Backup::OlderThan::Unreadable => error
-          raise CLI::Command::Usage, error.message
+          raise Usage, error.message
         end
       end
     end

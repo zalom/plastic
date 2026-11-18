@@ -10,7 +10,7 @@ class RetrievalReferenceTest < Plastic::TestCase
 
   def references(store = "global") = Plastic::Graph::Retrieval::Reference.new(store_graphs.databases, store:, origin: Plastic::Graph::Origin.new(@plastic_home))
 
-  def revision = store_graphs.databases[:knowledge].row("SELECT sha256 FROM document_heads").fetch("sha256")
+  def revision = store_graphs.databases.fetch(:store).row("SELECT sha256 FROM document_heads").fetch("sha256")
 
   def uri = references.reference("1", @intent.file).fetch(:uri)
 

@@ -49,9 +49,9 @@ module TwoHomesHelper
     File.write(path, text)
   end
 
-  def database_of(home, key) = home_graphs(home).databases.fetch(key)
+  def database_of(home) = home_graphs(home).databases.fetch(:store)
 
-  def rows_of(home, key, sql, **values) = database_of(home, key).rows(sql, **values)
+  def rows_of(home, sql, **values) = database_of(home).rows(sql, **values)
 
   def origin_of(home) = home_graphs(home).retrieval.origin_id
 

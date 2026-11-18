@@ -4,6 +4,7 @@ require "yaml"
 require_relative "harnesses"
 require_relative "config/defaults"
 require_relative "config/store"
+require_relative "config/sync_types"
 require_relative "config/upgrade"
 
 module Plastic
@@ -16,9 +17,9 @@ module Plastic
     TRUE_VALUES = [true, "true"].freeze
     FALSE_VALUES = [false, "false"].freeze
 
-    def initialize(plastic_home, harness: nil)
-      @home = plastic_home
-      @rows = Rows.new(plastic_home)
+    def initialize(plastic_home, database:, harness: nil, clock: Time)
+      @store = Store.new(plastic_home, database:, clock:)
+      @rows = Rows.new(database)
       @harness = harness && Harnesses.fetch(harness).name
     end
 
@@ -38,6 +39,8 @@ module Plastic
 
     def value(key) = dig(key.split("."))
 
+    def list(key) = SyncTypes.parse(value(key))
+
     # The stores a search reads when none is named: the comma value of search.source_projects.
     def source_projects = value("search.source_projects").to_s.split(",")
 
@@ -47,7 +50,7 @@ module Plastic
 
     def entries = Config.flattened(settings)
 
-    def set(key, value) = Store.new(@home).set(@harness || "global", key, value)
+    def set(key, value) = @store.set(@harness || "global", key, value)
 
     def self.merged(base, over)
       base.merge(over) { |_key, old, new| (old.is_a?(Hash) && new.is_a?(Hash)) ? merged(old, new) : new }

@@ -189,14 +189,14 @@ class InitMediaSyncTest < Plastic::TestCase
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
   end
 
-  def media_setting = Plastic::Config.new(@plastic_home).flag(%w[sync media], default: nil)
+  def media_setting = (Plastic::Config::SyncTypes::MEDIA - Plastic::Wiring.config(@plastic_home).list("sync.types")).empty?
 
   def test_with_no_terminal_the_sync_of_images_and_videos_is_listed_picked_after_the_harnesses
     assert_match(/3  \[x\] sync images and videos/, call("init").out)
   end
 
   def test_once_the_sync_of_images_and_videos_is_off_it_is_listed_not_picked
-    Plastic::Config.new(@plastic_home).set("sync.media", false)
+    Plastic::Wiring.config(@plastic_home).set("sync.types", "md,html")
 
     assert_match(/3  \[ \] sync images and videos/, call("init").out)
   end

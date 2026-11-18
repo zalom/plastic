@@ -6,7 +6,7 @@ class CommandTest < Plastic::TestCase
   # A command that prints the title of the intent it names, or stops the
   # way its --stop switch says.
   class Title < Plastic::CLI::Command
-    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
+    STOPS = { "refuse" => Plastic::Refused, "fail" => Plastic::Failed, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
 
     argument :intent_id, label: "ID", text: "the intent"
     option :stop, switch: "--stop KIND", text: "stop with this kind"
@@ -22,7 +22,7 @@ class CommandTest < Plastic::TestCase
 
   class Idle < Plastic::CLI::Command
     def call
-      graphs.databases.fetch(:work).define_singleton_method(:path) { "/missing/work_graph.db" }
+      graphs.databases.fetch(:store).define_singleton_method(:path) { "/missing/work_graph.db" }
       graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal made a database" }
     end
   end

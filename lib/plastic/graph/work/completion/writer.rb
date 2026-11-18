@@ -25,7 +25,10 @@ module Plastic
           # An open, in progress, parked or future intent ends as abandoned, with no completion row.
           def abandon(intent_id)
             intent = @retrieval.intent(intent_id)
-            write_abandon(intent_id) unless intent.status == "abandoned"
+            return if intent.status == "abandoned"
+
+            write_abandon(intent_id)
+            reindex(intent_id)
           end
 
           private
@@ -34,15 +37,15 @@ module Plastic
             found = Check.new(@retrieval, intent_id).abandon_problems
             raise Invalid, found.join(" ") if found.any?
 
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, reason = NULL, closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress', 'parked', 'future')",
-                now: Plastic.now, intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
+                now: Plastic.timestamp(@retrieval.clock.now), intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
             end
           end
 
           def disposition(intent_id)
-            replaced = @retrieval.linking(intent_id).any? { |link| link.supersedes_from_another?(intent_id) }
+            replaced = @retrieval.structure.linking(intent_id).any? { |link| link.supersedes_from_another?(intent_id) }
             replaced ? "superseded" : "cancelled"
           end
 
@@ -52,17 +55,20 @@ module Plastic
             raise Invalid, found.join(" ") if found.any?
 
             commit_completion(completion_row(intent_id, check))
+            reindex(intent_id)
           end
+
+          def reindex(intent_id) = @retrieval.reindex(intent_id)
 
           def completion_row(intent_id, check)
             criteria = check.criteria
-            { intent_id:, at: Plastic.now, session_id: @session, judge: "verdict", criteria:,
+            { intent_id:, at: Plastic.timestamp(@retrieval.clock.now), session_id: @session, judge: "verdict", criteria:,
               evidence: Evidence.new(@retrieval, intent_id).by_criterion(criteria.keys), outcome_sha256: check.outcome_hash }
           end
 
           def commit_completion(row)
             intent_id, now = row.values_at(:intent_id, :at)
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:completions, row, statement: :insert)
               batch.write(:intents, "UPDATE intents SET status = 'done', disposition = 'delivered', closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress')",

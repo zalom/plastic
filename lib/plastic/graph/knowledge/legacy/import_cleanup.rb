@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../../../config"
-
 module Plastic
   module Graph
     module Knowledge
@@ -17,7 +15,7 @@ module Plastic
           end
 
           def call(counts)
-            remove(counts) if Config.new(@home).flag(%w[migrate remove_after_import], default: false)
+            remove(counts) if @folder.sync.remove_after_import
           end
 
           private

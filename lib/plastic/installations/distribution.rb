@@ -15,15 +15,21 @@ module Plastic
     class Distribution
       LAUNCHER_FOLDERS = %w[hooks bin exe].freeze
 
-      def initialize(package, tmp_dirs:)
+      def initialize(package, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
         @package = package
         @home = package.home
         @tmp_dirs = tmp_dirs
         @manifest = Manifest.new(File.join(@home, "manifest.json"))
       end
 
-      def call(mode)
-        puts "  #{(mode == :update) ? "Updating" : "Installing"} core files to #{@home}"
+      def install = sync("Installing")
+
+      def update = sync("Updating")
+
+      private
+
+      def sync(verb)
+        puts "  #{verb} core files to #{@home}"
         former = @manifest.files
         copy
         listed = record
@@ -31,8 +37,6 @@ module Plastic
         clean_up
         puts "  Core files synced (v#{@package.version})#{", #{pruned} stale file(s) pruned" if pruned.positive?}"
       end
-
-      private
 
       def copy
         %w[. lib exe hooks].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
@@ -47,15 +51,16 @@ module Plastic
         source = File.join(@package.root, path)
         return unless File.exist?(source)
 
-        FileUtils.mkdir_p(File.dirname(File.join(@home, path)))
-        FileUtils.cp(source, File.join(@home, path))
+        target = File.join(@home, path)
+        FileUtils.mkdir_p(File.dirname(target))
+        FileUtils.cp(source, target)
       end
 
       def launchers = Dir.glob(LAUNCHER_FOLDERS.map { |folder| File.join(@home, folder, "*") }).select { |path| File.file?(path) }
 
       def record
         listed = [*files.values, "VERSION"].map { |path| File.join(@home, path) }.select { |path| File.exist?(path) }
-        @manifest.write(listed)
+        @manifest.write(listed, @package.clock.now)
         listed
       end
 

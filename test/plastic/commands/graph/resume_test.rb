@@ -327,11 +327,10 @@ class GraphResumeRebuildTest < Plastic::TestCase
     assert_equal "next: plastic sync up --project c", next_line(call("--stores", "c"))
   end
 
-  def test_the_log_rows_print_the_line_of_a_write_whose_drain_was_cut_short
+  def test_the_log_rows_print_the_line_of_a_write
     intent = ready_intent
     work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
     work.add_ruling(intent_id: intent.intent_id, text: "kept")
-    work.drain_logs
 
     assert(lines(call).any? { |line| line.start_with?("log: - ") && line.include?(" ruled ") })
   end

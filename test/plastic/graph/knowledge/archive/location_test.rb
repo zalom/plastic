@@ -8,8 +8,8 @@ class KnowledgeArchiveLocationTest < Plastic::TestCase
     super
     @intent = open_intent("Location", status: "future")
     graphs = store_graphs
-    @database = graphs.databases.fetch(:work)
-    @writer = Plastic::Graph::Knowledge::Archive::Writer.new(graphs.databases, graphs.retrieval, folder, session: "archive-test")
+    @database = graphs.databases.fetch(:store)
+    @writer = Plastic::Graph::Knowledge::Archive::Writer.new(graphs.databases, graphs.retrieval, folder, session: "archive-test", clock: FixedClock::CLOCK)
   end
 
   def test_archive_refuses_an_intent_path_with_parent_traversal
@@ -19,7 +19,7 @@ class KnowledgeArchiveLocationTest < Plastic::TestCase
 
     refute @writer.archive(@intent.intent_id).first
     assert File.directory?(folder.path(@intent.dir))
-    refute retrieval.archived?(@intent.intent_id)
+    refute archived?(@intent.intent_id)
   end
 
   def test_revert_refuses_a_symlink_in_the_destination_parent
@@ -28,7 +28,7 @@ class KnowledgeArchiveLocationTest < Plastic::TestCase
 
     refute @writer.restore(@intent.intent_id).first
     refute_path_exists File.join(outside, File.basename(@intent.dir))
-    assert retrieval.archived?(@intent.intent_id)
+    assert archived?(@intent.intent_id)
   end
 
   private

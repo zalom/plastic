@@ -13,12 +13,12 @@ class UnarchiveIntentTest < Plastic::TestCase
     outcome, context = restore
 
     assert_equal [:done, ["intent: 1 unarchived"]], [outcome, context.printed]
-    refute retrieval.archived?("1")
+    refute retrieval.archives.archived?("1")
   end
 
   def test_an_intent_that_is_not_archived_fails_the_call
     open_intent
 
-    assert_kind_of Plastic::Failed, restore.first
+    assert_raises(Plastic::Failed) { restore }
   end
 end

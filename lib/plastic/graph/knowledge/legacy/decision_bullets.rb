@@ -6,7 +6,14 @@ module Plastic
       module Legacy
         # Reads bullets within Decisions headings, including nested sections.
         class DecisionBullets
+          HEADING = /\A(#+)\s+(.+)\z/
+          ITEM = /\A\s*- \s*(.*\S)\s*\z/
+
           def self.call(text) = new.read(text)
+
+          def initialize
+            @level = nil
+          end
 
           def read(text)
             @level = nil
@@ -16,10 +23,10 @@ module Plastic
           private
 
           def bullet(line)
-            heading = line.match(/\A(#+)\s+(.+)\z/)
+            heading = line.match(HEADING)
             return section(heading) if heading
 
-            line.strip.delete_prefix("- ").strip if @level && line.strip.start_with?("- ")
+            line[ITEM, 1] if @level
           end
 
           def section(heading)

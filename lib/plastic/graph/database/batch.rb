@@ -23,7 +23,10 @@ module Plastic
 
         attr_reader :statements
 
-        # `origin` names the installation that writes; the local database has none and keeps no log.
+        # Runs each statement on the connection, in order; `count` is told the rows each one changed. The rows RETURNING gives back come back.
+        def execute(connection, &count) = statements.filter_map { |entry| entry.execute(connection, &count) }
+
+        # `origin` names the installation that writes; the local database has none.
         def initialize(origin: nil)
           @statements = []
           @origin = origin
@@ -38,18 +41,23 @@ module Plastic
         # A write the report counts under `table`.
         def write(table, sql, **values) = bind(table.to_s, SQL::Bound.new(sql, values))
 
+        # Several statements that share their values, in order: each step is the table its rows count under, or nil, and its SQL.
+        def add_steps(steps, **values)
+          steps.each { |table, sql| table ? write(table, sql, **values) : add(sql, **values) }
+          self
+        end
+
         def insert(table, record, conflict: nil)
           clause = conflict ? " ON CONFLICT DO #{conflict}" : ""
           bind(table.to_s, SQL.insert(table, record.to_h, clause))
         end
 
-        # Writes the whole row its key names, and logs it. `statement: :insert`
+        # Writes the whole row its key names. `statement: :insert`
         # refuses a row already there under its key, and fails the transaction.
         def put(name, row, statement: :upsert)
           table = Schema.table_named(name)
           row = stamped(table, row.to_h)
           bind(table.counted_as, table.public_send(statement, row))
-          log(table, "put", table.key_of(row))
         end
 
         def put_all(name, rows)
@@ -76,11 +84,10 @@ module Plastic
           self
         end
 
-        # Removes the rows `values` match, and logs each one with no row.
+        # Removes the rows `values` match.
         def remove(name, **values)
           table = Schema.table_named(name)
           values = stamped(table, values)
-          log(table, "remove", values)
           where = SQL.where(values, "m")
           write(name, "DELETE FROM #{SQL.name(name)} WHERE #{where.sql}", **where.values)
         end
@@ -92,13 +99,6 @@ module Plastic
         def bind(table, bound)
           @statements << Entry.new(bound.sql, bound.values, table)
           self
-        end
-
-        def log(table, operation, match)
-          return self unless @origin && table.logged?
-
-          change = table.change(operation, match, @origin.id)
-          bind(nil, change)
         end
       end
     end

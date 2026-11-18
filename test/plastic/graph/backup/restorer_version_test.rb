@@ -21,6 +21,7 @@ class GraphBackupRestorerVersionTest < Plastic::TestCase
 
   def test_a_partial_restore_ignores_a_missing_live_file_and_an_unreadable_one_when_it_reads_the_store_version
     home = fresh_home
+    add_references(home)
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
     ready = restorer(home)
     damage(home)

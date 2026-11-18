@@ -16,26 +16,36 @@ module Plastic
         @package = package
         @registered = registered
         @hook_dir = File.join(claude_dir, "hooks")
+        @cache = File.join(package.home, ".cache")
       end
 
-      def merge(path, choice: :plastic)
-        settings = Files.read_json(path) || {}
-        removed = purge(settings["hooks"] ||= {})
-        settings = @package.entries.claude(settings)
-        hooks = settings["hooks"]
-        add_registered(hooks)
-        Report.removed_hooks(removed - Report.pairs(hooks), "settings.json")
-        status_line(settings, choice)
-        Files.write_json(path, settings)
-      end
-
-      private
-
-      def purge(hooks)
+      def self.purge(hooks)
         hooks.delete("statusLine")
         removed = HookPurge.new(:claude_purge_command?).call(hooks)
         Report.reserved_hooks(hooks)
         removed
+      end
+
+      def merge(path)
+        settings = merged(path)
+        settings["statusLine"] = { "type" => "command", "command" => "#{@hook_dir}/plastic-statusline" } if @package.choices.statusline?
+        Files.write_json(path, settings)
+      end
+
+      def merge_keeping_status_line(path) = Files.write_json(path, merged(path))
+
+      private
+
+      def merged(path)
+        settings = Files.read_json(path) || {}
+        removed = ClaudeHooks.purge(settings["hooks"] ||= {})
+        settings = @package.entries.claude(settings)
+        hooks = settings.fetch("hooks")
+        add_registered(hooks)
+        Report.removed_hooks(removed - Report.pairs(hooks), "settings.json")
+        original = settings["statusLine"]
+        keep_original(original) if original
+        settings
       end
 
       def add_registered(hooks)
@@ -44,19 +54,9 @@ module Plastic
         end
       end
 
-      def status_line(settings, choice)
-        keep_original(settings["statusLine"])
-        return unless choice == :plastic && @package.choices.statusline?
-
-        settings["statusLine"] = { "type" => "command", "command" => "#{@hook_dir}/plastic-statusline" }
-      end
-
       def keep_original(status)
-        return if status.nil? || HookRegistry.claude_purge_command?(status["command"])
-
-        cache = File.join(@package.home, ".cache")
-        FileUtils.mkdir_p(cache)
-        Files.write_json(File.join(cache, "original-statusline.json"), status)
+        FileUtils.mkdir_p(@cache)
+        Files.write_json(File.join(@cache, "original-statusline.json"), status)
       end
     end
   end

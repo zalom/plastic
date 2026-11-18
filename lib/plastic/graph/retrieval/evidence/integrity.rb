@@ -3,6 +3,7 @@
 require_relative "integrity_audit"
 require_relative "integrity_rebuilder"
 require_relative "integrity_snapshot"
+require_relative "../index"
 
 module Plastic
   module Graph
@@ -17,16 +18,18 @@ module Plastic
           # Holds the collaborators that read, assess, and rebuild derived rows.
           Components = Data.define(:snapshot, :audit, :rebuilder)
 
-          def initialize(database, origin_id, before_rebuild: -> {})
-            @database = database
+          def initialize(store, origin_id, before_rebuild: -> {})
+            @database = store
+            @index = Retrieval::Index.new(store, origin_id)
             @before_rebuild = before_rebuild
-            @components = Components.new(Evidence::IntegritySnapshot.new(database, origin_id), Evidence::IntegrityAudit,
+            @components = Components.new(Evidence::IntegritySnapshot.new(store, origin_id), Evidence::IntegrityAudit,
               Evidence::IntegrityRebuilder.new(origin_id))
           end
 
-          # Rebuilds derived rows inside one immediate transaction.
+          # Rebuilds the heads in one immediate transaction, then the passages and search entries in a deferred one.
           def repair
             @database.immediate_transaction { |batch, connection| repair_snapshot(batch, connection) }
+            @index.rebuild
             report
           end
 

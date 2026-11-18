@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "command"
-require_relative "scope"
+require_relative "../scope"
 
 module Plastic
   class CLI
@@ -16,8 +16,8 @@ module Plastic
 
       # The name, or the usage error or refusal that says why it cannot be one.
       def checked
-        raise Command::Usage, "the name must be lowercase letters, digits and dashes" unless PATTERN.match?(@text)
-        raise Command::Refusal, "#{Scope::GLOBAL} is the name of the global store, not of a project" if @text == Scope::GLOBAL
+        raise Usage, "the name must be lowercase letters, digits and dashes" unless PATTERN.match?(@text)
+        raise Refused, "#{Scope::GLOBAL} is the name of the global store, not of a project" if @text == Scope::GLOBAL
 
         @text
       end

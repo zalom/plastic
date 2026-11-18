@@ -34,7 +34,7 @@ class ReleaseVerifyTest < Minitest::Test
     assert_equal expected, listing, "bin/test must discover every unit test file, not just the first"
   end
 
-  def test_bin_test_system_lists_the_varar_runner
-    assert_equal [SYSTEM_RUNNER], listing("--system")
+  def test_bin_test_e2e_lists_the_varar_runner
+    assert_equal [SYSTEM_RUNNER], listing("--e2e")
   end
 end

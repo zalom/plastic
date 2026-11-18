@@ -30,7 +30,7 @@ module Plastic
 
         def self.build(name)
           dir = File.realpath(Dir.mktmpdir("plastic-home-#{name}"))
-          Minitest.after_run { FileUtils.rm_rf([dir, "#{dir}.files"]) }
+          Minitest.after_run { FileUtils.rm_rf([dir, "#{dir}.files", "#{dir}.databases"]) }
           Fixture.new(File.join(dir, ".plastic"), YAML.load_file(File.join(FIXTURES, "homes", "#{name}.yml"))).load
           new(dir)
         end
@@ -43,16 +43,22 @@ module Plastic
           [DATABASE_PATTERN, JOURNAL_PATTERN].each do |pattern|
             Dir.glob("#{@files}/**/#{pattern}", File::FNM_DOTMATCH).each { |path| File.delete(path) }
           end
+          @pristine = Pristine.new(dir, @databases).keep
           @snapshot = Snapshot.new(@databases)
           @state = @snapshot.scan(dir)
         end
 
         def begin = connections.each { |connection| connection.execute("BEGIN") }
 
+        # The test committed and deleted a file of its own; the next reset puts every database back from its pristine copy.
+        def restore_every_database = @restore_every_database = true
+
         # Rolls each database back, closes every other connection, removes
         # what is new and puts back only what is missing or different from
         # the state recorded in `initialize`.
         def reset
+          return_every_database if @restore_every_database
+          @pristine.restore_lost
           rollback
           current = @snapshot.scan(@dir)
           remove_new(current)
@@ -61,9 +67,15 @@ module Plastic
 
         private
 
+        def return_every_database
+          @restore_every_database = false
+          Pool.disconnect
+          @pristine.return_every
+        end
+
         def rollback
           connections.each { |connection| connection.rollback if connection.transaction_active? }
-          Pool.disconnect(keep: @databases)
+          Pool.disconnect(keep: pooled_paths)
         end
 
         def remove_new(current)
@@ -79,7 +91,16 @@ module Plastic
           end
         end
 
-        def connections = @databases.map { |path| Pool.for(path) }
+        def connections = pooled_paths.map { |path| Pool.for(path, attach: attachments(path)) }
+
+        def attachments(path) = (File.basename(path) == Plastic::Graph::Schema.file(:knowledge)) ? Plastic::Graph::Database::Store.attachments(path) : {}
+
+        def pooled_paths = @databases.reject { |path| attached?(path) }
+
+        def attached?(path)
+          sibling = File.join(File.dirname(path), Plastic::Graph::Schema.file(:knowledge))
+          path != sibling && File.exist?(sibling)
+        end
 
         def clear(full)
           stat = File.lstat(full)
@@ -131,6 +152,43 @@ module Plastic
           FileUtils.mkdir_p(File.dirname(full))
           FileUtils.cp(File.join(@files, rel), full, preserve: true)
         end
+      end
+
+      # A copy of each database a home started with, kept beside the home and put back when a test lost or replaced one.
+      class Pristine
+        def initialize(dir, databases)
+          @dir = dir
+          @databases = databases
+        end
+
+        def keep
+          @databases.select { |path| File.exist?(path) }.each do |path|
+            copy = copy_of(path)
+            FileUtils.mkdir_p(File.dirname(copy))
+            SQLite3::Database.new(path) { |database| database.execute("VACUUM INTO ?", copy) }
+          end
+          self
+        end
+
+        def return_every
+          @databases.each do |path|
+            FileUtils.cp(copy_of(path), path)
+            Dir.glob("#{path}-*").each { |journal| File.delete(journal) }
+          end
+        end
+
+        def restore_lost
+          @databases.each { |path| put_back(path) if !File.exist?(path) && File.exist?(copy_of(path)) }
+        end
+
+        private
+
+        def put_back(path)
+          FileUtils.mkdir_p(File.dirname(path))
+          FileUtils.cp(copy_of(path), path)
+        end
+
+        def copy_of(path) = File.join("#{@dir}.databases", path.delete_prefix("#{@dir}/"))
       end
 
       # The state of every entry under a home's folder, by path relative to

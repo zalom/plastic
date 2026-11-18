@@ -15,16 +15,16 @@ class DocumentReferenceTest < Minitest::Test
   end
 
   def test_a_reference_without_the_scheme_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { slug("global/1/spec.md") }
+    error = assert_raises(Plastic::Usage) { slug("global/1/spec.md") }
 
     assert_equal 'invalid document reference "global/1/spec.md"', error.message
   end
 
   def test_a_short_revision_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { slug("plastic://global/1/spec.md?revision=abc") }
+    assert_raises(Plastic::Usage) { slug("plastic://global/1/spec.md?revision=abc") }
   end
 
   def test_a_path_that_unescapes_to_invalid_text_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { slug("plastic://global/1/%FF.md") }
+    assert_raises(Plastic::Usage) { slug("plastic://global/1/%FF.md") }
   end
 end

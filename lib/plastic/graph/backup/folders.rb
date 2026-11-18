@@ -56,7 +56,11 @@ module Plastic
 
         def files(name) = Dir.children(path(name)).grep(/\.db\z/).sort
 
-        def bytes(name) = files(name).sum { |file| File.size(File.join(path(name), file)) }
+        # The file count, the byte count and the digest of one backup folder.
+        def summary(name)
+          listed = files(name)
+          { files: listed.size, bytes: listed.sum { |file| File.size(File.join(path(name), file)) }, sha256: digest(name) }
+        end
 
         # The digest of the sorted list of each file's name and digest.
         def digest(name)

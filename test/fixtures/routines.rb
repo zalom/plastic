@@ -3,7 +3,7 @@
 require_relative "../../lib/plastic/code_workflow"
 require_relative "../../lib/plastic/agent_workflow"
 require_relative "../../lib/plastic/routine"
-require_relative "../../lib/plastic/hook"
+require_relative "../../lib/plastic/cli/hook"
 
 # Routines, workflows and hooks that exist only for the kernel tests. They
 # live in their own namespace, with their own registry and command table, so
@@ -171,11 +171,11 @@ module Fixtures
     workflow :code_greet, next: :code_stamp
   end
 
-  class Echo < Plastic::Hook
+  class Echo < Plastic::CLI::Hook
     def respond(event) = "session #{event[:session_id]}"
   end
 
-  class Quiet < Plastic::Hook
+  class Quiet < Plastic::CLI::Hook
     def respond(_event) = nil
   end
 

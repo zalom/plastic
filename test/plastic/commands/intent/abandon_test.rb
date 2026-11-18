@@ -46,7 +46,7 @@ class IntentAbandonTest < Plastic::TestCase
   def abandon(*extra) = cli("intent", "abandon", "1", *extra)
 
   def supersede(from, to)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:links, { from_ref: from, to_ref: to, kind: "supersedes", at: LifecycleHelper::EARLY })
     end
   end
@@ -85,7 +85,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal 0, result.code
-    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, retrieval.completion("1")]
+    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, structure.completions("1").first]
   end
 
   def test_a_supersedes_link_from_another_intent_gives_superseded

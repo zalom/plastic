@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../record"
+require_relative "../intent_status"
 require_relative "luhmann_id"
 
 module Plastic
@@ -45,6 +46,9 @@ module Plastic
         # The state a stored word means today: the old word for work under way reads in_progress.
         def self.stored_state(word) = (word == "active") ? "in_progress" : word
 
+        # The named fields of an index entry, with its status in the stored word.
+        def self.stored_fields(entry, names) = names.to_h { |field| [field, entry[field.to_s]] }.merge(status: stored_state(entry["status"]))
+
         def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
 
         def segments = LuhmannId.segments(intent_id)
@@ -75,7 +79,6 @@ module Plastic
         # The fields store/index.json lists, in order.
         def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }
       end
-      Intent::STATUSES = %w[open in_progress parked future done abandoned].freeze
       Intent::NEW_STATUSES = %w[open parked future].freeze
       Intent::GROUPS = { "active" => %w[open in_progress parked], "future" => %w[future], "finished" => %w[done abandoned] }.freeze
       Intent::CROSSING_FIELDS = %i[title status disposition reason closed_at].freeze

@@ -13,7 +13,7 @@ module Plastic
         command.option :overwrite, switch: "--overwrite [PATH]", default: false, text: OVERWRITE_TEXT.fetch(direction)
         command.option :merge, switch: "--merge", default: false,
           text: "apply the one-sided changes, then list the conflicts"
-        command.writes :work, :knowledge, :references
+        command.writes :work, :knowledge
       end
 
       # The switches of sync up.

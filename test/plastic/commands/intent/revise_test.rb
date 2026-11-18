@@ -12,9 +12,9 @@ class IntentReviseTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions = store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
+  def revisions = store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
 
-  def set_status(status) = store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
+  def set_status(status) = store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
   def test_a_revise_changes_the_title_row_and_writes_a_second_revision
     open_intent
@@ -131,7 +131,7 @@ class IntentReviseTest < Plastic::TestCase
 
   def test_an_intent_with_no_file_row_fails_with_exit_1
     open_intent
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.remove(:documents, intent_id: "1", path: FILE) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.remove(:documents, intent_id: "1", path: FILE) }
 
     result = call("1", "Beta, after grilling")
 
@@ -158,7 +158,7 @@ class IntentReviseCommandTest < Plastic::TestCase
 
     assert_equal [0, ""], [call.code, call.err]
     assert_includes call.out, "what: Beta, after grilling"
-    assert_equal [{ "title" => "Beta, after grilling" }], store_graphs.databases.fetch(:work).rows("SELECT title FROM intents").map { |row| row.to_h.transform_keys(&:to_s) }
+    assert_equal [{ "title" => "Beta, after grilling" }], store_graphs.databases.fetch(:store).rows("SELECT title FROM intents").map { |row| row.to_h.transform_keys(&:to_s) }
   end
 end
 
@@ -171,7 +171,7 @@ class IntentReviseImportedTest < Plastic::TestCase
     plastic("sync", "up", table: Plastic::CLI::TABLE)
 
     result = call("2", "Beta, revised")
-    rows = store_graphs.databases.fetch(:knowledge).rows("SELECT path FROM documents WHERE intent_id = :id AND path LIKE :like", id: "2", like: "%beta.md")
+    rows = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE intent_id = :id AND path LIKE :like", id: "2", like: "%beta.md")
 
     assert_equal 0, result.code, result.err
     assert_equal ["2--beta.md"], rows.map { |row| row.fetch("path") }

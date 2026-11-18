@@ -11,7 +11,7 @@ class ScreenTest < Plastic::TestCase
     def multi_select(*, **) = picked
   end
 
-  def choices = [Screen::Choice.new(label: "claude", chosen: true), Screen::Choice.new(label: "codex", chosen: false)]
+  def choices = [Plastic::Choice.new(label: "claude", chosen: true), Plastic::Choice.new(label: "codex", chosen: false)]
 
   def screen(input: Terminal.new, stream: Terminal.new, output_class: Plastic::CLI::TextOutput)
     output = output_class.new(out: StringIO.new, err: StringIO.new)
@@ -19,11 +19,11 @@ class ScreenTest < Plastic::TestCase
   end
 
   def test_two_terminal_streams_open_the_terminal_list
-    assert_equal Screen::Chosen.new(labels: %w[codex]), screen.ask("Which?", choices, command: "plastic init")
+    assert_equal Plastic::Chosen.new(labels: %w[codex]), screen.ask("Which?", choices, command: "plastic init")
   end
 
   def test_a_pipe_is_listed
-    assert_equal Screen::Listed.new, screen(input: StringIO.new).ask("Which?", choices, command: "plastic init")
+    assert_equal Plastic::Listed.new, screen(input: StringIO.new).ask("Which?", choices, command: "plastic init")
   end
 
   def test_a_piped_output_is_listed

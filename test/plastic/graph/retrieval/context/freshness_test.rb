@@ -25,7 +25,7 @@ class RetrievalContextFreshnessTest < Plastic::TestCase
   end
 
   def test_a_revision_whose_document_was_removed_is_stale
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases[:knowledge], origin).remove("1", @intent.file)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", @intent.file)
 
     assert_equal [{ "uri" => @reference, "state" => "stale" }], states(@reference).fetch("evidence")
   end

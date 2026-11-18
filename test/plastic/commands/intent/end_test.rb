@@ -19,7 +19,7 @@ class IntentEndAcceptedCaseTest < Plastic::TestCase
     accepted_intent
     review_off
     cli("intent", "end", "1", session: "delivery")
-    done = retrieval.work_log("1").select { |line| line.kind == "done" }
+    done = retrieval.structure.work_log("1").select { |line| line.kind == "done" }
 
     assert_equal ["n1", ""], done.map(&:node)
     assert_equal "Done", done.last.text
@@ -67,15 +67,15 @@ class IntentEndTest < Plastic::TestCase
 
   def test_the_completion_row_holds_the_verdict_judge_and_the_criteria
     closed_intent
-    row = retrieval.completion("1")
+    row = structure.completions("1").first
 
-    assert_equal "verdict", row.fetch("judge")
-    assert_equal({ KEY => CRITERION }, JSON.parse(row.fetch("criteria")))
+    assert_equal "verdict", row.judge
+    assert_equal({ KEY => CRITERION }, JSON.parse(row.criteria))
   end
 
   def test_the_completion_evidence_maps_each_key_to_node_ids_and_findings
     closed_intent
-    evidence = JSON.parse(retrieval.completion("1").fetch("evidence"))
+    evidence = JSON.parse(structure.completions("1").first.evidence)
 
     assert_includes evidence.fetch(KEY).to_s, "n1"
     assert_includes evidence.fetch(KEY).to_s, "Acceptance passes for works"

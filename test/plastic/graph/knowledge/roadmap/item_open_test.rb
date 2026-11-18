@@ -35,7 +35,7 @@ class KnowledgeRoadmapItemOpenTest < Plastic::TestCase
   def test_the_started_item_records_its_intent
     start("a")
 
-    assert_equal "1", retrieval.roadmap_items("plan").first.intent_id
+    assert_equal "1", retrieval.roadmaps.items("plan").first.intent_id
   end
 
   def test_a_missing_item_fails
@@ -56,6 +56,6 @@ class KnowledgeRoadmapItemOpenTest < Plastic::TestCase
   def test_the_opened_intent_has_an_opened_line
     start("a")
 
-    assert_equal [["opened", "Opened: Item A"]], retrieval.work_log("1").map { |line| line.values_at(:kind, :text) }
+    assert_equal [["opened", "Opened: Item A"]], retrieval.structure.work_log("1").map { |line| line.values_at(:kind, :text) }
   end
 end

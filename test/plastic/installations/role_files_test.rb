@@ -9,7 +9,7 @@ class RoleFilesTest < Plastic::TestCase
 
   ROLES = { "demo-role" => PackageFixture::ROLE, "plastic-primary-advisor" => "---\nname: plastic-primary-advisor\nmodel: opus\n---\nAdvise.\n" }.freeze
 
-  def copy(**options) = Plastic::Installations::RoleFiles.new(package(roles: ROLES)).call(File.join(@home, "agents"), **options)
+  def copy(**options) = Plastic::Installations::RoleFiles.new(package(roles: ROLES), **options).call(File.join(@home, "agents"))
 
   def installed(name) = File.read(File.join(@home, "agents", "#{name}.md"))
 
@@ -33,13 +33,13 @@ class RoleFilesTest < Plastic::TestCase
 
   def test_an_effort_override_replaces_an_effort_line
     roles = { "demo-role" => "---\nmodel: sonnet\neffort: low\n---\nBody\n" }
-    Plastic::Installations::RoleFiles.new(package(roles:)).call(File.join(@home, "agents"), efforts: { "demo-role" => "high" })
+    Plastic::Installations::RoleFiles.new(package(roles:), efforts: { "demo-role" => "high" }).call(File.join(@home, "agents"))
 
     assert_includes installed("demo-role"), "effort: high\n"
   end
 
   def test_a_declined_advisor_installs_no_consultation_agent
-    assert_equal [File.join(@home, "agents", "demo-role.md")], copy(advisor: false)
+    assert_equal [File.join(@home, "agents", "demo-role.md")], copy(skip: Plastic::Config::AgentModels::CONSULTATION_AGENTS)
   end
 
   def test_a_package_with_no_agents_copies_nothing

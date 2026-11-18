@@ -12,11 +12,11 @@ module Plastic
         class Results
           RRF_OFFSET = 60
 
-          def initialize(plastic_home, terms, excerpt:)
+          def initialize(plastic_home, terms, excerpt:, opener:)
             @plastic_home = plastic_home
+            @opener = opener
             @terms = terms
             @excerpt = excerpt
-            @rrf_offset = RRF_OFFSET
           end
 
           def call(sources, limit)
@@ -25,12 +25,12 @@ module Plastic
 
           private
 
-          attr_reader :excerpt, :plastic_home, :rrf_offset, :terms
+          attr_reader :excerpt, :opener, :plastic_home, :terms
 
           def store_rows(slug, limit)
-            retrieval = Search::Results::Store.new(plastic_home, slug).retrieval
+            retrieval = Search::Results::Store.new(plastic_home, slug, opener).retrieval
             retrieval.search_current(terms, limit:).each_with_index.map do |row, index|
-              match = Search::Results::Match.new(retrieval, slug, row, index + 1, rrf_offset)
+              match = Search::Results::Match.new(retrieval, slug, row, index + 1, RRF_OFFSET)
               Search::Results::Result.new(match, excerpt:).to_h
             end
           end

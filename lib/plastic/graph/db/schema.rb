@@ -22,6 +22,14 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :scope, :key, :value
   end
 
+  create_table :chat_messages, key: [] do |t|
+    t.serial :id
+    t.kept :session_id
+    t.text :harness, :store, :intent_id
+    t.role :role
+    t.kept :at, :text
+  end
+
   create_table :intents, key: %i[intent_id origin_id] do |t|
     t.serial :id
     t.kept :intent_id
@@ -65,17 +73,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :kind
     t.blank :path, :sha256, :text
     t.kept :origin_id
-    t.text :write_id
-  end
-
-  create_table :work_log_pending, key: %i[write_id] do |t|
-    t.kept :write_id, :intent_id
-    t.text :at
-    t.blank :phase, :node
-    t.text :session_id
-    t.kept :kind
-    t.blank :path, :sha256, :text
-    t.kept :origin_id
   end
 
   create_table :completions, key: %i[intent_id origin_id] do |t|
@@ -96,14 +93,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
 
   create_table :printed, key: %i[path] do |t|
     t.kept :path, :sha256, :at, :origin_id
-  end
-
-  create_table :changes, key: [] do |t|
-    t.serial :seq
-    t.kept :table, :key
-    t.operation :operation
-    t.text :row
-    t.kept :at, :origin_id
   end
 
   create_table :roadmaps, key: %i[slug origin_id] do |t|
@@ -185,41 +174,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   create_virtual_table :document_fts,
     using: "fts5(body, intent_id UNINDEXED, path UNINDEXED, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED)"
 
-  create_trigger :document_heads_search_insert, on: :document_heads, sql: <<~SQL
-    AFTER INSERT ON "document_heads" BEGIN
-      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
-      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
-      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
-    END;
-  SQL
-
-  create_trigger :document_heads_search_update, on: :document_heads, sql: <<~SQL
-    AFTER UPDATE ON "document_heads" BEGIN
-      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
-      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
-      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
-      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
-    END;
-  SQL
-
-  create_trigger :document_heads_search_delete, on: :document_heads, sql: <<~SQL
-    AFTER DELETE ON "document_heads" BEGIN
-      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
-    END;
-  SQL
-
-  create_table :retrieval_schema, key: %i[name] do |t|
-    t.kept :name
-    t.number :version
-    t.text :completed_at
-  end
-
-  create_table :retrieval_backfills, key: %i[name origin_id] do |t|
-    t.kept :name, :origin_id
-    t.number :version
-    t.kept :completed_at
-  end
-
   %i[retrieval_contexts retrieval_discoveries].each do |name|
     create_table name, key: %i[intent_id origin_id] do |t|
       t.kept :intent_id, :origin_id
@@ -248,10 +202,9 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :origin_id
   end
 
-  database :local, "plastic.db", %i[command_runs sessions settings printed]
-  database :work, "work_graph.db", %i[intents clusters nodes edges work_log work_log_pending completions printed changes roadmaps batches roadmap_items
-    roadmap_edges roadmap_log archives archive_entries approvals verdicts runs]
-  database :knowledge, "knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages
-    document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]
-  database :references, "references.db", %i[sqlar printed changes]
+  database :local, "plastic.db", %i[command_runs sessions settings printed chat_messages]
+  database :work, "work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]
+  database :knowledge, "knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents
+    legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar]
+  database :retrieval, "retrieval_graph.db", %i[document_passages document_fts]
 end

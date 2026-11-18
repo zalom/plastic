@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 770" role="img" aria-labelledby="containers-title containers-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="containers-title">What runs and where Plastic keeps its data</title>
-  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
+  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
   <defs><marker id="containers-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -58,14 +58,14 @@
 <path class="box" d="M 320 414 L 320 463 A 125.0 9 0 0 0 570 463 L 570 414 Z"/>
 <ellipse class="box" cx="445.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="445.0" y="441" text-anchor="middle">knowledge_graph.db</text>
-<text class="s" x="445.0" y="459" text-anchor="middle">documents, rulings, links</text>
+<text class="s" x="445.0" y="459" text-anchor="middle">documents, rulings, links, sqlar</text>
 <path class="box" d="M 600 414 L 600 463 A 125.0 9 0 0 0 850 463 L 850 414 Z"/>
 <ellipse class="box" cx="725.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
-<text class="m" x="725.0" y="441" text-anchor="middle">references.db</text>
-<text class="s" x="725.0" y="459" text-anchor="middle">sqlar</text>
+<text class="m" x="725.0" y="441" text-anchor="middle">retrieval_graph.db</text>
+<text class="s" x="725.0" y="459" text-anchor="middle">passages, search entries</text>
 <rect class="box" x="880" y="399" width="250" height="94" rx="8"/><rect x="880" y="399" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="896" y="423">backups/</text><text class="s" x="896" y="440">[folder]</text>
-<text class="s" x="896" y="460">Copies of the three databases,</text>
+<text class="s" x="896" y="460">Copies of the work and knowledge databases,</text>
 <text class="s" x="896" y="475">one folder for each backup.</text>
 <rect class="box" x="40" y="585" width="250" height="79" rx="8"/><rect x="40" y="585" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="56" y="609">store/index.json</text><text class="s" x="56" y="626">[file]</text>

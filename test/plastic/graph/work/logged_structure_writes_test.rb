@@ -10,7 +10,7 @@ class WorkLoggedStructureWritesTest < Plastic::TestCase
 
   def work = graphs.work
 
-  def lines(id = "1") = graphs.retrieval.work_log(id)
+  def lines(id = "1") = graphs.retrieval.structure.work_log(id)
 
   def kinds(id = "1") = lines(id).map(&:kind)
 
@@ -64,7 +64,7 @@ class WorkLoggedStructureWritesTest < Plastic::TestCase
     def claim_node(**) = [:capped, nil]
   end
 
-  class NodesThatCapNowhere < Plastic::Graph::Work::Writers
+  class NodesThatCapNowhere < Plastic::Graph::Writers
     def nodes = (@nodes ||= CappedNowhere.new)
   end
 

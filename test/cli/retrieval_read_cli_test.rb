@@ -16,7 +16,7 @@ class RetrievalReadCliTest < Minitest::Test
       backup = run_cli(home, "backup", "--store", "alpha")
 
       assert_success backup
-      assert_match(%r{backup: alpha/\d{14}, 3 databases}, backup.fetch(:out))
+      assert_match(%r{backup: alpha/\d{14}, 2 databases}, backup.fetch(:out))
     end
   end
 
@@ -25,6 +25,7 @@ class RetrievalReadCliTest < Minitest::Test
       FileUtils.mkdir_p(File.join(home, "stores", "global"))
 
       assert_success run_cli(home, "intent", "new", "Search target")
+      run_cli(home, "doctor", "--harness", "claude-code")
       search = run_cli(home, "search", "Search", "--json")
 
       assert_success search

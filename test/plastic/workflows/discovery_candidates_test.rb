@@ -17,7 +17,7 @@ class DiscoveryCandidatesTest < Plastic::TestCase
 
   def test_an_archived_intent_is_marked
     open_intent
-    store_graphs.databases[:work].transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:archives, { intent_id: "1", at: STAMP }) }
 
     assert sole(rows("alpha")).fetch("archived")
   end

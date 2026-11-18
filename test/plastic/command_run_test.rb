@@ -5,7 +5,7 @@ require_relative "../test_helper"
 class CommandRunTest < Plastic::TestCase
   include LifecycleHelper
 
-  def fresh = Plastic::CommandRun.fresh("intent end", "7")
+  def fresh = Plastic::CommandRun.fresh("intent end", "7", FixedClock::AT)
 
   def test_a_fresh_command_run_is_running_with_nothing_found
     run = fresh
@@ -22,11 +22,11 @@ class CommandRunTest < Plastic::TestCase
 
   def test_the_key_is_the_tool_and_the_subject
     assert_equal "intent end 7", fresh.key
-    assert_equal "status", Plastic::CommandRun.fresh("status", nil).key
+    assert_equal "status", Plastic::CommandRun.fresh("status", nil, FixedClock::AT).key
   end
 
   def test_advance_records_the_finished_workflow_once
-    run = fresh.advance(:code_a, :code_b).advance(:code_a, :code_c)
+    run = fresh.advance(:code_a, :code_b, FixedClock::AT).advance(:code_a, :code_c, FixedClock::AT)
 
     assert_equal [[:code_a], :code_c, "running"], [run.finished, run.at, run.status]
   end
@@ -39,7 +39,7 @@ class CommandRunTest < Plastic::TestCase
   end
 
   def test_closing_on_finished_keeps_next_and_because
-    run = fresh.close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7" })
+    run = fresh.close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7" }, FixedClock::AT)
 
     assert_equal ["finished", "plastic next", "done", 0, { id: "7" }],
       [run.status, run.next_command, run.because, run.exit_code, run.facts]
@@ -48,29 +48,29 @@ class CommandRunTest < Plastic::TestCase
   def test_closing_on_a_hand_off_is_handed_off
     value = Plastic::HandedOff.new(steps: ["x"], next_command: "plastic again", because: "left", exit_code: 1)
 
-    assert_equal ["handed_off", 1], fresh.close(value, {}).then { |run| [run.status, run.exit_code] }
+    assert_equal ["handed_off", 1], fresh.close(value, {}, FixedClock::AT).then { |run| [run.status, run.exit_code] }
   end
 
   def test_closing_on_a_failure_keeps_the_message_as_because
-    run = fresh.close(Plastic::Failed.new(:code_a, "step", "broke"), {})
+    run = fresh.close(Plastic::Failed.new("broke", source: "code_a, step"), {}, FixedClock::AT)
 
-    assert_equal ["failed", nil, "code_a, step: broke", 1], [run.status, run.next_command, run.because, run.exit_code]
+    assert_equal ["failed", nil, "broke", 1], [run.status, run.next_command, run.because, run.exit_code]
   end
 
   def test_closing_on_a_failure_with_a_because_line_keeps_that_line
-    run = fresh.close(Plastic::Failed.new(:code_a, "gate", "broke", nil, "the rule"), {})
+    run = fresh.close(Plastic::Failed.new("broke", because: "the rule", source: "code_a, gate"), {}, FixedClock::AT)
 
     assert_equal ["failed", "the rule", 1], [run.status, run.because, run.exit_code]
   end
 
   def test_closing_on_a_refusal_is_refused
-    run = fresh.close(Plastic::Refused.new(:code_a, "owner"), {})
+    run = fresh.close(Plastic::Refused.new("owner"), {}, FixedClock::AT)
 
     assert_equal ["refused", "owner", 3], [run.status, run.because, run.exit_code]
   end
 
   def test_from_h_reads_string_keys_back_into_symbols
-    hash = fresh.advance(:code_a, :code_b).to_h.transform_keys(&:to_s)
+    hash = fresh.advance(:code_a, :code_b, FixedClock::AT).to_h.transform_keys(&:to_s)
     hash["facts"] = { "id" => "7" }
     hash["finished"] = ["code_a"]
     hash["at"] = "code_b"
@@ -97,7 +97,7 @@ class CommandRunTest < Plastic::TestCase
   Seen = Data.define(:id, :tags)
 
   def saved_facts(facts)
-    run = fresh.close(Plastic::Finished.new(next_command: nil, because: "done"), facts)
+    run = fresh.close(Plastic::Finished.new(next_command: nil, because: "done"), facts, FixedClock::AT)
     store_graphs.work.save_command_run(run)
     JSON.parse(store_graphs.databases.fetch(:local).row("SELECT facts FROM command_runs").fetch("facts"))
   end

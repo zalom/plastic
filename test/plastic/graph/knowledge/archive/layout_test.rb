@@ -8,7 +8,7 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
     super
     @intent = open_intent("Paths", status: "future")
     graphs = store_graphs
-    @database = graphs.databases.fetch(:work)
+    @database = graphs.databases.fetch(:store)
     @snapshot = Plastic::Graph::Knowledge::Archive::Snapshot.new(@database, @intent.intent_id, origin)
     @root = folder.path(@intent.dir)
     @entries = Plastic::Graph::Knowledge::Archive::Tree.read(@root)
@@ -43,6 +43,13 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
 
   def test_restoration_refuses_a_noncanonical_path
     save([*@entries, extra("./alias", "file", "alias")])
+
+    assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
+    refute_path_exists @root
+  end
+
+  def test_restoration_refuses_an_unknown_entry_kind
+    save([*@entries, extra("odd", "socket", "")])
 
     assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
     refute_path_exists @root

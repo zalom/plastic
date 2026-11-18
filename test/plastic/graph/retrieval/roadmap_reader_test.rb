@@ -3,18 +3,18 @@
 require_relative "../../../test_helper"
 
 class RetrievalRoadmapReaderTest < Plastic::TestCase
-  def put(table, row) = store_graphs.databases[:work].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
-  def reader = Plastic::Graph::Retrieval::RoadmapReader.new(store_graphs.databases[:work], origin)
+  def reader = Plastic::Graph::Retrieval::RoadmapReader.new(store_graphs.databases.fetch(:store), origin)
 
   def test_a_roadmap_reads_by_slug
     put(:roadmaps, { slug: "plan", title: "Plan" })
 
-    assert_equal "Plan", reader.roadmap("plan").title
+    assert_equal "Plan", reader.find("plan").title
   end
 
   def test_a_missing_roadmap_reads_nil
-    assert_nil reader.roadmap("plan")
+    assert_nil reader.find("plan")
   end
 
   def test_batches_read_in_position_order

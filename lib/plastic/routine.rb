@@ -4,8 +4,7 @@ require_relative "cli/command"
 require_relative "invalid"
 require_relative "finished"
 require_relative "handed_off"
-require_relative "failed"
-require_relative "refused"
+require_relative "errors"
 require_relative "context"
 require_relative "command_run"
 require_relative "routine/chain"
@@ -13,8 +12,10 @@ require_relative "routine/traversal"
 require_relative "routine/preview"
 require_relative "routine/backup_first"
 require_relative "routine/printing"
+require_relative "routine/given_facts"
 require_relative "routine/graph_report"
 require_relative "workflow"
+require_relative "workflows/registry"
 require_relative "graph"
 
 module Plastic
@@ -33,6 +34,8 @@ module Plastic
   class Routine < CLI::Command
     extend Preview::Declaration
     extend BackupFirst::Declaration
+    extend Printing::Facts
+    extend GivenFacts
     include Preview
     include BackupFirst
     include Printing
@@ -51,8 +54,8 @@ module Plastic
       def workflows = Workflows
 
       # Every name a step may read or write: the tool's arguments and options,
-      # plus the facts each workflow in the chain declares.
-      def declared_facts = declared_names + chain.facts
+      # the facts each workflow in the chain declares and the facts the tool gives.
+      def declared_facts = declared_names + chain.facts + given_facts.keys
 
       # Runs once per process, on the first call, and raises every problem at
       # once, so a reordered chain never skips a workflow in silence.
@@ -65,7 +68,7 @@ module Plastic
         end
       end
 
-      def chain_problems = chain.problems(declared_names) + preview_problems
+      def chain_problems = chain.problems(declared_names + given_facts.keys) + preview_problems
     end
 
     def call
@@ -78,13 +81,17 @@ module Plastic
 
     def finish(command_run)
       ctx = context(command_run)
-      report(hand_edit_failure(ctx) || walk(command_run, ctx), ctx)
+      report(ctx) do
+        refuse_hand_edits(ctx)
+        walk(command_run, ctx)
+      end
     end
 
     # A resumed command run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(command_run)
-      Context.new(declared: self.class.declared_facts, facts: command_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope), clock: environment.clock)
+      klass = self.class
+      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope, settings), clock: environment.clock)
     end
 
     def chain = self.class.chain
@@ -92,19 +99,23 @@ module Plastic
     # The printed lines and rows go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what
     # it wrote: the rows, one phrase per database, and the files it
-    # printed. The end value prints its own last lines and gives the exit code.
+    # printed. The end value prints its own last lines and gives the exit code;
+    # an error that stopped the call is raised after the lines above it.
     #
     #   wrote: 1 intent and 1 ledger line in work_graph.db
-    def report(value, ctx)
+    def report(ctx)
+      value = nil
+      value = yield
+    ensure
       ctx.print_to(output)
       report_graphs if touches_graphs?
-      @exit_code = value.report(output)
+      @exit_code = value.report(output) if value
     end
 
     # The open command run for this tool and subject, or a new one.
     def open_command_run
       found = graphs.retrieval.command_run(words, subject) if keeps_command_run?
-      found&.open? ? found : CommandRun.fresh(words, subject)
+      found&.open? ? found : CommandRun.fresh(words, subject, environment.now)
     end
 
     # The subject arguments of this call, joined, or nil when none is set.

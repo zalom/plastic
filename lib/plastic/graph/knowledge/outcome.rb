@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "outcome_form"
+
 module Plastic
   module Graph
     module Knowledge
@@ -10,18 +12,6 @@ module Plastic
       class Outcome
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
-        NEGATIVE = %r{\A(?:\z|(?:no|not|none|pending|n/a|tbd|false|rejected|awaiting|waiting|requested|changes|declined|denied|never|unapproved)[[:punct:]]*(?:\s|\z))}i
-        # The marks a person writes before a word in Markdown or plain text, and the spaces between them, read past before the first word is judged.
-        MARKS = /\A[\s\x60"'(\[{_~“‘«<>\\\-–—]+/
-        FORMS = {
-          "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|\x60?\h{7,40}\b)/,
-          "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
-        }.freeze
-        SHOWN = {
-          "Merged" => "Merged: <branch> into <base> at <commit or pull request>",
-          "Approved" => "Approved: <person> on <YYYY-MM-DD>"
-        }.freeze
-        PLACEHOLDER = /<(?:branch|base|commit or pull request|person|YYYY-MM-DD)>/
         MISSING = "Add a line starting %s: to the Verification section of outcome.md and run plastic sync up."
         NOT_IN_FORM = "outcome.md records '%s', which is not in the form that counts. " \
           "Write the line as '%s' with every part filled, then run plastic sync up."
@@ -58,15 +48,13 @@ module Plastic
 
         def recorded?(label) = values(label).any?
 
-        def positive?(label) = values(label).any? { |value| in_form?(label, value) }
-
-        def in_form?(label, value) = !NEGATIVE.match?(value.sub(MARKS, "")) && FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
+        def positive?(label) = values(label).any? { |value| OutcomeForm.in_form?(label, value) }
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
         def merge_message
           found = rejected("Merged")
-          found ? format(NOT_IN_FORM, found, SHOWN.fetch("Merged")) : format(MISSING, "Merged")
+          found ? format(NOT_IN_FORM, found, OutcomeForm.shown("Merged")) : format(MISSING, "Merged")
         end
 
         def section

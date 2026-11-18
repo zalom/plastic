@@ -36,7 +36,7 @@ module Plastic
       return if @booted
 
       @booted = true
-      require "plastic"
+      require "plastic/cli"
       require "plastic/graph"
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
@@ -63,6 +63,8 @@ module Plastic
       Dir.glob(File.join(@plastic_home, "stores", "*")).each { |root| FileUtils.mkdir_p(File.join(root, "backups", stamp)) }
     end
 
-    def teardown = @template.reset
+    def teardown
+      @template.reset
+    end
   end
 end

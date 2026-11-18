@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../failed"
+require_relative "../errors"
 require_relative "../finished"
 require_relative "../handed_off"
 
@@ -8,30 +8,33 @@ module Plastic
   class Routine < CLI::Command
     # Prints the files a finished call wrote, for the kinds its class declares.
     module Printing
+      module Facts
+        # The facts a workflow adds to name the files to check; a command whose files a workflow picks overrides this.
+        def hand_edit_additions(_ctx) = {}
+      end
+
       private
 
       # Refuses a call that prints when a file it would print was changed by hand,
       # before any row is written.
-      def hand_edit_failure(ctx)
-        kinds = self.class.prints
+      def refuse_hand_edits(ctx)
+        klass = self.class
+        kinds = klass.prints
         return if kinds.empty? || parsed[:dry_run]
 
-        path, reason = graphs.work.hand_edited(kinds, hand_edit_facts(ctx)).first
+        path, reason = graphs.work.hand_edited(kinds, ctx.facts.merge(klass.hand_edit_additions(ctx))).first
         path && refusal(path, reason)
       end
-
-      # The facts that name the files to check; a command whose files a workflow picks overrides this.
-      def hand_edit_facts(ctx) = ctx.facts
 
       # A file sync up reads is cleared by sync up; one it cannot read, by printing it again from its rows.
       def refusal(path, reason)
         return unreadable_refusal(path, reason) if reason
 
-        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it")
+        raise Failed.new(Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it", source: "print, files")
       end
 
       def unreadable_refusal(path, reason)
-        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again")
+        raise Failed.new(Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again", source: "print, files")
       end
 
       def walk(command_run, ctx)
@@ -42,7 +45,7 @@ module Plastic
         print_files(ctx) if print_due?(value)
         value
       rescue => error
-        Failed.raised(:print, "files", error)
+        raise Failed.raised(:print, "files", error)
       end
 
       def print_due?(value)

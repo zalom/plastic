@@ -30,21 +30,21 @@ class ContextSubmissionTest < Plastic::TestCase
   end
 
   def test_a_submission_that_is_not_an_object_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { validate([]) }
+    error = assert_raises(Plastic::Usage) { validate([]) }
 
     assert_match(/submission\.json must hold a JSON object\z/, error.message)
   end
 
   def test_a_missing_category_raises
-    assert_raises(Plastic::CLI::Command::Usage) { validate({ "evidence" => [] }) }
+    assert_raises(Plastic::Usage) { validate({ "evidence" => [] }) }
   end
 
   def test_a_category_that_is_not_a_list_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { validate(EMPTY.merge("evidence" => [], "facts" => "one")) }
+    assert_raises(Plastic::Usage) { validate(EMPTY.merge("evidence" => [], "facts" => "one")) }
   end
 
   def test_evidence_that_was_not_discovered_fails
-    error = assert_raises(Plastic::CLI::Command::Failure) { validate(EMPTY.merge("evidence" => [@reference]), candidates: []) }
+    error = assert_raises(Plastic::Failed) { validate(EMPTY.merge("evidence" => [@reference]), candidates: []) }
 
     assert_equal "evidence was not discovered: #{@reference}", error.message
   end
@@ -52,7 +52,7 @@ class ContextSubmissionTest < Plastic::TestCase
   def test_evidence_named_without_its_current_revision_fails
     old = @reference.split("?").first
 
-    error = assert_raises(Plastic::CLI::Command::Failure) { validate(EMPTY.merge("evidence" => [old]), candidates: [old]) }
+    error = assert_raises(Plastic::Failed) { validate(EMPTY.merge("evidence" => [old]), candidates: [old]) }
 
     assert_equal "evidence revision changed: #{old}", error.message
   end

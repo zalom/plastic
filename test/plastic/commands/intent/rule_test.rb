@@ -12,15 +12,15 @@ end
 class IntentRuleTest < Plastic::TestCase
   def call(*args) = plastic("intent", "rule", *args, table: Plastic::CLI::TABLE)
 
-  def test_a_ruling_reads_back_and_one_change_row_exists
+  def test_a_ruling_reads_back_as_one_row
     open_intent
 
     result = call("1", "Flowbite styles every delivery")
 
     assert_call result, code: 0, err: "", out: ["ruling: D1", "next: plastic intent brief 1"]
-    knowledge = store_graphs.databases.fetch(:knowledge)
+    store_database = store_graphs.databases.fetch(:store)
 
-    assert_equal 1, knowledge.row("SELECT COUNT(*) AS n FROM changes WHERE \"table\" = 'rulings'").fetch("n")
+    assert_equal 1, store_database.row("SELECT COUNT(*) AS n FROM rulings").fetch("n")
   end
 
   def test_two_rulings_read_d1_and_d2

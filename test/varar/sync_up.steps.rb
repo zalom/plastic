@@ -31,15 +31,15 @@ module SyncUpAcceptance
     "graph.json given a node" => [->(kernel) { kernel.write("store/1--alpha/graph.json", JSON.generate(GRAPH)) }, "work_graph.db", EDGES],
     "graph.json that does not check" => [->(kernel) { kernel.write("store/1--alpha/graph.json", JSON.generate(BROKEN_GRAPH)) }, "work_graph.db", EDGES],
     "title renamed in index.json" => [->(kernel) { edit_index(kernel) { |entry| entry.merge("title" => "Alpha, renamed") } },
-      "work_graph.db", TITLE],
+      "knowledge_graph.db", TITLE],
     "cluster added in index.json" => [->(kernel) { edit_index(kernel, clusters: [{ "name" => "Core", "intents" => ["1"] }], &:itself) },
-      "work_graph.db", "SELECT name || ' holds ' || intent_id FROM clusters"],
+      "knowledge_graph.db", "SELECT name || ' holds ' || intent_id FROM clusters"],
     "savepoint.md emptied" => [->(kernel) { kernel.write("store/1--alpha/savepoint.md", "") }, "work_graph.db",
       "SELECT count(*) || ' work log lines' FROM work_log"],
     "a folder with no intent file" => [->(kernel) { kernel.write("store/7--stray/spec.md", "# Stray\n") }, "knowledge_graph.db", SPEC],
     "index.json of another origin" => [->(kernel) { edit_index(kernel) { |entry| entry.merge("origin_id" => "beef") } },
-      "work_graph.db", TITLE],
-    "index.json that does not parse" => [->(kernel) { kernel.write("store/index.json", "{") }, "work_graph.db", TITLE]
+      "knowledge_graph.db", TITLE],
+    "index.json that does not parse" => [->(kernel) { kernel.write("store/index.json", "{") }, "knowledge_graph.db", TITLE]
   }.freeze
 end
 
