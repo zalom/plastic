@@ -68,7 +68,7 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
   def test_write_adds_the_own_file_and_no_log_line
     writer.write(title: "Alpha")
 
-    assert_equal [["intent.md"], []], [retrieval.documents("1").map(&:path), retrieval.work_log("1")]
+    assert_equal [["intent.md"], []], [retrieval.documents("1").map(&:path), retrieval.structure.work_log("1")]
   end
 
   def test_the_ref_line_says_what_a_ref_names

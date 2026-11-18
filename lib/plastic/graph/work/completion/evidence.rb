@@ -7,7 +7,7 @@ module Plastic
         # The evidence of a delivered close, built from rows: each criterion key with the done nodes that serve it and their findings.
         class Evidence
           def initialize(retrieval, intent_id)
-            @nodes = retrieval.nodes(intent_id).select(&:verified?)
+            @nodes = retrieval.structure.nodes(intent_id).select(&:verified?)
           end
 
           def by_criterion(keys) = keys.to_h { |key| [key, evidence_of(key)] }

@@ -2,6 +2,7 @@
 
 require_relative "../backup"
 require_relative "../database"
+require_relative "../schema/gate"
 require_relative "databases"
 require_relative "integrity"
 require_relative "publisher"
@@ -62,13 +63,15 @@ module Plastic
           status = @target.folders.status(timestamp)
           return "the backup #{timestamp} is #{status}; only a done backup restores" unless status == "done"
 
-          mismatch(timestamp) if databases
+          databases&.then { mismatch(timestamp) }
         end
 
         # Returns the folder of the safety backup.
         def call(timestamp, databases: nil)
           held = held_in(timestamp, names: databases)
-          refuse(timestamp, databases)
+          message = refusal(timestamp, databases:)
+          raise(error_for(message), message) if message
+
           names = verified(timestamp, held)
           safety = Publisher.new(@target, now: @now, reason: "backup restore").call
           swap(names.map { |name| replacement(name, timestamp) })
@@ -76,11 +79,6 @@ module Plastic
         end
 
         private
-
-        def refuse(timestamp, databases)
-          message = refusal(timestamp, databases:)
-          raise(error_for(message), message) if message
-        end
 
         def error_for(message)
           return Claimed if claimed?
@@ -92,18 +90,16 @@ module Plastic
 
         def mismatch(timestamp)
           live = live_version
-          return if live.nil? || live == recorded(timestamp)
+          recorded = recorded(timestamp)
+          return if live.nil? || live == recorded
 
-          "the backup #{timestamp} is at schema version #{recorded(timestamp)} and the store is at #{live}; restore the whole store, which migrates it forward"
+          "the backup #{timestamp} is at schema version #{recorded} and the store is at #{live}; restore the whole store, which migrates it forward"
         end
 
         # The stamp of the live knowledge database; a damaged file is what a restore repairs, so it does not count.
-        def live_version = stamp(@target.file("knowledge_graph"))
-
-        def stamp(path)
-          return unless File.file?(path)
-
-          SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("PRAGMA user_version") }
+        def live_version
+          path = @target.file("knowledge_graph")
+          SchemaGate.stamp_of(path) if File.file?(path)
         rescue SQLite3::Exception
           nil
         end

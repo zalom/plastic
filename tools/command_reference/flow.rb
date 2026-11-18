@@ -5,6 +5,8 @@ module CommandReference
   Flow = Data.define(:key, :klass, :lane, :file, :line, :facts, :rows, :outcomes) do
     def agent? = lane == "agent"
 
+    def pairs(items) = items.map { |item| [self, item] }
+
     def short = Words.short(klass)
 
     def path = Words.path(klass)
@@ -26,6 +28,8 @@ module CommandReference
     def endings = gate_endings + outcomes.select(&:ends?).map { |outcome| outcome.ending(closing_kind(outcome)) }
 
     def closing_kind(outcome) = (agent? && outcome.name == :handoff) ? :handoff : :outcome
+
+    def step_changes = klass.steps.grep(Plastic::CodeWorkflow::Step).flat_map { |step| step.changes.to_a }
 
     def gate_endings = klass.steps.zip(rows).filter_map { |step, row| row.gate_ending(step) if step.is_a?(Plastic::CodeWorkflow::Gate) }
   end

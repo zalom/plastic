@@ -13,7 +13,7 @@ class CodexHooksTest < Plastic::TestCase
   def merge
     FileUtils.mkdir_p(File.dirname(hooks_path))
     changed = nil
-    out, = capture_io { changed = Plastic::Installations::CodexHooks.new(Plastic::Installations::Package.new(REAL_PACKAGE, @plastic_home, "2.0.3")).merge(hooks_path) }
+    out, = capture_io { changed = Plastic::Installations::CodexHooks.new(Plastic::Installations::Package.new(REAL_PACKAGE, @plastic_home, "2.0.3", Plastic::Wiring.settings(@plastic_home))).merge(hooks_path) }
     [changed, out]
   end
 
@@ -22,7 +22,7 @@ class CodexHooksTest < Plastic::TestCase
   def test_the_install_names_the_hooks_it_changed
     changed, = merge
 
-    assert_equal ["hook end", "hook start", "hook stop"], changed.sort
+    assert_equal ["hook end", "hook prompt", "hook start", "hook stop"], changed.sort
   end
 
   def test_a_second_install_changes_no_hook

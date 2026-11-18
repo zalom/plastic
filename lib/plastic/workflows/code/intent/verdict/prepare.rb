@@ -31,7 +31,7 @@ module Plastic
               return { criterion_problem: nil, node_problem: nil, open_nodes: "" } unless context.verdict == "accept"
 
               intent_id = context.intent_id
-              nodes = context.retrieval.nodes(intent_id).select(&:live?)
+              nodes = context.retrieval.structure.nodes(intent_id).select(&:live?)
               {
                 criterion_problem: ("intent #{intent_id} names no done criterion" if no_criterion?(context)),
                 node_problem: ("intent #{intent_id} has no node" if nodes.empty?),

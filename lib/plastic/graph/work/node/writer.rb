@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../node"
+require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
 require_relative "claim"
@@ -64,7 +64,7 @@ module Plastic
             current = @retrieval.node(intent_id, id)
             return [:refused, nil] unless current
             return [:blocked, current] if current.waiting?(@retrieval.ready_nodes(intent_id))
-            return capped(intent_id:, id:) if capped?(current)
+            return capped(intent_id:, id:) if current.capped?(@retrieval.structure.runs(intent_id), RETRY_CAP)
 
             @claim.call(current, by:, agent:)
           end
@@ -79,17 +79,10 @@ module Plastic
 
           private
 
-          def capped?(node)
-            node.state == "open" && runs_since_answer(node).size >= RETRY_CAP
+          def stamped(move, fields)
+            stamp = move[:stamp]
+            stamp ? fields.merge(stamp => Plastic.timestamp(@clock.now)) : fields
           end
-
-          # The runs the node had after the owner last answered; all of them when it was never answered.
-          def runs_since_answer(node)
-            runs = @retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
-            node.answered_at ? runs.select { |run| run.started_at > node.answered_at } : runs
-          end
-
-          def stamped(move, fields) = move[:stamp] ? fields.merge(move[:stamp] => Plastic.timestamp(@clock.now)) : fields
 
           def fetched(key) = @retrieval.node(*key.values_at(:intent_id, :id))
 
@@ -100,22 +93,22 @@ module Plastic
 
           def moved(key, move, set: {}, holder: nil)
             now = @clock.now
-            bound = SQL.move(to: move.fetch(:to), from: move.fetch(:from), set: RELEASED.merge(set), holder:, now:)
+            to, from = move.values_at(:to, :from)
+            bound = SQL.move(to:, from:, set: RELEASED.merge(set), holder:, now:)
             rows = @databases.fetch(:store).transaction do |batch|
-              close_run(batch, key, move, holder, now)
+              close_run(batch, key, from, holder, { ended_at: Plastic.timestamp(now), result: move.fetch(:result, to) })
               batch.write(:nodes, bound.sql, **bound.values, **key, origin: @retrieval.origin_id)
             end
             rows.any? ? fetched(key) : nil
           end
 
-          def close_run(batch, key, move, holder, now)
-            states = SQL.list(move.fetch(:from), "r")
+          def close_run(batch, key, from, holder, ending)
+            states = SQL.list(from, "r")
             sql = format(CLOSE_RUN_SQL, states: states.sql, guard: holder ? SQL::HOLDER_GUARD : "")
-            batch.add(sql, **states.values, **key, **(holder ? { holder: } : {}), ended_at: Plastic.timestamp(now),
-              result: move.fetch(:result, move.fetch(:to)), origin: @retrieval.origin_id)
+            batch.add(sql, **states.values, **key, **(holder ? { holder: } : {}), **ending, origin: @retrieval.origin_id)
           end
 
-          def next_id(intent_id) = NextId.after(@retrieval.nodes(intent_id), prefix: "n")
+          def next_id(intent_id) = NextId.after(@retrieval.structure.nodes(intent_id), prefix: "n")
         end
       end
     end

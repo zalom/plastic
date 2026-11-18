@@ -27,8 +27,8 @@ class CommandNamesTest < Minitest::Test
     assert_empty wrong
   end
 
-  def test_the_three_hook_entries_keep_their_hooks_classes
-    assert_equal({ "hook start" => "Hooks::Start", "hook stop" => "Hooks::Stop", "hook end" => "Hooks::End" }, hook_entries.to_h)
+  def test_the_four_hook_entries_keep_their_hooks_classes
+    assert_equal({ "hook start" => "Hooks::Start", "hook prompt" => "Hooks::Prompt", "hook stop" => "Hooks::Stop", "hook end" => "Hooks::End" }, hook_entries.to_h)
   end
 
   def test_every_command_lives_in_the_file_of_its_words

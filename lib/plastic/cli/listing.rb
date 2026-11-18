@@ -11,7 +11,8 @@ module Plastic
 
       def initialize(environment, table)
         @environment = environment
-        @families = FAMILIES.keys.to_h { |family| [family, table.select { |words, _| CLI.family_of(words) == family }] }.reject { |_, rows| rows.empty? }
+        grouped = table.group_by { |words, _| CLI.family_of(words) }.transform_values(&:to_h)
+        @families = FAMILIES.keys.to_h { |family| [family, grouped.fetch(family, {})] }.reject { |_, rows| rows.empty? }
       end
 
       def call(argv, only: nil)
@@ -20,24 +21,28 @@ module Plastic
         Command::OK
       end
 
-      private
+      def self.commands(rows) = rows.map { |words, (_, summary)| { "command" => words, "summary" => summary } }
 
-      def json(families)
-        list = families.map { |family, rows| { "family" => family, "commands" => rows.map { |words, (_, summary)| { "command" => words, "summary" => summary } } } }
-        JsonOutput.new(out: @environment.out, err: @environment.err).document({ "result" => list, "next" => nil, "because" => nil })
-      end
-
-      def text(families)
+      def self.blocks(families)
         width = families.values.flat_map(&:keys).map(&:length).max.to_i + 2
-        families.each_with_index { |(family, rows), index| @environment.out.puts(*block(family, rows, width, index)) }
+        families.each_with_index.map { |(family, rows), index| block(family, rows, width, index) }
       end
 
-      def block(family, rows, width, index)
+      def self.block(family, rows, width, index)
         lines = rows.map { |words, (_, summary)| "#{words.ljust(width)}#{summary}" }
         return lines if family == CORE
 
         [*(index.zero? ? [] : [""]), "#{family}:", *lines.map { |line| "#{INDENT}#{line}" }]
       end
+
+      private
+
+      def json(families)
+        list = families.map { |family, rows| { "family" => family, "commands" => Listing.commands(rows) } }
+        JsonOutput.new(out: @environment.out, err: @environment.err).document({ "result" => list, "next" => nil, "because" => nil })
+      end
+
+      def text(families) = Listing.blocks(families).each { |lines| @environment.out.puts(*lines) }
     end
   end
 end

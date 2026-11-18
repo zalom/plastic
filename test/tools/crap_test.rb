@@ -50,9 +50,9 @@ class CrapTest < Minitest::Test
   end
 
   def test_the_score_formula_matches_crap4j
-    assert_in_delta(6.0, Crap.formula(6, 1.0))
-    assert_in_delta(42.0, Crap.formula(6, 0.0))
-    assert_in_delta(10.5, Crap.formula(6, 0.5))
+    scores = [[6, 1.0], [6, 0.0], [6, 0.5]].map { |complexity, coverage| Crap::Score.new("m", "f.rb", 1, 2, complexity, coverage).crap }
+
+    assert_equal [6.0, 42.0, 10.5], scores
   end
 
   def test_method_coverage_ignores_def_and_end_lines

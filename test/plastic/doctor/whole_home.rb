@@ -4,7 +4,7 @@ require "json"
 require "yaml"
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/installations/compact_instructions"
-require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/installations/hook_entries"
 
 module WholeHome
   RUNNING = "9.1.0"

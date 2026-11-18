@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/cli/projects_file"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 
 # A registered project whose store holds a document but has lost its retrieval file.
 module OldStore

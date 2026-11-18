@@ -16,6 +16,8 @@ class KnowledgeLegacyImportCleanupTest < Plastic::TestCase
     folder.write("INDEX.md", "original")
   end
 
+  def removing = Plastic::Graph::Knowledge::StoreFolder.new(store_root, sync: Plastic::Graph::Knowledge::SyncSettings.new(selection: Plastic::Graph::Knowledge::SyncSelection.none, remove_after_import: true))
+
   def cleanup(store_folder = folder) = Plastic::Graph::Knowledge::Legacy::ImportCleanup.new(store_folder, store_graphs.retrieval, @plastic_home)
 
   def test_with_the_flag_off_the_index_stays
@@ -25,15 +27,13 @@ class KnowledgeLegacyImportCleanupTest < Plastic::TestCase
   end
 
   def test_with_the_flag_on_the_index_goes
-    seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
-    cleanup.call(Hash.new(0))
+    cleanup(removing).call(Hash.new(0))
 
     refute folder.exist?("INDEX.md")
   end
 
   def test_a_removal_that_stops_says_the_rows_were_imported
-    seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
-    error = assert_raises(Plastic::Invalid) { cleanup(LockedFolder.new(folder)).call(Hash.new(0)) }
+    error = assert_raises(Plastic::Invalid) { cleanup(LockedFolder.new(removing)).call(Hash.new(0)) }
 
     assert_equal "global: imported, but removing the imported files stopped: Permission denied - INDEX.md", error.message
   end

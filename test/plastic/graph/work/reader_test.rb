@@ -37,7 +37,7 @@ class WorkReaderTest < Plastic::TestCase
       ids.each_with_index { |id, index| batch.add("UPDATE nodes SET id = :id WHERE id = :old", id:, old: "n#{index + 1}") }
     end
 
-    assert_equal %w[12 a2 n1 n2 n10 node-3], retrieval.nodes("1").map(&:id)
+    assert_equal %w[12 a2 n1 n2 n10 node-3], retrieval.structure.nodes("1").map(&:id)
   end
 
   def test_claimed_nodes_read_in_node_number_order

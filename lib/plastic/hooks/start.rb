@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../hook"
+require_relative "../cli/hook"
 require_relative "../graph"
+require_relative "../cli/wiring"
 require_relative "../doctor"
+require_relative "../workflows/installation"
 require_relative "../graph/backup/due"
 require_relative "../harnesses/detection"
 require_relative "recap"
@@ -15,7 +17,7 @@ module Plastic
     # fresh, one line naming plastic doctor when a doctor check fails or when
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no command run.
-    class Start < Hook
+    class Start < CLI::Hook
       changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
 
       def initialize(argv, health: method(:failing_checks), **rest)
@@ -31,7 +33,7 @@ module Plastic
 
       private
 
-      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, now: environment.now)
+      def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now, store: Wiring.store(scope.plastic_home, clock: environment.clock))
 
       def back_up_stores
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|
@@ -44,7 +46,7 @@ module Plastic
       end
 
       def recap(event)
-        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
+        graphs = Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
         open_session_row(graphs.work)
         recap_of(graphs.retrieval, event[:source]).lines(now: environment.now)
       end

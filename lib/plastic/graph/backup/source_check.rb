@@ -22,6 +22,11 @@ module Plastic
           end
         end
 
+        def self.describe(path)
+          mtime = File.mtime(path)
+          "#{File.basename(path)} #{File.size(path)} #{mtime.to_i}.#{mtime.nsec}"
+        end
+
         def initialize(paths)
           @paths = paths
         end
@@ -34,10 +39,7 @@ module Plastic
         end
 
         def fingerprint
-          @paths.map do |path|
-            stat = File.stat(path)
-            "#{File.basename(path)} #{stat.size} #{stat.mtime.to_i}.#{stat.mtime.nsec}"
-          end.join("\n")
+          @paths.map { |path| self.class.describe(path) }.join("\n")
         end
 
         private

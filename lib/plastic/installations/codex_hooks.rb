@@ -19,18 +19,17 @@ module Plastic
       # person to trust each changed line again.
       def merge(path)
         data = Files.read_json(path) || {}
-        before = Report.pairs(Hash(data["hooks"]))
-        Report.removed_hooks(HookPurge.new(:codex_purge_command?).call(data["hooks"] ||= {}), "hooks.json")
+        hooks = data["hooks"] ||= {}
+        before = Report.pairs(Hash(hooks))
+        Report.removed_hooks(HookPurge.new(:codex_purge_command?).call(hooks), "hooks.json")
         data = @package.entries.codex(data)
         Files.write_json(path, data)
-        changed(Report.pairs(data["hooks"]) - before)
+        CodexHooks.changed(Report.pairs(data.fetch("hooks")) - before)
       end
 
-      private
-
-      def changed(added)
+      def self.changed(added)
         commands = added.map(&:last)
-        Harnesses.fetch("codex").events.values.select { |words| commands.any? { |command| command.include?("\" #{words} ") } }
+        Harnesses.fetch("codex").events.values.select { |words| commands.grep(/#{Regexp.escape("\" #{words} ")}/).any? }
       end
     end
   end

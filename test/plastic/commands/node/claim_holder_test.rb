@@ -42,7 +42,7 @@ class NodeClaimHolderTest < Plastic::TestCase
     result = as("s-2", "node", "claim", "1", "n1")
 
     assert_equal [0, "s-2"], [result.code, node.claimed_by]
-    assert_equal %w[lapsed], store_graphs.retrieval.runs("1").first(1).map(&:result)
+    assert_equal %w[lapsed], store_graphs.retrieval.structure.runs("1").first(1).map(&:result)
   end
 
   def test_the_old_holder_of_a_taken_claim_exits_3_naming_the_new_holder_and_changes_nothing

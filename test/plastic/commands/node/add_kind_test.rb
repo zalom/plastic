@@ -30,7 +30,7 @@ class NodeAddKindTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "orchestrator, work, retrieval"
-    assert_empty store_graphs.retrieval.nodes("1")
+    assert_empty store_graphs.retrieval.structure.nodes("1")
   end
 
   def test_a_node_of_an_old_kind_stays_readable

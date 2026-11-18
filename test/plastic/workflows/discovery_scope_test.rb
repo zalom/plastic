@@ -4,10 +4,8 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/discovery_scope"
 
 class DiscoveryScopeTest < Plastic::TestCase
-  include ConfigHomes
-
   def resolve(source_projects = [], env: {})
-    Plastic::Workflows::DiscoveryScope.resolve(call_context(harness: scoped_harness(env:), source_projects:))
+    Plastic::Workflows::DiscoveryScope.resolve(call_context(harness: scoped_harness(env:, settings:), source_projects:))
   end
 
   def store(slug) = FileUtils.mkdir_p(File.join(@plastic_home, "stores", slug))
@@ -22,7 +20,9 @@ class DiscoveryScopeTest < Plastic::TestCase
     assert_equal %w[global other], resolve(["other", " global", "other"])
   end
 
-  def configure(value) = seed_config(@plastic_home, { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
+  def settings = (@settings ||= FakeSettings.new)
+
+  def configure(value) = @settings = FakeSettings.new(values: { "search.source_projects" => value })
 
   def test_the_environment_variable_is_not_read
     store("other")

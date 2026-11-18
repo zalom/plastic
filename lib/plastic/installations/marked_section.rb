@@ -30,9 +30,10 @@ module Plastic
         return create(path) unless File.exist?(path)
 
         content = File.read(path)
-        return :refused if content.include?(@kind.begin_prefix) && !content.include?(@kind.end_marker)
+        opened = content.include?(@kind.begin_prefix)
+        return :refused if opened && !content.include?(@kind.end_marker)
 
-        content.include?(@kind.begin_prefix) ? replace(path, content) : append(path, content)
+        opened ? replace(path, content) : append(path, content)
       end
 
       private

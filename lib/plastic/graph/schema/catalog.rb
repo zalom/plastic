@@ -8,11 +8,13 @@ module Plastic
     module SchemaCatalog
       TABLES = SCHEMA_FILE.tables.freeze
       VIRTUAL = SCHEMA_FILE.virtual.freeze
-      MARKS = { since: SCHEMA_FILE.since.freeze }.freeze
-      TRIGGERS = SCHEMA_FILE.triggers.freeze
       DATABASES = SCHEMA_FILE.databases.freeze
-      STORE = %i[work knowledge].freeze
-      DERIVED = %i[retrieval].freeze
+
+      def self.since = SCHEMA_FILE.since.freeze
+
+      def self.store = %i[work knowledge]
+
+      def self.derived = %i[retrieval]
     end
   end
 end

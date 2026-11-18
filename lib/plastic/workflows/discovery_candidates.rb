@@ -18,7 +18,7 @@ module Plastic
       def candidate(row, index)
         reference = @retrieval.search_reference(row).transform_keys(&:to_s)
         row.merge(reference).merge("store" => @slug, "local_rank" => index + 1,
-          "rrf_score" => 1.0 / (61 + index), "archived" => @retrieval.archived?(row.fetch("intent_id")))
+          "rrf_score" => 1.0 / (61 + index), "archived" => @retrieval.archives.archived?(row.fetch("intent_id")))
       end
     end
   end

@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require "optparse"
 require_relative "command/environment"
+require_relative "wiring"
 require_relative "command/help"
+require_relative "command/invocation"
+require_relative "command/settlement"
+require_relative "command/workspace"
 require_relative "declarations"
 require_relative "../errors"
 require_relative "../graph/missing_store"
@@ -26,33 +31,34 @@ module Plastic
       REFUSED = 3
 
       extend Declarations
+      extend Forwardable
 
       def self.call(...) = new(...).respond
 
       attr_reader :exit_code
 
       # `words` are the words that named this call, such as "intent end".
-      def initialize(argv, words: self.class.tool_name, environment: Environment.current)
-        @argv = argv.dup
-        @words = words
-        @environment = environment
+      def initialize(argv, words: tool.tool_name, environment: Environment.current)
+        @call = Invocation.new(argv, words, tool)
+        @workspace = Workspace.new(environment, -> { new_scope })
+        @output = nil
         @exit_code = OK
       end
 
       # Where the answer prints: one JSON document with --json, lines otherwise.
       def output
-        @output ||= (@argv.include?("--json") ? JsonOutput : TextOutput).new(out: environment.out, err: environment.err)
+        @output ||= (@call.json? ? JsonOutput : TextOutput).new(out: environment.out, err: environment.err)
       end
 
       # The whole of one call: check the store, do the work, print. A usage
       # error prints the usage line; a refusal or a failure prints its line
       # after the rows.
       def respond
-        return help if @argv.intersect?(%w[--help -h])
+        return help if @call.help?
 
         answer
       rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refused, Failed, Graph::MissingStore, Graph::OutOfStep => error
-        settle(error)
+        settlement.settle(error)
       end
 
       def answer
@@ -60,7 +66,7 @@ module Plastic
         call_and_renew
         flush.exit_code
       rescue Scope::BrokenProjects => error
-        broken(error)
+        settlement.broken(error)
       end
 
       def call_and_renew
@@ -73,7 +79,7 @@ module Plastic
         raise NoMethodError, "#{self.class} must define call"
       end
 
-      def usage_line = self.class.usage_line(words)
+      def usage_line = @call.usage_line
 
       def help
         Help.new(self.class, usage_line).lines.each { |line| output.raw(line) }
@@ -89,67 +95,25 @@ module Plastic
 
       private
 
-      attr_reader :words, :environment, :argv
+      def_delegators :@call, :words, :argv, :parsed
+      def_delegator :@workspace, :environment
+      def_delegators :@workspace, :graphs, :settings, :renew_claims
+      private :words, :environment, :argv, :parsed, :graphs, :settings, :renew_claims
 
-      def settle(error)
-        message = error.message
-        case error
-        when Refused, Failed then stop(error)
-        when Graph::OutOfStep
-          stop(Refused.new(message, next_command: error.next_command))
-        when Graph::MissingStore then stop(Failed.new(message, next_command: error.next_command(scope.projects[error.store])))
-        else
-          output.usage(message, usage_line)
-          USAGE
-        end
-      end
+      def tool = self.class
 
-      def stop(error)
-        output.flush_rows(scope.named_slug) unless output.json?
-        tell(error)
-        flush
-        error.exit_code
-      end
-
-      def tell(error) = error.tell(output, Offer.from(error))
-
-      def broken(error)
-        output.flush unless output.json?
-        output.failed(error.message)
-        FAILED
-      end
+      def settlement = Settlement.new(output, usage_line, @workspace)
 
       # A named project must exist before any work runs.
-      def check_scope = @argv.grep(/\A--project(?:=|$)/).any? && scope.slug
-
-      def parsed
-        tool = self.class
-        @parsed ||= Parser.new(arguments: tool.arguments, options: tool.options, banner: usage_line).parse(@argv)
-      end
+      def check_scope = @call.project_named? && scope.slug
 
       # Which store the call works on: --project, then the working directory,
       # then the global store.
-      def scope
-        @scope ||= Scope.new(env: environment.env, home: environment.home, slug: parsed[:project],
-          directory: environment.directory)
+      def scope = @workspace.scope
+
+      def new_scope
+        Scope.new(env: environment.env, home: environment.home, slug: parsed[:project], directory: environment.directory)
       end
-
-      # The graphs of the store the call works on, opened once.
-      def graphs = (@graphs ||= open_graphs)
-
-      # Renews the claims of this session after the call, in the store the call reached and
-      # only when its work database exists: a renewal never makes one.
-      def renew_claims
-        session = environment.session
-        return unless session && @scope
-
-        opened = @graphs || open_graphs
-        opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:store).path)
-      rescue SQLite3::Exception, Graph::MissingStore, Graph::OutOfStep
-        nil
-      end
-
-      def open_graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session, clock: environment.clock)
     end
   end
 end

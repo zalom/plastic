@@ -31,7 +31,7 @@ class WorkflowResolveNodeTest < Plastic::TestCase
     claim
     resolve
 
-    assert_equal [:claimed, 4], [claim.first, retrieval.runs("1").size]
+    assert_equal [:claimed, 4], [claim.first, retrieval.structure.runs("1").size]
   end
 
   def test_an_open_node_cannot_be_resolved

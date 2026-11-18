@@ -5,7 +5,7 @@ require_relative "../scope"
 require_relative "../graph"
 require_relative "../graph/retrieval/maintained_store"
 require_relative "../graph/retrieval_graph"
-require_relative "../graph/retrieval/source"
+require_relative "../graph/retrieval_source"
 require_relative "document_reference"
 
 module Plastic

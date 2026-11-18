@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../edge"
+require_relative "../../rows/edge"
 require_relative "../../sql"
 
 module Plastic

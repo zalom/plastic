@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
-require_relative "../hook"
+require_relative "../cli/hook"
 require_relative "../graph"
+require_relative "../cli/wiring"
 
 module Plastic
   module Hooks
     # SessionEnd: sets the session's end time and the reason the event names.
-    class End < Hook
+    class End < CLI::Hook
       changes(local: "The end time and the reason are written to the session row")
 
       def respond(event)
         return no_session unless session_id
 
-        Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])
+        Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])
         nil
       end
 

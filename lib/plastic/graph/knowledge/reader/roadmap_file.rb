@@ -3,6 +3,7 @@
 require_relative "../../../invalid"
 require_relative "../roadmap"
 require_relative "../roadmap/form"
+require_relative "roadmap_records"
 
 module Plastic
   module Graph
@@ -12,9 +13,8 @@ module Plastic
         # and the labeled lines carry every value. The lines that only show a state or a need are skipped.
         class RoadmapFile
           Form = Roadmap::Form
-          RECORD_STARTS = { "- edge" => :edges, "- log" => :log }.freeze
           NOUNS = { head: "a head", batches: "a batch", items: "an item", edges: "an edge", log: "a log line" }.freeze
-          REQUIRED = { head: %i[title], batches: %i[position title], items: %i[item position], edges: %i[from to kind], log: %i[position text] }.freeze
+          REQUIRED = { head: %i[title], batches: %i[position], items: %i[item position], edges: %i[from to kind], log: %i[position text] }.freeze
 
           def self.form?(text) = Form.form?(text.dup.force_encoding(Encoding::UTF_8))
 
@@ -23,9 +23,7 @@ module Plastic
             text = text.dup.force_encoding(Encoding::UTF_8)
             raise Invalid, "roadmaps/#{slug}.md is in an older form that this release does not read" unless Form.form?(text)
 
-            @records = Hash.new { |hash, key| hash[key] = [] }
-            @head = {}
-            parse(text.lines(chomp: true).drop(1))
+            @records = RoadmapRecords.new(text.lines(chomp: true).drop(1))
             check
           end
 
@@ -43,55 +41,30 @@ module Plastic
             batch.remove(:roadmaps, slug: @slug)
           end
 
-          def parse(lines)
-            @section = :head
-            @target = @head
-            lines.each { |line| read_line(line) }
-          end
-
-          def read_line(line)
-            return heading(line) if line.start_with?("## ")
-            return start(:items) if @section == :batches && line.start_with?("- [")
-            return start(@section) if RECORD_STARTS[line] == @section
-
-            labeled(line)
-          end
-
-          def heading(line)
-            batch = line[/\A## Batch (\d+)(?::|\z)/, 1]
-            @section = batch ? :batches : line.delete_prefix("## ").downcase.to_sym
-            @section = :edges if @section == :graph
-            start(:batches, position: batch) if batch
-          end
-
-          def start(kind, **fields)
-            @target = fields.transform_keys(&:to_s).merge("batch" => @records[:batches].last&.fetch("position", nil))
-            @records[kind] << @target
-          end
-
-          def labeled(line)
-            found = Form::LABELED.match(line)
-            @target[found[1]] = Form.unescape(found[2].to_s) if found
-          end
-
           def check
-            REQUIRED.each { |kind, names| Array((kind == :head) ? [@head] : @records[kind]).each { |record| missing(kind, record, names) } }
-            raise Invalid, "roadmaps/#{@slug}.md names the slug #{@head["slug"]}, not #{@slug}" if @head["slug"] && @head["slug"] != @slug
+            REQUIRED.each { |kind, names| check_kind(kind, names) }
+            named = @records.head["slug"]
+            raise Invalid, "roadmaps/#{@slug}.md names the slug #{named}, not #{@slug}" if named && named != @slug
           end
+
+          def check_kind(kind, names) = @records.of(kind).each { |record| missing(kind, record, names) }
 
           def missing(kind, record, names)
-            gone = names.reject { |name| record[name.to_s] && !record[name.to_s].empty? }
+            gone = names.select { |name| record[name.to_s].to_s.empty? }
             raise Invalid, "roadmaps/#{@slug}.md has #{NOUNS.fetch(kind)} record with no #{gone.join(", ")}" if gone.any?
           end
 
-          def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]) }
+          def header
+            title, goal, opened_at = @records.head.values_at("title", "goal", "opened_at")
+            { slug: @slug, title:, goal: RoadmapRecords.blank(goal), opened_at: RoadmapRecords.blank(opened_at) }
+          end
 
           def rows(kind, now)
             stamp = %i[batches items].include?(kind) ? { updated_at: now } : {}
-            @records[kind].map { |record| send(:"#{kind}_row", record).merge(stamp) }
+            @records.of(kind).map { |record| send(:"#{kind}_row", record).merge(stamp) }
           end
 
-          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"))
+          def batches_row(record) = base(record, "goal").merge(title: record["title"].to_s, done: record["done"].to_s, position: number(record, "position"))
 
           def items_row(record)
             base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"))
@@ -101,9 +74,7 @@ module Plastic
 
           def log_row(record) = base(record, "at", "text", "session_id").merge(position: number(record, "position"))
 
-          def base(record, *names) = names.to_h { |name| [name.to_sym, blank(record[name])] }.merge(roadmap: @slug)
-
-          def blank(value) = (value && value.empty?) ? nil : value
+          def base(record, *names) = names.to_h { |name| [name.to_sym, RoadmapRecords.blank(record[name])] }.merge(roadmap: @slug)
 
           def number(record, name)
             Integer(record[name], 10)

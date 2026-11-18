@@ -21,7 +21,7 @@ module Plastic
             @rows = rows
           end
 
-          def self.intent_row(entry, updated_at) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at:)
+          def self.intent_row(entry, updated_at) = Intent.stored_fields(entry, Intent::INDEX_FIELDS).merge(updated_at:)
 
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
@@ -34,7 +34,10 @@ module Plastic
 
           def intents(now) = foreign? ? crossing(now) : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry, now) }
 
-          def foreign? = !object["origin_id"].nil? && object["origin_id"] != @origin_id
+          def foreign?
+            origin_id = object["origin_id"]
+            !origin_id.nil? && origin_id != @origin_id
+          end
 
           def crossing(now) = own(housed(listed("intents")), object["origin_id"]).filter_map { |entry| crossed(entry, now) }
 
@@ -43,7 +46,7 @@ module Plastic
             row = @rows[entry["intent_id"]]
             return unless row&.origin_id == @origin_id
 
-            fields = Intent::CROSSING_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]))
+            fields = Intent.stored_fields(entry, Intent::CROSSING_FIELDS)
             row.new_row.merge(fields, updated_at: now) unless fields.all? { |field, value| row.public_send(field) == value }
           end
 

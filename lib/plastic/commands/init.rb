@@ -28,7 +28,7 @@ module Plastic
       end
       workflow :code_install_harnesses, next: :noop
 
-      def self.choices(scope) = Workflows::Code::Init::Choose.choices(scope)
+      def self.choices(scope, settings) = Workflows::Code::Init::Choose.choices(scope, settings)
     end
   end
 end

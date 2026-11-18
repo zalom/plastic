@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "digest"
-
 module Plastic
   module Installations
     # The text Plastic installs into ~/.claude/CLAUDE.md between its two markers. It is one
@@ -15,10 +13,6 @@ module Plastic
 
         @~/.plastic/PLASTIC.md
       MD
-
-      def self.body_hash
-        Digest::SHA256.hexdigest(BODY)[0, 12]
-      end
     end
   end
 end

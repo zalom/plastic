@@ -32,7 +32,7 @@ class WorkVerdictWriterTest < Plastic::TestCase
     verdict("revise")
 
     assert_nil verdict("accept")
-    assert_equal 2, retrieval.verdicts("1").size
+    assert_equal 2, retrieval.structure.verdicts("1").size
   end
 
   def test_rounds_are_left_until_two_verdicts_exist

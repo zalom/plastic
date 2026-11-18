@@ -16,10 +16,10 @@ class WorkflowTest < Plastic::TestCase
     assert_equal Flows::Greet, Plastic::Workflow.fetch(:code_greet, from: Flows)
   end
 
-  def test_fetch_refuses_a_key_missing_from_the_registry
-    error = assert_raises(Plastic::Invalid) { Plastic::Workflow.fetch(:code_greet) }
+  def test_fetch_asks_the_caller_for_the_namespace_of_the_registry
+    error = assert_raises(ArgumentError) { Plastic::Workflow.fetch(:code_greet) }
 
-    assert_equal "no workflow code_greet in Plastic::Workflows::REGISTRY", error.message
+    assert_includes error.message, "from"
   end
 
   def test_fetch_refuses_a_key_whose_lane_does_not_match

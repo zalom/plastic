@@ -127,4 +127,11 @@ class IntentBriefTest < Plastic::TestCase
     refute_includes result.out, "ruling:"
     refute_includes result.out, "ready:"
   end
+
+  def test_the_command_gives_the_workflow_the_usage_of_the_node_and_edge_commands
+    usages = Plastic::Commands::Intent::Brief.given_facts.fetch(:command_usages)
+
+    assert_equal 11, usages.size
+    assert_includes usages, Plastic::Commands::Edge::Remove.usage_line
+  end
 end

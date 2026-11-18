@@ -68,6 +68,9 @@ module Plastic
         "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed or --older-than"],
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
       },
+      "resources" => {
+        "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
+      },
       "document" => {
         "document get" => ["Commands::Document::Get", "Fetch one current or revision-qualified document"],
         "document batch" => ["Commands::Document::Batch", "Fetch qualified documents in request order"]

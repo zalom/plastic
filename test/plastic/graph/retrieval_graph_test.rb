@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require "digest"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 require "timeout"
 
 class RetrievalGraphTest < Plastic::TestCase
@@ -18,6 +18,35 @@ class RetrievalGraphTest < Plastic::TestCase
 
   def test_the_origin_id_is_the_installation_id
     assert_equal [origin, "global"], [retrieval.origin_id, retrieval.store]
+  end
+
+  def test_a_reference_into_an_archived_intent_is_archived
+    intent = open_intent
+    put(:archives, { intent_id: "1", at: STAMP })
+
+    assert retrieval.archived_reference?(retrieval.reference("1", intent.file).fetch(:uri))
+  end
+
+  def test_a_reference_into_a_live_intent_is_not_archived
+    intent = open_intent
+
+    refute retrieval.archived_reference?(retrieval.reference("1", intent.file).fetch(:uri))
+  end
+
+  def test_a_reference_to_no_document_is_refused
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.archived_reference?("plastic://global/1/none.md") }
+  end
+
+  def test_the_record_reads_are_not_mixins_of_the_graph
+    names = Plastic::Graph::RetrievalGraph.ancestors.map { |ancestor| ancestor.name.to_s.split("::").last }
+
+    assert_empty names & %w[RoadmapReads StoreReads ArchiveReads StructureReads]
+  end
+
+  def test_the_record_reads_are_objects_the_graph_hands_out
+    readers = [retrieval.roadmaps, retrieval.stored, retrieval.archives, retrieval.structure]
+
+    assert_equal %w[RoadmapReader StoreRead ArchiveReader StructureReader], readers.map { |reader| reader.class.name.split("::").last }
   end
 
   def test_intents_read_in_luhmann_order
@@ -39,7 +68,7 @@ class RetrievalGraphTest < Plastic::TestCase
     %w[One Two].each { |title| store_graphs.work.write_intent(title:) }
     read = retrieval
 
-    assert_equal [%w[1 2], ["2"], ["intent.md"]], [read.work_log.map(&:intent_id), read.work_log("2").map(&:intent_id),
+    assert_equal [%w[1 2], ["2"], ["intent.md"]], [read.structure.work_log.map(&:intent_id), read.structure.work_log("2").map(&:intent_id),
       read.documents("2").map(&:path)]
   end
 
@@ -48,7 +77,7 @@ class RetrievalGraphTest < Plastic::TestCase
     put(:nodes, { intent_id: "1", id: "n1", kind: "build" })
     put(:edges, { intent_id: "1", from: "n1", to: "n2", kind: "needs" })
 
-    assert_equal [["Core"], ["n1"], ["n2"]], [retrieval.clusters.map(&:name), retrieval.nodes.map(&:id), retrieval.edges("1").map(&:to)]
+    assert_equal [["Core"], ["n1"], ["n2"]], [retrieval.clusters.map(&:name), structure.nodes.map(&:id), structure.edges("1").map(&:to)]
   end
 
   def test_a_kept_file_reads_without_its_bytes_and_its_bytes_read_by_name
@@ -56,15 +85,15 @@ class RetrievalGraphTest < Plastic::TestCase
             intent_id: "1", sha256: "h" }
     put(:sqlar, row)
 
-    assert_equal [["store/1--a/x.bin", "h"]], retrieval.kept_files("1").map { |file| [file.name, file.sha256] }
-    assert_equal "\x00\xFF".b, retrieval.kept_file_data("store/1--a/x.bin")
+    assert_equal [["store/1--a/x.bin", "h"]], retrieval.archives.kept_files("1").map { |file| [file.name, file.sha256] }
+    assert_equal "\x00\xFF".b, retrieval.stored.kept_file_data("store/1--a/x.bin")
   end
 
   def test_printed_maps_each_path_to_its_hash
     put(:printed, { path: "store/index.json", sha256: "a", at: "t" })
     put(:printed, { path: "store/1--a/spec.md", sha256: "b", at: "t" })
 
-    assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, retrieval.printed)
+    assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, retrieval.stored.printed)
   end
 
   def test_searches_indexed_passages_without_matching_an_intent_title
@@ -420,24 +449,24 @@ class RetrievalRoadmapRecordsTest < Plastic::TestCase
   include RetrievalRoadmapFixtures
 
   def test_reads_a_missing_roadmap_without_inventing_records
-    assert_nil retrieval.roadmap("absent")
-    assert_equal [[], [], [], []], [retrieval.batches("absent"), retrieval.roadmap_items("absent"),
-      retrieval.roadmap_edges("absent"), retrieval.roadmap_log("absent")]
+    assert_nil roadmaps.find("absent")
+    assert_equal [[], [], [], []], [roadmaps.batches("absent"), roadmaps.items("absent"),
+      roadmaps.edges("absent"), roadmaps.log("absent")]
   end
 
   def test_reads_the_roadmap_and_batches_in_position_order
     seed_roadmap
 
-    assert_equal "delivery", retrieval.roadmap("delivery").slug
-    assert_equal [1, 2], retrieval.batches("delivery").map(&:position)
+    assert_equal "delivery", roadmaps.find("delivery").slug
+    assert_equal [1, 2], roadmaps.batches("delivery").map(&:position)
   end
 
   def test_preserves_item_order_dependencies_and_log_order
     seed_roadmap
 
-    assert_equal %w[a b], retrieval.roadmap_items("delivery").map(&:item)
-    assert_equal [["a", "b"]], retrieval.roadmap_edges("delivery").map { |edge| [edge.from, edge.to] }
-    assert_equal ["First entry", "Second entry"], retrieval.roadmap_log("delivery").map(&:text)
+    assert_equal %w[a b], roadmaps.items("delivery").map(&:item)
+    assert_equal [["a", "b"]], roadmaps.edges("delivery").map { |edge| [edge.from, edge.to] }
+    assert_equal ["First entry", "Second entry"], roadmaps.log("delivery").map(&:text)
   end
 
   def test_starting_a_roadmap_item_indexes_its_spec_as_immutable_evidence

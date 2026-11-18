@@ -9,6 +9,12 @@ class ContextTest < Plastic::TestCase
     Plastic::Context.new(declared:, facts:, graphs:, harness: Plastic::Context::Harness.new(session))
   end
 
+  def test_the_settings_a_call_was_given_are_read_through_the_context
+    settings = Object.new
+
+    assert_same settings, Plastic::Context.new(declared: [], facts: {}, graphs: {}, harness: Plastic::Context::Harness.new(nil, nil, settings)).settings
+  end
+
   def test_a_declared_fact_reads_as_a_method
     assert_equal "7", context.id
     assert_nil context.title

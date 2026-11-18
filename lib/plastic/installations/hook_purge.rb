@@ -8,40 +8,54 @@ module Plastic
     # place, and returns [[event, command], ...] for each one it purged.
     # The predicate names the registry's rule for one harness.
     class HookPurge
+      # A list of hooks. It drops the hooks the rule owns, in place, and says which commands it dropped.
+      HookList = Data.define(:items) do
+        def purge(owned)
+          removed = items.select { |hook| owned.call(hook["command"]) }
+          items.replace(items - removed)
+          removed.map { |hook| hook.fetch("command") }
+        end
+
+        def keep(entry, owned)
+          removed = purge(owned)
+          [(entry unless items.empty?), removed]
+        end
+      end
+
+      # One group of an event: a mapping with a list of hooks, or a bare hook.
+      # Returns [the group to keep or nil, the commands purged out of it].
+      Group = Data.define(:entry) do
+        def purge(owned)
+          fields = entry.is_a?(Hash) ? entry : {}
+          list = fields["hooks"]
+          return HookList.new(list).keep(entry, owned) if list.is_a?(Array)
+
+          command = fields["command"]
+          (command && owned.call(command)) ? [nil, [command]] : [entry, []]
+        end
+      end
+
+      # The groups of one event in a hooks mapping. It writes the kept groups back and returns [event, command] pairs.
+      Event = Data.define(:hooks, :name) do
+        def purge(owned)
+          purged = hooks[name].map { |entry| Group.new(entry).purge(owned) }
+          hooks[name] = purged.filter_map(&:first)
+          purged.flat_map(&:last).map { |command| [name, command] }
+        end
+
+        def groups? = hooks[name].is_a?(Array)
+      end
+
       def initialize(predicate)
         @predicate = predicate
       end
 
       def call(hooks)
-        removed = []
-        hooks.each { |event, groups| hooks[event] = groups.filter_map { |group| keep(group, [event, removed]) } if groups.is_a?(Array) }
-        removed
+        events = hooks.keys.map { |name| Event.new(hooks, name) }
+        events.select(&:groups?).flat_map { |event| event.purge(method(:owned?)) }
       end
 
       private
-
-      def keep(group, purged)
-        return group unless group.is_a?(Hash)
-
-        list = group["hooks"]
-        return nested(group, list, purged) if list.is_a?(Array)
-
-        command = group["command"]
-        command ? bare(group, command, purged) : group
-      end
-
-      def nested(group, list, purged)
-        list.reject! { |hook| purge(hook["command"], purged) }
-        group unless list.empty?
-      end
-
-      def bare(group, command, purged)
-        group unless purge(command, purged)
-      end
-
-      def purge(command, (event, removed))
-        owned?(command) && removed << [event, command]
-      end
 
       def owned?(command) = HookRegistry.public_send(@predicate, command)
     end

@@ -17,14 +17,14 @@ class AddRoadmapItemTest < Plastic::TestCase
     outcome, context = add("a")
 
     assert_equal [:done, ["item: a A"]], [outcome, context.printed]
-    assert_equal ["a"], retrieval.roadmap_items("r1").map(&:item)
+    assert_equal ["a"], retrieval.roadmaps.items("r1").map(&:item)
   end
 
   def test_a_missing_batch_fails_with_no_item
     error = assert_raises(Plastic::Failed) { add("a") }
 
     assert_equal "no batch 1 on roadmap r1", error.message
-    assert_empty retrieval.roadmap_items("r1")
+    assert_empty retrieval.roadmaps.items("r1")
   end
 
   def test_a_loop_is_refused_with_one_edge_left
@@ -33,6 +33,6 @@ class AddRoadmapItemTest < Plastic::TestCase
     add("b", needs: ["a"])
 
     assert_raises(Plastic::Refused) { add("a", needs: ["b"]) }
-    assert_equal 1, retrieval.roadmap_edges("r1").size
+    assert_equal 1, retrieval.roadmaps.edges("r1").size
   end
 end

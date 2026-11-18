@@ -41,12 +41,12 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_intent_files_list_every_kept_file_of_every_intent_folder
-    folder = StoreFolder.new(@root, selection: Plastic::Graph::Knowledge::SyncSelection.all)
-    %w[store/1--a/spec.md store/1--a/.hidden store/1--a/delivery.lock store/1--a/.DS_Store store/2--b/x/y.bin
+    folder = StoreFolder.new(@root, sync: Plastic::Graph::Knowledge::SyncSettings.new(selection: Plastic::Graph::Knowledge::SyncSelection.new(types: %w[md bin], references: true, asked: []), remove_after_import: false))
+    %w[store/1--a/spec.md store/1--a/resources/references/.hidden store/1--a/delivery.lock store/1--a/.DS_Store store/2--b/resources/output/files/y.bin
       store/notes.md].each { |rel| folder.write(rel, "x") }
 
     assert_equal %w[store/1--a store/2--b], folder.intent_dirs
-    assert_equal %w[store/1--a/.hidden store/1--a/spec.md store/2--b/x/y.bin], folder.intent_files
+    assert_equal %w[store/1--a/resources/references/.hidden store/1--a/spec.md store/2--b/resources/output/files/y.bin], folder.intent_files
   end
 
   def test_intent_files_leave_out_the_kinds_the_selection_does_not_read
@@ -64,21 +64,15 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_content_lock_files_are_kept_when_documents_are_read
-    folder = StoreFolder.new(@root, selection: Plastic::Graph::Knowledge::SyncSelection.new(%w[documents]))
-    folder.write("store/1--a/Gemfile.lock", "dependency versions")
+    folder = StoreFolder.new(@root, sync: Plastic::Graph::Knowledge::SyncSettings.new(selection: Plastic::Graph::Knowledge::SyncSelection.new(types: %w[lock], references: false, asked: []), remove_after_import: false))
+    folder.write("store/1--a/resources/output/files/Gemfile.lock", "dependency versions")
 
-    assert_includes folder.intent_files, "store/1--a/Gemfile.lock"
+    assert_includes folder.intent_files, "store/1--a/resources/output/files/Gemfile.lock"
   end
 
   def test_a_new_ignore_file_lists_both_patterns
     @folder.ignore_databases
 
     assert_equal "*.db\n*.db-journal\nbackups/\n", @folder.read(".gitignore")
-  end
-
-  def test_the_context_file_of_an_intent_folder_is_a_generated_view
-    assert Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/context.json")
-    refute Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/graph.json")
-    refute Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/notes.json")
   end
 end

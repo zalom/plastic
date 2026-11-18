@@ -35,7 +35,7 @@ module TwoHomesClusterHelper
 
   def listed(home) = JSON.parse(read_file(home, FILE)).fetch("clusters").map { |cluster| cluster["name"] }.sort
 
-  def printed_part?(home) = home_graphs(home).retrieval.printed.key?(PART)
+  def printed_part?(home) = home_graphs(home).retrieval.stored.printed.key?(PART)
 
   def said(call) = call.out + call.err
 end

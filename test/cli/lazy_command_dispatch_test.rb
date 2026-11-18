@@ -11,7 +11,7 @@ class LazyCommandDispatchTest < Minitest::Test
   RETRIEVAL_CONTEXT_SCRIPT = <<~RUBY
     require "plastic/cli"
     require "plastic/graph"
-    require "plastic/graph//retrieval/evidence/writer"
+    require "plastic/graph/evidence/writer"
     global = Plastic::Graph.create(home: ARGV.fetch(0), store: "global")
     global.databases.each_value { |database| database.rows("SELECT 1") }
     global.work.write_intent(title: "Selected")

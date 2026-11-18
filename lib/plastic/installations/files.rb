@@ -13,9 +13,19 @@ module Plastic
       def read_json(path)
         return unless File.exist?(path)
 
-        JSON.parse(File.read(path))
+        text = File.read(path)
+        JSON.parse(text)
       rescue JSON::ParserError
-        loose_json(File.read(path))
+        loose_json(text)
+      end
+
+      def edit_json(path)
+        data = read_json(path)
+        return false unless data
+
+        changed = yield(data)
+        write_json(path, data) if changed
+        changed
       end
 
       def loose_json(text)

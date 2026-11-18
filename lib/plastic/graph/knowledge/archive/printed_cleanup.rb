@@ -23,7 +23,7 @@ module Plastic
           attr_reader :databases, :retrieval
 
           def printed_keys(dir)
-            retrieval.printed.keys.select { |path| path.start_with?("#{dir}/") }.map { |path| { path: } }
+            retrieval.stored.printed.keys.select { |path| path.start_with?("#{dir}/") }.map { |path| { path: } }
           end
 
           def remove_from(keys)

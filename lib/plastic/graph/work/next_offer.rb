@@ -22,7 +22,7 @@ module Plastic
 
         # The offer for an open intent: auto after the go-ahead row, the owner instruction before it.
         def self.go_ahead_offer(retrieval, id)
-          return ["plastic auto #{id}", "intent #{id} is open", nil] if retrieval.approval(id)
+          return ["plastic auto #{id}", "intent #{id} is open", nil] if retrieval.structure.approval(id)
 
           [nil, "the owner must give the go-ahead for intent #{id}", "Ask the owner for the go-ahead. " \
             "Only after the owner gives it, record it with plastic intent approve #{id}."]

@@ -24,6 +24,12 @@ module Plastic
           end
 
           def labeled(key, value) = value.to_s.empty? ? "#{key}:" : "#{key}: #{escape(value)}"
+
+          def fields(record, names) = names.map { |name| labeled(name, record.public_send(name)) }
+
+          def indented(record, names) = fields(record, names).map { |line| "  #{line}" }
+
+          def batch_lines(batch, items) = ["## Batch #{batch.position}: #{escape(batch.title)}", "", *fields(batch, %i[title goal done]), "", *items]
         end
       end
     end

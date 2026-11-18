@@ -32,6 +32,13 @@ class NodeMoveTest < Plastic::TestCase
     assert_equal %i[code_ask_node code_done_node code_fail_node code_impede_node code_resolve_node], MOVES.map { |move| move.chain.keys.first }
   end
 
+  def test_only_the_moves_that_give_a_result_take_the_file_option
+    names = ->(move) { move.options.map(&:name) }
+
+    assert_equal [[:files]] * 4, [Node::Ask, Node::Done, Node::Fail, Node::Impede].map(&names)
+    assert_equal [[]], [Node::Resolve].map(&names).uniq
+  end
+
   def test_move_is_in_no_command_table
     assert_empty Plastic::CLI::TABLE.values.map(&:first).grep(/Move/)
   end

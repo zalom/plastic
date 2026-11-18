@@ -8,7 +8,7 @@ require_relative "../lib/plastic/cli/table"
 # varar.config.json lives at the project root (the parent of test/).
 Varar::Minitest.generate_tests(Object, root: File.expand_path("..", __dir__))
 
-# The acceptance documents are the core list: the commands whose whole path through a
+# The acceptance documents are the end-to-end (e2e) layer, run by `bin/test --e2e`, and the core list: the commands whose whole path through a
 # child process, two homes or a legacy store is the subject. The cases of every other
 # command are kernel tests.
 class VararCoverageTest < Minitest::Test

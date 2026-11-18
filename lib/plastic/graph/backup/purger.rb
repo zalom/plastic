@@ -28,6 +28,12 @@ module Plastic
           names(older_than: now - RETENTION).reject { |name| name == kept }
         end
 
+        # Deletes the expired folders, but keeps the newest backup that is done.
+        def sweep(now:)
+          newest_done = @folders.names.reverse.find { |name| @folders.status(name) == "done" }
+          (expired(now:) - [newest_done]).each { |name| remove(name) }
+        end
+
         # The names of the folders whose backup failed.
         def failed = @folders.names.select { |name| @folders.status(name) == "failed" }
 

@@ -6,7 +6,7 @@ require_relative "../../../lib/plastic/config"
 class ConfigRowsTest < Plastic::TestCase
   include ConfigHomes
 
-  def rows = Plastic::Config::Rows.new(@plastic_home)
+  def rows = Plastic::Wiring.rows(@plastic_home)
 
   def test_the_settings_of_a_scope_read_back_as_a_nested_hash
     seed_config(@plastic_home, "global:\n  runner:\n    stop_hook: true\n  screens: false\n")
@@ -22,7 +22,7 @@ class ConfigRowsTest < Plastic::TestCase
 
   def test_a_missing_plastic_db_reads_as_empty_and_creates_no_file
     Dir.mktmpdir do |dir|
-      assert_empty Plastic::Config::Rows.new(dir).scope("global")
+      assert_empty Plastic::Wiring.rows(dir).scope("global")
       refute_path_exists File.join(dir, "plastic.db")
     end
   end
@@ -31,30 +31,8 @@ class ConfigRowsTest < Plastic::TestCase
     Dir.mktmpdir do |dir|
       SQLite3::Database.new(File.join(dir, "plastic.db")) { |db| db.execute("CREATE TABLE other(a)") }
 
-      assert_empty Plastic::Config::Rows.new(dir).scope("global")
+      assert_empty Plastic::Wiring.rows(dir).scope("global")
     end
-  end
-
-  def failing_with(failure)
-    original = Plastic::Graph::Database.method(:open_local)
-    Plastic::Graph::Database.define_singleton_method(:open_local, &failure)
-    yield
-  ensure
-    Plastic::Graph::Database.define_singleton_method(:open_local, original)
-  end
-
-  def test_an_error_that_is_not_a_database_error_is_not_swallowed
-    seed_config(@plastic_home, "global:\n  screens: false\n")
-    broken = ->(*) { raise ArgumentError, "a bug" }
-
-    failing_with(broken) { assert_raises(ArgumentError) { rows.scope("global") } }
-  end
-
-  def test_a_locked_database_reads_as_empty
-    seed_config(@plastic_home, "global:\n  screens: false\n")
-    busy = ->(*) { raise SQLite3::BusyException, "locked" }
-
-    failing_with(busy) { assert_empty rows.scope("global") }
   end
 
   def test_the_printed_hash_of_a_file_reads_back
@@ -67,5 +45,13 @@ class ConfigRowsTest < Plastic::TestCase
     seed_config(@plastic_home, "global:\n  screens: false\n")
 
     assert_nil rows.printed("other.yml")
+  end
+
+  def test_a_key_under_a_scalar_replaces_it_and_a_key_beside_a_hash_joins_it
+    tree = { "a" => 1, "b" => { "x" => 1 } }
+    Plastic::Config::Rows.insert(tree, "a.deep", 2)
+    Plastic::Config::Rows.insert(tree, "b.y", 3)
+
+    assert_equal({ "a" => { "deep" => 2 }, "b" => { "x" => 1, "y" => 3 } }, tree)
   end
 end

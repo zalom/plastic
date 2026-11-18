@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/search_query"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 
 class SearchQueryTest < Plastic::TestCase
   def setup

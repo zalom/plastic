@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "evidence"
-require_relative "../../retrieval_graph"
+require_relative "../errors"
 
 module Plastic
   module Graph

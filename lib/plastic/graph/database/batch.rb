@@ -23,6 +23,9 @@ module Plastic
 
         attr_reader :statements
 
+        # Runs each statement on the connection, in order; `count` is told the rows each one changed. The rows RETURNING gives back come back.
+        def execute(connection, &count) = statements.filter_map { |entry| entry.execute(connection, &count) }
+
         # `origin` names the installation that writes; the local database has none.
         def initialize(origin: nil)
           @statements = []
@@ -37,6 +40,12 @@ module Plastic
 
         # A write the report counts under `table`.
         def write(table, sql, **values) = bind(table.to_s, SQL::Bound.new(sql, values))
+
+        # Several statements that share their values, in order: each step is the table its rows count under, or nil, and its SQL.
+        def add_steps(steps, **values)
+          steps.each { |table, sql| table ? write(table, sql, **values) : add(sql, **values) }
+          self
+        end
 
         def insert(table, record, conflict: nil)
           clause = conflict ? " ON CONFLICT DO #{conflict}" : ""

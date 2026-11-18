@@ -22,6 +22,22 @@ module Plastic
         removed
       end
 
+      def self.drop(data, section, key)
+        return false unless data.dig(section, key)
+
+        entries = data[section]
+        entries.delete(key)
+        data.delete(section) if entries.empty?
+        true
+      end
+
+      def self.drop_key(hash, key)
+        return false unless hash.is_a?(Hash) && hash.key?(key)
+
+        hash.delete(key)
+        true
+      end
+
       private
 
       def folders
@@ -30,32 +46,14 @@ module Plastic
 
       def settings
         path = File.join(@claude_dir, "settings.json")
-        data = Files.read_json(path)
-        return [] unless data
-
-        changed = [drop(data, "enabledPlugins", "plastic@plastic"), drop(data, "extraKnownMarketplaces", "plastic")].any?
-        return [] unless changed
-
-        Files.write_json(path, data)
-        ["settings.json: plastic@plastic plugin registration"]
-      end
-
-      def drop(data, section, key)
-        return false unless data.dig(section, key)
-
-        data[section].delete(key)
-        data.delete(section) if data[section].empty?
-        true
+        changed = Files.edit_json(path) { |data| [LegacyPlugin.drop(data, "enabledPlugins", "plastic@plastic"), LegacyPlugin.drop(data, "extraKnownMarketplaces", "plastic")].any? }
+        changed ? ["settings.json: plastic@plastic plugin registration"] : []
       end
 
       def marketplaces
         path = File.join(@claude_dir, "plugins", "known_marketplaces.json")
-        known = Files.read_json(path)
-        return [] unless known.is_a?(Hash) && known.key?("plastic")
-
-        known.delete("plastic")
-        Files.write_json(path, known)
-        ["known_marketplaces.json: plastic"]
+        changed = Files.edit_json(path) { |known| LegacyPlugin.drop_key(known, "plastic") }
+        changed ? ["known_marketplaces.json: plastic"] : []
       end
 
       def report(removed)

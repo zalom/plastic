@@ -27,7 +27,7 @@ module Plastic
           # Why the link would be refused, or nil: a self link, or one already there.
           def refusal(id, target, kind)
             return "intent #{id} cannot link to itself" if id == target
-            return "intent #{id} already has a #{kind} link to #{target}" if linked?(id, target, kind)
+            return "intent #{id} already has a #{kind} link to #{target}" if @retrieval.links(id).any? { |link| link.joins?([id, target, kind]) }
 
             nil
           end
@@ -42,9 +42,9 @@ module Plastic
           def remove_link(from_ref:, to_ref:, kind:)
             database = @databases.fetch(:store)
             written = database.written
-            before = written["links"]
+            before = written.dup
             database.transaction { |batch| batch.remove(:links, from_ref:, to_ref:, kind:, origin_id: @retrieval.origin_id) }
-            written["links"] > before
+            written["links"] > before["links"]
           end
 
           private
@@ -57,10 +57,6 @@ module Plastic
             return nil unless ruling_id
 
             "no ruling #{target} in this store" unless @retrieval.rulings(intent_id).any? { |ruling| ruling.id == ruling_id }
-          end
-
-          def linked?(id, target, kind)
-            @retrieval.links(id).any? { |link| link.from_ref == id && link.to_ref == target && link.kind == kind }
           end
         end
       end

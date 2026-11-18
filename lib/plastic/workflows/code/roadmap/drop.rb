@@ -16,7 +16,7 @@ module Plastic
           sets :item, :dropped
 
           read "find the item" do |context|
-            context[:item] = context.retrieval.roadmap_items(context.slug).find { |item| item.item == context.item_id }
+            context[:item] = context.retrieval.roadmaps.items(context.slug).find { |item| item.item == context.item_id }
           end
 
           gate "no item %{item_id} on roadmap %{slug}", stops: :failure, pass: ->(context) { !context.item.nil? }

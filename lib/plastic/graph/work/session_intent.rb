@@ -24,7 +24,7 @@ module Plastic
         end
 
         def logged_intent
-          @retrieval.logged_intent_ids(@session_id).lazy.filter_map { |intent_id| @retrieval.intent(intent_id) }.find { |found| !found.closed? }
+          @retrieval.structure.logged_intent_ids(@session_id).lazy.filter_map { |intent_id| @retrieval.intent(intent_id) }.find { |found| !found.closed? }
         end
 
         def unfinished?(intent_id) = @retrieval.intent(intent_id)&.closed? == false

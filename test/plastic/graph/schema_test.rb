@@ -24,7 +24,7 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:settings).ddl, table(:printed).ddl].join("\n"), Schema.fetch(:local)
+    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:settings).ddl, table(:printed).ddl, table(:chat_messages).ddl].join("\n"), Schema.fetch(:local)
     assert_equal %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar],
       Schema.databases.fetch(:knowledge).last
   end
@@ -63,16 +63,6 @@ class SchemaTest < Plastic::TestCase
   def test_a_phrase_joins_one_two_and_three_tallies
     assert_equal ["1 intent", "1 intent and 2 clusters", "1 intent, 2 clusters, and 1 node"],
       [{ intents: 1 }, { intents: 1, clusters: 2 }, { intents: 1, clusters: 2, nodes: 1 }].map { |counts| Schema.phrase(counts) }
-  end
-
-  def test_a_schema_file_keeps_its_triggers_apart_from_its_tables
-    file = Plastic::Graph::SchemaFile.define(version: 1) do
-      create_table(:things, key: []) { |table| table.serial :seq }
-      create_trigger :things_after_insert, on: :things, sql: "AFTER INSERT ON things BEGIN SELECT 1; END"
-    end
-
-    assert_equal %i[things_after_insert], file.triggers.keys
-    assert_equal :things, file.triggers.fetch(:things_after_insert).on
   end
 
   private

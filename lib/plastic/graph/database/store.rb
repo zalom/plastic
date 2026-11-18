@@ -19,7 +19,7 @@ module Plastic
         attr_reader :files
 
         def initialize(root, origin)
-          super(File.join(root, Schema.file(:knowledge)), nil, origin:, key: :knowledge)
+          super(File.join(root, Schema.file(:knowledge)), nil, origin:, key: :knowledge, layouts: SCHEMAS.invert)
           @files = Store.attachments(path)
           @retrieval_lost = false
         end
@@ -38,7 +38,7 @@ module Plastic
         # Runs a search rebuild in a deferred transaction, which takes the write lock of a file only when it first writes
         # there. The rebuild reads before it and writes only retrieval tables, so work and knowledge stay writable.
         def rebuilding
-          batch = new_batch
+          batch = Batch.new(origin:)
           connected do |connection|
             connection.deferred do
               yield batch, connection
@@ -61,10 +61,6 @@ module Plastic
           @retrieval_lost = File.file?(path) && !File.file?(retrieval_path)
           attached = files.values
           raise Behind, "#{file} is behind this code; run plastic update" if attached.any? { |attachment| !File.file?(attachment) } && SchemaGate.behind?(path, attached)
-        end
-
-        def settle(connection)
-          SchemaGate.new(connection, layouts: SCHEMAS.invert, file:).call
         end
       end
     end

@@ -10,7 +10,7 @@ module Plastic
           @intent = intent
         end
 
-        def to_a = [@intent.heading, Node::Counts.new(@retrieval.nodes(@intent.intent_id)).line]
+        def to_a = [@intent.heading, Node::Counts.new(@retrieval.structure.nodes(@intent.intent_id)).line]
       end
     end
   end

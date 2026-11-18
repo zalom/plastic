@@ -42,14 +42,14 @@ so they are never versioned. The files printed from them are.
 | Database | Tables |
 | -------- | ------ |
 | `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
-| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `work_log_pending`, `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
+| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
 
-Every store database also has two bookkeeping tables:
+The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
+as of the last print. No table logs the history of a row.
 
-- `changes` logs every write: the table, the row key, put or remove, the whole row, the time and
-  the origin. The log row is written in the same transaction as the write.
-- `printed` keeps the hash of every file printed from the rows, as of the last print.
+A node move writes four kinds of row in one transaction: the node's state, its run, the log line
+and the changed files of the intent folder it read.
 
 Every row carries `origin_id`, the id of the installation that wrote it. The id sits in a file
 at the home and is made on first use. Every stored time is UTC.
@@ -62,7 +62,7 @@ open, in_progress, parked, future, done or abandoned. The states fall in three g
 
 ## The components of the kernel
 
-![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Work::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
+![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a CLI::Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
 
 The kernel lives under `lib/plastic/`, and `lib/plastic.rb` loads it. A class
 loads on first use, so `plastic help` reads the table and loads no command.
@@ -82,10 +82,10 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_auto` is `Workflows::Code::Auto`, in `lib/plastic/workflows/code/auto.rb`. |
 | `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
-| `Hook` | `lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
-| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `CLI::Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap`, `Hooks::StopGate` | `lib/plastic/hooks/` | The text `hook start` prints and the decision whether `hook stop` blocks a stop. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
-| `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
+| `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
 | `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, intents, nodes, runs and edges. |
@@ -277,17 +277,21 @@ A plain sync with a conflict writes nothing, exits 3 and lists every conflict. W
 file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
 `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
 
-A sync reads only the kinds of file that `Graph::Knowledge::SyncSelection` selects. Other
-files stay on disk and get no rows.
+A sync reads only the files that `Graph::Knowledge::SyncSelection` selects. Other files stay on
+disk and get no rows.
 
-| Kind | Files of an intent folder | Read |
-| ---- | ------------------------- | ---- |
-| Notes | Every Markdown file outside `references/`, `graph.json`, `context.json` and the legacy plan, checklist and `actions/` files | Always |
-| Images and videos | Image and video files outside `references/` | When `sync.media` is on. `plastic init` offers it picked. |
-| Documents | Every other file outside `references/` | When `sync.documents` is on |
-| References | Every file under `references/` | When `sync.references` is on |
+| Place in an intent folder | Files | Read |
+| ------------------------- | ----- | ---- |
+| Intent root | Every Markdown file, `graph.json`, `context.json`, `work.log` and the legacy plan, checklist and `actions/` files | Always |
+| `resources/output/reports/` and `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
+| `resources/references/` | Every file | When `sync.references` is on |
+| `resources/tmp/` and every other place | Every file | Never |
 
-A file of a kind the settings leave out is not read, even when an earlier sync put it in rows.
+A sync up skips the first file of a type that `sync.types` and `sync.asked` do not name, prints one
+line that names the `plastic config set` command adding the type to `sync.types`, and adds the type to
+`sync.asked`.
+
+A file the selection leaves out is not read, even when an earlier sync put it in rows.
 Its rows stay, and nothing on disk is removed.
 
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a

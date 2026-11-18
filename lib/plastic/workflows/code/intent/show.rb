@@ -40,11 +40,11 @@ module Plastic
           end
 
           def self.print_nodes(context)
-            context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
+            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
           end
 
           def self.print_log(context)
-            context.retrieval.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.line}") }
+            context.retrieval.structure.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.line}") }
           end
 
           outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is shown"

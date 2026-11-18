@@ -25,7 +25,7 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
     plastic("roadmap", "add", "r1", "1", "c", "--title", "C", "--needs", "a", "--needs", "b", table: Plastic::CLI::TABLE)
   end
 
-  def edges = store_graphs.retrieval.roadmap_edges("r1")
+  def edges = store_graphs.retrieval.roadmaps.edges("r1")
 
   def test_the_named_edge_goes_and_the_other_stays
     result = call("r1", "a", "c")

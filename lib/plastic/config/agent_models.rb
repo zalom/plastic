@@ -7,7 +7,7 @@ module Plastic
     # TIER_DEFAULTS mirrors the shipped `agents/*.md` frontmatter, so
     # `shipped_model_for` answers `agents.models.<basename>` with the built-in
     # default. The installer does NOT use TIER_DEFAULTS: it applies only genuine
-    # config overrides via `override_map`, so shipped frontmatter with no override
+    # config overrides, so shipped frontmatter with no override
     # passes through unchanged.
     module AgentModels
       # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
@@ -75,50 +75,6 @@ module Plastic
 
       def shipped_effort_for(agent)
         SHIPPED_EFFORT_DEFAULTS.fetch(agent.to_s, DEFAULT_EFFORT)
-      end
-
-      # Pull { basename => model } out of a loaded config hash's `agents.models`
-      # section, scoped to `harness` ("claude" or "codex"), tolerating a missing or
-      # malformed shape. `agents.models` can mix two shapes: legacy FLAT scalar
-      # entries (agents.models.plastic-executor: sonnet), honored as the claude
-      # harness only, and harness-scoped sub-hashes (agents.models.claude.*,
-      # agents.models.codex.*). Nested wins over flat for the same agent on the
-      # claude harness; a non-claude harness reads ONLY its own nested sub-hash,
-      # never the flat entries, so a literal model id written under the flat form
-      # (or agents.models.claude.*) can never leak into another harness's config.
-      def models_section(config, harness: "claude")
-        return {} unless config.is_a?(Hash)
-        agents = config["agents"]
-        return {} unless agents.is_a?(Hash)
-        section = agents["models"]
-        return {} unless section.is_a?(Hash)
-
-        nested = section[harness]
-        nested = nested.is_a?(Hash) ? nested : {}
-        return nested unless harness == "claude"
-
-        flat = section.reject { |_key, value| value.is_a?(Hash) }
-        flat.merge(nested)
-      end
-
-      # Override map for the installer: global overrides overlaid by project
-      # overrides (project wins), scoped to `harness`. Defaults are intentionally
-      # excluded. Unknown agent keys are carried through as-is; install_agents
-      # simply never matches them to a copied file, so they are ignored without
-      # raising.
-      def override_map(project_config: {}, global_config: {}, harness: "claude")
-        models_section(global_config, harness: harness).merge(models_section(project_config, harness: harness))
-      end
-
-      def effort_override_map(project_config: {}, global_config: {}, harness: "claude")
-        efforts_section(global_config, harness).merge(efforts_section(project_config, harness))
-      end
-
-      def efforts_section(config, harness)
-        agents = config.is_a?(Hash) ? config["agents"] : nil
-        efforts = agents.is_a?(Hash) ? agents["efforts"] : nil
-        section = efforts.is_a?(Hash) ? efforts[harness] : nil
-        section.is_a?(Hash) ? section : {}
       end
 
       # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not

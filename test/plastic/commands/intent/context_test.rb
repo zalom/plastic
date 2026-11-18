@@ -12,7 +12,7 @@ module IntentContextTestSupport
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", body)
     graphs.retrieval.repair
-    graphs.retrieval.archived?("1")
+    graphs.retrieval.archives.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end
 

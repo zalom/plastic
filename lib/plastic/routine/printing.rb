@@ -8,20 +8,23 @@ module Plastic
   class Routine < CLI::Command
     # Prints the files a finished call wrote, for the kinds its class declares.
     module Printing
+      module Facts
+        # The facts a workflow adds to name the files to check; a command whose files a workflow picks overrides this.
+        def hand_edit_additions(_ctx) = {}
+      end
+
       private
 
       # Refuses a call that prints when a file it would print was changed by hand,
       # before any row is written.
       def refuse_hand_edits(ctx)
-        kinds = self.class.prints
+        klass = self.class
+        kinds = klass.prints
         return if kinds.empty? || parsed[:dry_run]
 
-        path, reason = graphs.work.hand_edited(kinds, hand_edit_facts(ctx)).first
+        path, reason = graphs.work.hand_edited(kinds, ctx.facts.merge(klass.hand_edit_additions(ctx))).first
         path && refusal(path, reason)
       end
-
-      # The facts that name the files to check; a command whose files a workflow picks overrides this.
-      def hand_edit_facts(ctx) = ctx.facts
 
       # A file sync up reads is cleared by sync up; one it cannot read, by printing it again from its rows.
       def refusal(path, reason)

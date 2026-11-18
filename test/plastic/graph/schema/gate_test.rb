@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../test_helpers/beta_2_store"
 
 class SchemaGateTest < Plastic::TestCase
   include Beta2Store
