@@ -33,6 +33,7 @@ class RoadmapAutoTest < Plastic::TestCase
     result = roadmap_auto("r1")
 
     intent_id = roadmaps.items("r1").first.intent_id
+
     assert_equal [0, "in_progress"], [result.code, status_of(intent_id)]
     assert_includes result.out, "intent: #{intent_id}"
   end
@@ -101,18 +102,24 @@ class RoadmapAutoTest < Plastic::TestCase
     assert_includes result.err, "intent auto names no session; set PLASTIC_SESSION"
   end
 
-  def test_a_resumed_call_never_starts_a_stale_intent
+  def item_intent(item_id) = roadmaps.items("r1").find { |row| row.item == item_id }.intent_id
+
+  def failed_call_then_drop
     roadmap
     item("a")
     item("b")
     opened("a")
     failed = roadmap_auto("r1", env: { "PLASTIC_SESSION" => "" })
     store_graphs.work.drop_item("r1", "a")
+    failed
+  end
+
+  def test_a_resumed_call_never_starts_a_stale_intent
+    failed = failed_call_then_drop
 
     result = roadmap_auto("r1")
 
-    started = roadmaps.items("r1").find { |row| row.item == "b" }.intent_id
-    assert_equal [1, 0, "in_progress"], [failed.code, result.code, status_of(started)]
+    assert_equal [1, 0, "in_progress"], [failed.code, result.code, status_of(item_intent("b"))]
   end
 
   def test_a_picked_intent_whose_work_log_changed_by_hand_is_refused_and_kept
