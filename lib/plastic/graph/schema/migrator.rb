@@ -42,10 +42,10 @@ module Plastic
 
       def apply(state)
         self.class.record(@connection, state.adopted)
-        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each { |migration| run(migration) }
+        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each { |migration| migrate(migration) }
       end
 
-      def run(migration)
+      def migrate(migration)
         @connection.execute_batch(migration.sql)
         @connection.execute(INSERT, [migration.version])
       end

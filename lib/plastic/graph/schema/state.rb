@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "sqlite3"
 require_relative "migration_list"
 
 module Plastic
