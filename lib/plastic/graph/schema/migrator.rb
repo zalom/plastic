@@ -6,10 +6,6 @@ require_relative "state"
 
 module Plastic
   module Graph
-    # Runs the pending migrations of one kind on one connection, in ascending order, and records each version in the
-    # schema_migrations table of the main file right after it runs. An empty main file, as a store whose knowledge file
-    # was lost, takes every migration. The whole run is one transaction under the write lock: a failure leaves no
-    # migration and no row. A runner that finds the versions recorded once it holds the lock runs nothing.
     # Docs: docs/contributing/MIGRATIONS.md.
     class SchemaMigrator
       TABLE = "CREATE TABLE IF NOT EXISTS main.schema_migrations (version TEXT PRIMARY KEY)"

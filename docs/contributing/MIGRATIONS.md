@@ -45,16 +45,23 @@ skips the migration.
 
 ## Rules the gate enforces
 
-The gate runs `bin/lib/migration_guard.rb` against the tip of the base branch, and fails in two
+The gate runs `bin/lib/migration_guard.rb` against the tip of the base branch, and fails in four
 cases:
 
 - A migration that is on the base branch was changed, renamed or deleted. It has already run on
   real machines, so add a new migration instead.
+- A migration on the tip of the base branch is missing from the branch and from its merge base.
+  It was merged after the branch was cut, so rebase the branch onto the base.
 - An added migration does not sort after the newest migration of its kind on the base branch.
   A database that recorded the newer one would never run it. Give the file a later time.
+- Two added migrations of one kind share a version. Give one a later time.
 
-The base is the tip of the branch, not the merge base. A branch cut before a later migration
-merged would pass against its merge base.
+The order rule compares with the tip of the branch, not the merge base. A branch cut before a
+later migration merged would pass against its merge base.
+
+The guard runs only in the gate. `test/graph_migrations_folder_test.rb` checks the files of the
+folder as they are: each file name, each kind folder, and one migration for each version of a
+kind. It does not run the guard.
 
 ## What a run does
 

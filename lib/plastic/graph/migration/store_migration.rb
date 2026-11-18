@@ -8,6 +8,7 @@ require_relative "../schema/migration_list"
 require_relative "../schema/state"
 require_relative "migration_reason"
 require_relative "store_age"
+require_relative "store_compaction"
 
 module Plastic
   module Graph
@@ -17,17 +18,17 @@ module Plastic
     class StoreMigration
       REFERENCES = "references.db"
 
-      def initialize(home, slug, now)
+      def initialize(home, slug, now, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
-        @root = File.join(home, "stores", slug)
+        @compaction = compaction
       end
 
       def call
         return :current unless behind?
 
-        StoreAge.call(@root) if baseline_pending?
+        StoreAge.call(root) if baseline_pending?
         reason = backup_failure
         reason ? "its backup failed (#{reason})" : migrate_files
       rescue SQLite3::Exception, Database::Error, SystemCallError => error
@@ -36,32 +37,31 @@ module Plastic
 
       private
 
-      def behind? = SchemaGate.behind?(knowledge_file, [File.join(@root, Schema.file(:work))])
+      def root = File.join(@home, "stores", @slug)
 
-      def knowledge_file = File.join(@root, Schema.file(:knowledge))
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))])
 
-      def references_file = File.join(@root, REFERENCES)
+      def knowledge_file = File.join(root, Schema.file(:knowledge))
 
-      def release = Database::ConnectionPool.release(@root)
+      def references_file = File.join(root, REFERENCES)
+
+      def release = Database::ConnectionPool.release(root)
 
       def migrate_files
         run_migration
         retire_references
         release
-        vacuum
-        rebuild_search
+        @compaction.call(@home, @slug)
         :migrated
-      rescue SQLite3::Exception, SystemCallError
-        release
-        Database::ConnectionPool.remove_created(File.join(@root, ""))
-        raise
       end
 
-      def connection = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
-
       def run_migration
-        migrating = connection
+        migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
         with_references(migrating) { SchemaMigrator.new(migrating, :store).call }
+      rescue SQLite3::Exception, SystemCallError
+        release
+        Database::ConnectionPool.remove_created(File.join(root, ""))
+        raise
       end
 
       # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
@@ -83,16 +83,8 @@ module Plastic
         ["", "-wal", "-shm", "-journal"].map { |suffix| references_file + suffix }.select { |file| File.file?(file) }.each { |file| File.delete(file) }
       end
 
-      def vacuum
-        vacuuming = connection
-        %w[main work].each { |schema| vacuuming.execute("VACUUM #{schema}") }
-        release
-      end
-
-      def rebuild_search = Graph.open(home: @home, store: @slug).retrieval.reindex
-
       def backup_failure
-        Backup::Writer.new(@root, @slug, now: @now, reason: "migration").call
+        Backup::Writer.new(root, @slug, now: @now, reason: "migration").call
         nil
       rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError => error
         MigrationReason.of(error)

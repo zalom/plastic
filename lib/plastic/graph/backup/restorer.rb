@@ -92,7 +92,7 @@ module Plastic
 
         def mismatch(timestamp)
           live = live_version
-          recorded = recorded(timestamp)
+          recorded = @migrations.number(:store, recorded(timestamp))
           return if live.nil? || live == recorded
 
           "the backup #{timestamp} is at schema version #{recorded} and the store is at #{live}; restore the whole store, which migrates it forward"

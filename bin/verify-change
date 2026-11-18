@@ -118,7 +118,7 @@ class VerifyChange
     base = merge_base(requested_base)
     return 2 unless base
 
-    guarded = migrations_pass?(requested_base)
+    guarded = migrations_pass?(requested_base, base)
     report_untracked
     chosen = suite
     report_both_suites(chosen)
@@ -200,9 +200,8 @@ class VerifyChange
     nil
   end
 
-  # The migration guard against the tip of the base branch, so a migration merged after this branch was cut counts.
-  def migrations_pass?(ref)
-    problems = MigrationGuard.check(base: migration_files(ref), head: migration_files("HEAD"))
+  def migrations_pass?(ref, merge_base)
+    problems = MigrationGuard.check(base: migration_files(ref), head: migration_files("HEAD"), merge_base: migration_files(merge_base))
     problems.each { |problem| @err.puts "Migration guard: #{problem}" }
     problems.empty?
   end

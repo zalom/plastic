@@ -28,7 +28,7 @@ module Plastic
         false
       end
 
-      def self.main_reading(path) = File.file?(path) ? SchemaState.of_file(path, :store) : SchemaState::Reading.new(name: :empty, pending: [], unknown: [], adopted: [], stamp: 0, number: 0)
+      def self.main_reading(path) = File.file?(path) ? SchemaState.of_file(path, :store) : SchemaState::Reading.new(name: :empty, pending: [], unknown: [], adopted: [], number: 0)
 
       def self.holding_tables?(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").positive? }
 
@@ -92,7 +92,7 @@ module Plastic
 
       def verify_current
         current = under_write_lock { state }
-        raise Behind, refusal("is behind this code (it lacks #{current.pending.join(", ")})") unless current.current?
+        raise Behind, refusal("is behind this code (it lacks #{(current.adopted + current.pending).join(", ")})") unless current.current?
       end
 
       # A call already inside a transaction holds the write lock or will; a call outside one takes it here.

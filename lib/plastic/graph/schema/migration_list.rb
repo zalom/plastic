@@ -2,16 +2,15 @@
 
 module Plastic
   module Graph
-    # One migration: the kind of database it changes, its version, which is a 14-digit UTC timestamp, and its SQL file.
     SchemaMigration = Data.define(:kind, :version, :path) do
       def sql = File.read(path)
     end
 
-    # The migrations of every kind of database, in ascending order of version. The code reads the folders of
-    # db/migrate once, at load time, into MIGRATIONS. Docs: docs/contributing/MIGRATIONS.md.
+    # Docs: docs/contributing/MIGRATIONS.md.
     class MigrationList
       FOLDER = File.expand_path("../db/migrate", __dir__)
       VERSION_DIGITS = 14
+      ALPHA_STAMP = 1
 
       def self.read(folder)
         new(Dir.glob(File.join(folder, "*", "*.sql")).map { |path| migration_at(path) })
@@ -37,11 +36,9 @@ module Plastic
 
       def newest_of_any = @migrations.map(&:version).max
 
-      # The same list with one more migration, as a test adds a later one.
       def with(migration) = self.class.new([*@migrations, migration])
 
-      # A version as a number. 0 is a beta.2 file, and 1, the stamp an alpha build wrote, reads as the baseline.
-      def number(kind, value) = value.to_i.then { |stamp| (stamp == 1) ? baseline(kind).to_i : stamp }
+      def number(kind, value) = value.to_i.then { |stamp| (stamp == ALPHA_STAMP) ? baseline(kind).to_i : stamp }
 
       def known_number?(kind, number) = [0, *versions(kind).map(&:to_i)].include?(number)
     end
