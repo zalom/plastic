@@ -3,7 +3,8 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/work/delivery_action"
 
-class WorkDeliveryActionTest < Plastic::TestCase
+# An intent in progress, the way every delivery action test starts.
+class WorkDeliveryActionCase < Plastic::TestCase
   def setup
     super
     @work = store_graphs.work
@@ -16,7 +17,9 @@ class WorkDeliveryActionTest < Plastic::TestCase
   def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
 
   def claim(id) = @work.claim_node(intent_id: "1", id:, by: "worker")
+end
 
+class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_an_intent_with_no_live_node_asks_the_harness_to_plan
     plan("Gone")
     @work.remove_node(intent_id: "1", id: "n1")
@@ -123,7 +126,10 @@ class WorkDeliveryActionTest < Plastic::TestCase
 
     assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
   end
+end
 
+# The action of an intent that is not in progress.
+class WorkDeliveryActionStatusTest < WorkDeliveryActionCase
   def test_an_intent_that_is_not_in_progress_offers_intent_start
     @work.write_intent(title: "Beta", status: "future")
 

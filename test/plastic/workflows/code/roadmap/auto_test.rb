@@ -3,7 +3,8 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/roadmap/auto"
 
-class WorkflowRoadmapAutoTest < Plastic::TestCase
+# The roadmap pick, run as session s-1 over the store's roadmap r1.
+class WorkflowRoadmapAutoCase < Plastic::TestCase
   include DeliveryHelper
   include RoadmapHelper
 
@@ -13,6 +14,18 @@ class WorkflowRoadmapAutoTest < Plastic::TestCase
 
   def started(item_id) = store_graphs.work.open_roadmap_item("r1", item_id).first
 
+  def hold(intent_id, session)
+    store_graphs.work.add_node(intent_id:, title: "Build")
+    store_graphs.work.claim_node(intent_id:, id: "n1", by: session)
+  end
+
+  def touch(intent_id, session, at: Time.now)
+    run = Plastic::CommandRun.fresh("intent rule", intent_id, at)
+    session_graphs(session).work.save_command_run(run)
+  end
+end
+
+class WorkflowRoadmapAutoTest < WorkflowRoadmapAutoCase
   def test_an_unknown_roadmap_fails
     error = assert_raises(Plastic::Failed) { pick("r9") }
 
@@ -46,57 +59,6 @@ class WorkflowRoadmapAutoTest < Plastic::TestCase
     assert_equal [:ready, "b"], [outcome, context.item_id]
   end
 
-  def hold(intent_id, session)
-    store_graphs.work.add_node(intent_id:, title: "Build")
-    store_graphs.work.claim_node(intent_id:, id: "n1", by: session)
-  end
-
-  def test_an_item_held_by_another_live_session_is_skipped
-    roadmap
-    item("a")
-    hold(started("a"), "s-2")
-
-    outcome, = pick("r1")
-
-    assert_equal :waiting, outcome
-  end
-
-  def touch(intent_id, session, at: Time.now)
-    run = Plastic::CommandRun.fresh("intent rule", intent_id, at)
-    session_graphs(session).work.save_command_run(run)
-  end
-
-  def test_an_item_another_session_ran_a_command_on_is_skipped
-    roadmap
-    item("a")
-    item("b")
-    touch(started("a"), "s-2")
-
-    outcome, context = pick("r1")
-
-    assert_equal [:ready, "b"], [outcome, context.item_id]
-  end
-
-  def test_an_item_another_session_touched_more_than_15_minutes_ago_is_picked
-    roadmap
-    item("a")
-    intent_id = started("a")
-    touch(intent_id, "s-2", at: Time.now - (16 * 60))
-
-    outcome, context = pick("r1")
-
-    assert_equal [:intent, intent_id], [outcome, context.intent_id]
-  end
-
-  def test_an_item_this_session_ran_a_command_on_is_picked
-    roadmap
-    item("a")
-    intent_id = started("a")
-    touch(intent_id, "s-1")
-
-    assert_equal intent_id, pick("r1").last.intent_id
-  end
-
   def test_a_ready_item_whose_intent_is_future_is_picked_to_start
     roadmap
     item("a")
@@ -108,26 +70,6 @@ class WorkflowRoadmapAutoTest < Plastic::TestCase
     outcome, context = pick("r1")
 
     assert_equal [:intent, intent_id, nil], [outcome, context.intent_id, context.item_id]
-  end
-
-  def test_a_waiting_roadmap_names_the_items_it_waits_on
-    roadmap
-    item("a")
-    item("b", needs: ["a"])
-    hold(started("a"), "s-2")
-
-    assert_equal "a, b", pick("r1").last.waiting
-  end
-
-  def test_an_item_held_by_this_session_is_picked
-    roadmap
-    item("a")
-    intent_id = started("a")
-    hold(intent_id, "s-1")
-
-    outcome, context = pick("r1")
-
-    assert_equal [:intent, intent_id], [outcome, context.intent_id]
   end
 
   def test_a_ready_item_is_picked_to_open
@@ -167,6 +109,70 @@ class WorkflowRoadmapAutoTest < Plastic::TestCase
     outcome, context = pick("r1", intent_id: "99", item_id: "z")
 
     assert_equal [:ready, nil, "a"], [outcome, context.intent_id, context.item_id]
+  end
+end
+
+# The pick skips an item another session holds or worked on within 15 minutes.
+class WorkflowRoadmapAutoSessionsTest < WorkflowRoadmapAutoCase
+  def test_an_item_held_by_another_live_session_is_skipped
+    roadmap
+    item("a")
+    hold(started("a"), "s-2")
+
+    outcome, = pick("r1")
+
+    assert_equal :waiting, outcome
+  end
+
+  def test_an_item_another_session_ran_a_command_on_is_skipped
+    roadmap
+    item("a")
+    item("b")
+    touch(started("a"), "s-2")
+
+    outcome, context = pick("r1")
+
+    assert_equal [:ready, "b"], [outcome, context.item_id]
+  end
+
+  def test_an_item_another_session_touched_more_than_15_minutes_ago_is_picked
+    roadmap
+    item("a")
+    intent_id = started("a")
+    touch(intent_id, "s-2", at: Time.now - (16 * 60))
+
+    outcome, context = pick("r1")
+
+    assert_equal [:intent, intent_id], [outcome, context.intent_id]
+  end
+
+  def test_an_item_this_session_ran_a_command_on_is_picked
+    roadmap
+    item("a")
+    intent_id = started("a")
+    touch(intent_id, "s-1")
+
+    assert_equal intent_id, pick("r1").last.intent_id
+  end
+
+  def test_a_waiting_roadmap_names_the_items_it_waits_on
+    roadmap
+    item("a")
+    item("b", needs: ["a"])
+    hold(started("a"), "s-2")
+
+    assert_equal "a, b", pick("r1").last.waiting
+  end
+
+  def test_an_item_held_by_this_session_is_picked
+    roadmap
+    item("a")
+    intent_id = started("a")
+    hold(intent_id, "s-1")
+
+    outcome, context = pick("r1")
+
+    assert_equal [:intent, intent_id], [outcome, context.intent_id]
   end
 end
 
