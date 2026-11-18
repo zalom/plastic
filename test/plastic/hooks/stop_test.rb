@@ -38,6 +38,7 @@ class StopTest < Plastic::TestCase
   def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def claim_node(intent_id, session, at, id: "c#{session}")
+    put(:intents, { intent_id:, slug: "i#{intent_id}", title: "Intent #{intent_id}", status: "in_progress" })
     put(:nodes, { intent_id:, id:, state: "claimed", claimed_by: session, claimed_at: at, seen_at: at, updated_at: at })
   end
 
