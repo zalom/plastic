@@ -36,7 +36,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           HOME: ${{ runner.temp }}/suite-home
-        run: bundle exec ruby bin/verify-change "$(git merge-base "origin/$GITHUB_BASE_REF" HEAD)"
+        run: bundle exec ruby bin/verify-change "origin/$GITHUB_BASE_REF"
       - name: Check that the suite wrote nothing into the home
         run: |
           written=$(find "$RUNNER_TEMP/suite-home" -mindepth 1)

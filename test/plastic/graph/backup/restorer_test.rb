@@ -151,7 +151,6 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   Restorer = Plastic::Graph::Backup::Restorer
   STAMP = "20260101100000"
-  ABOVE = Plastic::Graph::SchemaMigrator::VERSION + 1
 
   def setup
     super
@@ -171,16 +170,16 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   def move_above
     Plastic::Graph::Database::ConnectionPool.release(root)
-    store_paths.each { |path| SQLite3::Database.open(path) { |db| db.execute("PRAGMA user_version = #{ABOVE}") } }
+    record_unknown_version(File.join(root, "knowledge_graph.db"))
   end
 
-  def store_versions = [user_versions(@home).fetch(File.join(root, "knowledge_graph.db"))]
+  def store_versions = [recorded_versions(File.join(root, "knowledge_graph.db"))]
 
   def test_a_whole_store_restore_after_the_store_moved_above_brings_every_database_to_the_backup_version
     move_above
     restorer.call(STAMP)
 
-    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], store_versions
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], store_versions
   end
 
   def test_a_restore_of_one_database_across_a_version_boundary_is_refused_and_names_the_whole_store_restore
@@ -199,7 +198,7 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
   end
 
   def test_a_backup_recording_a_version_above_the_code_is_rejected
-    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 9)
+    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: SchemaVersions::UNKNOWN.to_i)
     error = assert_raises(Restorer::Rejected) { restorer.call(STAMP) }
 
     assert_includes error.message, "newer than this code"
@@ -212,13 +211,72 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
 
   STAMP = "20260101100000"
 
+  def setup
+    super
+    @backup_home = fresh_home
+    backup_at(@backup_home, at(2026, 1, 1, 10, 0, 0))
+  end
+
+  def root = File.join(@backup_home, "stores", "alpha")
+
+  def restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home: @backup_home, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home: @backup_home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
+  end
+
   def test_a_listed_database_is_not_refused_when_the_store_holds_no_knowledge_database
-    home = fresh_home
-    backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local), File.join(home, "stores", "alpha"), "alpha", nil)
-    restorer = Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home:, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
-    File.delete(store_file(home, "knowledge_graph"))
+    File.delete(store_file(@backup_home, "knowledge_graph"))
 
     assert_nil restorer.refusal(STAMP, databases: %w[work_graph])
+  end
+
+  def test_a_listed_database_from_a_backup_an_alpha_build_stamped_1_is_not_refused_in_a_store_at_the_baseline
+    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 1)
+
+    assert_nil restorer.refusal(STAMP, databases: %w[knowledge_graph])
+  end
+end
+
+# A backup taken before a later migration: the whole store restores it, and the later migration moves it forward.
+class GraphBackupRestoreEarlierVersionTest < Plastic::TestCase
+  include BackupHomes
+  include SchemaVersions
+
+  STAMP = "20260101100000"
+  LATER = "20991201000000"
+  PROBE = File.expand_path("../../../fixtures/migrations/add_probe_table.sql", __dir__)
+
+  def setup
+    super
+    @home = fresh_home
+    backup_at(@home, at(2026, 1, 1, 10, 0, 0))
+  end
+
+  def root = File.join(@home, "stores", "alpha")
+
+  def knowledge = File.join(root, "knowledge_graph.db")
+
+  def later_list = Plastic::Graph::MIGRATIONS.with(Plastic::Graph::SchemaMigration.new(kind: :store, version: LATER, path: PROBE))
+
+  def migrate_forward
+    pool = Plastic::Graph::Database::ConnectionPool
+    pool.release(root)
+    Plastic::Graph::SchemaMigrator.new(pool.for(knowledge, attach: Plastic::Graph::Database::Store.attachments(knowledge)), :store, migrations: later_list).call
+    pool.release(root)
+  end
+
+  def restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph::Database.open_local(@home).fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0), migrations: later_list)
+  end
+
+  def test_a_whole_store_restore_of_an_earlier_known_version_passes_and_migrates_forward
+    migrate_forward
+    restorer.call(STAMP)
+    restored = recorded_versions(knowledge)
+    migrate_forward
+    earlier = Plastic::Graph::MIGRATIONS.versions(:store)
+
+    assert_equal [earlier, [*earlier, LATER]], [restored, recorded_versions(knowledge)]
   end
 end

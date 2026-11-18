@@ -4,7 +4,7 @@ require_relative "../../test_helper"
 require_relative "install_fixture"
 require "plastic/installations/installer"
 
-class InstallerTest < Plastic::TestCase
+module InstallerRuns
   include InstallFixture
 
   Installations = Plastic::Installations
@@ -16,6 +16,10 @@ class InstallerTest < Plastic::TestCase
     out, = capture_io { results = installer.install_agents(selected:, **options) }
     [results, out]
   end
+end
+
+class InstallerTest < Plastic::TestCase
+  include InstallerRuns
 
   def rows = Installations::Ledger.new(plastic).read
 
@@ -97,17 +101,6 @@ class InstallerTest < Plastic::TestCase
     assert_nil installer.installed_version
   end
 
-  def test_an_update_from_a_home_below_the_settings_rows_names_the_agent_settings_the_config_file_moves
-    make_agent_folders(claude_config)
-    run_install
-    Plastic::Graph::Database::ConnectionPool.release(@home)
-    File.write(File.join(plastic, "config.yml"), "global:\n  agents:\n    models:\n      plastic-enforcer: haiku\n")
-    File.rename(File.join(plastic, "plastic.db"), File.join(plastic, "local.db"))
-    _, out = run_install
-
-    assert_includes out, "config.yml: the settings for plastic-enforcer now apply to plastic-planner."
-  end
-
   def test_an_update_imports_the_config_file_into_the_settings_rows_once
     make_agent_folders(claude_config)
     write(File.join(plastic, "config.yml"), "global:\n  screens: false\n")
@@ -131,5 +124,31 @@ class InstallerTest < Plastic::TestCase
     end
 
     assert_includes out, "   config.yml printed from the settings"
+  end
+end
+
+class InstallerAdvisorImportTest < Plastic::TestCase
+  include InstallerRuns
+
+  def setup
+    super
+    make_agent_folders(claude_config)
+    run_install
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    File.write(File.join(plastic, "config.yml"), "global:\n  agents:\n    models:\n      plastic-enforcer: haiku\n")
+  end
+
+  def test_an_update_from_a_home_below_the_settings_rows_names_the_agent_settings_the_config_file_moves
+    File.rename(File.join(plastic, "plastic.db"), File.join(plastic, "local.db"))
+    _, out = run_install
+
+    assert_includes out, "config.yml: the settings for plastic-enforcer now apply to plastic-planner."
+  end
+
+  def test_an_update_of_an_alpha_home_that_has_the_baseline_leaves_the_agent_settings_of_the_config_file_alone
+    SQLite3::Database.open(File.join(plastic, "plastic.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    _, out = run_install
+
+    refute_includes out, "now apply to plastic-planner"
   end
 end

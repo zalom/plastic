@@ -115,6 +115,13 @@ class StoreProofChecksTest < Minitest::Test
     assert_includes err, "stores/plastic/work_graph.db has user_version 1"
   end
 
+  def test_a_real_file_that_gained_a_schema_migrations_table_during_the_run_fails_the_proof
+    record = ->(*) { SQLite3::Database.new(File.join(@real, "plastic.db")) { |db| db.execute("CREATE TABLE schema_migrations (version TEXT PRIMARY KEY)") } }
+    code, _, err = run_cli(*proof_args("plastic"), runner: record)
+
+    assert_equal [1, true], [code, err.include?("plastic.db has a schema_migrations table")]
+  end
+
   def test_a_changed_version_record_fails_the_proof
     code, _, err = run_cli(*proof_args("plastic"), runner: ->(*) { File.write(File.join(@real, "VERSION"), "3.0.0-alpha.2\n") })
 

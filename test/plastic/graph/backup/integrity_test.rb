@@ -2,6 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../test_helpers/schema_versions"
 
 class GraphBackupIntegrityTest < Plastic::TestCase
   include BackupHomes
@@ -16,7 +17,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_sound_backup_file_passes
     home = fresh_home
 
-    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::SchemaMigrator::VERSION).call
+    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::MIGRATIONS.newest(:store).to_i).call
   end
 
   def test_a_file_that_is_not_a_database_is_rejected
@@ -97,8 +98,31 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
     assert_includes error.message, "lacks the tables work_log"
   end
 
+  def later_list
+    probe = File.expand_path("../../../fixtures/migrations/add_probe_table.sql", __dir__)
+    Plastic::Graph::MIGRATIONS.with(Plastic::Graph::SchemaMigration.new(kind: :store, version: "20991201000000", path: probe))
+  end
+
+  def baseline = Plastic::Graph::MIGRATIONS.baseline(:store).to_i
+
+  def test_an_earlier_known_version_passes_on_the_quick_check_alone
+    assert_nil Integrity.new(work_file_without("savepoints"), "work_graph", version: baseline, migrations: later_list).call
+  end
+
+  def test_the_newest_version_checks_the_declared_tables
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 20_991_201_000_000, migrations: later_list).call }
+
+    assert_includes error.message, "lacks the tables work_log"
+  end
+
+  def test_a_version_below_the_newest_that_this_code_does_not_know_is_rejected
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: baseline + 1, migrations: later_list).call }
+
+    assert_includes error.message, "which this code does not know"
+  end
+
   def test_a_version_above_the_newest_is_rejected
-    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 99).call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: SchemaVersions::UNKNOWN.to_i).call }
 
     assert_includes error.message, "newer than this code"
   end

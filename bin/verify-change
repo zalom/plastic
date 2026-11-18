@@ -2,6 +2,7 @@
 require "fileutils"
 require "open3"
 require "tmpdir"
+require_relative "lib/migration_guard"
 
 class VerifyChange
   USAGE = <<~TEXT
@@ -25,6 +26,11 @@ class VerifyChange
     DEPENDENCIES in Gemfile.lock, and Minitest tests otherwise. Warns when
     both test/ and spec/ exist. Pass --test for the integration or system
     tests of a feature the change touches.
+
+    It also runs the migration guard (bin/lib/migration_guard.rb) against the tip
+    of BASE, not its merge base: a merged migration under
+    lib/plastic/graph/db/migrate stays byte for byte the same, and an added one
+    sorts after the newest migration of its kind. A problem fails the gate.
 
     A lint failure is reported but does not stop the other checks. Lint is
     skipped, not failed, with no style guide, two style guides, no changed
@@ -112,11 +118,13 @@ class VerifyChange
     base = merge_base(requested_base)
     return 2 unless base
 
+    guarded = migrations_pass?(requested_base, base)
     report_untracked
     chosen = suite
     report_both_suites(chosen)
     plan = plan(changed: changed_files(base), extra_tests: extra_tests, base: base, rails: rails?, suite: chosen)
-    execute(plan, requested_base)
+    code = execute(plan, requested_base)
+    guarded ? code : 1
   ensure
     discard_sandbox
   end
@@ -190,6 +198,17 @@ class VerifyChange
 
     @err.puts "Cannot find the merge base of #{ref} and HEAD: #{output.strip}"
     nil
+  end
+
+  def migrations_pass?(ref, merge_base)
+    problems = MigrationGuard.check(base: migration_files(ref), head: migration_files("HEAD"), merge_base: migration_files(merge_base))
+    problems.each { |problem| @err.puts "Migration guard: #{problem}" }
+    problems.empty?
+  end
+
+  def migration_files(ref)
+    paths = @git.call("ls-tree", "-r", "--name-only", ref, "--", MigrationGuard::FOLDER).first.split("\n")
+    paths.to_h { |path| [path, @git.call("show", "#{ref}:#{path}").first] }
   end
 
   def changed_files(base)

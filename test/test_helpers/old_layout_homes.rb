@@ -2,12 +2,14 @@
 
 require "sqlite3"
 require_relative "beta_2_store"
+require_relative "schema_versions"
 
 # Turns a throwaway home made by BackupHomes into the layout of an older
 # release: each store becomes the beta.2 fixture store, and the home database
-# is unstamped with the tables of local.db.
+# records no migration and has the tables of local.db.
 module OldLayoutHomes
   include Beta2Store
+  include SchemaVersions
 
   OLD_HOME_TABLES = <<~SQL
     ALTER TABLE command_runs RENAME TO routine_runs;
@@ -27,7 +29,8 @@ module OldLayoutHomes
 
   def database_files(home) = Dir.glob(File.join(home, "{local.db,plastic.db,stores/*/*.db}"))
 
-  def user_versions(home) = database_files(home).to_h { |path| [path, read_value(path, "PRAGMA user_version")] }
+  # The versions each database file records, nil for a file with no schema_migrations table.
+  def recorded_by_file(home) = database_files(home).to_h { |path| [path, recorded_versions(path)] }
 
   def layout_of(path)
     rows = with_database(path, readonly: true) { |db| db.execute("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name") }
@@ -50,6 +53,7 @@ module OldLayoutHomes
   def downgrade(path)
     with_database(path) do |db|
       db.execute_batch(OLD_HOME_TABLES) if db.get_first_value("SELECT 1 FROM sqlite_master WHERE name = 'command_runs' AND type = 'table'")
+      db.execute("DROP TABLE IF EXISTS schema_migrations")
       db.execute("PRAGMA user_version = 0")
     end
   end

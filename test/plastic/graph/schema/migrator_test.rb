@@ -2,17 +2,43 @@
 
 require "tmpdir"
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/schema/migrator"
+require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../test_helpers/schema_versions"
+Plastic::TestCase.boot
 
-class SchemaMigratorTest < Plastic::TestCase
+module MigratorFixtures
+  include SchemaVersions
+
   Migrator = Plastic::Graph::SchemaMigrator
   Connection = Plastic::Graph::Database::Connection
+  SchemaMigration = Plastic::Graph::SchemaMigration
+  MigrationList = Plastic::Graph::MigrationList
   FIXTURES = File.expand_path("../../../fixtures/migrations", __dir__)
+  FIRST = "20261117000000"
+  SECOND = "20270101000000"
+
+  def migration(version, name) = SchemaMigration.new(kind: :store, version:, path: File.join(FIXTURES, "#{name}.sql"))
+
+  # The later migration comes first, so the list proves its own order.
+  def tickets_then_owners = MigrationList.new([migration(SECOND, "add_owners"), migration(FIRST, "add_tickets")])
+
+  def tickets_then_failure = MigrationList.new([migration(FIRST, "add_tickets"), migration(SECOND, "fail_on_first_ticket")])
+
+  def tickets_only = MigrationList.new([migration(FIRST, "add_tickets")])
+
+  def migrator(connection, list) = Migrator.new(connection, :store, migrations: list)
+
+  def tables(connection = @connection) = connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").map { |row| row["name"] }
+end
+
+class SchemaMigratorTest < Plastic::TestCase
+  include MigratorFixtures
 
   def setup
     super
     @path = File.join(Dir.mktmpdir("migrator", @home), "store.db")
     @connection = Connection.open(@path)
+    @connection.execute("CREATE TABLE legacy (id)")
   end
 
   def teardown
@@ -20,74 +46,122 @@ class SchemaMigratorTest < Plastic::TestCase
     super
   end
 
-  def migration(name) = File.join(FIXTURES, "#{name}.sql")
+  def owners = @connection.execute("SELECT title, owner FROM tickets").map { |row| row.values_at("title", "owner") }
 
-  def stamp(connection = @connection) = connection.get_first_value("PRAGMA main.user_version")
+  def test_pending_migrations_run_in_ascending_order_and_record_each_version
+    migrator(@connection, tickets_then_owners).call
 
-  def titles(connection = @connection) = connection.execute("SELECT title FROM tickets").map { |row| row["title"] }
-
-  def tables(connection = @connection) = connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").map { |row| row["name"] }
-
-  def test_a_file_at_stamp_0_migrates_once
-    Migrator.new(@connection, migration("add_tickets")).call
-
-    assert_equal [1, ["first"]], [stamp, titles]
+    assert_equal [[%w[first ada]], [FIRST, SECOND]], [owners, recorded_versions(@path)]
   end
 
-  def test_a_second_run_does_nothing
-    Migrator.new(@connection, migration("add_tickets")).call
+  def test_a_second_run_applies_nothing
+    migrator(@connection, tickets_then_owners).call
     @connection.execute("INSERT INTO tickets(title) VALUES ('later')")
-    Migrator.new(@connection, migration("add_tickets")).call
+    migrator(@connection, tickets_then_owners).call
 
-    assert_equal %w[first later], titles
+    assert_equal [%w[first ada], ["later", nil]], owners
   end
 
-  def test_a_second_connection_that_read_0_reads_1_inside_its_own_transaction_and_runs_nothing
-    second = Connection.open(@path)
-    second.busy_timeout = 0
-    Migrator.new(@connection, migration("add_tickets")).call
-    second.execute("PRAGMA main.user_version")
+  def test_a_failing_second_migration_rolls_back_the_whole_run_and_records_no_version
+    assert_raises(SQLite3::ConstraintException) { migrator(@connection, tickets_then_failure).call }
 
-    assert_nil Migrator.new(second, migration("add_tickets")).call
-    assert_equal %w[first], titles(second)
-  ensure
-    second&.close
+    assert_equal [%w[legacy], nil], [tables, recorded_versions(@path)]
   end
 
-  class StampedBeforeLock < SimpleDelegator
-    def initialize(connection, other)
+  def test_a_recorded_version_is_skipped_and_only_the_later_one_runs
+    migrator(@connection, tickets_only).call
+    migrator(@connection, tickets_then_owners).call
+
+    assert_equal [[%w[first ada]], [FIRST, SECOND]], [owners, recorded_versions(@path)]
+  end
+
+  def test_an_alpha_file_at_stamp_1_gets_the_baseline_row_and_runs_no_sql
+    @connection.execute("PRAGMA user_version = 1")
+    migrator(@connection, tickets_only).call
+
+    assert_equal [%w[legacy schema_migrations], [FIRST]], [tables.sort, recorded_versions(@path)]
+  end
+
+  def test_a_file_that_records_an_unknown_version_raises_ahead_naming_it_and_stays_unchanged
+    record_unknown_version(@path)
+    before = File.binread(@path)
+
+    error = assert_raises(Plastic::Graph::Ahead) { migrator(@connection, tickets_only).call }
+
+    assert_includes error.message, UNKNOWN
+    assert_equal before, File.binread(@path)
+  end
+
+  def test_a_file_with_no_table_and_an_unknown_stamp_raises_ahead_naming_the_stamp
+    @connection.execute("PRAGMA user_version = 7")
+
+    error = assert_raises(Plastic::Graph::Ahead) { migrator(@connection, tickets_only).call }
+
+    assert_includes error.message, "user_version 7"
+    assert_equal %w[legacy], tables
+  end
+end
+
+class SchemaMigratorRaceTest < Plastic::TestCase
+  include MigratorFixtures
+
+  # Another session records the versions just before this runner takes the write lock.
+  class MigratedBeforeLock < SimpleDelegator
+    def initialize(connection, path, versions)
       super(connection)
-      @other = other
+      @path = path
+      @versions = versions
     end
 
     def atomically(&)
-      @other.execute("PRAGMA main.user_version = 1")
+      SQLite3::Database.open(@path) do |other|
+        other.execute(Plastic::Graph::SchemaMigrator::TABLE)
+        @versions.each { |version| other.execute(Plastic::Graph::SchemaMigrator::INSERT, [version]) }
+      end
       super
     end
   end
 
-  def test_a_runner_that_finds_the_file_stamped_once_it_holds_the_write_lock_runs_no_statement
-    other = Connection.open(@path)
-    late = StampedBeforeLock.new(@connection, other)
+  def setup
+    super
+    @path = File.join(Dir.mktmpdir("migrator", @home), "store.db")
+    @connection = Connection.open(@path)
+    @connection.execute("CREATE TABLE legacy (id)")
+  end
 
-    assert_nil Migrator.new(late, migration("add_tickets")).call
-    assert_empty tables
+  def teardown
+    @connection.close
+    super
+  end
+
+  def test_a_runner_that_finds_the_versions_recorded_once_it_holds_the_write_lock_runs_no_migration
+    late = MigratedBeforeLock.new(@connection, @path, [FIRST])
+
+    assert_nil migrator(late, tickets_only).call
+    assert_equal %w[legacy schema_migrations], tables.sort
+  end
+end
+
+class SchemaMigratorJournalTest < Plastic::TestCase
+  include MigratorFixtures
+  include Beta2Store
+
+  def store_connection(home, knowledge)
+    connection = Plastic::Graph::Database::ConnectionPool.for(knowledge, attach: Plastic::Graph::Database::Store.attachments(knowledge))
+    connection.execute("ATTACH DATABASE ? AS refs", [store_path(home, "references.db")])
+    connection
+  end
+
+  def test_every_attached_file_of_a_store_is_in_delete_journal_mode_during_the_run
+    home = beta_2_home
+    knowledge = store_path(home, "knowledge_graph.db")
+    connection = store_connection(home, knowledge)
+    list = Plastic::Graph::MIGRATIONS.with(migration(SECOND, "observe_journal_modes"))
+    migrator(connection, list).call
+    modes = connection.execute("SELECT schema, mode FROM observed_journal_modes ORDER BY schema").map { |row| row.values_at("schema", "mode") }
+
+    assert_equal [%w[main delete], %w[refs delete], %w[retrieval delete], %w[work delete]], modes
   ensure
-    other&.close
-  end
-
-  def test_a_file_at_stamp_2_raises_ahead_with_the_message_to_restore_the_backup
-    @connection.execute("PRAGMA main.user_version = 2")
-
-    error = assert_raises(Plastic::Graph::Ahead) { Migrator.new(@connection, migration("add_tickets")).call }
-
-    assert_match(/restore the backup/, error.message)
-    assert_empty tables
-  end
-
-  def test_a_failing_statement_leaves_stamp_0_and_the_file_unchanged
-    assert_raises(SQLite3::ConstraintException) { Migrator.new(@connection, migration("add_tickets_then_fail")).call }
-
-    assert_equal [0, []], [stamp, tables]
+    Plastic::Graph::Database::ConnectionPool.release(store_root(home)) if home
   end
 end

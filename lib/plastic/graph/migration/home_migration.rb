@@ -5,6 +5,7 @@ require_relative "../schema/gate"
 require_relative "home_copy"
 require_relative "home_rename"
 require_relative "../schema/migrator"
+require_relative "../schema/state"
 require_relative "migration_reason"
 
 module Plastic
@@ -32,7 +33,7 @@ module Plastic
 
       def migrate(path) = preparation_failure(path) || advance
 
-      def advance = (local.version >= SchemaMigrator::VERSION) ? :current : migrated
+      def advance = local.schema_state.behind? ? migrated : :current
 
       def local = (@local ||= Database.open_local(@home).fetch(:local))
 
@@ -42,7 +43,7 @@ module Plastic
       end
 
       def preparation_failure(path)
-        reason = copy_failure(path) if SchemaGate.stamp_of(path) < SchemaMigrator::VERSION
+        reason = copy_failure(path) if SchemaState.of_file(path, :home).behind?
         return "the copy of its database failed (#{reason})" if reason
 
         HomeRename.new(former, current).call if path == former

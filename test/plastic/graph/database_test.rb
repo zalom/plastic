@@ -11,8 +11,8 @@ class DatabaseTest < Plastic::TestCase
 
   def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
 
-  def test_the_version_of_a_file_that_does_not_exist_is_nil
-    assert_nil scratch("absent.db").version
+  def test_the_schema_state_of_a_file_that_does_not_exist_is_nil
+    assert_nil scratch("absent.db").schema_state
   end
 
   def test_a_database_with_no_schema_track_has_no_key

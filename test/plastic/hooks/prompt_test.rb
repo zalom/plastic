@@ -4,6 +4,8 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/hooks/prompt"
 
 class PromptTest < Plastic::TestCase
+  include SchemaVersions
+
   fixtures :empty
 
   CLAUDE = { "CLAUDE_CODE_SESSION_ID" => "s-1" }.freeze
@@ -60,7 +62,7 @@ class PromptTest < Plastic::TestCase
   def test_a_store_out_of_step_records_the_prompt_with_store_and_intent_empty_and_says_so
     with_home do |home|
       Plastic::Graph::Database::ConnectionPool.release(File.dirname(home))
-      Dir.glob(File.join(home, "stores", "global", "*.db")).each { |file| SQLite3::Database.new(file) { |database| database.execute("PRAGMA user_version = 99") } }
+      record_unknown_version(File.join(home, "stores", "global", "knowledge_graph.db"))
       code, err = hook_in(home)
       rows = Plastic::Graph::Database.open_local(home).fetch(:local).rows("SELECT store, intent_id, text FROM chat_messages")
 

@@ -56,7 +56,7 @@ class DbSchemaTest < Plastic::TestCase
   end
 
   def test_no_kernel_file_but_the_schema_file_declares_a_table
-    allowed = [SCHEMA_PATH, BUILDER_PATH, File.join(KERNEL, "plastic/graph/table.rb"), File.join(KERNEL, "plastic/graph/schema/migrations.rb")]
+    allowed = [SCHEMA_PATH, BUILDER_PATH, File.join(KERNEL, "plastic/graph/table.rb")]
     files = Dir.glob(File.join(KERNEL, "**/*.rb")) - allowed
 
     refute_empty files

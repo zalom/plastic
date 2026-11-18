@@ -1,40 +1,49 @@
 # frozen_string_literal: true
 
 require_relative "../behind"
+require_relative "migration_list"
+require_relative "state"
 
 module Plastic
   module Graph
-    # Runs one SQL migration on one connection. The file's stamp moves from 0 to 1 in the
-    # same transaction as the migration, and a runner that read 0 before another committed
-    # reads 1 once it holds the write lock and runs nothing.
+    # Docs: docs/contributing/MIGRATIONS.md.
     class SchemaMigrator
-      VERSION = 1
-      STAMP = "PRAGMA main.user_version"
+      TABLE = "CREATE TABLE IF NOT EXISTS main.schema_migrations (version TEXT PRIMARY KEY)"
+      INSERT = "INSERT INTO main.schema_migrations (version) VALUES (?)"
 
-      def initialize(connection, migration)
+      def self.record(connection, versions)
+        connection.execute(TABLE)
+        versions.each { |version| connection.execute(INSERT, [version]) }
+      end
+
+      def initialize(connection, kind, migrations: MIGRATIONS)
         @connection = connection
-        @migration = migration
+        @kind = kind
+        @migrations = migrations
       end
 
       def call
-        return if stamped?
+        return unless reading.due?(Ahead)
 
-        @connection.atomically { apply unless stamped? }
+        @connection.atomically do
+          fresh = reading
+          apply(fresh) if fresh.due?(Ahead)
+        end
         nil
       end
 
       private
 
-      def stamped?
-        stamp = @connection.get_first_value(STAMP)
-        raise Ahead, "the database is at version #{stamp} and this code migrates to #{VERSION}; restore the backup taken before the update" if stamp > VERSION
+      def reading = SchemaState.new(@connection, @kind, migrations: @migrations).call
 
-        stamp == VERSION
+      def apply(state)
+        self.class.record(@connection, state.adopted)
+        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each { |migration| migrate(migration) }
       end
 
-      def apply
-        @connection.execute_batch(File.read(@migration))
-        @connection.execute("PRAGMA main.user_version = #{VERSION}")
+      def migrate(migration)
+        @connection.execute_batch(migration.sql)
+        @connection.execute(INSERT, [migration.version])
       end
     end
   end

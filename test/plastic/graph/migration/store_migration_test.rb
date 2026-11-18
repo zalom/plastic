@@ -2,10 +2,12 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../test_helpers/schema_versions"
 require_relative "../../../../lib/plastic/graph/migration/runner"
 
 module StoreMigrationRuns
   include Beta2Store
+  include SchemaVersions
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 1, 1)
@@ -37,10 +39,10 @@ class StoreMigrationTest < Plastic::TestCase
     assert_equal fresh_layouts, layouts_of(store_root(home))
   end
 
-  def test_the_stamp_is_one_on_the_knowledge_file_as_in_a_new_store
+  def test_the_knowledge_file_records_every_store_version_as_in_a_new_store
     home = migrated_home
 
-    assert_equal [1, 0, 0], %w[knowledge_graph work_graph retrieval_graph].map { |name| stamp_of(store_path(home, "#{name}.db")) }
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), nil, nil], %w[knowledge_graph work_graph retrieval_graph].map { |name| recorded_versions(store_path(home, "#{name}.db")) }
   end
 
   def test_the_intent_tables_move_to_knowledge_with_their_values_in_the_named_columns
@@ -160,10 +162,21 @@ class PartialStoreMigrationTest < Plastic::TestCase
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
     assert_equal fresh_layouts, layouts_of(store_root(home))
   end
+
+  def test_a_compaction_that_fails_after_the_commit_keeps_the_new_knowledge_file_and_its_rows
+    home = beta_2_home
+    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
+    full_disk = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
+    answer = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, compaction: full_disk).call
+
+    assert_equal "it could not be migrated (database or disk is full)", answer
+    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
+  end
 end
 
 class StoreMigrationFailureTest < Plastic::TestCase
   include Beta2Store
+  include SchemaVersions
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 1, 1)
@@ -180,7 +193,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
 
   def rewriting_copy = %(CREATE TRIGGER rewrite AFTER INSERT ON sqlar BEGIN UPDATE sqlar SET sha256 = 'changed' WHERE name = NEW.name; END)
 
-  def state(home) = layouts_of(store_root(home)).merge("stamps" => %w[knowledge_graph work_graph].map { |name| stamp_of(store_path(home, "#{name}.db")) })
+  def state(home) = layouts_of(store_root(home)).merge("recorded" => %w[knowledge_graph work_graph].map { |name| recorded_versions(store_path(home, "#{name}.db")) })
 
   def rows_digest(home)
     %w[work_graph knowledge_graph].map { |name| read_file(store_path(home, "#{name}.db"), "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name") }
@@ -194,7 +207,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     [home, before, report]
   end
 
-  def test_a_failure_in_the_copy_of_the_kept_files_leaves_stamp_zero_every_table_and_references_db
+  def test_a_failure_in_the_copy_of_the_kept_files_records_no_version_and_keeps_every_table_and_references_db
     home, before, report = failing_run(refusing_copy)
 
     assert_equal ["alpha"], report.failed.keys
@@ -225,5 +238,29 @@ class StoreMigrationFailureTest < Plastic::TestCase
     result = plastic("update", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
 
     assert_equal 3, result.code
+  end
+end
+
+class AlphaStoreMigrationTest < Plastic::TestCase
+  include StoreMigrationRuns
+
+  # A store an alpha build wrote: the newest layout, stamped 1, with no schema_migrations table.
+  def alpha_home
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+    Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    home
+  end
+
+  def without_versions(home) = layouts_of(store_root(home)).transform_values { |tables| tables.except("schema_migrations") }
+
+  def test_an_alpha_store_at_stamp_1_gets_the_baseline_row_and_keeps_its_layout
+    home = alpha_home
+    before = without_versions(home)
+    report = migrate(home)
+
+    assert_equal [["alpha"], [Plastic::Graph::MIGRATIONS.baseline(:store)]], [report.migrated, recorded_versions(store_path(home, "knowledge_graph.db"))]
+    assert_equal before, without_versions(home)
   end
 end

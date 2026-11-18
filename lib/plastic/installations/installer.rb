@@ -86,7 +86,8 @@ module Plastic
       end
 
       def prepare_config_import
-        return unless Graph::Database::Local.new(plastic_home).version.to_i < Graph::SchemaMigrator::VERSION
+        state = Graph::Database::Local.new(plastic_home).schema_state
+        return if state && !state.pending.include?(Graph::MIGRATIONS.baseline(:home))
 
         AdvisorMigration.file(File.join(plastic_home, "config.yml"))
         report_config_upgrade

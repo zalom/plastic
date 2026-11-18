@@ -69,11 +69,15 @@ module WholeHome
     [SLUG, "global"].each { |store| Plastic::Graph.create(home: @plastic_home, store:) }
   end
 
+  def record_versions(connection, key)
+    Plastic::Graph::SchemaMigrator.record(connection, Plastic::Graph::MIGRATIONS.versions(Plastic::Graph::SchemaState.kind_of(key)))
+  end
+
   def database(path, key)
     FileUtils.mkdir_p(File.dirname(path))
     connection = SQLite3::Database.new(path)
     schema.prepare(connection, schema.fetch(key))
-    connection.execute("PRAGMA user_version = #{Plastic::Graph::SchemaMigrator::VERSION}")
+    record_versions(connection, key) if Plastic::Graph::SchemaState::KINDS.key?(key)
   ensure
     connection&.close
   end

@@ -30,6 +30,12 @@ The following table says when each step passes.
 | Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
 | RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
 
+Before the steps, the gate runs the migration guard, `bin/lib/migration_guard.rb`, against the
+tip of the base it is given. CI passes `origin/$GITHUB_BASE_REF`. The guard fails the gate when a
+migration that is on the base was changed, renamed or deleted, or when an added migration does
+not sort after the newest migration of its kind on the base. [MIGRATIONS.md](MIGRATIONS.md)
+holds the rules.
+
 A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells and RubyCritic score steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
 
 The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
