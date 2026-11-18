@@ -50,6 +50,14 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
     assert_equal "open", folders.intents.first.status
   end
 
+  def test_a_folder_whose_intent_line_holds_quotes_gives_a_row_with_the_whole_line
+    title = 'Link "About" to the page'
+    write("store/2--beta/2--beta.md", page("2", title))
+
+    assert_empty folders.problems
+    assert_equal [title], folders.intents.map(&:title)
+  end
+
   def test_a_folder_whose_intent_already_has_a_row_gives_no_row
     open_intent
 

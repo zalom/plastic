@@ -95,10 +95,10 @@ class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
 
   def work = store_graphs.databases.fetch(:store)
 
-  def seed
+  def seed(batch_title: "One")
     work.transaction do |batch|
       batch.put(:roadmaps, { slug: "plan", title: "Plan", opened_at: STAMP, updated_at: STAMP })
-      batch.put(:batches, { roadmap: "plan", position: 1, title: "One", done: "", updated_at: STAMP })
+      batch.put(:batches, { roadmap: "plan", position: 1, title: batch_title, done: "", updated_at: STAMP })
       batch.put(:roadmap_items, { roadmap: "plan", item: "1", batch: 1, position: 1, title: "First", done: "", updated_at: STAMP })
     end
   end
@@ -123,6 +123,13 @@ class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
     reread
 
     assert_equal "", roadmaps.batches("plan").first.done
+  end
+
+  def test_a_batch_with_an_empty_title_reads_back_with_the_empty_title_the_rows_hold
+    seed(batch_title: "")
+    reread
+
+    assert_equal "", roadmaps.batches("plan").first.title
   end
 end
 

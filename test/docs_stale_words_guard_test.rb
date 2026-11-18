@@ -24,10 +24,39 @@ class DocsStaleWordsGuardTest < Minitest::Test
     %r{\bscripts/(?!#{SCRIPTS.map { |name| Regexp.escape(name) }.join("|")})[a-z]}
   )
 
+  SHIPPED = Dir["{lib,bin,tools,docs}/**/*", base: ROOT].select { |path| File.file?(File.join(ROOT, path)) }
+
   def stale_words(text, pattern = STALE) = text.scan(pattern)
 
   def found(paths, pattern = STALE)
     paths.to_h { |path| [path, stale_words(File.read(File.join(ROOT, path)), pattern)] }.reject { |_, words| words.empty? }
+  end
+
+  def test_the_shipped_files_are_read_from_the_disk
+    assert_includes SHIPPED, "lib/plastic/doctor/core.rb"
+    assert_includes SHIPPED, "docs/contributing/figures/containers.svg"
+    assert_includes SHIPPED, "tools/store_proof.rb"
+  end
+
+  def test_only_the_readers_of_the_old_layout_name_a_word_of_the_old_storage
+    assert_empty StaleWords.holding(ROOT, SHIPPED) - StaleWords::OLD_LAYOUT_READERS
+  end
+
+  def test_every_allowed_reader_still_holds_a_word_of_the_old_storage
+    assert_empty StaleWords::OLD_LAYOUT_READERS - StaleWords.holding(ROOT, StaleWords::OLD_LAYOUT_READERS)
+  end
+
+  def test_the_old_layout_detector_catches_a_removed_file_and_database_and_leaves_the_sqlite_savepoint_alone
+    caught = stale_words("read savepoint.md and the savepoints table of local.db, then references.db and routine run", StaleWords::OLD_LAYOUT)
+
+    assert_equal ["savepoint.md", "savepoints", "local.db", "references.db", "routine run"], caught
+    assert_empty stale_words("db.execute(SAVEPOINT x); old_savepoints.remove; @savepoint_name", StaleWords::OLD_LAYOUT)
+  end
+
+  def test_the_removed_storage_detector_catches_each_removed_name_and_leaves_the_current_words_alone
+    assert_equal %w[work_log_pending write_id drain_log SchemaHome SchemaStore], stale_words("work_log_pending, write_id, drain_log, SchemaHome, SchemaStore", StaleWords::REMOVED_STORAGE)
+    assert_equal ["no ATTACH", "--system"], stale_words("no ATTACH here, ruby bin/test --system", StaleWords::REMOVED_STORAGE)
+    assert_empty stale_words("ATTACH is allowed; the work_log table; --systematic", StaleWords::REMOVED_STORAGE)
   end
 
   def test_the_subjects_are_read_from_the_disk
