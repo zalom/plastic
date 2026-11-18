@@ -18,7 +18,7 @@ class DoctorClaudeHooksTest < Plastic::TestCase
   def check(event) = checks.find { |item| item.label == "hook #{event}:" }
 
   def test_each_event_with_an_executable_plastic_file_is_ok
-    assert_equal(["ok, plastic-resume"] * 3, checks.map(&:value))
+    assert_equal(["ok, plastic-resume"] * 4, checks.map(&:value))
   end
 
   def test_settings_that_are_not_json_are_one_finding
@@ -31,13 +31,19 @@ class DoctorClaudeHooksTest < Plastic::TestCase
   def test_settings_that_hold_a_list_have_no_plastic_hook
     write(settings_path, "[]")
 
-    assert_equal(["no Plastic hook"] * 3, checks.map(&:value))
+    assert_equal(["no Plastic hook"] * 4, checks.map(&:value))
   end
 
   def test_missing_settings_are_one_finding
     File.delete(settings_path)
 
     assert_equal [["hooks:", "#{settings_path} is missing", REPAIR]], checks.map(&:to_a)
+  end
+
+  def test_names_a_missing_prompt_hook
+    write_hooks("SessionStart" => "\"#{hook_file}\"", "Stop" => "\"#{hook_file}\"", "SessionEnd" => "\"#{hook_file}\"")
+
+    assert_equal ["no Plastic hook", REPAIR], check("UserPromptSubmit").to_h.values_at(:value, :repair)
   end
 
   def test_an_event_with_no_plastic_hook_is_a_finding
@@ -78,7 +84,7 @@ class DoctorClaudeHooksTest < Plastic::TestCase
     File.chmod(0o755, launcher)
     write_hooks(Plastic::Harnesses::EVENTS.to_h { |event, words| [event, "env -u RUBYOPT \"#{launcher}\" #{words} || true"] })
 
-    assert_equal(["ok, plastic"] * 3, checks.map(&:value))
+    assert_equal(["ok, plastic"] * 4, checks.map(&:value))
   end
 
   def test_a_launcher_whose_end_entry_still_names_a_harness_is_drift_with_its_repair

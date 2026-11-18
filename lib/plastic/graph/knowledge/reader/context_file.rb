@@ -33,6 +33,9 @@ module Plastic
 
           def held? = TABLES.keys.any? { |part| data[part] }
 
+          # The file can be read and holds a part.
+          def usable? = problem.nil? && held?
+
           private
 
           def data
@@ -40,7 +43,8 @@ module Plastic
             raise Invalid, "#{@path} is not a JSON object" unless parsed.is_a?(Hash)
             return parsed unless TABLES.keys.any? { |part| parsed[part] }
 
-            raise Invalid, "#{@path} names intent #{parsed["intent"]}, not intent #{@intent_id}" unless parsed["intent"] == @intent_id
+            named = parsed["intent"]
+            raise Invalid, "#{@path} names intent #{named}, not intent #{@intent_id}" unless named == @intent_id
 
             parsed
           rescue JSON::ParserError

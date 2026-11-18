@@ -49,8 +49,8 @@ module Plastic
 
       def database_list = as_usage(Plastic::Graph::Backup::Databases::Unknown) { Plastic::Graph::Backup::Databases.parse(parsed[:databases]) }
 
-      def scope
-        @scope ||= Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)
+      def new_scope
+        Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)
       end
     end
   end

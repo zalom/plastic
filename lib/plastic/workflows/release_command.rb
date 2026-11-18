@@ -11,9 +11,10 @@ module Plastic
     # nothing.
     ReleaseCommand = Data.define(:ruby, :share, :bin, :plastic_home, :user_home) do
       def self.of(scope)
-        share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
-        bin = scope.setting("PLASTIC_BIN", File.join(scope.home, ".local", "bin"))
-        new(RbConfig.ruby, share, bin, scope.plastic_home, scope.home)
+        home = scope.home
+        share = scope.setting("PLASTIC_SHARE", File.join(home, ".local", "share", "plastic"))
+        bin = scope.setting("PLASTIC_BIN", File.join(home, ".local", "bin"))
+        new(RbConfig.ruby, share, bin, scope.plastic_home, home)
       end
 
       def install(active, version) = line(active, "--directory", File.join(share, "download"), "--version", version)

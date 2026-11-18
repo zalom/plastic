@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "whole_home"
-require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/installations/hook_entries"
 
 module CodexHome
   include WholeHome
@@ -24,7 +24,7 @@ module CodexHome
   end
 
   def codex_hooks
-    entries = Plastic::Hooks::Entries.new(command: codex_launcher, config: Plastic::Wiring.config(@plastic_home), launchers: {})
+    entries = Plastic::Installations::HookEntries.new(command: codex_launcher, config: Plastic::Wiring.config(@plastic_home), launchers: {})
     write(codex_hooks_path, JSON.generate(entries.codex({})))
   end
 

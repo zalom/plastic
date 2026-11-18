@@ -184,3 +184,30 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
     assert_equal %w[store/index.json store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/work.log], Plan.on_disk(folder)
   end
 end
+
+class KnowledgeSyncPlanPrintedUpTest < Plastic::TestCase
+  Sync = Plastic::Graph::Knowledge::Sync
+  Print = Plastic::Graph::Prints::Print
+
+  def plan
+    entries = [Sync::Entry.new("r.md", "p", "p", Print.new("r.md", "r", nil))]
+    Sync::Plan.new(resolution: Sync::Resolution.new(:down, "/root", {}), entries:, legacy: false, problem: nil, unreadable: [], archived: 0)
+  end
+
+  def test_a_fresh_print_replaces_the_print_of_the_entry_and_the_index_comes_first
+    index = Print.new(Plastic::Graph::Knowledge::StoreFolder::INDEX, "i", nil)
+    fresh = { "r.md" => Print.new("r.md", "new", nil), Plastic::Graph::Knowledge::StoreFolder::INDEX => index }
+
+    assert_equal [Plastic::Graph::Knowledge::StoreFolder::INDEX, "r.md"], plan.printed_up(fresh).map(&:path)
+  end
+
+  def test_a_print_without_a_fresh_one_keeps_its_own
+    assert_equal ["r"], plan.printed_up({}).map(&:sha256)
+  end
+
+  def test_a_print_differs_from_a_file_hash_only_when_the_hashes_differ
+    print = Print.new("r.md", "r", nil)
+
+    assert_equal [false, true], [print.other_than?("r"), print.other_than?("x")]
+  end
+end

@@ -45,13 +45,7 @@ module Plastic
         private
 
         def purge
-          purger = Purger.new(@root)
-          (purger.expired(now: @now) - [newest_done]).each { |name| purger.remove(name) }
-        end
-
-        def newest_done
-          folders = Folders.new(@root)
-          folders.names.reverse.find { |name| folders.status(name) == "done" }
+          Purger.new(@root).sweep(now: @now)
         end
 
         def stale?

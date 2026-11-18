@@ -28,4 +28,20 @@ class MoveNodeTest < Plastic::TestCase
 
     assert_equal [:done, "open"], [outcome, retrieval.node("1", "n1").state]
   end
+
+  def release_as(session) = stop_workflow(Plastic::Workflows::Code::Node::Release, Plastic::Refused, harness: scoped_harness(session:), intent_id: "1", id: "n1").first
+
+  def test_a_node_held_by_another_session_is_refused_as_taken
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+
+    assert_equal "node n1 is held by session s-1; its claim was taken", release_as("s-2").message
+    assert_equal "claimed", retrieval.node("1", "n1").state
+  end
+
+  def test_a_node_finished_by_another_session_is_refused_as_taken
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+    store_graphs.work.done_node(intent_id: "1", id: "n1", by: "s-1", output: "built")
+
+    assert_equal "node n1 is held by session s-1; its claim was taken", release_as("s-2").message
+  end
 end

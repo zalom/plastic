@@ -6,9 +6,9 @@ require_relative "../../../../../lib/plastic/workflows/code/init/choose"
 class InitChooseTest < Plastic::TestCase
   Choose = Plastic::Workflows::Code::Init::Choose
 
-  def choose(answer, installed: true)
+  def choose(answer, installed: true, settings: FakeSettings.new)
     FileUtils.mkdir_p(File.join(@home, ".claude")) if installed
-    context = call_context(declared: Choose.facts, harness: scoped_harness(env: { "PATH" => "" }), answer:)
+    context = call_context(declared: Choose.facts, harness: scoped_harness(env: { "PATH" => "" }, settings:), answer:)
     Choose.call(context)
     context
   end
@@ -29,5 +29,19 @@ class InitChooseTest < Plastic::TestCase
     context = choose("q")
 
     assert_equal [["claude-code"], [], false], [context.found, context.picked, context.media]
+  end
+
+  def test_the_sync_of_media_is_picked_when_the_types_hold_every_media_type
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    settings = FakeSettings.new(values: { "sync.types" => %w[md html] + Plastic::Config::SyncTypes::MEDIA })
+
+    assert_equal [true], [Choose.choices(scoped_harness(env: { "PATH" => "" }).scope, settings).last.chosen]
+  end
+
+  def test_the_sync_of_media_is_not_picked_when_the_types_leave_media_out
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    settings = FakeSettings.new(values: { "sync.types" => %w[md html] })
+
+    assert_equal [false], [Choose.choices(scoped_harness(env: { "PATH" => "" }).scope, settings).last.chosen]
   end
 end

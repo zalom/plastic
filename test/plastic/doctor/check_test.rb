@@ -2,10 +2,10 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/doctor/check"
-require_relative "../../../lib/plastic/workflows/installation_health"
+require_relative "../../../lib/plastic/doctor/installation_health"
 
 class DoctorCheckTest < Plastic::TestCase
-  Part = Plastic::Workflows::InstallationHealth::Check
+  Part = Plastic::Doctor::InstallationHealth::Check
 
   def test_a_part_with_a_repair_stays_a_finding
     assert_equal ["ruby:", "3.4.7", "install Ruby 4.0 or later"], Plastic::Doctor::Check.from(Part.new("ruby:", "3.4.7", "install Ruby 4.0 or later")).to_a

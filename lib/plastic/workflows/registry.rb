@@ -87,6 +87,7 @@ module Plastic
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
+      code_list_chat: "Code::Chat::List",
       # Settings: the config file read and written one key at a time.
       code_list_config: "Code::Config::List",
       code_get_config: "Code::Config::Get",
@@ -118,7 +119,11 @@ module Plastic
       code_fail_node: "Code::Node::Fail",
       code_ask_node: "Code::Node::Ask",
       code_impede_node: "Code::Node::Impede",
-      code_resolve_node: "Code::Node::Resolve"
+      code_resolve_node: "Code::Node::Resolve",
+
+      # Resources: the sort of an intent folder into the resources layout.
+      code_preview_sort_resources: "Code::Resources::Sort::Preview",
+      code_sort_resources: "Code::Resources::Sort"
     }.freeze
   end
 end

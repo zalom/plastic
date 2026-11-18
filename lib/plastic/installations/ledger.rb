@@ -29,16 +29,16 @@ module Plastic
       def read
         return [] unless File.exist?(@path)
 
-        File.readlines(@path).filter_map { |line| parsed(line) }
+        File.readlines(@path).filter_map { |line| Ledger.parsed(line) }
       end
 
-      private
-
-      def parsed(line)
+      def self.parsed(line)
         JSON.parse(line)
       rescue JSON::ParserError
         nil
       end
+
+      private
     end
   end
 end

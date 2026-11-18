@@ -60,7 +60,7 @@ class CommandReferenceChangesTest < Minitest::Test
 
   def test_the_same_change_declared_by_the_command_and_by_a_step_is_one_row
     step = Plastic::CodeWorkflow::Step.new("write", nil, { work: "A thing changes" }, nil)
-    flow = Struct.new(:klass).new(Struct.new(:steps).new([step]))
+    flow = CommandReference::Flow.new(:write, Struct.new(:steps).new([step]), "code", nil, nil, nil, [], [])
 
     assert_equal ["A thing changes"], rows({ work: "A thing changes" }, [], [flow]).map(&:text)
   end

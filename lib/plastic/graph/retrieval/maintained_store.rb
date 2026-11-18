@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../origin"
-require_relative "../retrieval_graph"
+require_relative "errors"
 require_relative "../schema"
 
 module Plastic

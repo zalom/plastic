@@ -101,6 +101,21 @@ class RecapTest < Plastic::TestCase
   def test_a_resumed_session_says_so
     assert_equal ["Plastic: a resumed session. The rows below carry the state; run plastic graph resume."], recap(source: "resume")
   end
+
+  def test_a_recap_prints_no_note_line_when_no_session_left_a_note
+    printed_intent
+
+    refute(recap.any? { |line| line.start_with?("note:") })
+  end
+
+  def test_a_new_session_prints_the_note_of_its_predecessor
+    opened.work.open_session("s-1", harness: "claude-code", directory: @home)
+    printed_intent
+    opened.work.write_note("s-1", "left behind")
+    opened.work.end_session("s-1", reason: "clear")
+
+    assert_includes recap(session: "s-2"), "note: left behind"
+  end
 end
 
 class RecapClaimTest < Plastic::TestCase

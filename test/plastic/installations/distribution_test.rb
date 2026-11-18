@@ -9,7 +9,7 @@ class DistributionTest < Plastic::TestCase
   include InstallFixture
 
   def distribute(mode = :install, version: "2.0.3")
-    capture_io { Plastic::Installations::Distribution.new(shipped_package(version), tmp_dirs: []).call(mode) }.first
+    capture_io { Plastic::Installations::Distribution.new(shipped_package(version), tmp_dirs: []).public_send(mode) }.first
   end
 
   def manifest = JSON.parse(File.read(File.join(plastic, "manifest.json")))["files"].keys
@@ -54,7 +54,7 @@ class DistributionTest < Plastic::TestCase
   def test_a_manifest_entry_in_the_intent_store_is_never_pruned
     kept = write(File.join(plastic, "store", "note.md"), "mine\n")
     write(File.join(plastic, "manifest.json"), JSON.generate("files" => { kept => "x" }))
-    _, err = capture_io { Plastic::Installations::Distribution.new(shipped_package, tmp_dirs: []).call(:update) }
+    _, err = capture_io { Plastic::Installations::Distribution.new(shipped_package, tmp_dirs: []).update }
 
     assert_path_exists kept
     assert_includes err, "Refused to prune #{kept}: inside the intent store"

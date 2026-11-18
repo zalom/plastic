@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "time"
-require_relative "../verdict"
+require_relative "../../rows/verdict"
 
 module Plastic
   module Graph

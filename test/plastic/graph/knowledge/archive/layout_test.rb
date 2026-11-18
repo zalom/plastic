@@ -47,4 +47,11 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
     assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
     refute_path_exists @root
   end
+
+  def test_restoration_refuses_an_unknown_entry_kind
+    save([*@entries, extra("odd", "socket", "")])
+
+    assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
+    refute_path_exists @root
+  end
 end

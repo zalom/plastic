@@ -1,18 +1,21 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require "shellwords"
 require_relative "check"
 require_relative "version_record"
 require_relative "database_check"
 require_relative "instruction_line"
 require_relative "store_backups"
-require_relative "home_ignore"
-require_relative "../wiring"
-require_relative "../workflows/installation_health"
+require_relative "unsorted_stores"
+require_relative "../installations/home_ignore"
+require_relative "installation_health"
 
 module Plastic
   module Doctor
     class Core
+      extend Forwardable
+
       SQLITE = lambda do
         require "sqlite3"
         SQLite3::VERSION
@@ -20,6 +23,7 @@ module Plastic
       SCHEMA = Graph::Schema
       STORE = SCHEMA.store
       PLASTIC_LINE = /PLASTIC\.md/
+      Readers = Data.define(:running, :loader, :config_store)
 
       def self.store_problem(folder)
         problems = STORE.filter_map { |key| DatabaseCheck.new(File.join(folder, SCHEMA.file(key)), key).problem }
@@ -32,24 +36,25 @@ module Plastic
           .judged(InstructionLine.new(file, PLASTIC_LINE).problem)
       end
 
-      def initialize(scope, running:, now:, loader: SQLITE)
+      def initialize(scope, running:, now:, store:, loader: SQLITE)
         @scope = scope
-        @running = running
-        @loader = loader
+        @readers = Readers.new(running:, loader:, config_store: store)
         @now = now
       end
 
-      def checks = [version, *release, sqlite, machine_database, *former_database, config_file, home_ignore, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups]
+      def checks = [version, *release, sqlite, machine_database, *former_database, config_file, home_ignore, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }, *backups, *UnsortedStores.checks(scope)]
 
       private
 
-      attr_reader :scope, :running, :loader, :now
+      attr_reader :scope, :now
+
+      def_delegators :@readers, :running, :loader, :config_store
 
       def home = scope.plastic_home
 
       def version = VersionRecord.new(File.join(home, "VERSION"), running).check("version:", install: "plastic install")
 
-      def release = Workflows::InstallationHealth.at(scope).parts.map { |part| Check.from(part) }
+      def release = InstallationHealth.at(scope).parts.map { |part| Check.from(part) }
 
       def sqlite
         Check.ok("sqlite3 gem:", "loads, version #{loader.call}")
@@ -73,13 +78,13 @@ module Plastic
       end
 
       def config_file
-        line = Wiring.store(home).problem
+        line = config_store.problem
         return Check.ok("config.yml:", "matches the settings rows") unless line
 
         Check.finding("config.yml:", line, Config::Store::REPAIR)
       end
 
-      def home_ignore = HomeIgnore.new(home).check
+      def home_ignore = Check.ok(".gitignore:", Installations::HomeIgnore.new(home).apply)
 
       def global_store
         path = File.join(home, "stores", "global")

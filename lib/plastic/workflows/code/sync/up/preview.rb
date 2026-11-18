@@ -3,6 +3,8 @@
 require_relative "../up"
 require_relative "../../../../code_workflow"
 require_relative "../../../sync_steps"
+require_relative "../../../sync_words"
+require_relative "../../../sync_refusals"
 
 module Plastic
   module Workflows
@@ -61,16 +63,16 @@ module Plastic
 
             # The gates of the conflicts, before and after the real run writes.
             def self.conflict_gates(direction)
-              gate SyncSteps::REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
-              gate SyncSteps::REFUSED_AFTER.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
+              gate SyncRefusals::REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
+              gate SyncRefusals::REFUSED_AFTER.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
             end
 
             # The gates of the files that sync up reads.
             def self.readable_gates
-              gate SyncSteps::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
-              gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
+              gate SyncWords::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
+              gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
                 offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
-              gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :rowless_read?) },
+              gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :rowless_read?) },
                 because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
             end
 

@@ -5,6 +5,7 @@ require_relative "../backup"
 require_relative "copy"
 require_relative "folder_name"
 require_relative "folders"
+require_relative "site"
 require_relative "source_check"
 
 module Plastic
@@ -25,22 +26,23 @@ module Plastic
         MODE_KEYS = %i[automatic reason].freeze
         CLAIM_WINDOW = 5 * 60
 
+        # Whether the backup is automatic, and the reason that asked for it.
+        Mode = Data.define(:automatic, :reason)
+
         def initialize(store_root, slug, now:, copy: Copy.new(now:), **mode)
-          @root = store_root
-          @slug = slug
+          @site = Site.new(store_root, slug)
           @now = now
           @copy = copy
           unknown = mode.keys - MODE_KEYS
           raise ArgumentError, "unknown keyword: #{unknown.first}" if unknown.any?
 
-          @automatic = mode.fetch(:automatic, false)
-          @reason = mode[:reason]
+          @mode = Mode.new(mode.fetch(:automatic, false), mode[:reason])
         end
 
         # The backup row, or nil when an automatic backup had nothing to do.
         def call
           check = source_check
-          return if @automatic && claimed_lately?
+          return if @mode.automatic && claimed_lately?
 
           folder = claim
           folder && checked_write(folder, check)
@@ -50,12 +52,11 @@ module Plastic
 
         # The claim comes before the check, so a second session finds it; it goes when the check fails or the store is unchanged.
         def checked_write(folder, check)
-          version = verified(check)
-          return release(folder) if @automatic && unchanged?(check, folder)
+          version = verified(check, folder)
+          return release(folder) if @mode.automatic && unchanged?(check, folder)
 
           write(folder, extra(check, version))
         rescue SourceCheck::Unreadable => error
-          release(folder)
           raise Error, error.message
         end
 
@@ -66,23 +67,25 @@ module Plastic
           !newest.nil? && folders.status(newest) != "done" && (@now - FolderName.time(newest)).between?(0, CLAIM_WINDOW)
         end
 
-        def folders = (@folders ||= Folders.new(@root))
+        def folders = @site.folders
 
         def stamp = Plastic.timestamp(@now)
 
         # The lowest version of the live files; each check is recorded for the doctor.
-        def verified(check)
+        def verified(check, folder)
           check.version.tap { folders.write_check(at: stamp, verdict: "passed") }
         rescue SourceCheck::Unreadable => error
           folders.write_check(at: stamp, verdict: "failed", file: File.basename(error.path), reason: error.message)
+          release(folder)
           raise
         end
 
         def source_check
-          names = @copy.sources(@root)
-          raise Error, "no store database to back up in #{@root}" if names.empty?
+          root = @site.root
+          names = @copy.sources(root)
+          raise Error, "no store database to back up in #{root}" if names.empty?
 
-          SourceCheck.new(names.map { |name| File.join(@root, "#{name}.db") })
+          SourceCheck.new(names.map { |name| File.join(root, "#{name}.db") })
         end
 
         def unchanged?(check, own)
@@ -91,25 +94,21 @@ module Plastic
         end
 
         def claim
-          FileUtils.mkdir_p(folders.dir)
-          @automatic ? claim_folder(FolderName.timestamp(@now)) : claim_folder(FolderName.for(folders.dir, @now))
+          dir = folders.dir
+          FileUtils.mkdir_p(dir)
+          claim_folder(@mode.automatic ? FolderName.timestamp(@now) : FolderName.for(dir, @now))
         rescue Errno::EEXIST
           nil
         end
 
         def claim_folder(name) = Dir.mkdir(folders.path(name)) && name
 
-        def extra(check, version) = { version:, fingerprint: check.fingerprint, reason: @reason }.compact
+        def extra(check, version) = { version:, fingerprint: check.fingerprint, reason: @mode.reason }.compact
 
         def write(folder, extra)
-          @copy.call(Copy::Slot.new(@root, folders, folder, nil, extra))
+          @copy.call(Copy::Slot.new(@site.root, folders, folder, nil, extra))
           folders.record_digest(folder)
-          row(folder)
-        end
-
-        def row(folder)
-          { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),
-            sha256: folders.digest(folder), at: stamp }
+          @site.row(folder, stamp)
         end
       end
     end

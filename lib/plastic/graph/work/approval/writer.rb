@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../approval"
+require_relative "../../rows/approval"
 
 module Plastic
   module Graph

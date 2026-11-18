@@ -11,14 +11,15 @@ class ClaudeHooksTest < Plastic::TestCase
 
   def config_with(text) = seed_config(@plastic_home, text)
 
-  def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3")
+  def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3", Plastic::Wiring.settings(@plastic_home))
 
   def settings_path = File.join(@home, ".claude", "settings.json")
 
   def merge(settings, times: 1, root: REAL_PACKAGE, choice: :plastic)
     write(settings_path, JSON.generate(settings))
     out = ""
-    times.times { out, = capture_io { Plastic::Installations::ClaudeHooks.new(package(root), File.join(@home, ".claude")).merge(settings_path, choice:) } }
+    hooks = Plastic::Installations::ClaudeHooks.new(package(root), File.join(@home, ".claude"))
+    times.times { out, = capture_io { (choice == :keep) ? hooks.merge_keeping_status_line(settings_path) : hooks.merge(settings_path) } }
     [JSON.parse(File.read(settings_path)), out]
   end
 
@@ -35,7 +36,7 @@ class ClaudeHooksTest < Plastic::TestCase
   def test_the_install_writes_the_kernel_hooks
     settings, = merge({})
     kernel = %("#{File.join(@plastic_home, "exe", "plastic")}")
-    expected = { "SessionStart" => "#{kernel} hook start", "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
+    expected = { "SessionStart" => "#{kernel} hook start", "UserPromptSubmit" => "#{kernel} hook prompt", "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
 
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
@@ -74,9 +75,9 @@ class ClaudeHooksTest < Plastic::TestCase
     merge({})
     share = File.join(@home, ".local", "share", "plastic")
     settings, = merge(JSON.parse(File.read(settings_path)), root: File.join(share, "releases", "2.0.3"))
-    kernel = %w[SessionStart Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
+    kernel = %w[SessionStart UserPromptSubmit Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|prompt|stop|end)/) }
 
-    assert_equal [[1, 1, 1], true], [kernel.map(&:size), kernel.flatten.all? { |cmd| cmd.include?("#{share}/active/bin/plastic") }]
+    assert_equal [[1, 1, 1, 1], true], [kernel.map(&:size), kernel.flatten.all? { |cmd| cmd.include?("#{share}/active/bin/plastic") }]
   end
 
   def test_a_second_install_keeps_one_group_per_event
@@ -125,9 +126,7 @@ class ClaudeHooksTest < Plastic::TestCase
   end
 
   def test_a_status_line_stays_off_while_the_flag_is_off
-    settings, = merge({}, choice: :plastic)
-
-    refute settings.key?("statusLine")
+    refute merge({}, choice: :plastic).first.key?("statusLine")
   end
 
   def test_a_settings_file_that_does_not_exist_is_started_from_nothing
@@ -135,5 +134,12 @@ class ClaudeHooksTest < Plastic::TestCase
     Plastic::Installations::ClaudeHooks.new(package, File.join(@home, ".claude")).merge(settings_path)
 
     assert_includes JSON.parse(File.read(settings_path)).keys, "hooks"
+  end
+
+  def test_the_status_line_that_is_plastics_own_is_not_kept_in_the_cache
+    config_with("global:\n  statusline: true\n")
+    merge({ "statusLine" => { "type" => "command", "command" => "#{@home}/.claude/hooks/plastic-statusline" } })
+
+    refute_path_exists File.join(@plastic_home, ".cache", "original-statusline.json")
   end
 end

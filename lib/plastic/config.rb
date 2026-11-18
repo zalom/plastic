@@ -4,6 +4,7 @@ require "yaml"
 require_relative "harnesses"
 require_relative "config/defaults"
 require_relative "config/store"
+require_relative "config/sync_types"
 require_relative "config/upgrade"
 
 module Plastic
@@ -37,6 +38,8 @@ module Plastic
     end
 
     def value(key) = dig(key.split("."))
+
+    def list(key) = SyncTypes.parse(value(key))
 
     # The stores a search reads when none is named: the comma value of search.source_projects.
     def source_projects = value("search.source_projects").to_s.split(",")

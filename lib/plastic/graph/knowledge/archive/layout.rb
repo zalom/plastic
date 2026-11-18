@@ -20,10 +20,11 @@ module Plastic
           end
 
           def self.validate_entry(row, by_path)
-            validate_path(row[:path])
-            raise Tree::Error, "invalid archive entry kind #{row[:kind]}" unless KINDS.include?(row[:kind])
+            path, kind = row.values_at(:path, :kind)
+            validate_path(path)
+            raise Tree::Error, "invalid archive entry kind #{kind}" unless KINDS.include?(kind)
 
-            segments = row[:path].split("/")
+            segments = path.split("/")
             parents = (1...segments.size).map { |size| segments.take(size).join("/") }
             parents.each do |parent|
               raise Tree::Error, "archive parent #{parent} is not a directory" unless by_path.dig(parent, :kind) == "directory"

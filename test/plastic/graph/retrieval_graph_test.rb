@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require "digest"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 require "timeout"
 
 class RetrievalGraphTest < Plastic::TestCase

@@ -4,6 +4,7 @@ require_relative "../errors"
 require_relative "../graph/retrieval_graph"
 require_relative "../graph/retrieval/search/excerpt"
 require_relative "../graph/retrieval/search/results"
+require_relative "../graph/retrieval_source"
 require_relative "search_scope"
 
 module Plastic
@@ -26,7 +27,7 @@ module Plastic
 
       def results
         terms = context.terms
-        Graph::Retrieval::Search::Results.new(context.scope.plastic_home, terms, excerpt: Graph::Retrieval::Search::Excerpt.new(terms))
+        Graph::Retrieval::Search::Results.new(context.scope.plastic_home, terms, excerpt: Graph::Retrieval::Search::Excerpt.new(terms), opener: Graph::RetrievalSource)
       end
 
       def limit

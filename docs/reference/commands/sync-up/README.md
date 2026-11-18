@@ -28,6 +28,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
+| The file types a sync skipped are recorded in the setting sync.asked, once each | the Plastic home folder | stays on this machine |
 | The records of the intents whose files changed by hand are rewritten from the files | the work graph database, in the store folder | stays on this machine |
 | The documents of those intents are rewritten from the files | the knowledge graph database, in the store folder | stays on this machine |
 | The files of the intents and the index of the store are printed again from the rows | the store folder | goes with the store |

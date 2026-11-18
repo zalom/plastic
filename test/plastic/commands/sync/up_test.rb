@@ -292,8 +292,9 @@ class SyncUpSelectionTest < Plastic::TestCase
   def setup
     super
     page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{STAMP.to_json}\n---\n\n# 2 - Beta\n"
-    { "2--beta.md" => page, "spec.md" => "# Spec\n", "resources/shot.png" => "\x89PNG\x00".b,
-      "resources/page.html" => "<p>page</p>\n", "references/notes.md" => "# Notes\n" }
+    { "2--beta.md" => page, "spec.md" => "# Spec\n", "resources/output/files/shot.png" => "\x89PNG\x00".b,
+      "resources/output/reports/page.html" => "<p>page</p>\n", "resources/references/notes.md" => "# Notes\n",
+      "resources/tmp/scratch.md" => "# Scratch\n" }
       .each { |rel, bytes| write("store/2--beta/#{rel}", bytes) }
   end
 
@@ -301,33 +302,78 @@ class SyncUpSelectionTest < Plastic::TestCase
 
   def documents = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
 
-  def test_a_sync_with_no_setting_reads_the_notes_and_leaves_the_other_files_on_disk
+  def asked = Plastic::Wiring.config(@plastic_home).list("sync.asked")
+
+  def test_a_sync_with_no_setting_reads_the_notes_and_the_reports_and_leaves_the_other_files_on_disk
     result = sync
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal [%w[2--beta.md spec.md], []], [documents, kept]
-    assert_path_exists folder.path("store/2--beta/references/notes.md")
+    assert_equal [%w[2--beta.md resources/output/reports/page.html spec.md], []], [documents, kept]
+    assert_path_exists folder.path("store/2--beta/resources/references/notes.md")
   end
 
-  def test_a_sync_with_the_media_setting_on_keeps_the_image_and_no_other_file
-    seed_config(@plastic_home, "global:\n  sync:\n    media: true\n")
+  def test_a_sync_with_the_png_type_included_keeps_the_image_and_no_other_file
+    seed_config(@plastic_home, "global:\n  sync:\n    types: [md, html, png]\n")
 
     assert_equal 0, sync.code
-    assert_equal [%w[2--beta.md spec.md], %w[store/2--beta/resources/shot.png]], [documents, kept]
+    assert_equal [%w[2--beta.md resources/output/reports/page.html spec.md], %w[store/2--beta/resources/output/files/shot.png]], [documents, kept]
   end
 
-  def media(value) = seed_config(@plastic_home, "global:\n  sync:\n    media: #{value}\n")
+  def test_a_sync_with_the_references_setting_on_reads_the_references_and_never_the_tmp_folder
+    seed_config(@plastic_home, "global:\n  sync:\n    references: true\n")
+
+    assert_equal 0, sync.code
+    assert_equal %w[2--beta.md resources/output/reports/page.html resources/references/notes.md spec.md], documents
+  end
+
+  def types(value) = seed_config(@plastic_home, "global:\n  sync:\n    types: #{value}\n")
 
   def kept_sizes = store_graphs.databases.fetch(:store).rows("SELECT sz FROM sqlar").map { |row| row["sz"] }
 
-  def test_a_kept_image_is_not_read_again_once_the_media_setting_is_off
-    media(true)
+  def test_a_kept_image_is_not_read_again_once_the_type_is_left_out
+    types("[md, html, png]")
     sync
-    media(false)
-    write("store/2--beta/resources/shot.png", "\x89PNG\x00 changed".b)
+    types("[md, html]")
+    write("store/2--beta/resources/output/files/shot.png", "\x89PNG\x00 changed".b)
     result = sync
 
     assert_equal [0, "", [5]], [result.code, result.err, kept_sizes]
+  end
+
+  def test_a_new_type_prints_one_line_naming_the_config_command
+    result = sync
+
+    assert_includes result.out, "files of type .png are not synced; run plastic config set sync.types md,html,png to include them"
+  end
+
+  def test_the_line_is_printed_once_per_type
+    sync
+
+    assert_equal [%w[png], false], [asked, sync.out.include?("files of type .png")]
+  end
+
+  def test_a_type_already_included_prints_no_line
+    types("[md, html, png]")
+
+    refute_includes sync.out, "files of type"
+  end
+
+  def test_the_sync_succeeds_when_the_asked_setting_cannot_be_written
+    File.write(File.join(@plastic_home, "config.yml"), "edited by hand\n")
+    result = sync
+
+    assert_equal 0, result.code
+  end
+
+  def test_a_file_that_left_the_selection_keeps_its_rows_and_the_preview_plans_no_removal
+    types("[md, html, png]")
+    sync
+    types("[md]")
+    preview = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, preview.code
+    refute_match(/would remove .*page\.html/, preview.out)
+    assert_includes documents, "resources/output/reports/page.html"
   end
 end
 

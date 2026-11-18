@@ -63,7 +63,7 @@ class GraphBackupWriterTest < Plastic::TestCase
     folders = Backup::Folders.new(File.join(home, "stores", "alpha"))
 
     assert_equal [2, "alpha/20260101100000", folders.digest("20260101100000")], row.values_at(:files, :name, :sha256)
-    assert_equal row.fetch(:bytes), folders.bytes("20260101100000")
+    assert_equal row.fetch(:bytes), folders.summary("20260101100000").fetch(:bytes)
   end
 
   def test_a_store_with_no_database_has_nothing_to_back_up

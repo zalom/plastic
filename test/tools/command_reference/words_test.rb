@@ -157,6 +157,14 @@ class CommandReferenceRealWordsTest < Minitest::Test
 end
 
 class CommandReferencePlacesTest < Minitest::Test
+  def test_a_text_of_nothing_or_of_spaces_is_blank
+    assert_equal [true, true, false], [nil, " \n", "words"].map { |text| CommandReference::Words.blank?(text) }
+  end
+
+  def test_a_placeholder_is_one_whole_percent_name_and_nothing_else
+    assert_equal [true, false, false], ["%{name}", "for %{name}", nil].map { |text| CommandReference::Words.placeholder?(text) }
+  end
+
   def test_every_graph_a_command_can_declare_is_a_place
     assert(Plastic::CLI::Declarations::GRAPHS.all? { |graph| CommandReference::Places.known?(graph) })
   end
@@ -167,7 +175,7 @@ class CommandReferencePlacesTest < Minitest::Test
 
   def test_a_store_the_command_writes_is_not_named_when_a_step_of_its_workflow_has_a_change_in_words
     step = Plastic::CodeWorkflow::Step.new("write", nil, { backups: "A folder is written" }, nil)
-    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary, :outcomes).new([step], nil, []), [], [])
+    flow = CommandReference::Flow.new(:only, Struct.new(:steps, :summary, :outcomes).new([step], nil, []), "code", nil, nil, nil, [], [])
     page = Struct.new(:words, :flows, :klass).new("odd", [flow], Struct.new(:writes, :changes).new(%i[work], nil))
 
     assert_empty(CommandReference::Words.missing([page]).select { |line| line.include?("writes") })
@@ -178,7 +186,7 @@ class CommandReferencePlacesTest < Minitest::Test
   end
 
   def test_a_change_at_an_unknown_place_is_named_by_the_check
-    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary, :outcomes).new([], nil, []), [], [])
+    flow = CommandReference::Flow.new(:only, Struct.new(:steps, :summary, :outcomes).new([], nil, []), "code", nil, nil, nil, [], [])
     page = Struct.new(:words, :flows, :klass).new("odd", [flow], Struct.new(:writes, :changes).new([], { weather: "The weather changes" }))
 
     assert(CommandReference::Words.missing([page]).any? { |line| line.include?("weather") && line.include?("place") })

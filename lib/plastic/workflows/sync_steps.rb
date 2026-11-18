@@ -1,43 +1,24 @@
 # frozen_string_literal: true
 
+require_relative "sync_words"
+require_relative "sync_refusals"
+require_relative "type_notice"
+
 module Plastic
   module Workflows
     # The steps of a sync, in either direction: plan, stop on what cannot
     # run, refuse a plain call with conflicts before it writes, apply the
     # rest, then refuse on the conflicts left.
     module SyncSteps
-      NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
-      PLAN_FAILURES = {
-        up: "an overwrite path names no file and no rows",
-        down: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows"
-      }.freeze
-      # What each option keeps, in the words of the direction. The paths come last, so the last word of a refusal is a path.
-      OVERWRITE_WORDS = {
-        up: "--overwrite PATH reads that file into rows, --overwrite reads every file",
-        down: "--overwrite PATH prints that record's rows over the file, --overwrite prints every record"
-      }.freeze
-      REFUSED_BEFORE = OVERWRITE_WORDS.transform_values do |words|
-        "changed on both sides since the last print, nothing written. #{words}, " \
-          "--merge applies the one-sided changes and lists the rest. The records: %{conflicts}"
-      end.freeze
-      REFUSED_AFTER = OVERWRITE_WORDS.transform_values do |words|
-        "changed on both sides since the last print, left as they are. #{words}. The records: %{conflicts}"
-      end.freeze
-
       CHANGES = {
         up: {
+          home: "The file types a sync skipped are recorded in the setting sync.asked, once each",
           work: "The records of the intents whose files changed by hand are rewritten from the files",
           knowledge: "The documents of those intents are rewritten from the files",
           store: "The files of the intents and the index of the store are printed again from the rows"
         },
         down: { store: "The files of the intents whose records changed are rewritten in the store folder, and a savepoint.md that matches its print is removed for work.log" }
       }.freeze
-
-      UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
-                   "fix or remove each folder named, then run plastic sync up again"
-
-      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}"
-      REPRINTED_ELSEWHERE = "the home that holds the rows prints the file again with plastic sync down, and the file is then copied here again"
 
       def self.plan(context, direction)
         context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
@@ -60,15 +41,25 @@ module Plastic
       # `rowless` names the files this home holds no rows for: a print from rows cannot work here, so no command is offered for them.
       def self.note_files(context, files, rowless = [])
         context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}; #{fix_of(path, rowless)}" }.join("\n")
-        context[:unreadable_path] = (files.keys - rowless).first
-        context[:unreadable_rowless] = (files.keys & rowless).first
+        keys = files.keys
+        context[:unreadable_path] = (keys - rowless).first
+        context[:unreadable_rowless] = (keys & rowless).first
       end
 
-      def self.fix_of(path, rowless) = rowless.include?(path) ? REPRINTED_ELSEWHERE : "run plastic sync down --overwrite #{path}"
+      def self.fix_of(path, rowless) = rowless.include?(path) ? SyncWords::REPRINTED_ELSEWHERE : "run plastic sync down --overwrite #{path}"
 
       # The lines of the apply, and the files it found no row would take: a new plan names them.
       def self.apply(context, direction)
-        context[:lines] = context.work.sync_apply(plan(context, direction))
+        planned = plan(context, direction)
+        context[:lines] = [*context.work.sync_apply(planned), *new_type_lines(context, planned)]
+        note_remaining(context, direction)
+      end
+
+      def self.new_type_lines(context, planned)
+        (planned.direction == :up) ? TypeNotice.new(context.settings.config).lines(planned.new_types) : []
+      end
+
+      def self.note_remaining(context, direction)
         after = plan(context, direction)
         note_files(context, after.unreadable_files, after.rowless_files)
       end
@@ -109,29 +100,29 @@ module Plastic
 
       def end_steps(direction)
         up_gates if direction == :up
-        outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
+        outcome :done, offers: "plastic next", because: SyncWords::NAMES.fetch(direction)
       end
 
       def up_gates
-        gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?)
-        gate UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:files_read?),
+        gate SyncWords::UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?)
+        gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:files_read?),
           offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
-        gate UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:rowless_read?),
+        gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:rowless_read?),
           because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
       end
 
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure,
-          words: PLAN_FAILURES.fetch(direction),
+          words: SyncWords::PLAN_FAILURES.fetch(direction),
           pass: SyncSteps.check(:runs?)
-        gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
+        gate SyncRefusals::REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
         step("apply the changes", done: SyncSteps.applied(direction), changes: CHANGES.fetch(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
-        gate REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
+        gate SyncRefusals::REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
       end
     end
   end

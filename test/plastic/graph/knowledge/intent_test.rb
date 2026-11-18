@@ -76,14 +76,14 @@ class KnowledgeIntentTest < Plastic::TestCase
   end
 
   def test_each_state_belongs_to_exactly_one_group
-    groups = Intent::STATUSES.to_h { |status| [status, Intent::Listing.group_of(status)] }
+    groups = Plastic::Graph::IntentStatus::ALL.to_h { |status| [status, Intent::Listing.group_of(status)] }
 
     assert_equal({ "open" => "active", "in_progress" => "active", "parked" => "active", "future" => "future",
                    "done" => "finished", "abandoned" => "finished" }, groups)
   end
 
   def test_the_states_are_the_six_with_in_progress_for_work_under_way
-    assert_equal %w[open in_progress parked future done abandoned], Intent::STATUSES
+    assert_equal %w[open in_progress parked future done abandoned], Plastic::Graph::IntentStatus::ALL
     assert_equal %w[open parked future], Intent::NEW_STATUSES
   end
 

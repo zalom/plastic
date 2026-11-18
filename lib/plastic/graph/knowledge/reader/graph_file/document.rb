@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../../../work/approval"
-require_relative "../../../work/completion_row"
-require_relative "../../../work/edge"
-require_relative "../../../work/node"
-require_relative "../../../work/run"
+require_relative "../../../rows/approval"
+require_relative "../../../rows/completion_row"
+require_relative "../../../rows/edge"
+require_relative "../../../rows/node"
+require_relative "../../../rows/run"
 require_relative "legacy_nodes"
-require_relative "../../../work/verdict"
+require_relative "../../../rows/verdict"
 
 module Plastic
   module Graph
@@ -47,12 +47,11 @@ module Plastic
             private
 
             def parsed(text)
-              legacy(object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8))))
+              data = object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
+              data && LegacyNodes.new(data).call
             rescue JSON::ParserError => error
               refuse(error.message.lines.first.chomp)
             end
-
-            def legacy(data) = data && LegacyNodes.new(data).call
 
             def object(data) = data.is_a?(Hash) ? data : refuse("it is not an object")
 

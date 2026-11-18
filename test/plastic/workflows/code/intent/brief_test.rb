@@ -4,7 +4,9 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/intent/brief"
 
 class ShowBriefTest < Plastic::TestCase
-  def brief(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Intent::Brief, intent_id:)
+  USAGES = ["plastic node add ID", "plastic edge remove ID FROM TO"].freeze
+
+  def brief(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Intent::Brief, intent_id:, command_usages: USAGES)
 
   def test_an_intent_without_a_goal_is_briefed_by_its_title
     open_intent
@@ -62,7 +64,7 @@ class ShowBriefTest < Plastic::TestCase
   def test_the_node_and_edge_usage_closes_the_brief
     open_intent
 
-    assert_equal Plastic::Commands::Edge::Remove.usage_line, brief.last.printed.last
+    assert_equal USAGES, brief.last.printed.last(2)
   end
 
   def test_an_unknown_intent_fails_the_call

@@ -2,7 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/workflows/code/search"
-require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 class WorkflowSearchTest < Plastic::TestCase
   def search(source_projects)

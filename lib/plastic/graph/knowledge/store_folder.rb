@@ -4,6 +4,7 @@ require "digest"
 require "fileutils"
 require_relative "front_matter"
 require_relative "intent"
+require_relative "store_path"
 require_relative "sync_settings"
 
 module Plastic
@@ -22,11 +23,6 @@ module Plastic
 
         attr_reader :root, :sync
 
-        # The event log an older release kept beside the roadmap at this path.
-        def self.roadmap_log(path) = path.sub(/\.md\z/, ".savepoint.md")
-
-        def self.roadmap_log?(path) = path.end_with?(".savepoint.md")
-
         def initialize(root, sync: SyncSettings.none)
           @root = root
           @sync = sync
@@ -37,8 +33,6 @@ module Plastic
         def exist?(rel) = File.file?(path(rel))
 
         def read(rel) = File.binread(path(rel))
-
-        def holds?(rel, bytes) = exist?(rel) && read(rel) == bytes
 
         # The SHA-256 of the file, or nil when it is gone.
         def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
@@ -63,15 +57,9 @@ module Plastic
         end
 
         # Every roadmap file on disk, by path. The event log an older release kept beside a roadmap is not one.
-        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| self.class.roadmap_log?(path) }.sort
+        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| StorePath.roadmap_log?(path) }.sort
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
-
-        def self.context_view?(path) = path.match?(%r{\Astore/[^/]+/context\.json\z})
-
-        def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
-
-        def self.graph_file?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
 
         # Every file of every intent folder that the selection reads, dot files included.
         def intent_files = intent_dirs.flat_map { |dir| files(dir) }

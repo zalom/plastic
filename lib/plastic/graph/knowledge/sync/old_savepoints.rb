@@ -17,7 +17,7 @@ module Plastic
           def self.find(folder, retrieval)
             printed = retrieval.stored.printed
             files = folder.intent_dirs.map { |dir| "#{dir}/#{FILE}" }.select { |rel| folder.exist?(rel) }
-            removable, kept = files.partition { |rel| printed[rel] && printed[rel] == folder.digest(rel) }
+            removable, kept = files.partition { |rel| printed[rel] == folder.digest(rel) }
             new(removable, kept.to_h { |rel| [rel, reason(printed, rel)] })
           end
 
@@ -31,16 +31,14 @@ module Plastic
           def kept_lines = kept.map { |rel, reason| "kept #{rel}: #{reason}" }
 
           def remove(folder, databases)
-            removable.map do |rel|
-              folder.delete(rel)
-              forget(databases, rel)
-              "removed #{rel}: work.log holds its lines"
-            end
+            removable.each { |rel| folder.delete(rel) }
+            databases.fetch(:store).transaction { |batch| batch.remove_all(:printed, forgotten) }
+            removable.map { |rel| "removed #{rel}: work.log holds its lines" }
           end
 
           private
 
-          def forget(databases, rel) = databases.fetch(:store).transaction { |batch| batch.remove(:printed, path: rel) }
+          def forgotten = removable.map { |rel| { path: rel } }
         end
       end
     end

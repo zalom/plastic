@@ -43,7 +43,7 @@ class DoctorCodexHooksTest < Plastic::TestCase
   def test_malformed_groups_are_findings_instead_of_exceptions
     write(codex_hooks_path, JSON.generate("hooks" => { "Stop" => [nil, "bad", { "hooks" => [false] }] }))
 
-    assert_equal 3, checks.filter_map(&:repair).size
+    assert_equal 4, checks.filter_map(&:repair).size
   end
 
   def test_a_non_map_document_is_a_finding
@@ -56,6 +56,14 @@ class DoctorCodexHooksTest < Plastic::TestCase
     change_codex_hook("Stop") { |hook| hook["command"].sub!("hook stop", "hook record --harness codex") }
 
     assert_equal "plastic install --reinstall", check("Stop").repair
+  end
+
+  def test_names_a_missing_prompt_hook
+    data = JSON.parse(File.read(codex_hooks_path))
+    data.fetch("hooks").delete("UserPromptSubmit")
+    write(codex_hooks_path, JSON.generate(data))
+
+    assert_equal "plastic install --reinstall", check("UserPromptSubmit").repair
   end
 
   def test_a_retired_dispatcher_does_not_pass

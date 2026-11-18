@@ -21,6 +21,13 @@ module Plastic
         remember(paths)
       end
 
+      # Prints again files the store holds already: a file is written when its rows differ from the file, whatever was recorded for it.
+      def reprint(prints)
+        keys = prints.map { |print| { path: print.path } }
+        @databases.fetch(:store).transaction { |batch| batch.remove_all(:printed, keys) }
+        print(prints)
+      end
+
       # Records the hash of each print, so the next sync knows the file is level.
       def record(prints)
         recorded = @retrieval.stored.printed

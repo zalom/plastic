@@ -36,7 +36,8 @@ module Plastic
         end
 
         def read_date
-          Plastic::Graph::Backup::OlderThan.parse(parsed[:older_than]) if parsed[:older_than]
+          text = parsed[:older_than]
+          Plastic::Graph::Backup::OlderThan.parse(text) if text
         rescue Plastic::Graph::Backup::OlderThan::Unreadable => error
           raise Usage, error.message
         end

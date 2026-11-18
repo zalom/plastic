@@ -15,19 +15,19 @@ module Plastic
       private
 
       def copy
-        choices = @package.choices
+        choices = package.choices
         skills(exclude: advisor_exclusions) +
-          CodexAgents.new(@package.root).call(File.join(home, "agents"), models: choices.models(harness: "codex"),
-            efforts: choices.efforts(harness: "codex"), advisor: choices.advisor?)
+          CodexAgents.new(package.root, models: choices.models(harness: "codex"), efforts: choices.efforts(harness: "codex"), skip: choices.skipped_roles)
+            .call(File.join(home, "agents"))
       end
 
       def integrate
         FileUtils.mkdir_p(home)
         MarkedSection.new(MarkedSection::CODEX, CodexInstructions::BODY).inject(File.join(home, "AGENTS.md"))
-        { changed_hooks: CodexHooks.new(@package).merge(File.join(home, "hooks.json")) }
+        { changed_hooks: CodexHooks.new(package).merge(File.join(home, "hooks.json")) }
       end
 
-      def home = @record.config[:home_dir]
+      def home = record.config[:home_dir]
     end
   end
 end

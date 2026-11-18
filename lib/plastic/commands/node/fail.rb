@@ -9,6 +9,8 @@ module Plastic
       class Fail < Move
         argument :text, label: "TEXT", text: "why it failed"
 
+        reads_files
+
         workflow :code_fail_node, next: :noop
       end
     end

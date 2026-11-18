@@ -43,4 +43,41 @@ class CommandReferenceCanvasTest < Minitest::Test
   def test_the_canvas_grows_to_its_lowest_shape
     assert_operator canvas.height, :>=, 90
   end
+
+  def test_a_line_through_points_has_no_arrow_and_reaches_down_to_its_lowest_point
+    figures = CommandReference::Figures
+    points = [figures::Point.new(10, 20), figures::Point.new(10, 50), figures::Point.new(40, 50)]
+    drawing = figures::Canvas.new(300, "title")
+    drawing.line(points, "wire-end")
+
+    assert_includes drawing.to_s, %(<path d="M 10 20 L 10 50 L 40 50" class="wire-end"/>)
+    refute_includes drawing.to_s, "head"
+    assert_equal 50, drawing.height
+  end
+
+  def test_lines_of_words_stack_at_a_step_below_their_origin
+    figures = CommandReference::Figures
+    drawing = figures::Canvas.new(300, "title")
+    drawing.stack(figures::Point.new(5, 10), %w[one two], "t", 17)
+
+    assert_includes drawing.to_s, %(x="5" y="10" class="t" text-anchor="start">one<)
+    assert_includes drawing.to_s, %(x="5" y="27" class="t" text-anchor="start">two<)
+  end
+
+  def test_a_box_gives_the_points_of_a_branch_to_a_bus_and_of_a_drop_below_it
+    box = CommandReference::Figures::Box.new(10, 20, 100, 40)
+
+    assert_equal ["60 60", "60 90", "30 90", "30 98"], box.branch_to(30, 90).map(&:to_s)
+    assert_equal ["60 60", "60 86"], box.drop(26).map(&:to_s)
+  end
+
+  def test_a_point_goes_down_to_a_level_and_bends_around_an_elbow_only_when_the_levels_differ
+    point = CommandReference::Figures::Point.new(10, 20)
+    level = CommandReference::Figures::Point.new(90, 20)
+    lower = CommandReference::Figures::Point.new(90, 60)
+
+    assert_equal ["10 20", "10 70"], point.down_to(70).map(&:to_s)
+    assert_equal ["10 20", "90 20"], point.elbow_to(level, 50).map(&:to_s)
+    assert_equal ["10 20", "50 20", "50 60", "90 60"], point.elbow_to(lower, 50).map(&:to_s)
+  end
 end

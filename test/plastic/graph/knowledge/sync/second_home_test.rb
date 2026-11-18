@@ -213,3 +213,11 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
     assert_equal ["roadmaps/old.md", CONTEXT], plan.unreadable_files.keys.sort
   end
 end
+
+class KnowledgeSyncSecondHomeIdleTest < Plastic::TestCase
+  def test_the_idle_home_has_no_problem_no_path_and_no_size
+    home = Plastic::Graph::Knowledge::Sync::SecondHome::NONE
+
+    assert_equal [{}, [], 0], [home.problems, home.paths, home.size]
+  end
+end

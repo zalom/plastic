@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "text"
+require_relative "../../evidence/text"
 
 module Plastic
   module Graph

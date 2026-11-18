@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
-require_relative "../../../graph/work/verdict"
+require_relative "../../../graph/rows/verdict"
 require_relative "../../../graph/work/completion/review"
 require_relative "../../review_round"
 

@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../../../code_workflow"
+require_relative "../../../graph"
 require_relative "../../../graph/retrieval/context/source"
 require_relative "../../../graph/retrieval_graph"
 require_relative "../../context_documents"
@@ -24,7 +25,7 @@ module Plastic
 
           def self.submission(context)
             discovery = ContextDocuments.new(context).read(:discovery)
-            source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home)
+            source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home, opener: Plastic::Graph.method(:open))
             ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
           end
 

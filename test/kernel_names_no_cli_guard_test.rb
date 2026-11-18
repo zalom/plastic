@@ -4,7 +4,7 @@ require_relative "test_helper"
 
 class KernelNamesNoCliGuardTest < Minitest::Test
   LIB = File.expand_path("../lib", __dir__)
-  SHELL = %w[plastic/cli.rb plastic/cli/ plastic/commands/ plastic/hook.rb plastic/routine.rb plastic/routine/].freeze
+  SHELL = %w[plastic/cli.rb plastic/cli/ plastic/commands/ plastic/routine.rb plastic/routine/ plastic/hooks/].freeze
   CLI_NAME = /\bCLI::/
 
   def kernel_files

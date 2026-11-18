@@ -15,7 +15,7 @@ module CommandReference
 
     private
 
-    def words = (@line.words if @line&.because.to_s.match?(PageWords::PLACEHOLDER)) || @line&.because
+    def words = (@line.words if Words.placeholder?(@line&.because)) || @line&.because
 
     def handoff? = @owner.workflow.lane == "agent" && @name == :handoff
 

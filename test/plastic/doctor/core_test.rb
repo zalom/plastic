@@ -11,7 +11,9 @@ class DoctorCoreTest < Plastic::TestCase
     whole_home
   end
 
-  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:, now: FixedClock::AT).checks
+  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:, now: FixedClock::AT, store:).checks
+
+  def store = Plastic::Wiring.store(@plastic_home)
 
   def check(label, **options) = checks(**options).find { |item| item.label == label }
 
@@ -110,9 +112,18 @@ class DoctorHomeFilesTest < Plastic::TestCase
     whole_home
   end
 
-  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT).checks
+  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT, store:).checks
+
+  def store = Plastic::Wiring.store(@plastic_home)
 
   def check(label) = checks.find { |item| item.label == label }
+
+  def test_a_problem_the_store_reports_is_a_finding_with_the_repair_of_the_store
+    fake = FakeSettings::Store.new("the rows changed", nil)
+    found = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT, store: fake).checks.find { |item| item.label == "config.yml:" }
+
+    assert_equal ["the rows changed", Plastic::Config::Store::REPAIR], [found.value, found.repair]
+  end
 
   def gitignore = File.join(@plastic_home, ".gitignore")
 

@@ -68,7 +68,8 @@ module Plastic
       end
 
       def lost_row(lost)
-        row("the evidence of #{lost.size} #{(lost.size == 1) ? "document is" : "documents are"} lost; no rebuild brings it back",
+        count = lost.size
+        row("the evidence of #{count} #{(count == 1) ? "document is" : "documents are"} lost; no rebuild brings it back",
           "plastic backup list --store #{slug}")
       end
 

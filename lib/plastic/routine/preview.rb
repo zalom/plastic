@@ -60,18 +60,21 @@ module Plastic
       end
 
       def enter(copy)
-        @kept = [@scope, @graphs]
+        slug = scope.slug
+        @kept = @workspace
         @output = PreviewOutput.new(output, copy, original_command)
-        @scope = Scope.new(env: environment.env.to_h.merge("PLASTIC_HOME" => copy.path), home: environment.home, slug: scope.slug,
-          directory: environment.directory)
-        @graphs = nil
+        @workspace = CLI::Command::Workspace.new(environment, -> { copied_scope(copy, slug) })
       end
 
-      def leave = (@scope, @graphs = @kept)
+      def copied_scope(copy, slug)
+        Scope.new(env: environment.env.to_h.merge("PLASTIC_HOME" => copy.path), home: environment.home, slug:, directory: environment.directory)
+      end
+
+      def leave = (@workspace = @kept)
 
       def preview_facts = parsed[:dry_run] ? { original_command: } : {}
 
-      def original_command = Shellwords.join(["plastic", *words.to_s.split, *@argv.reject { |word| word == "--dry-run" }])
+      def original_command = Shellwords.join(["plastic", *words.to_s.split, *argv.reject { |word| word == "--dry-run" }])
     end
   end
 end

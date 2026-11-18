@@ -37,7 +37,7 @@ module Plastic
 
           def legacy_read(parsed)
             originals = @folder.intent_files.to_h { |path| [path, @folder.read(path)] }
-            Read.new(parsed, originals, Decisions.new(clock: @retrieval.clock).read_decisions(@folder.intent_dirs, originals))
+            Read.new(parsed, originals, Decisions.read(@folder.intent_dirs, originals))
           end
 
           def opened = Graph.open(home: @home, store:)

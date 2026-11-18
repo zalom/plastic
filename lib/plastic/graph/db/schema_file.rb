@@ -3,7 +3,7 @@
 require "forwardable"
 require_relative "../sql"
 require_relative "../table"
-require_relative "../knowledge/intent"
+require_relative "../intent_status"
 
 module Plastic
   module Graph
@@ -16,9 +16,9 @@ module Plastic
       TYPES = {
         text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER", int: "INT", blob: "BLOB",
         number: "INTEGER NOT NULL", blank: "TEXT NOT NULL DEFAULT ''", primary: "TEXT PRIMARY KEY",
-        serial: "INTEGER PRIMARY KEY AUTOINCREMENT",
+        serial: "INTEGER PRIMARY KEY AUTOINCREMENT", role: "TEXT NOT NULL CHECK(role IN ('user', 'assistant'))",
         operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))",
-        status: "TEXT NOT NULL CHECK(status IN (#{Knowledge::Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))"
+        status: "TEXT NOT NULL CHECK(status IN (#{IntentStatus::ALL.map { |status| "'#{status}'" }.join(", ")}))"
       }.freeze
 
       # One table's columns, declared one type at a time: `t.kept :a, :b`.

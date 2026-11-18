@@ -17,7 +17,7 @@ module Plastic
           end
 
           def keep_changed_originals(folder, originals)
-            originals.each { |path, before| keep_original(path, before, path[INTENT, 1]) unless folder.holds?(path, before) }
+            originals.each { |path, before| keep_original(path, before, path[INTENT, 1]) unless folder.digest(path) == Digest::SHA256.hexdigest(before) }
           end
 
           def keep_original(path, bytes, intent_id)
