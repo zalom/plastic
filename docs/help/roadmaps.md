@@ -15,7 +15,7 @@ release (completion-side, tracked in `CHANGELOG.md`).
 | read it | `plastic roadmap show SLUG`, `plastic roadmap next SLUG` |
 | audit it | `plastic roadmap check SLUG` |
 | log what happened | `plastic roadmap log SLUG TEXT` |
-| deliver it in auto mode | `plastic auto SLUG` |
+| deliver it in auto mode | `plastic roadmap auto SLUG` |
 
 A roadmap is a set of rows in the store's databases. The rows print to `roadmaps/{slug}.md` in
 the store folder, `~/.plastic/stores/{slug}/roadmaps/`, with these sections in order: the title,
@@ -37,5 +37,6 @@ repeating it, so a person opening the file with no other context can tell what s
 running now, and what is next in under a minute.
 
 **Running a roadmap.** A roadmap is the planning half of the work. Batches lay out the
-parallelism plan: what can run together, and in what order. `plastic auto` delivers a roadmap
-in auto mode.
+parallelism plan: what can run together, and in what order. `plastic roadmap auto SLUG` delivers a
+roadmap in auto mode: it starts the first free item in flight, or opens the first ready item and
+starts it.

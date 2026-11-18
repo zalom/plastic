@@ -22,6 +22,9 @@ Record the delivery under Verification in outcome.md: `Merged:` for a merged pul
 Delivered files go in the intent folder, under `resources/output/reports` or `resources/output/files`.
 
 The owner's word to deliver is the go-ahead: the agent records it with `plastic intent approve`.
+`plastic intent start ID` starts an intent for guided work, `plastic intent auto ID` for agent
+delivery, and `plastic roadmap auto SLUG` starts a roadmap's next item. `plastic intent park ID
+REASON` parks started work with the reason it waits.
 When the owner says auto, background agents or processes run the delivery from the first step.
 The main session stays open as the orchestrator: it dispatches, records and reports, and
 never blocks on the work.

@@ -13,7 +13,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
 | [`plastic rollback`](rollback/README.md) | Switch the active release back to the previous one or to a named installed one |
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |
-| [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: set the intent in progress and print the worktree |
 | [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
 | [`plastic search`](search/README.md) | Search literal indexed passages across selected stores |
@@ -25,10 +24,13 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent abandon`](intent-abandon/README.md) | Close an intent that will not ship once outcome.md records the revert, or print the revert steps |
 | [`plastic intent end`](intent-end/README.md) | Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing |
 | [`plastic intent new`](intent-new/README.md) | Open an intent: write its rows and its folder |
+| [`plastic intent start`](intent-start/README.md) | Start an intent for guided work: set it in progress and print its worktree |
+| [`plastic intent auto`](intent-auto/README.md) | Start an intent for agent delivery: set it in progress and print its worktree |
+| [`plastic intent park`](intent-park/README.md) | Park an intent in progress with the reason it waits; intent start resumes it |
 | [`plastic intent rule`](intent-rule/README.md) | Write an owner ruling, with --supersedes to replace an older one |
 | [`plastic intent revise`](intent-revise/README.md) | Rewrite an intent's What and Why after grilling, keeping the old text as a revision |
 | [`plastic intent note`](intent-note/README.md) | Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision |
-| [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; auto refuses an intent without it |
+| [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; no node of it is claimed without it |
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
 | [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |
@@ -142,6 +144,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic roadmap next`](roadmap-next/README.md) | Print the first ready item, or what is in the way |
 | [`plastic roadmap drop`](roadmap-drop/README.md) | Mark a roadmap item dropped; its edges stay as rows |
 | [`plastic roadmap open`](roadmap-open/README.md) | Open a ready item's intent, with its spec held in rows |
+| [`plastic roadmap auto`](roadmap-auto/README.md) | Start a roadmap's next item for agent delivery: its first free item in flight, or its first ready item, opened first |
 | [`plastic roadmap check`](roadmap-check/README.md) | List a roadmap's loops, dangling edges and items with no intent |
 | [`plastic roadmap log`](roadmap-log/README.md) | Append a log line to a roadmap, stamped with the session id |
 | [`plastic roadmap edge remove`](roadmap-edge-remove/README.md) | Remove one needs edge from a roadmap |

@@ -9,7 +9,9 @@ module Plastic
       BODY = <<~MD
         Plastic is installed for this agent. Plastic is intent-driven state management: work runs
         in one of three modes, direct, thinking, or auto (an agent team drives the delivery with
-        `plastic status` and `plastic next`). Do not jump straight to code.
+        `plastic status` and `plastic next`). `plastic intent start ID` starts an intent for guided
+        work, `plastic intent auto ID` starts it for agent delivery, and `plastic roadmap auto SLUG`
+        starts a roadmap's next item. Do not jump straight to code.
 
         Standing rules:
         - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
