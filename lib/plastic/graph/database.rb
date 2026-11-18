@@ -7,6 +7,7 @@ require_relative "schema"
 require_relative "schema/gate"
 require_relative "schema/migrator"
 require_relative "schema/migration_list"
+require_relative "schema/state"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
@@ -122,15 +123,15 @@ module Plastic
 
       # Brings the home database to the newest version by its SQL file. Only the install and the update call this.
       def migrate
-        unfenced { SchemaMigrator.new(open_file, MIGRATIONS.of(:home).first.path).call }
+        unfenced { SchemaMigrator.new(open_file, :home).call }
         @check.pass
       end
 
       # Gives the freed pages of the file back to the disk. It runs outside a transaction.
       def vacuum = unfenced { open_file.execute("VACUUM") }
 
-      # The stamped version of the file, or nil when it does not exist.
-      def version = File.exist?(path) ? unfenced { open_file.get_first_value("PRAGMA user_version").to_i } : nil
+      # What the file records against the migrations of this code, or nil when it does not exist.
+      def schema_state = File.exist?(path) ? unfenced { SchemaState.new(open_file, SchemaState.kind_of(key)).call } : nil
 
       private
 

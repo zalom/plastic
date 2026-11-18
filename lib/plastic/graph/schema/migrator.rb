@@ -27,11 +27,11 @@ module Plastic
       end
 
       def call
-        return unless due?(reading)
+        return unless reading.due?(Ahead)
 
         @connection.atomically do
           fresh = reading
-          apply(fresh) if due?(fresh)
+          apply(fresh) if fresh.due?(Ahead)
         end
         nil
       end
@@ -40,18 +40,14 @@ module Plastic
 
       def reading = SchemaState.new(@connection, @kind, migrations: @migrations).call
 
-      def due?(state)
-        raise Ahead, "the database records #{state.unknown.join(", ")}, which this code does not know; restore the backup taken before the update" if state.ahead?
-
-        !state.current?
-      end
-
       def apply(state)
         self.class.record(@connection, state.adopted)
-        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each do |migration|
-          @connection.execute_batch(migration.sql)
-          @connection.execute(INSERT, [migration.version])
-        end
+        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each { |migration| run(migration) }
+      end
+
+      def run(migration)
+        @connection.execute_batch(migration.sql)
+        @connection.execute(INSERT, [migration.version])
       end
     end
   end

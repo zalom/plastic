@@ -41,9 +41,9 @@ module Plastic
       def with(migration) = self.class.new([*@migrations, migration])
 
       # A version as a number. 0 is a beta.2 file, and 1, the stamp an alpha build wrote, reads as the baseline.
-      def number(kind, value) = (value.to_i == 1) ? baseline(kind).to_i : value.to_i
+      def number(kind, value) = value.to_i.then { |stamp| (stamp == 1) ? baseline(kind).to_i : stamp }
 
-      def known_number?(kind, number) = number.zero? || versions(kind).include?(number.to_s)
+      def known_number?(kind, number) = [0, *versions(kind).map(&:to_i)].include?(number)
     end
 
     MIGRATIONS = MigrationList.read(MigrationList::FOLDER)

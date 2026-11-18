@@ -27,7 +27,7 @@ module Plastic
       def call
         return :current unless behind?
 
-        StoreAge.call(@root)
+        StoreAge.call(@root) if baseline_pending?
         reason = backup_failure
         reason ? "its backup failed (#{reason})" : migrate_files
       rescue SQLite3::Exception, Database::Error, SystemCallError => error
@@ -36,11 +36,9 @@ module Plastic
 
       private
 
-      def behind? = SchemaGate.behind?(knowledge_file, [work_file])
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(@root, Schema.file(:work))])
 
       def knowledge_file = File.join(@root, Schema.file(:knowledge))
-
-      def work_file = File.join(@root, Schema.file(:work))
 
       def references_file = File.join(@root, REFERENCES)
 
@@ -63,19 +61,22 @@ module Plastic
 
       def run_migration
         migrating = connection
-        return SchemaMigrator.new(migrating, :store).call unless baseline_pending?(migrating)
-
         with_references(migrating) { SchemaMigrator.new(migrating, :store).call }
       end
 
-      # Only the baseline reads the references file of a beta.2 store; a later migration runs without it.
-      def baseline_pending?(migrating) = SchemaState.new(migrating, :store).call.pending.include?(MIGRATIONS.baseline(:store))
+      # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
+      def baseline_pending? = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(MIGRATIONS.baseline(:store))
 
+      # Attaches the references file while the baseline runs, the one migration that reads it.
       def with_references(migrating)
-        migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
-        yield
-      ensure
-        migrating.execute("DETACH DATABASE refs")
+        return yield unless baseline_pending?
+
+        begin
+          migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
+          yield
+        ensure
+          migrating.execute("DETACH DATABASE refs")
+        end
       end
 
       def retire_references

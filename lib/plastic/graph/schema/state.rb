@@ -24,10 +24,19 @@ module Plastic
         def behind? = name == :behind
 
         def ahead? = name == :ahead
+
+        # True when a migration is due; a file ahead of this code raises the given error instead.
+        def due?(refusal)
+          raise refusal, "the database records #{unknown.join(", ")}, which this code does not know; restore the backup taken before the update" if ahead?
+
+          !current?
+        end
       end
 
       # The kind of migrations a stamped schema key takes: the home file takes the home migrations, a store the store ones.
-      def self.kind_of(key) = (key == :local) ? :home : :store
+      KINDS = Hash.new(:store).merge(local: :home).freeze
+
+      def self.kind_of(key) = KINDS[key]
 
       def self.of_file(path, kind, migrations: MIGRATIONS)
         SQLite3::Database.open(path, readonly: true) { |database| new(database, kind, migrations:).call }
