@@ -75,6 +75,21 @@ class IntentAutoTest < Plastic::TestCase
     assert_includes result.err, "intent 1 is done"
   end
 
+  def archived_future_intent
+    open_intent("Later", status: "future")
+    as_session("intent", "archive", "1", env: {})
+  end
+
+  def test_an_archived_intent_exits_1_offers_unarchive_and_changes_nothing
+    archived_future_intent
+
+    result = call("1")
+
+    assert_call result, code: 1, err: "plastic: intent 1 is archived\n",
+      out: "next: plastic intent unarchive 1\nbecause: an archived intent cannot start; unarchive it first\n"
+    assert_equal ["future", []], [status_of("1"), retrieval.unarchived_intents]
+  end
+
   def test_a_call_with_no_session_fails_and_names_the_command
     intent = clear_intent
 

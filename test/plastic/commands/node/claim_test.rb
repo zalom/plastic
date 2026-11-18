@@ -272,6 +272,24 @@ class NodeClaimStartTest < Plastic::TestCase
     assert_match(/^next: plastic intent start 1$/, result.out)
   end
 
+  def test_a_node_of_a_done_intent_exits_1_and_offers_plastic_next
+    intent_with_node("done")
+
+    result = claim
+
+    assert_call result, code: 1, err: "plastic: intent 1 is done\n", out: "next: plastic next\nbecause: a node of a closed intent is never claimed; pick other work\n"
+    assert_equal %w[open done], [retrieval.node("1", "n1").state, retrieval.intent("1").status]
+  end
+
+  def test_a_node_of_an_abandoned_intent_exits_1_and_offers_plastic_next
+    intent_with_node("abandoned")
+
+    result = claim
+
+    assert_call result, code: 1, err: "plastic: intent 1 is abandoned\n", out: ["next: plastic next\n"]
+    assert_equal "abandoned", retrieval.intent("1").status
+  end
+
   def test_a_node_of_an_open_intent_that_never_started_exits_1
     intent_with_node("open")
 

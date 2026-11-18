@@ -61,6 +61,64 @@ class WorkflowRoadmapAutoTest < Plastic::TestCase
     assert_equal :waiting, outcome
   end
 
+  def touch(intent_id, session, at: Time.now)
+    run = Plastic::CommandRun.fresh("intent rule", intent_id, at)
+    session_graphs(session).work.save_command_run(run)
+  end
+
+  def test_an_item_another_session_ran_a_command_on_is_skipped
+    roadmap
+    item("a")
+    item("b")
+    touch(started("a"), "s-2")
+
+    outcome, context = pick("r1")
+
+    assert_equal [:ready, "b"], [outcome, context.item_id]
+  end
+
+  def test_an_item_another_session_touched_more_than_15_minutes_ago_is_picked
+    roadmap
+    item("a")
+    intent_id = started("a")
+    touch(intent_id, "s-2", at: Time.now - (16 * 60))
+
+    outcome, context = pick("r1")
+
+    assert_equal [:intent, intent_id], [outcome, context.intent_id]
+  end
+
+  def test_an_item_this_session_ran_a_command_on_is_picked
+    roadmap
+    item("a")
+    intent_id = started("a")
+    touch(intent_id, "s-1")
+
+    assert_equal intent_id, pick("r1").last.intent_id
+  end
+
+  def test_a_ready_item_whose_intent_is_future_is_picked_to_start
+    roadmap
+    item("a")
+    intent_id = started("a")
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = 'future' WHERE intent_id = :intent_id", intent_id:)
+    end
+
+    outcome, context = pick("r1")
+
+    assert_equal [:intent, intent_id, nil], [outcome, context.intent_id, context.item_id]
+  end
+
+  def test_a_waiting_roadmap_names_the_items_it_waits_on
+    roadmap
+    item("a")
+    item("b", needs: ["a"])
+    hold(started("a"), "s-2")
+
+    assert_equal "a, b", pick("r1").last.waiting
+  end
+
   def test_an_item_held_by_this_session_is_picked
     roadmap
     item("a")

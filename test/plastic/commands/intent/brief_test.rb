@@ -21,8 +21,7 @@ class IntentBriefCaseTest < Plastic::TestCase
       "ruling: D2 Direct mode only", "ready: n2 build it"]
   end
 
-  MAIN_SESSION = ["main session: set the intent in progress with plastic intent start 1",
-    "main session: record each ruling with plastic intent rule 1 TEXT",
+  MAIN_SESSION = ["main session: record each ruling with plastic intent rule 1 TEXT",
     "main session: write spec.md and add the work nodes with plastic node add 1 TITLE --criterion KEY",
     "main session: claim each node as you dispatch it with plastic node claim 1 NODE",
     "main session: judge each node's report and record it with plastic node done 1 NODE TEXT",
@@ -116,6 +115,16 @@ class IntentBriefTest < Plastic::TestCase
     assert_includes result.out, "ready: n1 do the thing"
     assert_includes result.out, "plastic node add ID"
     assert_includes result.out, "plastic edge add ID"
+  end
+
+  def test_a_parked_intent_offers_no_command_and_names_its_reason
+    open_intent(status: "parked", reason: "waits on review")
+
+    result = call("1")
+
+    refute_match(/^next: /, result.out)
+    assert_call result, code: 0, err: "",
+      out: ["because: intent 1 is parked: waits on review; plastic intent start 1 resumes the work once the reason is resolved\n"]
   end
 
   def test_misses_nothing_on_an_empty_intent

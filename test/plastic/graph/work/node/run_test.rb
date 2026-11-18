@@ -12,6 +12,7 @@ class WorkNodeRunTest < Plastic::TestCase
     super
     @clock = Clock.new(START)
     store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
     graphs("s-1").work.add_node(intent_id: "1", title: "Build", criterion: "it works")
   end
 
@@ -101,6 +102,15 @@ class WorkNodeRunTest < Plastic::TestCase
     at(20)
 
     assert_equal :held, claim("s-2").first
+  end
+
+  def test_a_renewal_leaves_out_the_claims_of_a_parked_intent
+    claim("s-1")
+    store_graphs.work.park_intent("1", "waits on review")
+    at(10)
+    work("s-1").renew_claims("s-1")
+
+    assert_equal "2026-11-17T08:00:00Z", retrieval.node("1", "n1").seen_at
   end
 
   def test_a_renewal_touches_only_the_claims_of_its_session

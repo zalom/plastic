@@ -31,6 +31,19 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     assert_equal ["parked", "waiting for the vendor"], parked.to_h.values_at(:status, :reason)
   end
 
+  def test_park_moves_an_intent_in_progress_and_says_a_row_changed
+    writer.write(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+
+    assert_equal [true, "parked", "waits on review"], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
+  def test_park_of_an_intent_not_in_progress_changes_no_row_and_says_so
+    writer.write(title: "Alpha")
+
+    assert_equal [false, "open", nil], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
   def test_the_parent_must_exist
     assert_equal "no intent 9 in this store to be the parent", writer.problem(parent_id: "9")
     open_intent

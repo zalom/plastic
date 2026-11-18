@@ -89,6 +89,20 @@ class WorkSessionReaderTest < Plastic::TestCase
     assert_equal "1", reader.last_run("1").subject
   end
 
+  def test_sessions_on_names_each_session_that_ran_a_command_on_the_intent_since_a_time
+    graphs(session: "s-1").work.save_command_run(Plastic::CommandRun.fresh("intent rule", "1", FixedClock::AT))
+    graphs(session: "s-2").work.save_command_run(Plastic::CommandRun.fresh("intent note", "1", FixedClock::AT))
+    graphs(session: "s-3").work.save_command_run(Plastic::CommandRun.fresh("intent rule", "2", FixedClock::AT))
+
+    assert_equal %w[s-1 s-2], reader.sessions_on("1", since: Plastic.timestamp(FixedClock::AT - 60)).sort
+  end
+
+  def test_sessions_on_leaves_out_a_command_run_older_than_the_time
+    graphs(session: "s-1").work.save_command_run(Plastic::CommandRun.fresh("intent rule", "1", FixedClock::AT))
+
+    assert_empty reader.sessions_on("1", since: Plastic.timestamp(FixedClock::AT + 60))
+  end
+
   def test_last_run_finds_nothing_for_an_untouched_intent
     assert_nil reader.last_run("9")
   end

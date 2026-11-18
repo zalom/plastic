@@ -130,6 +130,12 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_equal ["plastic intent start 2", "intent 2 is future", nil], action("2")
   end
 
+  def test_a_parked_intent_offers_no_command_and_names_its_reason
+    @work.write_intent(title: "Beta", status: "parked", reason: "waits on review")
+
+    assert_equal [nil, "intent 2 is parked: waits on review; plastic intent start 2 resumes the work once the reason is resolved", nil], action("2")
+  end
+
   def test_a_closed_intent_has_no_action
     @work.write_intent(title: "Beta", status: "done")
 

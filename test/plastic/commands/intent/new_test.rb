@@ -15,14 +15,16 @@ class IntentNewCaseTest < Plastic::TestCase
   def files_of(id) = Dir.children(Dir[store_path("store/#{id}--*")].first).sort
 
   def test_a_title_in_an_empty_store_opens_intent_1_with_its_rows_and_files
-    assert_case line("intent new Build the thing"), code: 0, out: ["because: intent 1 has its rows and its files"]
+    assert_case line("intent new Build the thing"), code: 0,
+      out: ["because: intent 1 is future; plastic intent start 1 or plastic intent auto 1 starts it"]
     assert_equal [%w[1], FILES], [index_ids, files_of("1")]
   end
 
   def test_a_child_takes_the_next_letter_under_its_parent
     ran("intent new Parent")
 
-    assert_case line("intent new Child --parent 1"), code: 0, out: ["because: intent 1a has its rows and its files"]
+    assert_case line("intent new Child --parent 1"), code: 0,
+      out: ["because: intent 1a is future; plastic intent start 1a or plastic intent auto 1a starts it"]
     assert_equal [%w[1 1a], FILES], [index_ids, files_of("1a")]
   end
 
@@ -54,6 +56,10 @@ class IntentNewCaseTest < Plastic::TestCase
     ran("intent new Later")
 
     assert_equal "future", retrieval.intent("1").status
+  end
+
+  def test_a_new_intent_offers_no_next_command
+    refute_match(/^next: /, line("intent new Later").out)
   end
 
   def test_a_store_that_still_has_index_md_exits_1_and_says_to_sync_up
