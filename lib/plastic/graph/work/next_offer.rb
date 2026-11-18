@@ -7,7 +7,7 @@ module Plastic
   module Graph
     module Work
       # The next command of one store for the intent its pick names: the
-      # spec, the start, the brief, a failed node, the check or the ready
+      # start of an approved open intent, the spec, the go-ahead, the brief, a failed node, the check or the ready
       # list. Several candidates hand the choice to the agent; none offers
       # nothing. `plastic next` and `plastic graph resume` both read it.
       class NextOffer
@@ -20,9 +20,9 @@ module Plastic
           "no done criteria" if spec.done_criteria.empty?
         end
 
-        # The offer for an open intent: auto after the go-ahead row, the owner instruction before it.
+        # The offer for an open intent: intent start after the go-ahead row, the owner instruction before it.
         def self.go_ahead_offer(retrieval, id)
-          return ["plastic auto #{id}", "intent #{id} is open", nil] if retrieval.structure.approval(id)
+          return ["plastic intent start #{id}", "intent #{id} is open", nil] if retrieval.structure.approval(id)
 
           [nil, "the owner must give the go-ahead for intent #{id}", "Ask the owner for the go-ahead. " \
             "Only after the owner gives it, record it with plastic intent approve #{id}."]
@@ -46,6 +46,8 @@ module Plastic
 
         def for_intent(intent)
           id = intent.intent_id
+          return open_offer(id) if approved_open?(intent)
+
           gap = gap_of(id)
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
           return open_offer(id) if intent.status == "open"
@@ -56,6 +58,8 @@ module Plastic
         def gap_of(id) = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
 
         def open_offer(id) = self.class.go_ahead_offer(@retrieval, id)
+
+        def approved_open?(intent) = intent.status == "open" && !@retrieval.structure.approval(intent.intent_id).nil?
       end
     end
   end

@@ -8,6 +8,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
     super
     @work = store_graphs.work
     @work.write_intent(title: "Alpha")
+    @work.activate_intent("1")
   end
 
   def action(intent_id = "1") = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id).call
@@ -121,6 +122,12 @@ class WorkDeliveryActionTest < Plastic::TestCase
     @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
 
     assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
+  end
+
+  def test_an_intent_that_is_not_in_progress_offers_intent_start
+    @work.write_intent(title: "Beta", status: "future")
+
+    assert_equal ["plastic intent start 2", "intent 2 is future", nil], action("2")
   end
 
   def test_a_closed_intent_has_no_action

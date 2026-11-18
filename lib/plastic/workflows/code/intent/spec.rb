@@ -2,7 +2,6 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/spec"
-require_relative "../../go_ahead"
 require_relative "../../lines"
 
 module Plastic
@@ -12,14 +11,12 @@ module Plastic
         # Prints the grilling method, how done criteria are written, and the open
         # questions and decisions of spec.md; refuses an unknown id.
         class Spec < CodeWorkflow
-          extend GoAhead
-
           clear_declarations
           summary "Prints the open questions and decisions of the spec and how done criteria are written."
 
           GRILLING = File.expand_path("../../../../../docs/grilling.md", __dir__)
 
-          sets :intent, :decisions, :criteria, :why, :handoff_text
+          sets :intent, :decisions, :criteria
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -39,14 +36,11 @@ module Plastic
             context.decisions.each { |decision| context.print("open: #{decision}") }
           end
 
-          reads_go_ahead
-
           outcome :open, if: ->(context) { context.decisions.any? }, offers: "plastic intent rule %{intent_id} TEXT",
             because: "an open decision is still unrecorded"
           outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
             because: "the spec names no done criterion; write them in spec.md first"
-          outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the agent takes the next step of the spec"
-          outcome :done, offers: "plastic auto %{intent_id}", because: "the spec carries no open decision"
+          outcome :done, offers: "plastic intent approve %{intent_id}", because: "the spec carries no open decision"
         end
       end
     end

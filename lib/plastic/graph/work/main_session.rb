@@ -7,7 +7,7 @@ module Plastic
       # A dispatched agent takes none of them and reports back instead.
       module MainSession
         STEPS = [
-          ["set the intent in progress", "plastic auto ID"],
+          ["set the intent in progress", "plastic intent start ID"],
           ["record each ruling", "plastic intent rule ID TEXT"],
           ["write spec.md and add the work nodes", "plastic node add ID TITLE --criterion KEY"],
           ["claim each node as you dispatch it", "plastic node claim ID NODE"],

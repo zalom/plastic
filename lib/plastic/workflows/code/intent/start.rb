@@ -18,7 +18,7 @@ module Plastic
           clear_declarations
           summary "Starts the intent: it goes in progress and names its worktree."
 
-          sets :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing
+          sets :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing, :start_command
 
           read "read the intent and its spec" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -67,6 +67,7 @@ module Plastic
           end
 
           read "name the code worktree" do |context|
+            context[:start_command] = "plastic #{context.start_words}"
             name_worktree(context, Worktree.of(context.scope, context.intent))
           end
 
@@ -86,10 +87,10 @@ module Plastic
               "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."
           end
 
-          outcome :worktree_missing, if: ->(context) { context.worktree_missing }, offers: "plastic %{start_words} %{intent_id}",
+          outcome :worktree_missing, if: ->(context) { context.worktree_missing }, offers: "%{start_command} %{intent_id}",
             because: "the worktree of intent %{intent_id} is not made yet"
           outcome :unsettled, if: ->(context) { !context.spec_problem.nil? }, offers: "plastic intent spec %{intent_id}",
-            because: "%{spec_problem}"
+            because: "%{spec_problem}", words: "the spec names no done criterion, has an open decision, or has no go-ahead"
           outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is in progress"
         end
       end

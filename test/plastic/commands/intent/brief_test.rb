@@ -33,7 +33,7 @@ class IntentBriefCaseTest < Plastic::TestCase
     "--criterion KEY, then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
 
   def test_a_brief_with_no_spec_says_where_the_agent_writes_it
-    ran("intent new Alpha")
+    ran("intent new Alpha", "intent start 1")
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: none yet; the agent writes store/1--alpha/spec.md, and the done criteria are the bullets under its "## Done criteria" heading, ' \
@@ -42,7 +42,7 @@ class IntentBriefCaseTest < Plastic::TestCase
 
   def test_a_brief_with_a_spec_a_ruling_and_a_node_names_each_and_offers_the_claim
     alpha_specified("# Spec\n\n## Done criteria\n\n- [tests-pass] the CLI ships\n")
-    ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
+    ran("intent approve 1", "intent start 1", 'intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: store/1--alpha/spec.md; the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text',
