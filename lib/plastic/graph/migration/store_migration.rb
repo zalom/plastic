@@ -4,7 +4,7 @@ require_relative "../database"
 require_relative "../backup/writer"
 require_relative "../schema/gate"
 require_relative "../schema/migrator"
-require_relative "../schema/migrations"
+require_relative "../schema/migration_list"
 require_relative "migration_reason"
 require_relative "store_age"
 
@@ -64,7 +64,7 @@ module Plastic
         migrating = connection
         migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
         begin
-          SchemaMigrator.new(migrating, SchemaMigrations.path(:store)).call
+          SchemaMigrator.new(migrating, MIGRATIONS.of(:store).first.path).call
         ensure
           migrating.execute("DETACH DATABASE refs")
         end

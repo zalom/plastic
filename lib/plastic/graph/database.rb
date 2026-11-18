@@ -6,7 +6,7 @@ require_relative "missing_store"
 require_relative "schema"
 require_relative "schema/gate"
 require_relative "schema/migrator"
-require_relative "schema/migrations"
+require_relative "schema/migration_list"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
@@ -122,7 +122,7 @@ module Plastic
 
       # Brings the home database to the newest version by its SQL file. Only the install and the update call this.
       def migrate
-        unfenced { SchemaMigrator.new(open_file, SchemaMigrations.path(:home)).call }
+        unfenced { SchemaMigrator.new(open_file, MIGRATIONS.of(:home).first.path).call }
         @check.pass
       end
 

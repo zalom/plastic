@@ -19,7 +19,7 @@ module StaleWords
     lib/plastic/graph/migration/home_migration.rb
     lib/plastic/graph/migration/store_migration.rb
     lib/plastic/graph/rows/savepoint.rb
-    lib/plastic/graph/schema/migrations/store_from_beta_2.sql
+    lib/plastic/graph/db/migrate/store/20261117000000_store_from_beta_2.sql
     lib/plastic/graph/work/node_result.rb
     lib/plastic/workflows/sync_steps.rb
     tools/store_proof.rb
