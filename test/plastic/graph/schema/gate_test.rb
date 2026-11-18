@@ -187,8 +187,8 @@ class SchemaGateAheadTest < Plastic::TestCase
     before = beta_2_files(@plastic_home)
     result = plastic("intent", "new", "Gamma", "--project", "alpha", env: { "PLASTIC_HOME" => @plastic_home }, table: Plastic::CLI::TABLE)
 
-    assert_equal [3, ""], [result.code, result.out]
-    assert_includes result.err, UNKNOWN
+    assert_equal [3, true], [result.code, result.err.include?("refused")]
+    assert_includes result.out, "because: knowledge_graph.db is newer than this code (it records #{UNKNOWN})"
     assert_equal before, beta_2_files(@plastic_home)
   end
 end
