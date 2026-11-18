@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   Integrity = Plastic::Graph::Retrieval::Evidence::Integrity
@@ -9,7 +9,7 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   def setup
     super
     @calls = 0
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Integrity evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Integrity evidence\n")
     reindex
   end
 

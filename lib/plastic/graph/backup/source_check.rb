@@ -13,7 +13,7 @@ module Plastic
       # time of each file, so an unchanged store can be told apart.
       class SourceCheck
         # A live database failed its quick check.
-        class Failed < StandardError
+        class Unreadable < StandardError
           attr_reader :path
 
           def initialize(message, path)
@@ -22,11 +22,16 @@ module Plastic
           end
         end
 
+        def self.describe(path)
+          mtime = File.mtime(path)
+          "#{File.basename(path)} #{File.size(path)} #{mtime.to_i}.#{mtime.nsec}"
+        end
+
         def initialize(paths)
           @paths = paths
         end
 
-        # The user_version of the knowledge database of the store, which stamps it; raises Failed when one file is damaged.
+        # The user_version of the knowledge database of the store, which stamps it; raises Unreadable when one file is damaged.
         def version
           stamps = @paths.to_h { |path| [path, inspect_file(path)] }
           knowledge = File.join(File.dirname(@paths.first), Schema.file(:knowledge))
@@ -34,21 +39,18 @@ module Plastic
         end
 
         def fingerprint
-          @paths.map do |path|
-            stat = File.stat(path)
-            "#{File.basename(path)} #{stat.size} #{stat.mtime.to_i}.#{stat.mtime.nsec}"
-          end.join("\n")
+          @paths.map { |path| self.class.describe(path) }.join("\n")
         end
 
         private
 
         def inspect_file(path)
           SQLite3::Database.open(path, readonly: true) do |database|
-            (database.get_first_value("PRAGMA quick_check") == "ok") || raise(Failed.new("#{path} fails the quick check", path))
+            (database.get_first_value("PRAGMA quick_check") == "ok") || raise(Unreadable.new("#{path} fails the quick check", path))
             database.get_first_value("PRAGMA user_version")
           end
         rescue SQLite3::Exception => error
-          raise Failed.new("#{path} cannot be read: #{error.message}", path)
+          raise Unreadable.new("#{path} cannot be read: #{error.message}", path)
         end
       end
     end

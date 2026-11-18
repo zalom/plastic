@@ -10,11 +10,11 @@ class RetrievalRoadmapReaderTest < Plastic::TestCase
   def test_a_roadmap_reads_by_slug
     put(:roadmaps, { slug: "plan", title: "Plan" })
 
-    assert_equal "Plan", reader.roadmap("plan").title
+    assert_equal "Plan", reader.find("plan").title
   end
 
   def test_a_missing_roadmap_reads_nil
-    assert_nil reader.roadmap("plan")
+    assert_nil reader.find("plan")
   end
 
   def test_batches_read_in_position_order

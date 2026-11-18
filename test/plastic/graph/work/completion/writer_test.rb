@@ -24,13 +24,13 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     writer.close("1")
 
     assert_equal %w[done delivered], retrieval.intent("1").to_h.values_at(:status, :disposition)
-    assert_equal %w[verdict s-1], retrieval.completion("1").values_at("judge", "session_id")
+    assert_equal %w[verdict s-1], structure.completions("1").first.to_h.values_at(:judge, :session_id)
   end
 
   def test_the_evidence_maps_each_criterion_key_to_its_nodes_and_findings
     ready
     writer.close("1")
-    evidence = JSON.parse(retrieval.completion("1").fetch("evidence"))
+    evidence = JSON.parse(structure.completions("1").first.evidence)
 
     assert_equal [KEY], evidence.keys
     assert_includes evidence.fetch(KEY).to_s, "n1"
@@ -52,7 +52,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     error = assert_raises(Plastic::Invalid) { writer.close("1") }
 
     assert_includes error.message, "Merged:"
-    assert_equal ["in_progress", nil], [retrieval.intent("1").status, retrieval.completion("1")]
+    assert_equal ["in_progress", nil], [retrieval.intent("1").status, structure.completions("1").first]
   end
 
   def test_closing_an_intent_with_problems_raises_them_and_writes_nothing
@@ -61,7 +61,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     error = assert_raises(Plastic::Invalid) { writer.close("1") }
 
     assert_match(/\AWrite the done criteria in spec.md/, error.message)
-    assert_nil retrieval.completion("1")
+    assert_nil structure.completions("1").first
   end
 
   def test_abandoning_an_abandoned_intent_changes_nothing
@@ -117,7 +117,7 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
     writer.abandon("1")
 
     assert_equal %w[abandoned cancelled], retrieval.intent("1").to_h.values_at(:status, :disposition)
-    assert_nil retrieval.completion("1")
+    assert_nil structure.completions("1").first
   end
 
   def test_abandoning_stamps_the_close_time

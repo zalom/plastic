@@ -15,8 +15,9 @@ module CommandReference
       private
 
       def blank
-        Canvas.new(WIDTH, "The events of one call of plastic #{@page.words}, in words").tap do |found|
-          found.text(Point.new(24, 34), "One call of plastic #{@page.words}, from top to bottom", "tb")
+        words = @page.words
+        Canvas.new(WIDTH, "The events of one call of plastic #{words}, in words").tap do |found|
+          found.text(Point.new(24, 34), "One call of plastic #{words}, from top to bottom", "tb")
         end
       end
 
@@ -35,10 +36,8 @@ module CommandReference
       def events = @events ||= EventList.new(@page).events
 
       def rows
-        @rows ||= events.each_with_object([]) { |event, all| all << EventRow.new(event, below(all) + EventRow.lead(event)) }
+        @rows ||= events.each_with_object([]) { |event, all| all << EventRow.after(all, event) }
       end
-
-      def below(rows) = rows.empty? ? 64 : rows.last.bottom + 26
     end
   end
 end

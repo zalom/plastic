@@ -14,7 +14,7 @@ class KnowledgeReaderGraphFileRunsTest < Plastic::TestCase
     sync.apply(sync_up_plan)
   end
 
-  def runs = retrieval.runs("1").map { |run| run.to_h.values_at(:node_id, :number, :agent, :session_id, :started_at, :ended_at, :result) }
+  def runs = retrieval.structure.runs("1").map { |run| run.to_h.values_at(:node_id, :number, :agent, :session_id, :started_at, :ended_at, :result) }
 
   def test_an_old_file_with_by_and_retries_has_no_problem
     assert_empty Plastic::Graph::Knowledge::Reader::GraphFile.new(graph_text(nodes: [node_hash("n1")]), "1", nil, GRAPH).problems

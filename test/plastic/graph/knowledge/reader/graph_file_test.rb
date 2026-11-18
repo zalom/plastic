@@ -164,7 +164,7 @@ module GraphFileHelpers
 
   def sync_up_plan = sync.plan(:up)
 
-  def node_rows = retrieval.nodes("1").map(&:to_h)
+  def node_rows = structure.nodes("1").map(&:to_h)
 
   def printed_node(title)
     node = store_graphs.work.add_node(intent_id: "1", title:, criterion: "Done")
@@ -190,7 +190,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
     sync.apply(sync_up_plan)
 
-    assert_equal [["n1", 1, "agent-7", "done"]], retrieval.runs("1").map { |run| [run.node_id, run.number, run.session_id, run.result] }
+    assert_equal [["n1", 1, "agent-7", "done"]], structure.runs("1").map { |run| [run.node_id, run.number, run.session_id, run.result] }
   end
 
   def test_the_rows_of_the_file_replace_the_node_rows_the_intent_held
@@ -212,18 +212,18 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     write_full_graph
     sync.apply(sync_up_plan)
 
-    assert_equal [["n1", "n2", "needs"]], retrieval.edges("1").map { |edge| edge.to_h.values_at(:from, :to, :kind) }
-    assert_equal "2026-10-20T09:00:00Z", retrieval.approvals("1").first.at
+    assert_equal [["n1", "n2", "needs"]], structure.edges("1").map { |edge| edge.to_h.values_at(:from, :to, :kind) }
+    assert_equal "2026-10-20T09:00:00Z", structure.approvals("1").first.at
   end
 
   def test_the_verdicts_are_read_with_the_nodes
     write_full_graph
     sync.apply(sync_up_plan)
 
-    assert_equal [[1, "accept"]], retrieval.verdicts("1").map { |row| row.to_h.values_at(:round, :verdict) }
+    assert_equal [[1, "accept"]], structure.verdicts("1").map { |row| row.to_h.values_at(:round, :verdict) }
   end
 
-  def file_and_print = [folder.read(GRAPH), retrieval.printed[GRAPH]]
+  def file_and_print = [folder.read(GRAPH), retrieval.stored.printed[GRAPH]]
 
   def test_a_second_sync_up_leaves_the_file_bytes_and_the_printed_hash_as_they_are
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
@@ -260,7 +260,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
 
   def test_the_reader_applies_a_graph_file_it_is_given
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
-    read = reader.read(GRAPH)
+    read = reader.read(GRAPH, FixedClock::STAMP)
     apply_read(read)
 
     assert_equal ["n1"], node_rows.map { |row| row[:id] }

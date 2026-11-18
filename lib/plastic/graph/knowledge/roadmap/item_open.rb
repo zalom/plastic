@@ -2,7 +2,7 @@
 
 require_relative "../roadmap"
 require "forwardable"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../evidence/writer"
 require_relative "state"
 
 module Plastic
@@ -22,7 +22,7 @@ module Plastic
 
           # Returns [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
           def call(slug, item_id)
-            item = retrieval.roadmap_items(slug).find { |row| row.item == item_id }
+            item = retrieval.roadmaps.items(slug).find { |row| row.item == item_id }
             item ? start(slug, item) : [nil, "no item #{item_id} on roadmap #{slug}", :failure]
           end
 
@@ -35,13 +35,13 @@ module Plastic
 
           def open_intent(slug, item)
             intent_id = @logged.write_intent(title: item.title).intent_id
-            write_spec(intent_id, item.spec_body(retrieval.batches(slug)))
+            write_spec(intent_id, item.spec_body(retrieval.roadmaps.batches(slug)))
             @writers.roadmaps.open_item(slug, item.item, intent_id)
             link_source(intent_id, slug)
             [intent_id, nil, nil]
           end
 
-          def write_spec(intent_id, body) = Retrieval::Evidence::Writer.new(databases.fetch(:store), retrieval.origin_id).write(intent_id, "spec.md", body)
+          def write_spec(intent_id, body) = Retrieval::Evidence::Writer.new(databases.fetch(:store), retrieval.origin_id, clock: retrieval.clock).write(intent_id, "spec.md", body)
 
           def link_source(intent_id, slug) = @writers.links.add_link(from_ref: intent_id, to_ref: "roadmap:#{slug}", kind: "source")
         end

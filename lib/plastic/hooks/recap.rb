@@ -5,6 +5,7 @@ require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/last_log_lines"
 require_relative "../graph/work/session_intent"
 require_relative "compact_recap"
+require_relative "predecessor_session"
 
 module Plastic
   module Hooks
@@ -24,7 +25,7 @@ module Plastic
         @retrieval = retrieval
         @session_id = session_id
         @source = source.to_s
-        @directory = directory
+        @predecessor = PredecessorSession.new(retrieval, session_id: session_id, source: @source, directory: directory)
       end
 
       # The lines to print, first line first.
@@ -58,26 +59,7 @@ module Plastic
         run ? ", last run #{run.summary}" : ""
       end
 
-      # A clear reads its directory's own ending first (review A1); every
-      # other case reads the store's latest other session.
-      def predecessor
-        @predecessor ||= clear_predecessor || @retrieval.previous_session(@session_id)
-      end
-
-      def clear_predecessor
-        @source == "clear" && @retrieval.predecessor(@session_id, directory: @directory, prefer_reason: "clear")
-      end
-
-      def previous_session_lines
-        return [] if FIRST_LINES.key?(@source) || !predecessor
-
-        ["previous #{predecessor.summary}", *touched_line]
-      end
-
-      def touched_line
-        touched = @retrieval.touched(predecessor.session_id).join(", ")
-        touched.empty? ? [] : ["touched: #{touched}"]
-      end
+      def previous_session_lines = FIRST_LINES.key?(@source) ? [] : @predecessor.lines
 
       def in_progress_lines
         Array(in_progress_intent).flat_map { |intent| ["in progress: #{intent.label}", *log_lines(intent.intent_id)] }
@@ -89,12 +71,12 @@ module Plastic
 
       # The intent this session works on, else the one its predecessor worked on.
       def in_progress_intent
-        sessions = [@session_id, predecessor&.session_id].compact
+        sessions = [@session_id, @predecessor.session&.session_id].compact
         sessions.lazy.filter_map { |session_id| Graph::Work::SessionIntent.new(@retrieval, session_id).intent }.first
       end
 
       def note_line
-        text = @retrieval.session(@session_id)&.note || predecessor&.note
+        text = @retrieval.session(@session_id)&.note || @predecessor.session&.note
         text ? ["note: #{text}"] : []
       end
     end

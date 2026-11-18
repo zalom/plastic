@@ -13,7 +13,7 @@ module Plastic
 
           gate "no roadmap %{slug}", stops: :failure, offers: "plastic roadmap new %{slug}",
             because: "a batch belongs to a roadmap that roadmap new created",
-            pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+            pass: ->(context) { !context.retrieval.roadmaps.find(context.slug).nil? }
 
           sets :batch
 

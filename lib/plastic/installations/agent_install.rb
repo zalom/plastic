@@ -18,26 +18,31 @@ module Plastic
       end
 
       def call
-        FileUtils.mkdir_p(@record.dir)
-        files = copy
-        files << @record.write_version(@package.version)
+        FileUtils.mkdir_p(record.dir)
+        files = copy << record.write_version(package.version)
         extra = integrate
-        @record.manifest.write(files)
-        { agent: @record.name, success: true, files: files.size }.merge(extra)
+        seal(files)
+        outcome(files).merge(extra)
       end
 
       private
 
+      attr_reader :package, :record
+
+      def seal(files) = record.manifest.write(files, package.clock.now)
+
+      def outcome(files) = { agent: record.name, success: true, files: files.size }
+
       def integrate = {}
 
-      def skills(exclude: []) = SkillCopy.new(@package.root, @package.home).call(File.join(@record.root, "skills"), exclude:)
+      def skills(exclude: []) = SkillCopy.new(package.root, package.home).call(File.join(record.root, "skills"), exclude:)
 
       def role_files
-        choices = @package.choices
-        RoleFiles.new(@package.root).call(File.join(@record.root, "agents"), models: choices.models, efforts: choices.efforts, advisor: choices.advisor?)
+        choices = package.choices
+        RoleFiles.new(package.root, models: choices.models, efforts: choices.efforts, skip: choices.skipped_roles).call(File.join(record.root, "agents"))
       end
 
-      def advisor_exclusions = @package.choices.advisor? ? [] : ["agent-advisor"]
+      def advisor_exclusions = package.choices.advisor? ? [] : ["agent-advisor"]
     end
   end
 end

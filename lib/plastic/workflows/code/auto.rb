@@ -53,7 +53,7 @@ module Plastic
         end
 
         def self.approval_problem(id, context)
-          return nil if context.retrieval.approval(id)
+          return nil if context.retrieval.structure.approval(id)
 
           "intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}"
         end

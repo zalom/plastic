@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../store_folder"
+require_relative "../store_path"
 require_relative "originals"
 require_relative "roadmap_rows"
 
@@ -24,12 +25,12 @@ module Plastic
             slug = File.basename(path, ".md")
             original_bytes = File.binread(path)
             write(slug, path, result)
-            Originals.new(@graphs.databases, @counts).keep_roadmap_original(@root, slug, original_bytes)
+            Originals.new(@graphs.databases, @counts, clock: @graphs.retrieval.clock).keep_roadmap_original(@root, slug, original_bytes)
             count(result)
           end
 
           def write(slug, path, result)
-            RoadmapRows.new(@graphs, slug, result).call(StoreFolder.roadmap_log(path))
+            RoadmapRows.new(@graphs, slug, result).call(StorePath.roadmap_log(path))
             @graphs.work.print_roadmap(slug)
           end
 

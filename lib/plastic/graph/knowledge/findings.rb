@@ -25,11 +25,11 @@ module Plastic
 
         private
 
-        def live = @live ||= @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
+        def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
 
-        def run_counts = @run_counts ||= @retrieval.runs(@intent_id).group_by(&:node_id).transform_values(&:size).tap { |counts| counts.default = 0 }
+        def run_counts = @run_counts ||= @retrieval.structure.runs(@intent_id).group_by(&:node_id).transform_values(&:size).tap { |counts| counts.default = 0 }
 
-        def edges = @edges ||= @retrieval.edges(@intent_id)
+        def edges = @edges ||= @retrieval.structure.edges(@intent_id)
 
         def node_findings = live.flat_map { |node| findings_for(node) }
 

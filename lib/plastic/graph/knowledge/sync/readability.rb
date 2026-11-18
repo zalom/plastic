@@ -22,7 +22,7 @@ module Plastic
           private
 
           def problem(path)
-            read = reader.read(path)
+            read = reader.read(path, Plastic.timestamp(@retrieval.clock.now))
             @databases.fetch(:store).dry_run { |batch| read.apply.call(batch) }
             nil
           rescue => error

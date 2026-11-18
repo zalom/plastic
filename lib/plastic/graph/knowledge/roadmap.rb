@@ -15,6 +15,8 @@ module Plastic
       Roadmap::Fields = Data.define(:title, :goal, :done) do
         # These words over a row already written: a field left out keeps the
         # row's word for it, and a title missing from both takes `fallback`.
+        def words = { title:, goal:, done: Array(done).join("\n") }
+
         def over(row, fallback)
           given = Array(done)
           with(title: title || row&.title || fallback, goal: goal || row&.goal, done: given.empty? ? row&.done_lines.to_a : given)

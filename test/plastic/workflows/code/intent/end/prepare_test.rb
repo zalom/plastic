@@ -7,8 +7,12 @@ class PrepareEndingFixture < Plastic::TestCase
   include LifecycleHelper
 
   def prepare(session: "delivery")
-    run_workflow(Plastic::Workflows::Code::Intent::End::Prepare, harness: scoped_harness(session:), graphs: session_graphs(session), intent_id: "1")
+    run_workflow(Plastic::Workflows::Code::Intent::End::Prepare, harness: scoped_harness(session:, settings: FakeSettings.new(values: @review ? { "review.pull_request" => @review } : {})), graphs: session_graphs(session), intent_id: "1")
   end
+
+  def review_on = @review = "required"
+
+  def review_off = @review = "off"
 
   def session_graphs(session) = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 end
@@ -85,7 +89,7 @@ class PrepareEndingTest < PrepareEndingFixture
     put_verdict(1, "revise", MIDDLE)
     put_verdict(2, "revise", LATE)
 
-    assert_kind_of Plastic::Refused, prepare.first
+    assert_raises(Plastic::Refused) { prepare }
   end
 
   def test_a_revise_then_a_stale_accept_is_a_refusal
@@ -95,7 +99,7 @@ class PrepareEndingTest < PrepareEndingFixture
     put_verdict(2, "accept", MIDDLE)
     set_node_times(LATE)
 
-    assert_kind_of Plastic::Refused, prepare.first
+    assert_raises(Plastic::Refused) { prepare }
   end
 
   def test_a_revise_then_a_counting_accept_is_ready
@@ -109,7 +113,7 @@ class PrepareEndingTest < PrepareEndingFixture
   end
 
   def test_a_missing_intent_fails_at_the_first_gate
-    assert_includes prepare.first.message, "no intent 1 in this store"
+    assert_includes assert_raises(Plastic::Failed) { prepare }.message, "no intent 1 in this store"
   end
 
   def test_another_live_session_claim_is_refused
@@ -117,7 +121,7 @@ class PrepareEndingTest < PrepareEndingFixture
     node = store_graphs.work.add_node(intent_id: "1", title: "Build")
     store_graphs.work.claim_node(intent_id: "1", id: node.id, by: "s-2")
 
-    assert_kind_of Plastic::Refused, prepare.first
+    assert_raises(Plastic::Refused) { prepare }
   end
 
   def test_a_done_intent_is_already_closed
@@ -129,7 +133,7 @@ class PrepareEndingTest < PrepareEndingFixture
   def test_an_abandoned_intent_fails_the_call
     open_intent(status: "abandoned")
 
-    assert_kind_of Plastic::Failed, prepare.first
+    assert_raises(Plastic::Failed) { prepare }
   end
 end
 
@@ -168,7 +172,7 @@ class PrepareEndingRecordsTest < PrepareEndingFixture
     review_on
     accepted_intent(records: MERGE_RECORDS + PULL_REQUEST)
 
-    assert_kind_of Plastic::Refused, prepare.first
+    assert_raises(Plastic::Refused) { prepare }
   end
 
   def test_with_no_config_no_pull_request_bullets_are_asked_and_no_approval_is_awaited

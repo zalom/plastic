@@ -36,7 +36,7 @@ module TwoHomesLinksHelper
 
   def listed_keys(home) = Array(listed(home)).map { |entry| entry.values_at("from_ref", "to_ref", "kind") }
 
-  def printed_part?(home) = home_graphs(home).retrieval.printed.key?(PART)
+  def printed_part?(home) = home_graphs(home).retrieval.stored.printed.key?(PART)
 
   def forget_part(home) = database_of(home).transaction { |batch| batch.remove(:printed, path: PART) }
 

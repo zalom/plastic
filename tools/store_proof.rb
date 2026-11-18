@@ -20,6 +20,13 @@ module StoreProof
   # A real file or a copy cannot be trusted, or the real home changed.
   class Failed < StandardError; end
 
+  # The reasons a proof cannot be trusted; none means it can.
+  Problems = Data.define(:found) do
+    def self.after(found, ran) = new([*found, *("the command failed" if [nil, false].include?(ran))])
+
+    def check = (raise Failed, found.join("; ") if found.any?)
+  end
+
   # Ten phrases fixed for every proof run, so the hits of a search on the
   # copies can be compared run to run.
   PHRASES = [
@@ -34,7 +41,11 @@ module StoreProof
       @notes = Dir.glob(File.join(home, "**", "*.md")).map { |file| File.read(file).downcase }
     end
 
-    def counts = @phrases.to_h { |phrase| [phrase, @notes.count { |note| note.include?(phrase) }] }
+    def counts = @phrases.to_h { |phrase| [phrase, holding(phrase)] }
+
+    private
+
+    def holding(phrase) = @notes.count { |note| note.include?(phrase) }
   end
 
   # The variables the command sees, each a folder under the job tmp.
@@ -92,9 +103,7 @@ module StoreProof
 
     # The databases a store folder lacks, by their path in the home.
     def skipped
-      Dir.glob(File.join(@home, "stores", "*")).sort.flat_map do |store|
-        STORE_DATABASES.map { |name| File.join("stores", File.basename(store), "#{name}.db") }.reject { |file| File.exist?(path(file)) }
-      end
+      Dir.glob(File.join(@home, "stores", "*")).sort.flat_map { |store| lacking(File.basename(store)) }
     end
 
     # The files of the home that are not databases, by their path in the home.
@@ -102,9 +111,10 @@ module StoreProof
 
     def problems(digest)
       stale = versions.reject { |_file, version| version.zero? }.map { |file, version| "#{file} has user_version #{version}" }
-      stale << "#{VERSION_FILE} changed" unless version_digest == digest
-      stale
+      changed?(digest) ? [*stale, "#{VERSION_FILE} changed"] : stale
     end
+
+    def changed?(digest) = version_digest != digest
 
     def self.scalar(path, sql)
       SQLite3::Database.open(path, readonly: true) { |db| db.get_first_value(sql) }
@@ -113,6 +123,8 @@ module StoreProof
     end
 
     private
+
+    def lacking(store) = STORE_DATABASES.map { |name| File.join("stores", store, "#{name}.db") }.reject { |file| File.exist?(path(file)) }
 
     # The machine database of a home that has not run the update yet is still local.db.
     def machine
@@ -161,10 +173,25 @@ module StoreProof
     end
   end
 
+  # The switches of the command line, read before the command.
+  module Options
+    KEYS = %i[job_tmp real_home plastic_home].freeze
+
+    def self.read(argv)
+      values = { real_home: File.join(Dir.home, ".plastic") }
+      KEYS.each_with_object(OptionParser.new) { |key, parser| add(parser, values, key) }.order!(argv)
+      values
+    end
+
+    def self.add(parser, values, key) = parser.on("--#{key.to_s.tr("_", "-")} VALUE") { |value| values[key] = value }
+  end
+
   # The command line: `store-proof --job-tmp DIR [--real-home DIR] -- COMMAND...`.
   # Exit 0 when the command ran and the real files stayed, 1 when a file cannot be trusted or
   # changed or the command failed, 2 when called wrongly, 3 when a path sits outside the job tmp.
   class CLI
+    CODES = { OptionParser::ParseError => 2, Outside => 3, Failed => 1 }.freeze
+
     def initialize(argv, out: $stdout, err: $stderr, runner: Runner.new)
       @argv = argv.dup
       @out = out
@@ -177,12 +204,8 @@ module StoreProof
       return usage("give --job-tmp DIR") unless options[:job_tmp]
 
       prove(options)
-    rescue OptionParser::ParseError => error
-      usage(error.message)
-    rescue Outside => error
-      refuse(error.message)
-    rescue Failed => error
-      fail_with(error.message)
+    rescue OptionParser::ParseError, Outside, Failed => error
+      report(error.message, CODES.find { |kind, _code| error.is_a?(kind) }.last)
     end
 
     # Starts the command with only the variables of the proof and the PATH.
@@ -198,23 +221,12 @@ module StoreProof
 
     private
 
-    def parse
-      options = { real_home: File.join(Dir.home, ".plastic") }
-      parser(options).order!(@argv)
-      options
-    end
-
-    def parser(options)
-      OptionParser.new do |parser|
-        %i[job_tmp real_home plastic_home].each do |key|
-          parser.on("--#{key.to_s.tr("_", "-")} VALUE") { |value| options[key] = value }
-        end
-      end
-    end
+    def parse = Options.read(@argv)
 
     def prove(options)
-      env = Environment.new(options[:job_tmp], plastic_home: options[:plastic_home]).to_h
-      Guard.new(options[:job_tmp]).check(env)
+      job_tmp = options[:job_tmp]
+      env = Environment.new(job_tmp, plastic_home: options[:plastic_home]).to_h
+      Guard.new(job_tmp).check(env)
       real = Real.new(options[:real_home])
       digest = real.version_digest
       copy_when_trusted(real, digest, env.fetch("PLASTIC_HOME"))
@@ -222,9 +234,7 @@ module StoreProof
     end
 
     def copy_when_trusted(real, digest, plastic_home)
-      stale = real.problems(digest)
-      raise Failed, stale.join("; ") unless stale.empty?
-
+      Problems.new(real.problems(digest)).check
       Copies.new(real, plastic_home).call
       real.skipped.each { |file| @out.puts "skipped #{file}: missing" }
       report_hits(plastic_home)
@@ -238,19 +248,12 @@ module StoreProof
     end
 
     def finish(real, digest, ran)
-      problems = real.problems(digest)
-      problems << "the command failed" unless ran
-      raise Failed, problems.join("; ") unless problems.empty?
-
+      Problems.after(real.problems(digest), ran).check
       @out.puts "store proof: the command ran on copies and the real files kept user_version 0 and VERSION"
       0
     end
 
     def usage(message) = report(message, 2)
-
-    def refuse(message) = report(message, 3)
-
-    def fail_with(message) = report(message, 1)
 
     def report(message, code)
       @err.puts "store-proof: #{message}"

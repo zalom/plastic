@@ -3,6 +3,12 @@
 module CommandReference
   # Words cut into lines of a given width, and short names.
   module Words
+    PLACEHOLDER = /\A%\{\w+\}\z/
+
+    def self.blank?(text) = text.to_s.strip.empty?
+
+    def self.placeholder?(text) = text.to_s.match?(PLACEHOLDER)
+
     def self.wrap(words, width)
       words.to_s.split.reduce([]) { |all, word| join(all, word, width) }.then { |lines| lines.empty? ? [+""] : lines }
     end

@@ -47,10 +47,6 @@ module Crap
 
   module_function
 
-  def formula(complexity, coverage)
-    (complexity**2 * (1 - coverage)**3 + complexity).round(1)
-  end
-
   def methods_in_source(source, file)
     collect(Prism.parse(source).value, [], file)
   end

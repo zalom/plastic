@@ -6,7 +6,7 @@ require_relative "../../../lib/plastic/config"
 class ConfigStoreTest < Plastic::TestCase
   include ConfigHomes
 
-  def store = Plastic::Config::Store.new(@plastic_home)
+  def store = Plastic::Wiring.store(@plastic_home)
 
   def path = File.join(@plastic_home, "config.yml")
 

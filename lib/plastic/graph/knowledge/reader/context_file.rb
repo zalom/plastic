@@ -26,10 +26,15 @@ module Plastic
           end
 
           # The rows by table, one for each part the file holds.
-          def rows
+          def rows(now)
             found = data
-            TABLES.filter_map { |part, table| [table, row(found.fetch(part))] if found[part] }.to_h
+            TABLES.filter_map { |part, table| [table, row(found.fetch(part), now)] if found[part] }.to_h
           end
+
+          def held? = TABLES.keys.any? { |part| data[part] }
+
+          # The file can be read and holds a part.
+          def usable? = problem.nil? && held?
 
           private
 
@@ -38,14 +43,15 @@ module Plastic
             raise Invalid, "#{@path} is not a JSON object" unless parsed.is_a?(Hash)
             return parsed unless TABLES.keys.any? { |part| parsed[part] }
 
-            raise Invalid, "#{@path} names intent #{parsed["intent"]}, not intent #{@intent_id}" unless parsed["intent"] == @intent_id
+            named = parsed["intent"]
+            raise Invalid, "#{@path} names intent #{named}, not intent #{@intent_id}" unless named == @intent_id
 
             parsed
           rescue JSON::ParserError
             raise Invalid, "#{@path} is not JSON"
           end
 
-          def row(part) = { intent_id: @intent_id, data: JSON.pretty_generate(part), updated_at: Plastic.now }
+          def row(part, now) = { intent_id: @intent_id, data: JSON.pretty_generate(part), updated_at: now }
         end
       end
     end

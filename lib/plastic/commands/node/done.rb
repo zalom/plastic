@@ -9,6 +9,8 @@ module Plastic
       class Done < Move
         argument :text, label: "TEXT", text: "what the work showed"
 
+        reads_files
+
         workflow :code_done_node, next: :noop
       end
     end

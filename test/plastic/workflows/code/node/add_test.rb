@@ -12,22 +12,22 @@ class AddNodeTest < Plastic::TestCase
     outcome, context = add
 
     assert_equal [:done, ["node: n1"]], [outcome, context.printed]
-    assert_equal [%w[n1 open Build]], retrieval.nodes("1").map { |node| [node.id, node.state, node.title] }
+    assert_equal [%w[n1 open Build]], retrieval.structure.nodes("1").map { |node| [node.id, node.state, node.title] }
   end
 
   def test_an_unknown_intent_fails_with_no_node
-    outcome, = add(intent_id: "9")
+    error = assert_raises(Plastic::Failed) { add(intent_id: "9") }
 
-    assert_equal "code_add_node, gate: no intent 9 in this store", outcome.message
-    assert_empty retrieval.nodes
+    assert_equal "no intent 9 in this store", error.message
+    assert_empty retrieval.structure.nodes
   end
 
   def test_a_done_intent_takes_no_nodes
     open_intent(status: "done")
 
-    outcome, = add
+    error = assert_raises(Plastic::Failed) { add }
 
-    assert_equal "code_add_node, gate: intent 1 is done; it takes no nodes", outcome.message
-    assert_empty retrieval.nodes("1")
+    assert_equal "intent 1 is done; it takes no nodes", error.message
+    assert_empty retrieval.structure.nodes("1")
   end
 end

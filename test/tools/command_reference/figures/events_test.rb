@@ -17,22 +17,26 @@ class CommandReferenceEventsFigureTest < Minitest::Test
 
   def events_of(words) = texts(CommandReferenceHelper.files.fetch("#{FOLDER}/#{page(words).slug}/events.svg"))
 
+  BOX_CODE = %r{::|\b[a-z]+_[a-z_]+\b|\.rb\b|\(\)}
+
+  def code?(words) = words.to_s.match?(BOX_CODE)
+
   def test_the_box_rule_catches_a_workflow_path
-    assert CommandReference::Figures::BoxRule.code?("Plastic::Workflows::Code")
+    assert code?("Plastic::Workflows::Code")
   end
 
   def test_the_box_rule_catches_a_method_name_and_a_file_name
-    assert CommandReference::Figures::BoxRule.code?("calls close_intent")
-    assert CommandReference::Figures::BoxRule.code?("reads end.rb")
+    assert code?("calls close_intent")
+    assert code?("reads end.rb")
   end
 
   def test_the_box_rule_leaves_plain_words_alone
-    refute CommandReference::Figures::BoxRule.code?("Merge the code on GitHub")
+    refute code?("Merge the code on GitHub")
   end
 
   def test_no_box_of_a_built_drawing_holds_a_code_symbol
     drawings("(?:events|workflows)").each do |path, svg|
-      texts(svg).each { |_css, words| refute CommandReference::Figures::BoxRule.code?(words), "#{path}: #{words}" }
+      texts(svg).each { |_css, words| refute code?(words), "#{path}: #{words}" }
     end
   end
 

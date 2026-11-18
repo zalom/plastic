@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../backup"
-
 module Plastic
   module Graph
     module Backup

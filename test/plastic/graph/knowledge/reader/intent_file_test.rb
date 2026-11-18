@@ -13,31 +13,31 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}", FixedClock::STAMP)
     apply_read(read)
   end
 
-  def kept(name) = retrieval.kept_files("1").find { |file| file.name == "#{DIR}/#{name}" }
+  def kept(name) = retrieval.archives.kept_files("1").find { |file| file.name == "#{DIR}/#{name}" }
 
   def test_graph_json_cannot_replace_node_or_edge_rows
     node = store_graphs.work.add_node(intent_id: "1", title: "Recorded", criterion: "Done")
 
     assert_raises(Plastic::Invalid) { read_in("graph.json", JSON.generate(GRAPH)) }
-    assert_equal [node.id], retrieval.nodes("1").map(&:id)
+    assert_equal [node.id], retrieval.structure.nodes("1").map(&:id)
   end
 
   def test_work_log_reads_one_row_per_line_and_a_loose_line_is_noted
     read_in("work.log", "- #{AT} Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec written\nfree text\n")
 
     assert_equal [[1, "wrote", "n3", "s-1", "Spec written"], [2, "noted", "", nil, "free text"]],
-      retrieval.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
+      retrieval.structure.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
   end
 
   def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
     read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
 
     assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
-      retrieval.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
+      retrieval.structure.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
   end
 
   def test_a_markdown_file_reads_into_a_document
@@ -60,7 +60,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     write("#{DIR}/work.log", "- #{AT} - - owner noted - - Original\n- #{AT} - - - noted - - new line\n")
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/work.log"])
 
-    assert_equal ["owner", nil], retrieval.work_log("1").map(&:session_id)
+    assert_equal ["owner", nil], retrieval.structure.work_log("1").map(&:session_id)
     assert_equal ["1"], retrieval.touched("owner")
   end
 
@@ -69,10 +69,10 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     file = kept("x.bin")
 
     assert_equal [0o100644, 2, Digest::SHA256.hexdigest("\x00\xFF".b)], [file.mode, file.sz, file.sha256]
-    assert_equal "\x00\xFF".b, retrieval.kept_file_data(file.name)
+    assert_equal "\x00\xFF".b, retrieval.stored.kept_file_data(file.name)
   end
 
-  def legacy_rows = retrieval.legacy_intents_data("1").map { |row| [row.path, row.body] }
+  def legacy_rows = retrieval.stored.legacy_intents_data("1").map { |row| [row.path, row.body] }
 
   def test_a_plan_a_checklist_and_an_action_file_read_into_legacy_rows
     read_in("plan.md", "# Plan\n")
@@ -84,7 +84,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def read_over_an_old_document
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin).write("1", "plan.md", "old plan\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "plan.md", "old plan\n")
     read_in("plan.md", "new plan\n")
   end
 
@@ -134,7 +134,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:work_log, { intent_id: "1", position: 3, at: AT, kind: "noted", text: "later line" }) }
     read_in("savepoint.md", "#{AT}  Spec written\n")
 
-    assert_equal [4, "Spec written"], retrieval.work_log("1").last.values_at(:position, :text)
+    assert_equal [4, "Spec written"], retrieval.structure.work_log("1").last.values_at(:position, :text)
   end
 end
 
@@ -145,7 +145,7 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
 
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}", FixedClock::STAMP)
     apply_read(read)
   end
 
@@ -158,19 +158,19 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
   def test_context_json_with_no_row_reads_the_context_and_the_discovery_rows
     read_in("context.json", JSON.generate("intent" => "1", "discovery" => { "a" => 1 }, "context" => { "b" => 2 }))
 
-    assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.discoveries("1").first.data), JSON.parse(retrieval.contexts("1").first.data)]
+    assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.structure.discoveries("1").first.data), JSON.parse(retrieval.structure.contexts("1").first.data)]
   end
 
   def test_context_json_with_a_row_replaces_the_row_and_the_rows_of_the_part_it_lacks
     read_in("context.json", JSON.generate("intent" => "1", "discovery" => { "a" => 1 }, "context" => { "b" => 2 }))
     read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 3 }))
 
-    assert_equal [{ "b" => 3 }, []], [JSON.parse(retrieval.contexts("1").first.data), retrieval.discoveries("1")]
+    assert_equal [{ "b" => 3 }, []], [JSON.parse(retrieval.structure.contexts("1").first.data), retrieval.structure.discoveries("1")]
   end
 
   def test_context_json_that_names_another_intent_is_refused
     assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "2", "context" => {})) }
-    assert_empty retrieval.contexts("1")
+    assert_empty retrieval.structure.contexts("1")
   end
 
   def test_context_json_that_is_not_json_is_refused

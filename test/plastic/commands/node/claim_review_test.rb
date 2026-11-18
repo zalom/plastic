@@ -26,7 +26,7 @@ class NodeClaimReviewTest < Plastic::TestCase
 
   def node = store_graphs.retrieval.node("1", "n1")
 
-  def snapshot = [node.to_h, store_graphs.retrieval.runs("1").map(&:to_h)]
+  def snapshot = [node.to_h, store_graphs.retrieval.structure.runs("1").map(&:to_h)]
 
   def takeover_then_finish
     as("s-1", "node", "claim", "1", "n1")
@@ -58,13 +58,13 @@ class NodeClaimReviewTest < Plastic::TestCase
   def test_a_claim_with_an_agent_records_it_on_the_run
     as("s-1", "node", "claim", "1", "n1", "--agent", "plastic-executor")
 
-    assert_equal ["plastic-executor"], store_graphs.retrieval.runs("1").map(&:agent)
+    assert_equal ["plastic-executor"], store_graphs.retrieval.structure.runs("1").map(&:agent)
   end
 
   def test_a_claim_without_an_agent_records_an_empty_one
     as("s-1", "node", "claim", "1", "n1")
 
-    assert_equal [""], store_graphs.retrieval.runs("1").map(&:agent)
+    assert_equal [""], store_graphs.retrieval.structure.runs("1").map(&:agent)
   end
 
   def test_a_claimed_node_with_no_time_and_no_holder_is_taken
@@ -122,6 +122,6 @@ class NodeClaimReviewTest < Plastic::TestCase
   def test_a_terminal_with_no_session_variable_claims_as_the_terminal_login
     result = plastic("node", "claim", "1", "n1", env: { "USER" => "ada" }, table: Plastic::CLI::TABLE, clock: @clock)
 
-    assert_equal [0, ["terminal-ada"]], [result.code, store_graphs.retrieval.runs("1").map(&:session_id)]
+    assert_equal [0, ["terminal-ada"]], [result.code, store_graphs.retrieval.structure.runs("1").map(&:session_id)]
   end
 end

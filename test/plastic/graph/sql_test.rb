@@ -87,7 +87,7 @@ class SQLTest < Plastic::TestCase
   end
 
   def test_a_move_binds_its_states_and_its_values
-    move = SQL.move(to: "claimed", from: %w[open failed], set: { claimed_by: "x", seen_at: SQL::Raw.new("updated_at") })
+    move = SQL.move(to: "claimed", from: %w[open failed], set: { claimed_by: "x", seen_at: SQL::Raw.new("updated_at") }, now: FixedClock::AT)
 
     assert_equal ["claimed", "x", "open", "failed"], move.values.values_at(:s_state, :s_claimed_by, :f_0, :f_1)
     assert_includes move.sql, %("state" = :s_state, "updated_at" = :s_updated_at, "claimed_by" = :s_claimed_by, "seen_at" = updated_at)

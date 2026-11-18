@@ -16,23 +16,18 @@ module Plastic
             @replace = replace
           end
 
-          def apply(batch)
+          def apply(batch, now)
             batch.remove(:links) if @replace
-            batch.put_all(:links, members)
+            batch.put_all(:links, links(now))
           end
 
           private
 
-          def members = listed("links").map { |entry| link(entry) }
+          def links(now) = listed("links").map { |entry| link(entry, now) }
 
-          def link(entry)
-            from_ref, to_ref, kind = entry.values_at("from_ref", "to_ref", "kind")
-            return { from_ref:, to_ref:, kind:, at: entry["at"] || Plastic.now } if refs?(from_ref, to_ref) && Link::KINDS.include?(kind)
-
-            raise Invalid, "#{StoreFolder::INDEX} lists a link that needs a from_ref, a to_ref and a kind of #{Link::KINDS.join(", ")}: #{entry.inspect}"
+          def link(entry, now)
+            Link.from_entry(entry, now) || raise(Invalid, "#{StoreFolder::INDEX} lists a link that needs a from_ref, a to_ref and a kind of #{Link::KINDS.join(", ")}: #{entry.inspect}")
           end
-
-          def refs?(*refs) = refs.all? { |ref| ref.is_a?(String) && !ref.empty? }
         end
       end
     end

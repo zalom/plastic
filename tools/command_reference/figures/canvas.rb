@@ -27,9 +27,9 @@ module CommandReference
 
       def text(place, words, css) = (@parts << Label.new(place, words, css).markup)
 
-      def paragraph(origin, lines, css) = lines.each_with_index { |line, at| text(origin.shift(0, at * 14), line, css) }
+      def stack(origin, lines, css, step) = lines.each_with_index { |line, at| text(origin.shift(0, at * step), line, css) }
 
-      def roomy(origin, lines, css) = lines.each_with_index { |line, at| text(origin.shift(0, at * 15), line, css) }
+      def line(points, css = "wire") = shape(Rule.new(points, css))
 
       def dot(center, css) = shape(Circle.new(center, css))
 

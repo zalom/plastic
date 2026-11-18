@@ -27,6 +27,8 @@ module Plastic
                        offers: "plastic graph ready %{intent_id}" }
       }.freeze
 
+      RESULT_VERBS = %i[done_node fail_node ask_node impede_node].freeze
+
       CHANGES = {
         release_node: "The node is released and open again",
         done_node: "The node is marked done with its findings",
@@ -76,8 +78,8 @@ module Plastic
       end
 
       def self.run_move(context, verb, shape)
-        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape))
-        settle(context, node || repeated_done?(context, verb), shape.fetch(:state))
+        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape), **files(context, verb))
+        settle(context, node || (verb == :done_node && repeated_done?(context)), shape.fetch(:state))
       end
 
       def self.settle(context, moved, state)
@@ -88,11 +90,14 @@ module Plastic
 
       def self.fields(context, shape) = shape.fetch(:fields).to_h { |name, source| [name, context.public_send(source || name)] }
 
+      def self.files(context, verb) = RESULT_VERBS.include?(verb) ? { files: context.files } : {}
+
       def self.taken?(context)
         node = context.retrieval.node(context.intent_id, context.id)
-        return false if node.nil? || context.session.nil?
+        session = context.session
+        return false if node.nil? || session.nil?
 
-        held_by_other?(node, context.session) || finished_by_other?(context, node)
+        held_by_other?(node, session) || finished_by_other?(context, node)
       end
 
       def self.held_by_other?(node, session) = node.state == "claimed" && node.claimed_by != session
@@ -104,14 +109,14 @@ module Plastic
 
       # The session of the last run of a node: the one that finished it when the node is done.
       def self.finisher_of(context, node)
-        runs = context.retrieval.runs(node.intent_id).select { |run| run.node_id == node.id }
+        runs = context.retrieval.structure.runs(node.intent_id).select { |run| run.node_id == node.id }
         runs.max_by(&:number)&.session_id
       end
 
       # The holder that finished the node asks again: nothing moves and nothing is written.
-      def self.repeated_done?(context, verb)
+      def self.repeated_done?(context)
         node = context.retrieval.node(context.intent_id, context.id)
-        verb == :done_node && !node.nil? && node.state == "done" && finisher_of(context, node) == context.session
+        !node.nil? && node.state == "done" && finisher_of(context, node) == context.session
       end
 
       def self.refusal(context, state)

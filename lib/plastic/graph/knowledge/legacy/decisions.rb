@@ -6,30 +6,23 @@ module Plastic
   module Graph
     module Knowledge
       module Legacy
-        # Imports rulings and references from the original legacy document bytes.
-        class Decisions
+        # Reads the rulings and references of every intent folder from the original legacy document bytes.
+        module Decisions
           RULING_ID = /\A\*{0,2}D(\d+)\b/
 
-          def read_decisions(dirs, originals)
-            dirs.map do |dir|
-              main, spec = ["#{File.basename(dir)}.md", "spec.md"].map { |name| text_of(originals["#{dir}/#{name}"]) }
-              bullets = [spec, main].map { |text| DecisionBullets.call(text) }.find(&:any?) || []
-              { intent_id: File.basename(dir).split("--").first, rulings: assign_ruling_ids(bullets),
-                source: front_matter_refs(main, "sources"), chain: front_matter_refs(main, "chain") }
-            end
+          def self.read(dirs, originals) = dirs.map { |dir| read_one(dir, originals) }
+
+          def self.read_one(dir, originals)
+            name = File.basename(dir)
+            main, spec = ["#{name}.md", "spec.md"].map { |file| text_of(originals["#{dir}/#{file}"]) }
+            bullets = [spec, main].map { |text| DecisionBullets.call(text) }.find(&:any?) || []
+            { intent_id: name.split("--").first, rulings: assign_ruling_ids(bullets),
+              source: front_matter_refs(main, "sources"), chain: front_matter_refs(main, "chain") }
           end
 
-          def text_of(bytes) = bytes.to_s.dup.force_encoding(Encoding::UTF_8)
+          def self.text_of(bytes) = bytes.to_s.dup.force_encoding(Encoding::UTF_8)
 
-          def write_decisions(databases, decisions, counts)
-            decisions.each do |decision|
-              intent_id = decision.fetch(:intent_id)
-              write_rulings(databases, intent_id, decision.fetch(:rulings), counts)
-              %i[source chain].each { |kind| write_links(databases, intent_id, decision.fetch(kind), kind.to_s, counts) }
-            end
-          end
-
-          def assign_ruling_ids(bullets)
+          def self.assign_ruling_ids(bullets)
             taken = []
             bullets.map do |bullet|
               number = bullet[RULING_ID, 1].to_i
@@ -39,27 +32,9 @@ module Plastic
             end
           end
 
-          def write_rulings(databases, intent_id, bullets, counts)
-            database = databases.fetch(:store)
-            bullets.each do |id, text|
-              row = { intent_id:, id:, text:, supersedes: nil, at: Plastic.now, session_id: @session }
-              database.transaction { |batch| batch.put(:rulings, row, statement: :insert) }
-              counts[:rulings] += 1
-            end
-          end
-
-          def front_matter_refs(text, key)
+          def self.front_matter_refs(text, key)
             line = text[/^#{Regexp.escape(key)}:\s*(\[.*\])\s*$/, 1]
             line ? line.scan(/"([^"]+)"/).flatten : []
-          end
-
-          def write_links(databases, intent_id, refs, kind, counts)
-            database = databases.fetch(:store)
-            refs.each do |ref|
-              row = { from_ref: intent_id, to_ref: ref, kind:, at: Plastic.now }
-              database.transaction { |batch| batch.put(:links, row, statement: :insert) }
-              counts[:links] += 1
-            end
           end
         end
       end

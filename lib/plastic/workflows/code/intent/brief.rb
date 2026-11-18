@@ -4,17 +4,6 @@ require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/spec"
 require_relative "../../../graph/work/main_session"
 require_relative "../../lines"
-require_relative "../../../commands/node/add"
-require_relative "../../../commands/node/remove"
-require_relative "../../../commands/node/claim"
-require_relative "../../../commands/node/release"
-require_relative "../../../commands/node/done"
-require_relative "../../../commands/node/fail"
-require_relative "../../../commands/node/ask"
-require_relative "../../../commands/node/impede"
-require_relative "../../../commands/node/resolve"
-require_relative "../../../commands/edge/add"
-require_relative "../../../commands/edge/remove"
 
 module Plastic
   module Workflows
@@ -35,11 +24,6 @@ module Plastic
 
             "spec: none yet; the agent writes #{file}, and #{Lines::CRITERIA}"
           end
-
-          NODE_AND_EDGE_COMMANDS = [
-            Commands::Node::Add, Commands::Node::Remove, Commands::Node::Claim, Commands::Node::Release, Commands::Node::Done,
-            Commands::Node::Fail, Commands::Node::Ask, Commands::Node::Impede, Commands::Node::Resolve, Commands::Edge::Add, Commands::Edge::Remove
-          ].freeze
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -67,7 +51,7 @@ module Plastic
           end
 
           read "print the usage of the node and edge commands" do |context|
-            NODE_AND_EDGE_COMMANDS.each { |klass| context.print(klass.usage_line) }
+            context.command_usages.each { |line| context.print(line) }
           end
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "intent %{intent_id} is briefed"

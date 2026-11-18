@@ -29,7 +29,7 @@ class UpdateConfigImportTest < Plastic::TestCase
   def test_the_imported_setting_is_read_by_config
     update_old_layout_home
 
-    assert_equal ["alpha"], Plastic::Config.new(@aged_home).source_projects
+    assert_equal ["alpha"], Plastic::Wiring.config(@aged_home).source_projects
   end
 
   def test_a_second_update_changes_no_row

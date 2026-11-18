@@ -66,7 +66,7 @@ class IntentUnarchiveTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal "Unsynced owner edit", folder.read(path)
-    assert store_graphs.retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_restore_refuses_a_partial_existing_tree_without_changing_it
@@ -76,7 +76,7 @@ class IntentUnarchiveTest < Plastic::TestCase
     result = restore_call(intent.intent_id)
 
     assert_equal 1, result.code
-    assert store_graphs.retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def replace_identical_file(intent)
@@ -120,6 +120,6 @@ class IntentUnarchiveTest < Plastic::TestCase
 
     assert_equal [1, ""], [result.code, result.out]
     assert_includes result.err, "intent #{intent.intent_id} is not archived"
-    refute retrieval.archived?(intent.intent_id)
+    refute archived?(intent.intent_id)
   end
 end

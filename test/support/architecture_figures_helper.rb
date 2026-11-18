@@ -18,7 +18,7 @@ module ArchitectureFiguresHelper
   def whole_token?(label, text) = text.match?(/(?<![\w:.])#{Regexp.escape(label)}(?![\w:])/)
 
   def load_kernel
-    require "plastic"
+    require "plastic/cli"
     require "plastic/graph"
     require "plastic/cli/table"
     require "plastic/workflows/registry"

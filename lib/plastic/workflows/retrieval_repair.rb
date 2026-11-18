@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "shellwords"
-require_relative "../cli/scope"
+require_relative "../scope"
 require_relative "../graph/retrieval_graph"
 require_relative "../graph/retrieval/maintained_store"
 
@@ -37,7 +37,7 @@ module Plastic
 
       def command
         return "plastic doctor" if Graph::Retrieval::MaintainedStore.new(scope.plastic_home, slug).only_derived_missing?
-        return "plastic install --reinstall" if slug == CLI::Scope::GLOBAL
+        return "plastic install --reinstall" if slug == Scope::GLOBAL
 
         folder = scope.projects[slug]
         "plastic project new #{slug} #{folder ? Shellwords.escape(folder) : "PATH"}"

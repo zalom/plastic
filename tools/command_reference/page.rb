@@ -7,5 +7,7 @@ module CommandReference
     def slug = words.tr(" ", "-")
 
     def flow(key) = flows.find { |flow| flow.key == key }
+
+    def before(flow) = flows.fetch(flows.index(flow) - 1).key
   end
 end

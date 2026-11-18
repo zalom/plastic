@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/search"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 require_relative "old_store"
 require "tempfile"
 
@@ -11,9 +11,9 @@ module SearchTestSupport
 
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", path, body)
     graphs.retrieval.repair
-    graphs.retrieval.archived?("1")
+    graphs.retrieval.archives.archived?("1")
   end
 
   def selected_store_bytes
@@ -96,7 +96,7 @@ module SearchTestAssertionSupport
 
   def historical_document
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "evidence.md", "first evidence")
     graphs.retrieval.repair
     hit = sole(graphs.retrieval.search("evidence"))
@@ -213,7 +213,7 @@ class SearchScopeTest < Plastic::TestCase
   def test_reports_maintenance_without_recreating_a_missing_selected_store_database
     write_document("other", "other evidence")
     root = File.join(@plastic_home, "stores", "other")
-    Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.archived?("1")
+    Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.archives.archived?("1")
     store_database = File.binread(File.join(root, "knowledge_graph.db"))
     File.delete(File.join(root, "work_graph.db"))
 

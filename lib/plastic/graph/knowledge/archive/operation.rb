@@ -18,7 +18,7 @@ module Plastic
           def call(intent_id)
             intent = retrieval.intent(intent_id)
             return missing(intent_id) unless intent
-            return complete(intent) if retrieval.archived?(intent_id)
+            return complete(intent) if retrieval.archives.archived?(intent_id)
 
             archive(intent)
           end

@@ -6,7 +6,7 @@ require_relative "../../../../../lib/plastic/graph/knowledge/archive/writer"
 class KnowledgeArchiveSnapshotIndexTest < Plastic::TestCase
   def index(entries)
     graphs = store_graphs
-    Plastic::Graph::Knowledge::Archive::SnapshotIndex.new(graphs.databases.fetch(:store), graphs.retrieval.origin_id).index("1", entries)
+    Plastic::Graph::Knowledge::Archive::SnapshotIndex.new(graphs.databases.fetch(:store), graphs.retrieval.origin_id, clock: FixedClock::CLOCK).index("1", entries)
   end
 
   def entry(path, kind: "file", data: "# Notes\n") = { path:, kind:, data: data&.b }
@@ -21,7 +21,7 @@ class KnowledgeArchiveSnapshotIndexTest < Plastic::TestCase
     index([entry("plan.md"), entry("actions/ACTION_1.md", data: "# A\n"), entry("notes.md")])
 
     assert_equal ["notes.md"], retrieval.documents("1").map(&:path)
-    assert_equal [["actions/ACTION_1.md", "# A\n"], ["plan.md", "# Notes\n"]], retrieval.legacy_intents_data("1").map { |row| [row.path, row.body] }
+    assert_equal [["actions/ACTION_1.md", "# A\n"], ["plan.md", "# Notes\n"]], retrieval.stored.legacy_intents_data("1").map { |row| [row.path, row.body] }
   end
 
   def test_folders_links_and_binary_files_are_left_out

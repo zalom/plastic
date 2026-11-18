@@ -32,7 +32,7 @@ module Plastic
           database_list
         end
 
-        def scope = @scope ||= CLI::AskingScope.for(environment, slug: parsed[:store], output:)
+        def new_scope = CLI::AskingScope.for(environment, slug: parsed[:store], output:)
       end
     end
   end

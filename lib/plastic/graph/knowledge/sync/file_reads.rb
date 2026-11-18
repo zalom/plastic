@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../reader"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../../schema"
 
 module Plastic
@@ -20,11 +20,26 @@ module Plastic
 
           # One line for each path read. A path the database refuses is left as it is and gets no line.
           def call(paths)
-            reads = paths.map(&reader.method(:read))
+            now = Plastic.timestamp(@retrieval.clock.now)
+            reads = paths.map { |path| reader.read(path, now) }
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)
             done.map(&:line).uniq
+          end
+
+          def read_all(paths)
+            now = Plastic.timestamp(@retrieval.clock.now)
+            reads = paths.map { |path| reader.read(path, now) }
+            commit(reads)
+            reads
+          rescue Database::Error, Invalid => error
+            raise Failed, "cannot read #{paths.join(", ")}: #{error.message}"
+          end
+
+          def reprint(reads)
+            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
+            @printer.print(reads.map { |found| printed_of(found, fresh) })
           end
 
           private
@@ -55,12 +70,12 @@ module Plastic
           # A roadmap file read into rows is printed again from them, so the file holds the form the rows print.
           def roadmap_print(path)
             slug = path[%r{\Aroadmaps/(.+)\.md\z}, 1]
-            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmap(slug)
+            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmaps.find(slug)
           end
 
-          def reprint(reads)
-            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| fresh[found.path] || roadmap_print(found.path) || found.kept_print(@folder) })
+          def printed_of(found, fresh)
+            path = found.path
+            fresh[path] || roadmap_print(path) || found.kept_print(@folder)
           end
         end
       end

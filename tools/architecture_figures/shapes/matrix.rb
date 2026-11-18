@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "text"
+require_relative "matrix_row"
+
 module ArchitectureFigures
   module Shapes
     # A table of steps against graphs.

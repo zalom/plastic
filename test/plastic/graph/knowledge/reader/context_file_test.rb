@@ -16,7 +16,7 @@ class KnowledgeReaderContextFileTest < Plastic::TestCase
   def test_an_object_that_holds_neither_part_has_no_problem_and_no_rows
     found = file('{"note": 1}')
 
-    assert_equal [nil, {}], [found.problem, found.rows]
+    assert_equal [nil, {}], [found.problem, found.rows(FixedClock::STAMP)]
   end
 
   def test_an_object_that_names_another_intent_is_refused
@@ -24,7 +24,7 @@ class KnowledgeReaderContextFileTest < Plastic::TestCase
   end
 
   def test_an_object_for_this_intent_gives_one_row_for_each_part
-    assert_equal %i[retrieval_contexts retrieval_discoveries], file('{"intent": "1", "context": {"a": 1}, "discovery": {"b": 2}}').rows.keys.sort
+    assert_equal %i[retrieval_contexts retrieval_discoveries], file('{"intent": "1", "context": {"a": 1}, "discovery": {"b": 2}}').rows(FixedClock::STAMP).keys.sort
   end
 
   def test_text_that_is_not_json_is_named
@@ -41,6 +41,6 @@ class KnowledgeReaderContextFileTest < Plastic::TestCase
     written = written_context_text
     printed = Plastic::Graph::Prints::ContextPrint.call(retrieval.intent("1"), Plastic::Graph::Prints::Contents.read(retrieval, "1"))
 
-    assert_equal written, file(sole(printed).text).rows.fetch(:retrieval_contexts).fetch(:data)
+    assert_equal written, file(sole(printed).text).rows(FixedClock::STAMP).fetch(:retrieval_contexts).fetch(:data)
   end
 end

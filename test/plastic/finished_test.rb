@@ -9,9 +9,20 @@ class FinishedTest < Plastic::TestCase
   end
 
   def test_a_closing_line_with_a_hole_fails_the_call
-    failed = Plastic::Finished.closing(Flows::Hole, :done, context(declared: %i[missing], facts: {}))
+    error = assert_raises(Plastic::Failed) { Plastic::Finished.closing(Flows::Hole, :done, context(declared: %i[missing], facts: {})) }
 
-    assert_equal [:code_hole, "closing"], [failed.workflow, failed.step]
+    assert_equal "code_hole, closing", error.source
+  end
+
+  def test_a_closing_that_stops_the_call_reaches_the_caller_as_it_was_raised
+    workflow = Class.new do
+      def self.key = :stopper
+
+      def self.closing(_outcome, _ctx) = raise(Plastic::Usage, "no closing for this call")
+    end
+    error = assert_raises(Plastic::Usage) { Plastic::Finished.closing(workflow, :done, context) }
+
+    assert_equal "no closing for this call", error.message
   end
 
   def test_report_offers_the_next_command_and_exits_zero

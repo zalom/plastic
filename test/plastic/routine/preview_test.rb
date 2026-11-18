@@ -123,6 +123,18 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_equal [], twin.changed_paths
   end
 
+  def test_a_home_the_copy_cannot_hold_refuses_the_preview_and_ends_on_the_closing_line
+    twin = twin_run("intent", "archive", "1") do |home|
+      seed_intents(home, "Alpha")
+      outside = File.join(File.dirname(home), "outside")
+      FileUtils.mkdir_p(outside)
+      File.symlink(outside, File.join(home, "stores", "global", "folder"))
+    end
+
+    assert_equal 3, twin.previewed.code
+    assert_includes twin.previewed.out, "preview complete; the original store was not changed\n"
+  end
+
   def test_verify_rejects_previews_on_a_chain_with_an_agent_workflow
     error = assert_raises(Plastic::Invalid) { PreviewedDraft.verify }
 

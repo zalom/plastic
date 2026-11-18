@@ -46,7 +46,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
     assert_raises(Plastic::Graph::Database::Error) { writer(databases: full_disk).archive(@intent.intent_id) }
 
     assert File.directory?(@root)
-    refute retrieval.archived?(@intent.intent_id)
+    refute retrieval.archives.archived?(@intent.intent_id)
   end
 
   def test_deletion_failure_leaves_snapshot_and_retry_finishes
@@ -65,7 +65,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
 
     refute @writer.archive(@intent.intent_id).first
     assert_equal "owner edit after capture", File.binread(File.join(@root, @intent.file))
-    assert retrieval.archived?(@intent.intent_id)
+    assert retrieval.archives.archived?(@intent.intent_id)
   end
 
   def test_publication_failure_keeps_archive_and_cleans_staging
@@ -84,7 +84,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
 
     assert @writer.restore(@intent.intent_id).first
     assert_equal inode, File.stat(@root).ino
-    refute retrieval.archived?(@intent.intent_id)
+    refute retrieval.archives.archived?(@intent.intent_id)
   end
 
   def test_cleanup_failure_after_removal_can_retry
@@ -92,7 +92,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
     archive_successfully
 
     refute_path_exists @root
-    assert retrieval.archived?(@intent.intent_id)
+    assert retrieval.archives.archived?(@intent.intent_id)
   end
 
   def test_deletion_retry_preserves_changed_file_time
@@ -107,7 +107,7 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
   private
 
   def writer(databases: @graphs.databases, **collaborators)
-    Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators)
+    Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators, clock: FixedClock::CLOCK)
   end
 
   def full_disk = @graphs.databases.merge(store: FullDisk.new(@graphs.databases.fetch(:store)))
@@ -119,19 +119,19 @@ class KnowledgeArchiveWriterTest < Plastic::TestCase
   end
 
   def check_failed_publication
-    assert retrieval.archived?(@intent.intent_id)
+    assert retrieval.archives.archived?(@intent.intent_id)
     refute_path_exists @root
     assert_empty Dir.glob(File.join(File.dirname(@root), ".plastic-archive-*"))
   end
 
   def fail_marker
     assert_raises(Plastic::Graph::Database::Error) { writer(databases: full_disk).restore(@intent.intent_id) }
-    assert retrieval.archived?(@intent.intent_id)
+    assert retrieval.archives.archived?(@intent.intent_id)
   end
 
   def interrupt_removal
     refute writer(files: BlockedRemoval.new).archive(@intent.intent_id).first
-    assert retrieval.archived?(@intent.intent_id)
+    assert retrieval.archives.archived?(@intent.intent_id)
     assert File.directory?(@root)
   end
 end

@@ -3,7 +3,7 @@
 Mark a claimed node failed, with the reason as TEXT.
 
 ```sh
-plastic node fail ID NODE TEXT
+plastic node fail ID NODE TEXT [--file PATH]
 ```
 
 | Argument or option | What it gives | Default |
@@ -11,6 +11,7 @@ plastic node fail ID NODE TEXT
 | `ID` | the intent | |
 | `NODE` | the node | |
 | `TEXT` | why it failed | |
+| `--file PATH` | a file of the intent folder to read as the result; repeat for more; every changed file when left out | `[]` |
 
 ## The events of one call, step by step
 

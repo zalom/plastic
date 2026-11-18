@@ -18,7 +18,7 @@ module Plastic
 
         def call
           kinds = Plastic::Graph::Knowledge::Intent::Notes::KINDS
-          raise CLI::Command::Usage, "KIND takes #{kinds.join(", ")}" unless kinds.include?(parsed[:kind])
+          raise Usage, "KIND takes #{kinds.join(", ")}" unless kinds.include?(parsed[:kind])
 
           super
         end

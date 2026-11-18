@@ -4,11 +4,17 @@
 module SyncStepsHelper
   DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless lines].freeze
 
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :old_savepoints) do
-    def initialize(unreadable_files: {}, rowless_files: [], old_savepoints: Plastic::Graph::Knowledge::Sync::OldSavepoints.none, **fields) = super
+  # A clean plan with one write pending; a test overrides the fields it is about.
+  CLEAN = { failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], unreadable_files: {}, rowless_files: [], new_types: [], direction: :up }.freeze
+
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :old_savepoints, :new_types, :direction) do
+    def self.clean(**fields) = new(**CLEAN, old_savepoints: Plastic::Graph::Knowledge::Sync::OldSavepoints.none, **fields)
 
     def merging? = merging
   end
+
+  # The settings a sync reads: the plans skip no file type, so a notice reads no setting.
+  Settings = Data.define(:config)
 
   # The work graph as a sync calls it: each plan has the writes pending until the apply.
   class Work
@@ -21,7 +27,7 @@ module SyncStepsHelper
 
     def sync_plan(direction, options)
       @calls << [:plan, direction, options]
-      @plan
+      @plan.with(direction:)
     end
 
     def sync_apply(plan)
@@ -31,10 +37,20 @@ module SyncStepsHelper
     end
   end
 
-  def run_sync(flow, plan: {}, **options)
-    work = Work.new(Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], **plan))
+  def sync_context(plan, options)
+    work = Work.new(Plan.clean(**plan))
     facts = { overwrite: false, merge: false }.merge(options)
-    context = Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: })
+    harness = Plastic::Context::Harness.new(nil, nil, Settings.new(config: nil))
+    [Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: }, harness:), work]
+  end
+
+  def run_sync(flow, plan: {}, **options)
+    context, work = sync_context(plan, options)
     [flow.call(context), context.printed, work.calls]
+  end
+
+  def stop_sync(flow, kind, plan: {}, **options)
+    context, work = sync_context(plan, options)
+    [assert_raises(kind) { flow.call(context) }, context.printed, work.calls]
   end
 end

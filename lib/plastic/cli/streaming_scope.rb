@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "scope"
+require_relative "../scope"
 
 module Plastic
   class CLI
     # The store scope of a call that may print lines while it works. `live`
     # is the sink each line goes to, and does nothing when the call did not
     # ask for the lines.
-    class StreamingScope < CLI::Scope
+    class StreamingScope < Scope
       QUIET = ->(_line) {}
 
       # The scope of `slug`; its lines go to `output` when one is given.

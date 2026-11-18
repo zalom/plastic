@@ -13,7 +13,7 @@ module Plastic
       def persist(document)
         intent_id = context.intent_id
         context.database(:store).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.now })
+          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.timestamp(context.now) })
         end
         document
       end

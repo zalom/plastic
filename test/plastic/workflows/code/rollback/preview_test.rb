@@ -29,22 +29,22 @@ class PreviewRollbackTest < Plastic::TestCase
   end
 
   def test_with_no_release_installed_it_refuses
-    outcome, = preview
+    error = assert_raises(Plastic::Refused) { preview }
 
     assert_equal [Plastic::Refused, "no release is installed under this home; install one with install.sh first"],
-      [outcome.class, outcome.message]
+      [error.class, error.message]
   end
 
   def test_a_release_that_is_not_installed_is_refused
     activated("2.0.2", "2.0.3")
 
-    assert_equal "1.0.0 is not installed", preview(target: "1.0.0").first.message
+    assert_equal "1.0.0 is not installed", assert_raises(Plastic::Refused) { preview(target: "1.0.0") }.message
   end
 
   def test_a_single_release_has_nothing_to_go_back_to
     activated("2.0.3")
 
-    assert_equal "no previous release to go back to", preview.first.message
+    assert_equal "no previous release to go back to", assert_raises(Plastic::Refused) { preview }.message
   end
 
   def test_a_real_run_prints_nothing_and_continues

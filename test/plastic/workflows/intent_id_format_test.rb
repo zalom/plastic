@@ -11,12 +11,12 @@ class IntentIdFormatTest < Minitest::Test
   end
 
   def test_an_id_that_starts_with_a_letter_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { validate("a402") }
+    error = assert_raises(Plastic::Usage) { validate("a402") }
 
     assert_equal 'invalid intent id "a402"', error.message
   end
 
   def test_an_id_with_capitals_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { validate("402A") }
+    assert_raises(Plastic::Usage) { validate("402A") }
   end
 end

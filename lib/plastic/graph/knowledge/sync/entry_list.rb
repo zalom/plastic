@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "entry"
-require_relative "../../prints"
+require_relative "../prints"
 require_relative "../store_folder"
 
 module Plastic
@@ -19,12 +19,14 @@ module Plastic
           end
 
           def entries
-            printed = @retrieval.printed
+            printed = printed_hashes
             paths = printed.keys
             prints = prints_of(paths)
-            selected = (prints.keys | on_disk | paths).select { |path| @folder.selection.selects?(path) }
+            selected = (prints.keys | on_disk | paths).select { |path| @folder.sync.selection.selects?(path) }
             selected.sort.map { |path| entry(path, printed[path], prints) }
           end
+
+          def printed_hashes = @retrieval.stored.printed
 
           def entry(path, printed_sha, prints) = Entry.for(@folder, path, printed_sha, prints.fetch(path, Entry::NO_PRINT))
 
@@ -38,7 +40,7 @@ module Plastic
 
           # The roadmaps this home printed or holds a file for that still have rows, so a sync can compare them.
           def roadmap_prints(paths)
-            slugs = [*paths, *@folder.roadmap_files].filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.uniq.select { |slug| @retrieval.roadmap(slug) }
+            slugs = [*paths, *@folder.roadmap_files].filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.uniq.select { |slug| @retrieval.roadmaps.find(slug) }
             slugs.map { |slug| Prints.roadmap(@retrieval, slug) }.to_h { |print| [print.path, print] }
           end
 

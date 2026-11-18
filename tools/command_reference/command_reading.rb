@@ -16,7 +16,7 @@ module CommandReference
 
   # Reads one command from the kernel into a Page.
   class CommandReading
-    KINDS = [[Plastic::Routine, :routine], [Plastic::Hook, :hook]].freeze
+    KINDS = [[Plastic::Routine, :routine], [Plastic::CLI::Hook, :hook]].freeze
 
     def self.of(kit, value)
       table = kit.table
@@ -33,14 +33,13 @@ module CommandReference
 
     def page
       reach = Reach.new(kind:, files: end_files, flows:, own_call:)
-      Page.new(**identity, **found(reach))
+      Page.new(**identity, **reach.to_h.slice(:kind, :own_call, :flows), **found(reach))
     end
 
     private
 
     def found(reach)
-      { kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, endings: @kit.endings.call(reach),
-        changes: Changes.new(@klass, reach.flows).rows }
+      { edges:, endings: @kit.endings.call(reach), changes: Changes.new(@klass, reach.flows).rows }
     end
 
     def identity
@@ -56,7 +55,7 @@ module CommandReference
 
     def routine? = @klass <= Plastic::Routine
 
-    def hook? = @klass <= Plastic::Hook
+    def hook? = @klass <= Plastic::CLI::Hook
 
     def chain = (@klass.chain if routine?)
 

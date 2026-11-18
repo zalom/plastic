@@ -31,10 +31,10 @@ class WorkflowResolveNodeTest < Plastic::TestCase
     claim
     resolve
 
-    assert_equal [:claimed, 4], [claim.first, retrieval.runs("1").size]
+    assert_equal [:claimed, 4], [claim.first, retrieval.structure.runs("1").size]
   end
 
   def test_an_open_node_cannot_be_resolved
-    assert_equal "code_resolve_node, gate: node n1 is open; it cannot move to open", resolve.message
+    assert_equal "node n1 is open; it cannot move to open", assert_raises(Plastic::Failed) { resolve }.message
   end
 end

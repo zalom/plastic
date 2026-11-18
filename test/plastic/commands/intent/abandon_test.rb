@@ -85,7 +85,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal 0, result.code
-    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, retrieval.completion("1")]
+    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, structure.completions("1").first]
   end
 
   def test_a_supersedes_link_from_another_intent_gives_superseded

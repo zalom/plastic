@@ -103,8 +103,8 @@ module Plastic
       # An UPDATE that moves a node between states: the row in `from` with
       # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its id.
       # With a `holder`, a node claimed by another session does not move.
-      def self.move(to:, from:, set: {}, holder: nil, now: Time.now)
-        assignments = set({ state: to, updated_at: Plastic.now(now) }.merge(set), "s")
+      def self.move(to:, from:, now:, set: {}, holder: nil)
+        assignments = set({ state: to, updated_at: Plastic.timestamp(now) }.merge(set), "s")
         states = list(from, "f")
         text = <<~SQL
           UPDATE nodes SET #{assignments.sql}

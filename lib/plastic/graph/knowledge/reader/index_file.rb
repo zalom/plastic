@@ -21,30 +21,33 @@ module Plastic
             @rows = rows
           end
 
-          def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
+          def self.intent_row(entry, updated_at) = Intent.stored_fields(entry, Intent::INDEX_FIELDS).merge(updated_at:)
 
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
 
-          def apply(batch)
-            batch.put_all(:intents, intents)
+          def apply(batch, now)
+            batch.put_all(:intents, intents(now))
           end
 
           private
 
-          def intents = foreign? ? crossing : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry) }
+          def intents(now) = foreign? ? crossing(now) : own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry, now) }
 
-          def foreign? = !object["origin_id"].nil? && object["origin_id"] != @origin_id
+          def foreign?
+            origin_id = object["origin_id"]
+            !origin_id.nil? && origin_id != @origin_id
+          end
 
-          def crossing = own(housed(listed("intents")), object["origin_id"]).filter_map { |entry| crossed(entry) }
+          def crossing(now) = own(housed(listed("intents")), object["origin_id"]).filter_map { |entry| crossed(entry, now) }
 
           # The row of this home with the fields that cross taken from the entry; nil when this home holds no row or the fields are level.
-          def crossed(entry)
+          def crossed(entry, now)
             row = @rows[entry["intent_id"]]
             return unless row&.origin_id == @origin_id
 
-            fields = Intent::CROSSING_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]))
-            row.new_row.merge(fields, updated_at: Plastic.now) unless fields.all? { |field, value| row.public_send(field) == value }
+            fields = Intent.stored_fields(entry, Intent::CROSSING_FIELDS)
+            row.new_row.merge(fields, updated_at: now) unless fields.all? { |field, value| row.public_send(field) == value }
           end
 
           def housed(entries) = @dirs ? entries.select { |entry| housed?(entry["intent_id"]) } : entries

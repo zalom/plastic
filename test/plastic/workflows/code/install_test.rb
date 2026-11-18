@@ -40,10 +40,10 @@ class InstallPlasticTest < Plastic::TestCase
     install
     before = tree_snapshot(@plastic_home)
 
-    outcome, = install
+    error = assert_raises(Plastic::Refused) { install }
 
     assert_equal [Plastic::Refused, "Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again"],
-      [outcome.class, outcome.message]
+      [error.class, error.message]
     assert_equal before, tree_snapshot(@plastic_home)
   end
 
@@ -58,9 +58,9 @@ class InstallPlasticTest < Plastic::TestCase
   def test_settings_that_do_not_parse_fail_with_no_file_written
     File.write(File.join(claude_folder, "settings.json"), "{ broken")
 
-    outcome, = install
+    error = assert_raises(Plastic::Failed) { install }
 
-    assert_includes outcome.message, "settings.json is not valid JSON; nothing was changed"
+    assert_includes error.message, "settings.json is not valid JSON; nothing was changed"
     refute_path_exists File.join(@plastic_home, "VERSION")
   end
 end

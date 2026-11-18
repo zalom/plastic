@@ -27,7 +27,7 @@ module Plastic
           def self.intent_word?(context) = IntentIdFormat::SHAPE.match?(context.id)
 
           gate "no roadmap %{id}", stops: :failure,
-            pass: ->(context) { intent_word?(context) || !context.retrieval.roadmap(context.id).nil? }
+            pass: ->(context) { intent_word?(context) || !context.retrieval.roadmaps.find(context.id).nil? }
 
           read "pick the intent to deliver" do |context|
             intent_word?(context) ? context[:intent_id] = context.id : pick_item(context)
@@ -45,7 +45,7 @@ module Plastic
           def self.intent_for(context)
             id = context.id
             return id if intent_word?(context)
-            return unless context.retrieval.roadmap(id)
+            return unless context.retrieval.roadmaps.find(id)
 
             free_item(items_by_state(context)["in flight"], context)&.intent_id
           end
@@ -53,7 +53,7 @@ module Plastic
           # The roadmap's items grouped by state, each group in batch then item order.
           def self.items_by_state(context)
             retrieval = context.retrieval
-            retrieval.roadmap_items(context.id).group_by { |item| Plastic::Graph::Knowledge::Roadmap::State.of(item, retrieval) }
+            retrieval.roadmaps.items(context.id).group_by { |item| Plastic::Graph::Knowledge::Roadmap::State.of(item, retrieval) }
           end
 
           def self.free_item(items, context) = items&.find { |item| free?(item.intent_id, context) }

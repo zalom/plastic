@@ -10,9 +10,9 @@ module IntentContextTestSupport
 
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).write("1", "evidence.md", body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", body)
     graphs.retrieval.repair
-    graphs.retrieval.archived?("1")
+    graphs.retrieval.archives.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end
 
@@ -43,7 +43,7 @@ module IntentContextTestSupport
 
   def remove_current_head
     graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin).remove("1", "evidence.md")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", "evidence.md")
   end
 
   def mark_retrieval_incomplete

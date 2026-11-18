@@ -61,15 +61,17 @@ class CodeWorkflowTest < Plastic::TestCase
   end
 
   def test_a_refusal_gate_returns_a_refused_value
-    assert_equal Plastic::Refused.new(:code_hold, "the owner holds hold"), Flows::Hold.call(context(facts: { mode: "hold" }))
+    error = assert_raises(Plastic::Refused) { Flows::Hold.call(context(facts: { mode: "hold" })) }
+
+    assert_equal "the owner holds hold", error.message
   end
 
   def test_a_usage_error_raised_in_a_step_is_not_wrapped
     flow = code do
-      read("misuse") { |_c| raise Plastic::CLI::Command::Usage, "bad input" }
+      read("misuse") { |_c| raise Plastic::Usage, "bad input" }
     end
 
-    assert_raises(Plastic::CLI::Command::Usage) { flow.call(context) }
+    assert_raises(Plastic::Usage) { flow.call(context) }
   end
 
   def test_a_gate_refuses_an_option_it_does_not_know
@@ -79,8 +81,9 @@ class CodeWorkflowTest < Plastic::TestCase
   end
 
   def test_a_failure_gate_returns_a_failed_value
-    assert_equal Plastic::Failed.new(:code_hold, "gate", "the check broke on break"),
-      Flows::Hold.call(context(facts: { mode: "break" }))
+    error = assert_raises(Plastic::Failed) { Flows::Hold.call(context(facts: { mode: "break" })) }
+
+    assert_equal "the check broke on break", error.message
   end
 end
 
@@ -183,7 +186,9 @@ class CodeWorkflowStopsWhenTest < Plastic::TestCase
     gate = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops: :failure, pass: ->(_c) { false }, offers: nil, because: nil,
       words: "the name is held")
 
-    assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held"), gate.call(context, Flows::Hold)
+    error = assert_raises(Plastic::Failed) { gate.call(context, Flows::Hold) }
+
+    assert_equal "ada is held", error.message
   end
 
   def test_a_gate_with_no_words_answers_nil

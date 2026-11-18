@@ -24,40 +24,39 @@ class WorkflowStartAutoTest < Plastic::TestCase
   def test_an_open_decision_is_refused
     specified_intent("## Open decisions\n- Which way\n\n## Done criteria\n- It works\n")
 
-    assert_equal "intent 1 has an open decision; run plastic intent spec 1", start.message
+    assert_equal "intent 1 has an open decision; run plastic intent spec 1", assert_raises(Plastic::Refused) { start }.message
   end
 
   def test_a_spec_without_criteria_is_refused
     specified_intent("## Goal\n- Ship\n")
 
-    assert_kind_of Plastic::Failed, start
-    assert_includes start.message, "intent 1 names no done criterion"
+    error = assert_raises(Plastic::Failed) { start }
+    assert_includes error.message, "intent 1 names no done criterion"
   end
 
   def test_a_done_intent_is_refused
     open_intent(status: "done")
 
-    assert_kind_of Plastic::Failed, start
-    assert_includes start.message, "intent 1 is done"
+    error = assert_raises(Plastic::Failed) { start }
+    assert_includes error.message, "intent 1 is done"
   end
 
   def test_a_call_with_no_session_fails
     specified_intent
 
-    assert_equal "code_start_auto, gate: auto names no session; set PLASTIC_SESSION", start(session: nil).message
+    assert_equal "auto names no session; set PLASTIC_SESSION", assert_raises(Plastic::Failed) { start(session: nil) }.message
   end
 
   def test_an_unknown_intent_fails
-    assert_equal "code_start_auto, gate: no intent 9 in this store", start(intent_id: "9").message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { start(intent_id: "9") }.message
   end
 
   def test_an_intent_without_a_go_ahead_is_refused_naming_the_approve_command
     specified_intent
 
-    outcome = start
+    error = assert_raises(Plastic::Refused) { start }
 
-    assert_kind_of Plastic::Refused, outcome
-    assert_includes outcome.message, "plastic intent approve 1"
+    assert_includes error.message, "plastic intent approve 1"
     assert_equal "open", retrieval.intent("1").status
   end
 

@@ -2,6 +2,7 @@
 
 require_relative "../roadmap/parse"
 require_relative "../store_folder"
+require_relative "../store_path"
 
 module Plastic
   module Graph
@@ -21,7 +22,7 @@ module Plastic
 
           def relative(path) = path.delete_prefix("#{@root}/")
 
-          def files = Dir.glob(File.join(@root, "roadmaps", "{,archived/}*.md")).reject { |path| StoreFolder.roadmap_log?(path) }.sort
+          def files = Dir.glob(File.join(@root, "roadmaps", "{,archived/}*.md")).reject { |path| StorePath.roadmap_log?(path) }.sort
         end
       end
     end

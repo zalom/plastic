@@ -17,10 +17,8 @@ module Plastic
       end
       workflow :code_start_auto, next: :noop
 
-      private
-
       # The files to check are those of the intent the word picks, which no fact holds before the workflow runs.
-      def hand_edit_facts(ctx) = ctx.facts.merge(intent_id: Workflows::Code::Auto::Pick.intent_for(ctx))
+      def self.hand_edit_additions(ctx) = { intent_id: Workflows::Code::Auto::Pick.intent_for(ctx) }
     end
   end
 end

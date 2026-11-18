@@ -17,7 +17,7 @@ class HarnessesTest < Plastic::TestCase
   end
 
   def test_each_entry_names_the_hook_command_of_each_event
-    events = { "SessionStart" => "hook start", "Stop" => "hook stop", "SessionEnd" => "hook end" }
+    events = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "Stop" => "hook stop", "SessionEnd" => "hook end" }
 
     assert_equal [events, events], %w[claude-code codex].map { |name| Plastic::Harnesses.fetch(name).events }
   end
@@ -77,7 +77,7 @@ class HarnessesTest < Plastic::TestCase
   end
 
   def test_an_unregistered_name_is_a_usage_error_naming_the_registered_ones
-    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Harnesses.fetch("cursor") }
+    error = assert_raises(Plastic::Usage) { Plastic::Harnesses.fetch("cursor") }
 
     assert_equal "no harness cursor; the registered harnesses are claude-code, codex, hermes", error.message
   end

@@ -30,5 +30,5 @@ module RoadmapFileHelper
     end
   end
 
-  def read(text) = work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch) }
+  def read(text) = work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch, FixedClock::STAMP) }
 end

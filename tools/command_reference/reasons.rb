@@ -8,10 +8,7 @@ module CommandReference
       @flows = page.flows.to_h { |flow| [flow.key, flow] }
     end
 
-    def of(edge)
-      outcomes = @flows.fetch(edge.from).outcomes.select { |outcome| edge.outcomes.include?(outcome.name) }
-      Words.angled(outcomes.map(&:because).join(" or "))
-    end
+    def of(edge) = edge.because(@flows)
 
     def into(key) = @page.edges.select { |edge| edge.to == key }.map { |edge| of(edge) }.uniq.join(" or ")
   end

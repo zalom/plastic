@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../diagram"
-
 module ArchitectureFigures
   module Delivery
     # The phases of delivery as a flow. See docs/contributing/ARCHITECTURE.md.

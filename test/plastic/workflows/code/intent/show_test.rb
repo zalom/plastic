@@ -35,6 +35,6 @@ class WorkflowShowIntentTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_show_intent, gate: no intent 9 in this store", show("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { show("9") }.message
   end
 end

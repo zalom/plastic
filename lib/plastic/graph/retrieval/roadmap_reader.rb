@@ -20,7 +20,7 @@ module Plastic
           @origin_id = origin_id
         end
 
-        def roadmap(slug) = one(:roadmap, slug)
+        def find(slug) = one(:roadmap, slug)
         def batches(slug) = many(:batches, slug)
         def items(slug) = many(:items, slug)
         def edges(slug) = many(:edges, slug)

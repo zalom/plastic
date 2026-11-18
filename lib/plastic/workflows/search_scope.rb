@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command/usage"
-require_relative "../config"
+require_relative "../errors"
 
 module Plastic
   module Workflows
@@ -24,14 +23,14 @@ module Plastic
 
       def configured
         values = context.source_projects
-        values.empty? ? Plastic::Config.new(context.scope.plastic_home).source_projects : values
+        values.empty? ? context.settings.config.source_projects : values
       end
 
       def validate(selected)
         unknown = selected - context.scope.known_slugs
         return if unknown.empty?
 
-        raise CLI::Command::Usage, "unknown source projects: #{unknown.join(", ")}"
+        raise Usage, "unknown source projects: #{unknown.join(", ")}"
       end
     end
   end

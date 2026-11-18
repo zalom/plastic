@@ -14,7 +14,7 @@ require "tmpdir"
 class KernelCommand
   KERNEL = File.expand_path("../../../lib/plastic", __dir__)
   LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
-  PROGRAM = "require ARGV.shift; exit Plastic::CLI.call(ARGV)"
+  PROGRAM = "require File.join(ARGV.shift, %q(cli)); exit Plastic::CLI.call(ARGV)"
   CREATE = "kernel = ARGV.shift; require kernel; require File.join(kernel, %q(graph)); Plastic::Graph.create(home: ENV.fetch('PLASTIC_HOME'), store: 'global')"
 
   # One call: its exit code, what it printed and what it said went wrong.

@@ -30,6 +30,6 @@ class WorkflowListConfigTest < Plastic::TestCase
   end
 
   def test_a_harness_that_is_not_registered_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { listed(harness: "nosuch") }
+    assert_raises(Plastic::Usage) { listed(harness: "nosuch") }
   end
 end

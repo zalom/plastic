@@ -9,9 +9,10 @@ module Plastic
         # The write side of the home's `sessions` table for one
         # store. A put names only the columns it sets, so a write keeps the rest.
         class Writer
-          def initialize(home, store:)
+          def initialize(home, store:, clock:)
             @home = home
             @store = store
+            @clock = clock
           end
 
           # Upserts the session row, keeping `started_at` once it is set, and clears an end: a session that opens again is live.
@@ -23,18 +24,18 @@ module Plastic
           # turn to now.
           def stamp_turn(session_id, directory:)
             opened({ session_id:, store: @store, directory: })
-            put(:sessions, { session_id:, last_turn_at: Plastic.now })
+            put(:sessions, { session_id:, last_turn_at: Plastic.timestamp(@clock.now) })
           end
 
           # The session ended: its time and reason, nothing else.
-          def end_session(session_id, reason:) = put(:sessions, { session_id:, ended_at: Plastic.now, end_reason: reason })
+          def end_session(session_id, reason:) = put(:sessions, { session_id:, ended_at: Plastic.timestamp(@clock.now), end_reason: reason })
 
           # The one prose line of a session; a session with no row gets one.
           def write_note(session_id, text) = put(:sessions, { session_id:, note: text })
 
           private
 
-          def opened(row) = put(:sessions, started?(row[:session_id]) ? row : row.merge(started_at: Plastic.now))
+          def opened(row) = put(:sessions, started?(row[:session_id]) ? row : row.merge(started_at: Plastic.timestamp(@clock.now)))
 
           def started?(session_id)
             @home.rows("SELECT 1 FROM sessions WHERE session_id = :session_id AND started_at IS NOT NULL", session_id:).any?

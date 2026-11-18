@@ -43,9 +43,9 @@ command again with the person's answer in place of `<answer>`:
 | `a` | Pick every item |
 | `q` | Leave with no change |
 
-On `plastic init`, the last item is not a harness. It starts picked unless the setting `sync.media`
-(`plastic config set sync.media false`) is off. Picked, it turns on `sync.media`, so a sync keeps the images and
-videos of each intent. An answer that picks no harness leaves with no change.
+On `plastic init`, the last item is not a harness. It starts picked unless the setting `sync.types` is set and
+leaves out an image or video type. Picked, it adds the image and video types to `sync.types`, so a sync keeps the images
+and videos of each intent. An answer that picks no harness leaves with no change.
 
 An answer with a number that is not on the list, or any other word, is a usage error (exit 2)
 that names the valid numbers or the answer rule. With `--json` the same rows come back as one

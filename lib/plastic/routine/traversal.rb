@@ -24,11 +24,14 @@ module Plastic
         printed = yield(value)
         keep(printed) unless printed.equal?(value)
         printed
+      rescue Failed, Refused => error
+        keep(error)
+        raise
       end
 
       private
 
-      def keep(value) = @save.call(@command_run.close(value, @ctx.facts))
+      def keep(value) = @save.call(@command_run.close(value, @ctx.facts, @ctx.now))
 
       def visit(key)
         workflow = @chain.fetch(key)
@@ -44,7 +47,7 @@ module Plastic
       end
 
       def advance(from, to)
-        @command_run = @command_run.advance(from, to)
+        @command_run = @command_run.advance(from, to, @ctx.now)
         @save.call(@command_run)
       end
     end

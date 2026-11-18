@@ -11,10 +11,11 @@ module Plastic
         # Writes one intent's rulings: the next D id, and the `supersedes` link
         # when the call names an older ruling.
         class Writer
-          def initialize(databases, retrieval, session: nil)
+          def initialize(databases, retrieval, clock:, session: nil)
             @databases = databases
             @retrieval = retrieval
             @session = session
+            @clock = clock
           end
 
           # Returns the new ruling, or nil when `supersedes` names no ruling.
@@ -22,7 +23,7 @@ module Plastic
             target = supersedes && find_ruling(intent_id, supersedes.delete_prefix("#{intent_id}/"))
             return nil if supersedes && !target
 
-            ruling = Ruling.new(intent_id:, id: next_id(intent_id), text:, supersedes: target&.id, at: Plastic.now, session_id: @session, origin_id: nil)
+            ruling = Ruling.new(intent_id:, id: next_id(intent_id), text:, supersedes: target&.id, at: Plastic.timestamp(@clock.now), session_id: @session, origin_id: nil)
             write_rows(rulings: ruling.to_h.except(:origin_id), links: target && Link.supersedes(ruling, target))
             find_ruling(intent_id, ruling.id)
           end

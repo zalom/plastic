@@ -18,8 +18,8 @@ module Plastic
 
       def answered_on_screen
         command = self.class
-        choices = command.choices(scope)
-        return CLI::Screen::Answer::LEAVE if choices.empty?
+        choices = command.choices(scope, settings)
+        return Answer::LEAVE if choices.empty?
 
         CLI::Screen.for(environment, output:).answer(command::QUESTION, choices, command: screen_command)
       end

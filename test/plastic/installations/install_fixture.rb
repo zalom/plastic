@@ -33,7 +33,7 @@ module InstallFixture
     root
   end
 
-  def shipped_package(version = "2.0.3") = Plastic::Installations::Package.new(shipped, plastic, version)
+  def shipped_package(version = "2.0.3") = Plastic::Installations::Package.new(shipped, plastic, version, Plastic::Wiring.settings(plastic))
 
   def make_agent_folders(*configs) = configs.each { |config| FileUtils.mkdir_p(config[:home_dir] || config[:dir]) }
 end

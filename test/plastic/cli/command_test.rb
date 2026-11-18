@@ -6,7 +6,7 @@ class CommandTest < Plastic::TestCase
   # A command that prints the title of the intent it names, or stops the
   # way its --stop switch says.
   class Title < Plastic::CLI::Command
-    STOPS = { "refuse" => Refusal, "fail" => Failure, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
+    STOPS = { "refuse" => Plastic::Refused, "fail" => Plastic::Failed, "behind" => Plastic::Graph::Behind, "ahead" => Plastic::Graph::Ahead, "missing" => Plastic::Graph::MissingStore }.freeze
 
     argument :intent_id, label: "ID", text: "the intent"
     option :stop, switch: "--stop KIND", text: "stop with this kind"

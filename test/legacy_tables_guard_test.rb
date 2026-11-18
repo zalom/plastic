@@ -12,14 +12,15 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/db/schema.rb
     plastic/graph/schema/metadata.rb
     plastic/graph/knowledge/reader/intent_file.rb
+    plastic/graph/knowledge/reader/text_file.rb
     plastic/graph/knowledge/archive/snapshot_index.rb
     plastic/graph/knowledge/legacy/store_import.rb
     plastic/graph/knowledge/legacy/import_metadata.rb
     plastic/graph/knowledge/legacy_intents_data.rb
-    plastic/graph/prints.rb
-    plastic/graph/prints/contents.rb
+    plastic/graph/knowledge/prints.rb
+    plastic/graph/knowledge/prints/contents.rb
     plastic/graph/source.rb
-    plastic/graph/retrieval/store_reads.rb
+    plastic/graph/retrieval/store_read.rb
   ].map { |path| File.join(KERNEL, path) }.freeze
   DECLARATION = /create_table\s+:(\w+)[^\n]*legacy:\s*true/
 

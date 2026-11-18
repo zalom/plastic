@@ -74,9 +74,20 @@ class AgentWorkflowTest < Plastic::TestCase
 
   def test_a_done_check_that_raises_fails_the_handoff
     ctx = context(declared: %i[name draft_path], facts: { name: "ada" })
-    value = Flows::WriteDraft.call(ctx)
+    error = assert_raises(Plastic::Failed) { Flows::WriteDraft.call(ctx) }
 
-    assert_equal ["agent_write_draft", "handoff"], [value.workflow.to_s, value.step]
-    assert_includes value.reason, "TypeError"
+    assert_equal "agent_write_draft, handoff", error.source
+    assert_includes error.message, "TypeError"
+  end
+
+  def test_a_stop_raised_by_a_done_check_reaches_the_caller_as_it_was_raised
+    flow = agent do
+      step "check", done: ->(_c) { raise Plastic::Refused, "held by the owner" }, say: "Check"
+      outcome :handoff, because: "later"
+      outcome :done, because: "now"
+    end
+    error = assert_raises(Plastic::Refused) { flow.call(context) }
+
+    assert_equal "held by the owner", error.message
   end
 end

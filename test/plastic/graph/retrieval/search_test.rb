@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalSearchTest < Plastic::TestCase
   def test_searches_literal_terms_with_bounded_results_and_stable_ties
@@ -23,7 +23,7 @@ class RetrievalSearchTest < Plastic::TestCase
 
   private
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
 end
 
 class RetrievalSearchOrderTest < Plastic::TestCase
@@ -51,7 +51,7 @@ class RetrievalSearchOrderTest < Plastic::TestCase
     store_database.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
   end
 
-  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(database, origin)
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(database, origin, clock: FixedClock::CLOCK)
 
   def database = store_graphs.databases.fetch(:store)
 

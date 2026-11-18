@@ -9,7 +9,7 @@ class KnowledgeRulingWriterTest < Plastic::TestCase
     @graphs.work.write_intent(title: "Alpha")
   end
 
-  def writer = Plastic::Graph::Knowledge::Ruling::Writer.new(@graphs.databases, @graphs.retrieval, session: "s-1")
+  def writer = Plastic::Graph::Knowledge::Ruling::Writer.new(@graphs.databases, @graphs.retrieval, session: "s-1", clock: FixedClock::CLOCK)
 
   def links = @graphs.retrieval.links("1/D2").map { |link| [link.from_ref, link.to_ref, link.kind] }
 

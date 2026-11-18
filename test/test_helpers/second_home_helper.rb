@@ -39,7 +39,7 @@ module SecondHomeHelper
   def context_json(**fields) = JSON.generate({ "intent" => "1", "discovery" => { "a" => 1 }, "context" => { "b" => 2 } }.merge(fields.transform_keys(&:to_s)))
 
   def bare_roadmap_text
-    writer = Plastic::Graph::Knowledge::Roadmap::Writer.new(store_graphs.databases, retrieval)
+    writer = Plastic::Graph::Knowledge::Roadmap::Writer.new(store_graphs.databases, retrieval, clock: FixedClock::CLOCK)
     bare = Plastic::Graph::Knowledge::Roadmap::Fields.new(nil, nil, nil)
     writer.create_roadmap("plan", title: "plan", goal: nil)
     writer.write_batch("plan", 1, fields: bare)

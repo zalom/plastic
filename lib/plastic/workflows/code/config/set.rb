@@ -38,7 +38,7 @@ module Plastic
 
           def self.scalar(text)
             value = YAML.safe_load(text)
-            raise CLI::Command::Usage, "a setting takes one value, not #{text}" if value.is_a?(Enumerable)
+            raise Usage, "a setting takes one value, not #{text}" if value.is_a?(Enumerable)
 
             [value].compact.fetch(0, text)
           rescue Psych::Exception
@@ -47,7 +47,7 @@ module Plastic
 
           def self.checked(settings, key, value)
             on_off = ConfigSettings::ON_OFF.include?(settings.current(key))
-            raise CLI::Command::Usage, "#{key} takes true or false" if on_off && !ConfigSettings::ON_OFF.include?(value)
+            raise Usage, "#{key} takes true or false" if on_off && !ConfigSettings::ON_OFF.include?(value)
 
             value
           end

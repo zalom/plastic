@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../workflow"
-require_relative "../failed"
+require_relative "../errors"
 
 module Plastic
   class CodeWorkflow < Workflow
@@ -10,8 +10,6 @@ module Plastic
     Step = Data.define(:name, :done, :changes, :body) do
       def done?(ctx) = done.call(ctx)
 
-      # Nil when the change is in place; a Failed when the body ran and the
-      # done check still fails.
       def call(ctx, workflow)
         return if done?(ctx)
 
@@ -21,7 +19,7 @@ module Plastic
 
       # The done check must hold after the body, or the step failed.
       def confirm(ctx, workflow)
-        Failed.new(workflow.key, name, "the step ran and its done check still fails") unless done?(ctx)
+        raise Failed.new("the step ran and its done check still fails", source: "#{workflow.key}, #{name}") unless done?(ctx)
       end
     end
   end

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalEvidenceIntegrityRebuilderTest < Plastic::TestCase
   def setup
     super
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin).write("1", "plan.md", "Rebuilt evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Rebuilt evidence\n")
     @expected = rows("document_heads")
   end
 

@@ -11,12 +11,12 @@ class KnowledgeArchiveCaptureTest < Plastic::TestCase
     @intent = open_intent("Target", status: "future")
   end
 
-  def capture = Archive::Capture.new(store_graphs.databases.fetch(:store), folder, retrieval.origin_id, session: "s-1")
+  def capture = Archive::Capture.new(store_graphs.databases.fetch(:store), folder, retrieval.origin_id, Archive::Marking.new("s-1", FixedClock::CLOCK))
 
   def test_capture_keeps_the_snapshot_and_marks_the_intent_archived
     capture.capture(@intent)
 
-    assert retrieval.archived?("1")
+    assert archived?("1")
     assert_includes Archive::Snapshot.new(store_graphs.databases.fetch(:store), "1", retrieval.origin_id).entries.map { |entry| entry[:path] }, @intent.file
   end
 
@@ -30,6 +30,6 @@ class KnowledgeArchiveCaptureTest < Plastic::TestCase
     FileUtils.rm_rf(folder.path(@intent.dir))
 
     assert_equal "intent 1 has no directory to archive", assert_raises(Archive::Tree::Error) { capture.capture(@intent) }.message
-    refute retrieval.archived?("1")
+    refute archived?("1")
   end
 end

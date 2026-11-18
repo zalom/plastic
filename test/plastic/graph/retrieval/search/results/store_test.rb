@@ -2,9 +2,10 @@
 
 require_relative "../../../../../test_helper"
 require_relative "../../../../../../lib/plastic/graph/retrieval/search/results"
+require_relative "../../../../../../lib/plastic/graph/retrieval_source"
 
 class RetrievalSearchResultsStoreTest < Plastic::TestCase
-  def store(slug) = Plastic::Graph::Retrieval::Search::Results::Store.new(@plastic_home, slug)
+  def store(slug) = Plastic::Graph::Retrieval::Search::Results::Store.new(@plastic_home, slug, Plastic::Graph::RetrievalSource)
 
   def keep_a_file
     row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("\x00".b), intent_id: "1", sha256: "h" }

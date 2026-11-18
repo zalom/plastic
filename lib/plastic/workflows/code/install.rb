@@ -2,7 +2,7 @@
 
 require_relative "../../code_workflow"
 require_relative "../installation"
-require_relative "../installation_hooks"
+require_relative "../../doctor/installation_hooks"
 
 module Plastic
   module Workflows
@@ -17,7 +17,7 @@ module Plastic
 
         read "check the harness settings files" do |context|
           installation = Installation.of(context)
-          context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
+          context[:broken] = Plastic::Doctor::InstallationHooks.new(home: context.scope.home).unreadable
           context[:present] = installation.installed?
         end
 

@@ -27,7 +27,7 @@ module Plastic
 
       def check_call = database_list
 
-      def scope = @scope ||= CLI::StreamingScope.for(environment, slug: parsed[:store], output: (parsed[:live] ? output : nil))
+      def new_scope = CLI::StreamingScope.for(environment, slug: parsed[:store], output: (parsed[:live] ? output : nil))
     end
   end
 end

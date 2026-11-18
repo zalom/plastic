@@ -3,7 +3,7 @@
 require "forwardable"
 require_relative "../sql"
 require_relative "../table"
-require_relative "../knowledge/intent"
+require_relative "../intent_status"
 
 module Plastic
   module Graph
@@ -16,9 +16,9 @@ module Plastic
       TYPES = {
         text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER", int: "INT", blob: "BLOB",
         number: "INTEGER NOT NULL", blank: "TEXT NOT NULL DEFAULT ''", primary: "TEXT PRIMARY KEY",
-        serial: "INTEGER PRIMARY KEY AUTOINCREMENT",
+        serial: "INTEGER PRIMARY KEY AUTOINCREMENT", role: "TEXT NOT NULL CHECK(role IN ('user', 'assistant'))",
         operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))",
-        status: "TEXT NOT NULL CHECK(status IN (#{Knowledge::Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))"
+        status: "TEXT NOT NULL CHECK(status IN (#{IntentStatus::ALL.map { |status| "'#{status}'" }.join(", ")}))"
       }.freeze
 
       # One table's columns, declared one type at a time: `t.kept :a, :b`.
@@ -34,27 +34,19 @@ module Plastic
         end
       end
 
-      # One trigger: its name, the table it sits on, and its text from the timing on.
-      Trigger = Data.define(:name, :on, :sql) do
-        def create = "CREATE TRIGGER IF NOT EXISTS #{SQL.name(name)} #{sql}"
-
-        def drop = "DROP TRIGGER IF EXISTS #{SQL.name(name)};"
-      end
-
       # One virtual table: its name and the module it is built with.
       VirtualTable = Data.define(:name, :using) do
         def ddl(schema = nil) = "CREATE VIRTUAL TABLE IF NOT EXISTS #{SQL.qualified(schema, name)} USING #{using};"
       end
 
-      # What the block of SchemaFile.define declares: tables, virtual tables, triggers, marks and databases.
+      # What the block of SchemaFile.define declares: tables, virtual tables, marks and databases.
       class Declared
-        attr_reader :tables, :virtual, :triggers, :databases
+        attr_reader :tables, :virtual, :databases
 
         def initialize
           @tables = {}
           @marks = {}
           @virtual = {}
-          @triggers = {}
           @databases = {}
         end
 
@@ -71,9 +63,6 @@ module Plastic
           virtual[name] = VirtualTable.new(name:, using:)
         end
 
-        # A trigger on a table, kept apart from the tables: `sql` runs from its timing to END.
-        def create_trigger(name, on:, sql:) = triggers[name] = Trigger.new(name:, on:, sql:)
-
         # A database: its key, its file and the tables it holds, in order.
         def database(key, file, names) = databases[key] = [file, names]
 
@@ -88,7 +77,7 @@ module Plastic
 
       attr_reader :version
 
-      def_delegators :@declared, :tables, :virtual, :triggers, :databases, :legacy, :since
+      def_delegators :@declared, :tables, :virtual, :databases, :legacy, :since
 
       def self.define(version:, &block) = new(version, Declared.new.tap { |declared| declared.instance_eval(&block) })
 

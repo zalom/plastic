@@ -3,7 +3,6 @@
 require "fileutils"
 require_relative "codex_toml"
 require_relative "files"
-require_relative "../config/agent_models"
 
 module Plastic
   module Installations
@@ -11,27 +10,23 @@ module Plastic
     # role file of a package. Codex reads standalone TOML agents, never the
     # markdown copy, so this is a render, not a copy.
     class CodexAgents
-      def initialize(package_root)
+      def initialize(package_root, models: {}, efforts: {}, skip: [])
         @package_root = package_root
+        @models = models
+        @efforts = efforts
+        @skip = skip
       end
 
-      def call(root, models: {}, efforts: {}, advisor: true)
-        sources = Dir.glob(File.join(@package_root, "agents", "*.md"))
-        return [] if sources.empty?
-
-        FileUtils.mkdir_p(root)
-        sources.filter_map do |source|
-          name = File.basename(source, ".md")
-          write(root, source, models[name], efforts[name]) if advisor || !Config::AgentModels::CONSULTATION_AGENTS.include?(name)
-        end
-      end
+      def call(root) = sources.filter_map { |source| write(root, source) }
 
       private
 
-      def write(root, source, model, effort)
-        target = File.join(root, "#{File.basename(source, ".md")}.toml")
-        Files.write_text(target, CodexToml.render(source, model, effort))
-        target
+      def sources = Dir.glob(File.join(@package_root, "agents", "*.md"))
+
+      def write(root, source)
+        FileUtils.mkdir_p(root)
+        name = File.basename(source, ".md")
+        CodexToml.write(root, source, @models[name], @efforts[name]) unless @skip.include?(name)
       end
     end
   end

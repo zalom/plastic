@@ -80,6 +80,12 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed or --older-than |
 | [`plastic backup restore`](backup-restore/README.md) | Replace one store's databases with those of a done backup |
 
+## resources
+
+| Command | What it does |
+| --- | --- |
+| [`plastic resources sort`](resources-sort/README.md) | Move one store's files into the resources layout and rewrite their links |
+
 ## document
 
 | Command | What it does |
@@ -140,10 +146,17 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic roadmap log`](roadmap-log/README.md) | Append a log line to a roadmap, stamped with the session id |
 | [`plastic roadmap edge remove`](roadmap-edge-remove/README.md) | Remove one needs edge from a roadmap |
 
+## chat
+
+| Command | What it does |
+| --- | --- |
+| [`plastic chat list`](chat-list/README.md) | List the recorded chat messages of every store in time order, from a day on with --since |
+
 ## hook
 
 | Command | What it does |
 | --- | --- |
 | [`plastic hook start`](hook-start/README.md) | SessionStart: name the harness, open the session row, print the state the rows carry |
+| [`plastic hook prompt`](hook-prompt/README.md) | UserPromptSubmit: record the prompt in the machine's chat history |
 | [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew claims, run the stop gate |
 | [`plastic hook end`](hook-end/README.md) | SessionEnd: set the session's end time and reason |

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "screen/outcomes"
-require_relative "screen/answer"
+require_relative "../screen_choice"
+require_relative "../answer"
 require_relative "screen/numbered_list"
 require_relative "screen/terminal_list"
 
@@ -10,7 +10,7 @@ module Plastic
     # How a call asks the person to pick from a list. With a terminal on
     # both streams the person toggles the list there. With no terminal, or
     # with `--json`, the call prints the numbered list and stops, and the
-    # next call reads the person's answer with Screen::Answer.
+    # next call reads the person's answer with Answer.
     class Screen
       def self.for(environment, output:) = new(input: environment.input, stream: environment.out, output:)
 

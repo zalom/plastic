@@ -9,6 +9,8 @@ module Plastic
       class Ask < Move
         argument :text, label: "TEXT", text: "the question and what was tried"
 
+        reads_files
+
         workflow :code_ask_node, next: :noop
       end
     end

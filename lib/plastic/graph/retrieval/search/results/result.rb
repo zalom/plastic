@@ -32,7 +32,7 @@ module Plastic
             def_delegators :match, :rank, :retrieval, :row, :rrf_offset, :slug
 
             def details
-              { "store" => slug, "local_rank" => rank, "rrf_score" => 1.0 / (rrf_offset + rank), "archived" => retrieval.archived?(row.fetch("intent_id")) }
+              { "store" => slug, "local_rank" => rank, "rrf_score" => 1.0 / (rrf_offset + rank), "archived" => retrieval.archives.archived?(row.fetch("intent_id")) }
             end
           end
         end

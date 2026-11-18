@@ -4,9 +4,10 @@ require "fileutils"
 require_relative "graph/database"
 require_relative "graph/missing_store"
 require_relative "graph/origin"
-require_relative "graph/schema/runner"
+require_relative "graph/migration/runner"
 require_relative "graph/retrieval_graph"
 require_relative "graph/knowledge/store_folder"
+require_relative "graph/knowledge/sync_settings"
 require_relative "graph/work_graph"
 
 module Plastic
@@ -31,12 +32,12 @@ module Plastic
     # and makes none: the origin id and the databases appear on the first
     # read or write. `session` names the harness session that made the call,
     # stamped on the rows it writes.
-    def self.open(home:, store:, session: nil, clock: Time)
+    def self.open(home:, store:, session: nil, clock: Time, sync: Knowledge::SyncSettings.none)
       root = Database.store_root(home, store)
       origin = Origin.new(home)
       databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
-      retrieval = RetrievalGraph.new(databases, store:, origin:)
-      folder = Knowledge::StoreFolder.new(root, selection: Knowledge::SyncSelection.of(home))
+      retrieval = RetrievalGraph.new(databases, store:, origin:, clock:)
+      folder = Knowledge::StoreFolder.new(root, sync:)
       Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
     end
 

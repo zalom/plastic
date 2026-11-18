@@ -6,15 +6,15 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Components
     META = Diagram::Meta.new(file: "components.svg", width: 1240, height: 955, title: "The components of the plastic kernel",
-      desc: "The command line finds a row in CLI::TABLE and builds a Routine. The Command runs the workflow chain through Routine::Traversal, which finds each workflow in Workflows::REGISTRY, and it opens the Graph. Graph::WorkGraph writes every database through Graph::Work::Writers, Graph::RetrievalGraph reads every database, and Graph::Printer prints files.")
+      desc: "The command line finds a row in CLI::TABLE and builds a Routine. The Command runs the workflow chain through Routine::Traversal, which finds each workflow in Workflows::REGISTRY, and it opens the Graph. Graph::WorkGraph writes every database through Graph::Writers, Graph::RetrievalGraph reads every database, and Graph::Printer prints files.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       commands | zone | 10 10 1220 235 | Commands: one call in, one report out | | | |
       routine | | 30 44 260 | Routine | class | code | mono | Runs one command to a report.
       cli | | 390 44 230 | CLI | class | code | mono | Reads the words.
       table | | 720 44 230 | CLI::TABLE | constant | line | mono | One row for each command.
       declarations | | 390 150 230 | CLI::Declarations | module | line | mono | Options a command declares.
-      scope | | 720 150 230 | CLI::Scope | class | line | mono | Which project and store.
-      hook | | 1000 150 210 | Hook | class | agent | mono | Answers the hook events.
+      scope | | 720 150 230 | Scope | class | line | mono | Which project and store.
+      hook | | 1000 150 210 | CLI::Hook | class | agent | mono | Answers the hook events.
       workflows | zone | 190 285 840 240 | Workflows | | | |
       traversal | | 205 317 230 | Routine::Traversal | class | code | mono | Walks the chain of workflows.
       registry | | 495 317 230 | Workflows::REGISTRY | constant | line | mono | Every workflow by name.
@@ -22,7 +22,7 @@ module ArchitectureFigures
       agent | | 785 430 230 | AgentWorkflow | class | agent | mono | Steps in words for the agent.
       graph | zone | 10 565 1220 376 | Graph module | | | |
       work | | 30 601 770 | Graph::WorkGraph | class | line | mono | The write side of every database.
-      writers | | 880 601 330 | Graph::Work::Writers | class | line | mono | Does the writes for the work graph.
+      writers | | 880 601 330 | Graph::Writers | class | line | mono | Does the writes for the work graph.
       local | cylinder | 30 735 170 | plastic.db | | | |
       work_db | cylinder | 230 735 170 | work_graph.db | | | |
       knowledge_db | cylinder | 430 735 170 | knowledge_graph.db | | | |
@@ -52,8 +52,8 @@ module ArchitectureFigures
       ["retrieval.right", "database.left", ["uses"]]
     ].freeze
     NAMES = [
-      *%w[CLI CLI::TABLE CLI::Declarations CLI::Scope Routine Routine::Traversal Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
-        Graph Graph::WorkGraph Graph::Work::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
+      *%w[CLI CLI::TABLE CLI::Declarations Scope Routine Routine::Traversal CLI::Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
+        Graph Graph::WorkGraph Graph::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
       *%w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] }
     ].freeze
 

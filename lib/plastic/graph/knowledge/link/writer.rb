@@ -10,9 +10,10 @@ module Plastic
         # another, an intent id, a ruling ref such as `1/D1`, or a ref with a
         # store prefix such as `global:25`, kept as written.
         class Writer
-          def initialize(databases, retrieval)
+          def initialize(databases, retrieval, clock:)
             @databases = databases
             @retrieval = retrieval
+            @clock = clock
           end
 
           # Why `id` cannot link to `target`, or nil: a missing id or a local
@@ -26,14 +27,14 @@ module Plastic
           # Why the link would be refused, or nil: a self link, or one already there.
           def refusal(id, target, kind)
             return "intent #{id} cannot link to itself" if id == target
-            return "intent #{id} already has a #{kind} link to #{target}" if linked?(id, target, kind)
+            return "intent #{id} already has a #{kind} link to #{target}" if @retrieval.links(id).any? { |link| link.joins?([id, target, kind]) }
 
             nil
           end
 
           def add_link(from_ref:, to_ref:, kind:)
             @databases.fetch(:store).transaction do |batch|
-              batch.put(:links, { from_ref:, to_ref:, kind:, at: Plastic.now }, statement: :insert)
+              batch.put(:links, { from_ref:, to_ref:, kind:, at: Plastic.timestamp(@clock.now) }, statement: :insert)
             end
             true
           end
@@ -41,9 +42,9 @@ module Plastic
           def remove_link(from_ref:, to_ref:, kind:)
             database = @databases.fetch(:store)
             written = database.written
-            before = written["links"]
+            before = written.dup
             database.transaction { |batch| batch.remove(:links, from_ref:, to_ref:, kind:, origin_id: @retrieval.origin_id) }
-            written["links"] > before
+            written["links"] > before["links"]
           end
 
           private
@@ -56,10 +57,6 @@ module Plastic
             return nil unless ruling_id
 
             "no ruling #{target} in this store" unless @retrieval.rulings(intent_id).any? { |ruling| ruling.id == ruling_id }
-          end
-
-          def linked?(id, target, kind)
-            @retrieval.links(id).any? { |link| link.from_ref == id && link.to_ref == target && link.kind == kind }
           end
         end
       end

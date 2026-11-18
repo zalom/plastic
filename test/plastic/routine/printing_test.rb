@@ -153,7 +153,7 @@ class RoutinePrintingContextTest < Plastic::TestCase
     path = edited_context
     named = cli("sync", "up")
     again = cli("intent", "note", "1", "a line")
-    rows = JSON.parse(retrieval.contexts("1").first.data)
+    rows = JSON.parse(retrieval.structure.contexts("1").first.data)
 
     assert_equal [0, 0, true, { "hand" => true }], [named.code, again.code, level_context?(path), rows], again.err
   end

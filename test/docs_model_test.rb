@@ -11,7 +11,7 @@ class DocsModelTest < Minitest::Test
   def test_adapters_doc_names_the_hooks_of_each_harness
     body = File.read(ADAPTERS).gsub(/\s+/, " ")
 
-    ["`hook start`, `hook stop` and `hook end`", "the update check", "no hooks"].each { |phrase| assert_includes body, phrase }
+    ["`hook start`, `hook prompt`, `hook stop` and `hook end`", "the update check", "no hooks"].each { |phrase| assert_includes body, phrase }
   end
 
   def test_adapters_doc_names_no_removed_hook
