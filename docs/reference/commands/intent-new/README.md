@@ -1,6 +1,6 @@
 # plastic intent new
 
-Open an intent: write its rows and its folder.
+Write a future intent: its rows and its folder.
 
 ```sh
 plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND]

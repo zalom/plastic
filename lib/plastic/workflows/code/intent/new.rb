@@ -40,7 +40,7 @@ module Plastic
             context.print(context.work.ref_line(context.ref)) if context.ref
           end
 
-          outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its files"
+          outcome :done, because: "intent %{intent_id} is future; plastic intent start %{intent_id} or plastic intent auto %{intent_id} starts it"
 
           def self.store_line(store) = (store == "global") ? "store: global, because no project names this folder" : "store: #{store}"
 

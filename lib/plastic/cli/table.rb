@@ -26,7 +26,7 @@ module Plastic
       "intent" => {
         "intent abandon" => ["Commands::Intent::Abandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
         "intent end" => ["Commands::Intent::End", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
-        "intent new" => ["Commands::Intent::New", "Open an intent: write its rows and its folder"],
+        "intent new" => ["Commands::Intent::New", "Write a future intent: its rows and its folder"],
         "intent start" => ["Commands::Intent::Start", "Start an intent for guided work: set it in progress and print its worktree"],
         "intent auto" => ["Commands::Intent::Auto", "Start an intent for agent delivery: set it in progress and print its worktree"],
         "intent park" => ["Commands::Intent::Park", "Park an intent in progress with the reason it waits; intent start resumes it"],

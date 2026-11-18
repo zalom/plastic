@@ -23,7 +23,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | --- | --- |
 | [`plastic intent abandon`](intent-abandon/README.md) | Close an intent that will not ship once outcome.md records the revert, or print the revert steps |
 | [`plastic intent end`](intent-end/README.md) | Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing |
-| [`plastic intent new`](intent-new/README.md) | Open an intent: write its rows and its folder |
+| [`plastic intent new`](intent-new/README.md) | Write a future intent: its rows and its folder |
 | [`plastic intent start`](intent-start/README.md) | Start an intent for guided work: set it in progress and print its worktree |
 | [`plastic intent auto`](intent-auto/README.md) | Start an intent for agent delivery: set it in progress and print its worktree |
 | [`plastic intent park`](intent-park/README.md) | Park an intent in progress with the reason it waits; intent start resumes it |

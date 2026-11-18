@@ -5,8 +5,8 @@ require_relative "../../routine"
 module Plastic
   module Commands
     module Intent
-      # Opens a future intent: writes its row and its first rows, and prints its
-      # folder and store/index.json in the same call. intent start sets it in progress.
+      # Writes a future intent: its row and its first rows, and prints its folder and
+      # store/index.json in the same call. intent start or intent auto starts it.
       class New < Routine
         subject :title
         argument :title, label: "TITLE", text: "what the intent is for, in words", rest: true
