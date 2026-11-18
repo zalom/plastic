@@ -35,6 +35,7 @@ module Plastic
         "roadmap next" => ["Commands::Roadmap::Next", "Print the first ready item, or what is in the way"],
         "roadmap drop" => ["Commands::Roadmap::Drop", "Mark a roadmap item dropped; its edges stay as rows"],
         "roadmap open" => ["Commands::Roadmap::Open", "Open a ready item's intent, with its spec held in rows"],
+        "roadmap auto" => ["Commands::Roadmap::Auto", "Start a roadmap's next item for agent delivery: its first free item in flight, or its first ready item, opened first"],
         "roadmap check" => ["Commands::Roadmap::Check", "List a roadmap's loops, dangling edges and items with no intent"],
         "roadmap log" => ["Commands::Roadmap::Log", "Append a log line to a roadmap, stamped with the session id"],
         "roadmap edge remove" => ["Commands::Roadmap::Edge::Remove", "Remove one needs edge from a roadmap"]
