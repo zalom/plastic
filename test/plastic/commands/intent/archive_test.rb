@@ -12,7 +12,7 @@ class IntentArchiveCaseTest < Plastic::TestCase
   end
 
   def test_archiving_an_open_intent_exits_1_and_names_the_end_command
-    ran("intent new Alpha")
+    open_intent("Alpha")
 
     assert_case line("intent archive 1"), code: 1, out: ["next: plastic intent end 1"],
       err: ["intent 1 is open; only done, abandoned and future intents archive"]

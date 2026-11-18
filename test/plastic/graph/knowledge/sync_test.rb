@@ -631,6 +631,7 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
   def test_an_intent_that_a_live_intent_links_to_on_the_first_home_stays_unarchived_on_the_second_home
     to_both_homes do |a, b|
       link(a, "2", "cites", "1")
+      start_intent(a, "2")
       close_intent(a, "1")
       pull(b, a)
       call_in(b, "sync", "up")
@@ -641,6 +642,11 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
   end
 
   private
+
+  def start_intent(home, intent_id)
+    home_graphs(home).work.activate_intent(intent_id)
+    call_in(home, "sync", "down")
+  end
 
   def close_intent(home, intent_id)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(TwoHomesStatusHelper::CLOSED)

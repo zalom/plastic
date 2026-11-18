@@ -6,7 +6,7 @@ module Plastic
   module Workflows
     module Code
       module Intent
-        # Writes a new intent's rows; the command prints its folder and store/index.json.
+        # Writes a new future intent's rows; the command prints its folder and store/index.json.
         class New < CodeWorkflow
           # Declares the whole chain, so a second load of the class replaces the first.
           clear_declarations
@@ -14,19 +14,17 @@ module Plastic
           sets :problem, :intent_id, :linked
 
           read "check the call" do |context|
-            context[:problem] = context.work.intent_problem(parent_id: context.parent_id, ref: context.ref, status: context.status,
-              reason: context.reason) ||
-              after_problem(context)
+            context[:problem] = context.work.intent_problem(parent_id: context.parent_id, ref: context.ref) || after_problem(context)
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the store is still in the old format and needs plastic sync up first, the status or the reason is not valid, the parent or the intent to link after is not in the store, or the reference is not valid",
+            words: "the store is still in the old format and needs plastic sync up first, the parent or the intent to link after is not in the store, or the reference is not valid",
             pass: ->(context) { context.problem.nil? }
 
           step "write the intent", done: ->(context) { !context.intent_id.nil? },
             changes: { work: "The intent is written with its first work log line", knowledge: "The spec document of the intent is created" } do |context|
             intent = context.work.write_intent(title: context.title, parent_id: context.parent_id, ref: context.ref, kind: context.kind,
-              status: context.status, reason: context.reason)
+              status: "future")
             context[:intent_id] = intent.intent_id
           end
 

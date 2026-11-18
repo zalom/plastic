@@ -20,17 +20,9 @@ module Plastic
             @session = session
           end
 
-          # Why the call cannot write the intent, or nil. `state` may name the status and the reason.
-          def problem(parent_id: nil, ref: nil, **state)
-            store_problem || self.class.status_problem(**state) || parent_problem(parent_id) || Ref.parse(ref)&.problem(@retrieval)
-          end
-
-          # Why a new intent cannot take this status and reason, or nil.
-          def self.status_problem(status: "open", reason: nil)
-            return "a new intent takes the status open, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
-            return "a parked intent needs a reason: pass --reason TEXT" if status == "parked" && reason.to_s.strip.empty?
-
-            "--reason belongs to a parked intent: pass --status parked" if reason && status != "parked"
+          # Why the call cannot write the intent, or nil.
+          def problem(parent_id: nil, ref: nil)
+            store_problem || parent_problem(parent_id) || Ref.parse(ref)&.problem(@retrieval)
           end
 
           # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or in progress.
