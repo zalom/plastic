@@ -22,6 +22,7 @@ module Plastic
 
       def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note
       def_delegator "@writers.intents", :activate, :activate_intent
+      def_delegator "@writers.intents", :open_intent
       def_delegator "@writers.intents", :open_problem, :open_intent_problem
       def_delegator "@writers.intents", :problem, :intent_problem
       def_delegator "@writers.intents", :ref_line

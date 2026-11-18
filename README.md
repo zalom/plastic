@@ -181,6 +181,7 @@ plastic next                          # The next action in one line
 ```bash
 plastic intent new "TITLE"            # Create an intent
 plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
+plastic intent open 12                # Move a future or parked intent to open
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights

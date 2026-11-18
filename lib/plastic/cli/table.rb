@@ -32,6 +32,7 @@ module Plastic
         "intent revise" => ["Commands::Intent::Revise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
         "intent note" => ["Commands::Intent::Note", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],
         "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
+        "intent open" => ["Commands::Intent::Open", "Move a future or parked intent to open"],
         "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
         "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],
         "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md"],

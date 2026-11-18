@@ -29,6 +29,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent revise`](intent-revise/README.md) | Rewrite an intent's What and Why after grilling, keeping the old text as a revision |
 | [`plastic intent note`](intent-note/README.md) | Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision |
 | [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; auto refuses an intent without it |
+| [`plastic intent open`](intent-open/README.md) | Move a future or parked intent to open |
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
 | [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |

@@ -61,12 +61,27 @@ module Plastic
           # Sets an open, parked or future intent in progress; a no-op guard against a
           # race with a status that moved to done or abandoned since the check.
           def activate(intent_id)
-            @databases.fetch(:store).transaction do |batch|
-              batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
-            end
+            write_status(ACTIVATE_SQL, intent_id)
+          end
+
+          OPEN_SQL = <<~SQL
+            UPDATE intents SET status = 'open', reason = NULL, updated_at = :now
+            WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('future', 'parked')
+            RETURNING intent_id
+          SQL
+
+          # Sets a future or parked intent open and drops the reason it was parked for; any other status stays.
+          def open_intent(intent_id)
+            write_status(OPEN_SQL, intent_id)
           end
 
           private
+
+          def write_status(sql, intent_id)
+            @databases.fetch(:store).transaction do |batch|
+              batch.write(:intents, sql, intent_id:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
+            end
+          end
 
           def store_problem
             "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?

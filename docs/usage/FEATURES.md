@@ -50,7 +50,7 @@ intent instead.
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
 worktree command, and the agent runs it. `plastic auto ID` refuses an intent without the go-ahead
-that `plastic intent approve ID` writes. A node claim, taken with `plastic node claim`, names the session that works a node.
+that `plastic intent approve ID` writes, and an intent that is not open or in progress. `plastic intent open ID` moves a future or parked intent to open first. A node claim, taken with `plastic node claim`, names the session that works a node.
 
 ## Rulings and revisions
 
