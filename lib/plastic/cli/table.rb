@@ -29,6 +29,7 @@ module Plastic
         "intent new" => ["Commands::Intent::New", "Open an intent: write its rows and its folder"],
         "intent start" => ["Commands::Intent::Start", "Start an intent for guided work: set it in progress and print its worktree"],
         "intent auto" => ["Commands::Intent::Auto", "Start an intent for agent delivery: set it in progress and print its worktree"],
+        "intent park" => ["Commands::Intent::Park", "Park an intent in progress with the reason it waits; intent start resumes it"],
         "intent rule" => ["Commands::Intent::Rule", "Write an owner ruling, with --supersedes to replace an older one"],
         "intent revise" => ["Commands::Intent::Revise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
         "intent note" => ["Commands::Intent::Note", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],

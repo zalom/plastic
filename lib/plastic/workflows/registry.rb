@@ -123,7 +123,10 @@ module Plastic
 
       # Resources: the sort of an intent folder into the resources layout.
       code_preview_sort_resources: "Code::Resources::Sort::Preview",
-      code_sort_resources: "Code::Resources::Sort"
+      code_sort_resources: "Code::Resources::Sort",
+
+      # Statuses: parking started work with its reason.
+      code_park_intent: "Code::Intent::Park"
     }.freeze
   end
 end

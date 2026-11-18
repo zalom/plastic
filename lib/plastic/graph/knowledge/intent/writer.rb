@@ -66,6 +66,19 @@ module Plastic
             end
           end
 
+          PARK_SQL = <<~SQL
+            UPDATE intents SET status = 'parked', reason = :reason, updated_at = :now
+            WHERE intent_id = :intent_id AND origin_id = :origin AND status = 'in_progress'
+          SQL
+
+          # Parks an intent in progress with its reason; a no-op guard against a status that moved since the check.
+          def park(intent_id, reason)
+            @databases.fetch(:store).transaction do |batch|
+              batch.write(:intents, PARK_SQL, intent_id:, reason:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
+            end
+            true
+          end
+
           private
 
           def store_problem
