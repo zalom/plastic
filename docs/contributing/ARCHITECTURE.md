@@ -154,25 +154,28 @@ text that Plastic prints in the planning hand-off.
 
 ## How an intent is delivered
 
-![How an intent is delivered, in 10 steps under four headings. What: start, context, grilling and one spec. Why: you say deliver. Go-ahead and How: plan the graph, work the nodes. Then judge, review by pull request, and close. Abandon is open at any time.](figures/delivery-phases.svg)
+![How an intent is delivered, in 11 steps under four headings. What: write, start and context. Why: grilling and one spec. Go-ahead: you say deliver, or the agents record it in auto. How: plan the graph, work the nodes, judge, review by pull request, and close. Park is open while the intent is in progress, and abandon at any time.](figures/delivery-phases.svg)
 
 | Step | Command | What it writes |
 | ---- | ------- | -------------- |
-| Start | `plastic intent new` | The intent row and its folder. |
+| Write | `plastic intent new` | The future intent row and its folder. |
+| Start | `plastic intent start` or `plastic intent auto` | The intent in progress, for guided work or agent delivery. |
 | Context | `plastic intent discover` | The context the intent starts from. |
 | Grilling | `plastic intent spec` | Nothing. It prints the method and the open decisions. |
 | One spec | `plastic intent rule`, `plastic intent revise` | A ruling, or a new revision of the What and the Why. |
-| Go-ahead | `plastic intent approve` | The approval row. `plastic node claim` refuses without it. |
+| Go-ahead | `plastic intent approve` | The approval row: the owner gives it in guided work, and the agents record it in auto. `plastic node claim` refuses without it. |
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
-| Work the nodes | `plastic intent start` or `plastic intent auto`, `plastic node claim`, `plastic node done` | The intent in progress, then each node's claim and run, then its findings. |
+| Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
 | Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
 | Close | `plastic intent end` | The completion row. |
+| Park | `plastic intent park` | The parked status and its reason, while the intent is in progress. |
 
 ![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
-They end on `plastic intent spec ID` for an open decision or a missing go-ahead. They take no lock.
+They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
+They take no lock.
 `plastic node claim` fails for an intent that is not in progress, and refuses with exit 3 one
 without the go-ahead. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and
