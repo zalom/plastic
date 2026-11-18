@@ -73,7 +73,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 #### Branches
 
-`alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and releases on the `beta` channel on a `-beta.N` version. `main` is everyday use and releases on the `latest` channel on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `bin/release-check` enforces the branch-to-suffix pairing.
+`alpha` is the one trunk. Every change and every fix goes to `alpha` by its own pull request, and CI runs the suite on each. `beta` is a snapshot of `alpha`, cut only on the owner's word. It takes no commits of its own and releases on the `beta` channel on a `-beta.N` version. `main` releases on the `latest` channel on a version with no suffix, and it stays frozen until the shaping ends. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
 
 ### Worktrees and node claims
 - One session works a node at a time. A node claim, `plastic node claim ID NODE`, names the

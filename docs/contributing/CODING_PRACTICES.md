@@ -55,13 +55,12 @@ The patterns and the rules for every test are in
 
 Each long-lived branch has one role.
 
-- **`alpha` is for development.** Feature and stage pull requests stack on `alpha`, and CI
-  runs the suite on each one.
-- **`beta` is for local testing.** It is reset from `alpha` when a whole feature is merged
-  there, and it never takes a direct commit. It releases on the `beta` channel, on a
-  version that ends in `-beta.N`.
+- **`alpha` is the one trunk.** Every change and every fix goes to `alpha` in its own pull
+  request, and CI runs the suite on each one.
+- **`beta` is a snapshot of `alpha`.** It is cut only on the owner's word, and it never takes
+  a commit of its own. It releases on the `beta` channel, on a version that ends in `-beta.N`.
 - **`main` is for everyday use.** It releases on the `latest` channel, on a version with
-  no suffix.
+  no suffix, and it stays frozen until the shaping ends.
 
-A fix needed today goes to `main` in its own pull request. Then `main` is merged into `alpha`.
 `bin/release-check` checks that each branch releases the right kind of version.
+`docs/release-lines.md` holds the full rules.
