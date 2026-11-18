@@ -15,12 +15,12 @@ module Plastic
         writes :work, :knowledge
         prints :roadmap, :intent
 
-        workflow :code_pick_delivery, next: :noop do
+        workflow :code_auto_roadmap, next: :noop do
           on :intent, next: :code_open_roadmap_item
           on :ready, next: :code_open_roadmap_item
         end
-        workflow :code_open_roadmap_item, next: :code_start_auto
-        workflow :code_start_auto, next: :noop
+        workflow :code_open_roadmap_item, next: :code_start_intent
+        workflow :code_start_intent, next: :noop
 
         # The files to check are those of the intent the roadmap picks, which no fact holds before the workflow runs.
         def self.hand_edit_additions(ctx) = { intent_id: Workflows::Code::Roadmap::Auto.intent_for(ctx) }

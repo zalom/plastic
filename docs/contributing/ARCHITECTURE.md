@@ -81,7 +81,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Routine::Traversal` | `lib/plastic/routine/traversal.rb` | One pass along a chain. It runs each workflow and follows the edge its outcome takes. |
 | `CodeWorkflow` | `lib/plastic/code_workflow.rb` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
 | `AgentWorkflow` | `lib/plastic/agent_workflow.rb` | Steps in plain words for the agent. It hands off while any step is left undone. |
-| `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_auto` is `Workflows::Code::Intent::Start`, in `lib/plastic/workflows/code/intent/start.rb`. |
+| `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow key, mapped to the class path of its workflow: `:code_start_intent` is `Workflows::Code::Intent::Start`, in `lib/plastic/workflows/code/intent/start.rb`. |
 | `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
 | `CLI::Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |

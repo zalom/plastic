@@ -13,7 +13,7 @@ module Plastic
         writes :work, :knowledge
         prints :intent
 
-        workflow :code_start_auto, next: :noop
+        workflow :code_start_intent, next: :noop
       end
     end
   end
