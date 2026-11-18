@@ -5,12 +5,12 @@ require_relative "../../../test_helpers/beta_2_store"
 
 class SchemaGateTest < Plastic::TestCase
   include Beta2Store
+  include SchemaVersions
 
   Behind = Plastic::Graph::Behind
+  STORE_VERSIONS = Plastic::Graph::MIGRATIONS.versions(:store)
 
   def store_database(home) = Plastic::Graph::Database.open_store(store_root(home), Plastic::Graph::Origin.new(home))
-
-  def newest = Plastic::Graph::SchemaMigrator::VERSION
 
   def gate_of(connection) = Plastic::Graph::SchemaGate.new(connection, layouts: { "main" => :knowledge, "work" => :work, "retrieval" => :retrieval }, file: "knowledge_graph.db")
 
@@ -18,7 +18,7 @@ class SchemaGateTest < Plastic::TestCase
     connection = SQLite3::Database.new(File.join(Dir.mktmpdir, "a.db"))
     connection.execute("CREATE TABLE taken (id)")
 
-    assert_equal [false, 0], [gate_of(connection).send(:build_layout), connection.get_first_value("PRAGMA user_version")]
+    assert_equal [false, nil], [gate_of(connection).send(:build_layout), recorded_versions(connection.filename)]
   end
 
   def test_a_file_that_is_not_a_database_is_not_called_behind
@@ -28,22 +28,24 @@ class SchemaGateTest < Plastic::TestCase
     refute Plastic::Graph::SchemaGate.behind?(path, [])
   end
 
-  def test_a_lost_attached_file_is_built_again_empty_and_the_stamp_stays
-    connection = SQLite3::Database.new(File.join(Dir.mktmpdir, "a.db"))
+  def test_a_lost_attached_file_is_built_again_empty_and_the_recorded_versions_stay
+    path = File.join(Dir.mktmpdir, "a.db")
+    record_versions(path, STORE_VERSIONS)
+    connection = SQLite3::Database.new(path)
     connection.execute("ATTACH DATABASE ? AS retrieval", [File.join(Dir.mktmpdir, "r.db")])
     connection.execute("CREATE TABLE taken (id)")
-    connection.execute("PRAGMA user_version = #{newest}")
     Plastic::Graph::SchemaGate.new(connection, layouts: { nil => :knowledge, "retrieval" => :retrieval }, file: "a.db").call
 
     assert_includes connection.execute("SELECT name FROM retrieval.sqlite_master").flatten, "document_passages"
+    assert_equal STORE_VERSIONS, recorded_versions(path)
   end
 
-  def test_a_new_empty_store_gets_the_declared_schema_and_the_newest_stamp_on_its_knowledge_file
+  def test_a_new_empty_store_gets_the_declared_schema_and_records_every_store_version_on_its_knowledge_file
     root = File.join(Dir.mktmpdir, "stores", "new")
     FileUtils.mkdir_p(root)
     store_database_at(root).rows("SELECT 1")
 
-    assert_equal newest, stamp_of(File.join(root, "knowledge_graph.db"))
+    assert_equal STORE_VERSIONS, recorded_versions(File.join(root, "knowledge_graph.db"))
   end
 
   def store_database_at(root) = Plastic::Graph::Database.open_store(root, Plastic::Graph::Origin.new(@plastic_home))
@@ -63,16 +65,9 @@ class SchemaGateTest < Plastic::TestCase
     assert_equal "plastic update", error.next_command
   end
 
-  def test_a_store_newer_than_the_code_is_refused
-    home = Plastic::Graph.create(home: @plastic_home, store: "alpha") && @plastic_home
-    Plastic::Graph::Database::ConnectionPool.release(store_root(home))
-    SQLite3::Database.new(store_path(home, "knowledge_graph.db")).tap { |db| db.execute("PRAGMA user_version = 99") }.close
-
-    assert_raises(Plastic::Graph::Ahead) { store_database(home).rows("SELECT 1") }
-  end
-
   def finish_rival(rival)
-    rival.execute("PRAGMA user_version = #{newest}")
+    rival.execute(Plastic::Graph::SchemaMigrator::TABLE)
+    STORE_VERSIONS.each { |version| rival.execute(Plastic::Graph::SchemaMigrator::INSERT, [version]) }
     rival.execute("COMMIT")
     true
   end
@@ -85,7 +80,7 @@ class SchemaGateTest < Plastic::TestCase
     waiting.busy_handler { |_count| finish_rival(rival) }
     gate_of(waiting).call
 
-    assert_equal newest, waiting.get_first_value("PRAGMA user_version")
+    assert_equal STORE_VERSIONS, recorded_versions(store_path(home, "knowledge_graph.db"))
   end
 
   def test_a_session_that_waits_and_still_finds_the_store_behind_is_refused
@@ -133,5 +128,67 @@ class SchemaBehindCommandTest < Plastic::TestCase
     result = plastic("hook", "start", input: JSON.generate({ cwd: }), env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
     assert_equal [0, 1], [result.code, result.err.lines.size]
+  end
+end
+
+class SchemaGateAheadTest < Plastic::TestCase
+  include Beta2Store
+  include SchemaVersions
+
+  Behind = Plastic::Graph::Behind
+
+  def store_database(home) = Plastic::Graph::Database.open_store(store_root(home), Plastic::Graph::Origin.new(home))
+
+  def created_home
+    Plastic::Graph.create(home: @plastic_home, store: "alpha")
+    Plastic::Graph::Database::ConnectionPool.release(store_root(@plastic_home))
+    @plastic_home
+  end
+
+  def test_a_store_that_records_an_unknown_version_is_refused_naming_it_and_keeps_every_byte
+    home = created_home
+    record_unknown_version(store_path(home, "knowledge_graph.db"))
+    before = beta_2_files(home)
+    error = assert_raises(Plastic::Graph::Ahead) { store_database(home).rows("SELECT 1") }
+
+    assert_equal [true, true], [error.message.include?("is newer than this code"), error.message.include?(UNKNOWN)]
+    assert_equal before, beta_2_files(home)
+  end
+
+  def test_a_store_with_no_table_of_migrations_and_an_unknown_stamp_is_refused_naming_the_stamp
+    home = created_home
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 99") }
+
+    error = assert_raises(Plastic::Graph::Ahead) { store_database(home).rows("SELECT 1") }
+
+    assert_includes error.message, "user_version 99"
+  end
+
+  def test_an_alpha_store_at_stamp_1_is_refused_as_behind
+    home = created_home
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+
+    assert_raises(Behind) { store_database(home).rows("SELECT 1") }
+  end
+
+  def test_a_fresh_build_runs_no_migration_and_records_every_version_of_the_list
+    path = File.join(Dir.mktmpdir, "plastic.db")
+    connection = SQLite3::Database.new(path)
+    failing = Plastic::Graph::SchemaMigration.new(kind: :home, version: "20990101000000", path: "/no/such/migration.sql")
+    Plastic::Graph::SchemaGate.new(connection, layouts: { nil => :local }, file: "plastic.db", migrations: Plastic::Graph::MIGRATIONS.with(failing)).call
+
+    assert_equal [*Plastic::Graph::MIGRATIONS.versions(:home), "20990101000000"], recorded_versions(path)
+  end
+
+  def test_a_command_on_a_store_newer_than_the_code_exits_3_names_the_version_and_changes_no_byte
+    created_home
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  alpha:\n    path: #{Dir.mktmpdir}\n")
+    record_unknown_version(store_path(@plastic_home, "knowledge_graph.db"))
+    before = beta_2_files(@plastic_home)
+    result = plastic("intent", "new", "Gamma", "--project", "alpha", env: { "PLASTIC_HOME" => @plastic_home }, table: Plastic::CLI::TABLE)
+
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, UNKNOWN
+    assert_equal before, beta_2_files(@plastic_home)
   end
 end
