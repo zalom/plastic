@@ -178,8 +178,11 @@ prints them. The agent makes the worktree.
 
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
 every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
-is newer than the last node change, and `outcome.md` has a `## Verification` section with a
-`Merged:` line and an `Architecture map:` line. When review by pull request is on (the default is off), the section
+is newer than the last node change, and `outcome.md` has a `## Verification` section with one
+delivery line: `Merged:` for a merged pull request or `Committed:` for a direct commit, each with
+an `Architecture map:` line, or `Delivered:` for files in the intent folder under
+`resources/output`, which needs no map. `Workflows::Agent::Intent::End::CheckDelivery` hands the
+agent the steps for a delivery line that is missing or refused. When review by pull request is on (the default is off), the section
 also has a `Pull request:` line, and an `Approved:` line once the owner approves. Closing
 hands the agent the wind-down steps in `Workflows::Agent::Shared::WindDownIntent`.
 `plastic intent abandon ID` hands the agent the revert steps in `Workflows::Agent::Intent::Abandon`, then

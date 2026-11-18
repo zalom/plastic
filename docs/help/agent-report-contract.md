@@ -6,6 +6,13 @@ The role prompts (`agents/plastic-*.md`) reproduce it. The report is the only th
 dispatched agent hands back: it writes no Plastic state, and the main session records the
 result from the report.
 
+## Auto mode runs in the background
+
+When the owner says auto, background agents or background processes run the delivery from the
+first step. The main chat session stays open the whole time as the orchestrator: it dispatches
+the work, records what each report says, and reports to the owner. It never blocks on the work
+and never does a stage of the delivery itself.
+
 ## Purpose
 
 The report is the agent's FINAL MESSAGE (its return value), not a side-channel file. Every
