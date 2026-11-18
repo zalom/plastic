@@ -119,8 +119,7 @@ class StoreProofChecksTest < Minitest::Test
     record = ->(*) { SQLite3::Database.new(File.join(@real, "plastic.db")) { |db| db.execute("CREATE TABLE schema_migrations (version TEXT PRIMARY KEY)") } }
     code, _, err = run_cli(*proof_args("plastic"), runner: record)
 
-    assert_equal 1, code
-    assert_includes err, "plastic.db has a schema_migrations table"
+    assert_equal [1, true], [code, err.include?("plastic.db has a schema_migrations table")]
   end
 
   def test_a_changed_version_record_fails_the_proof

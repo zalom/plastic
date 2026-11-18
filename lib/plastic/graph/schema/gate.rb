@@ -30,8 +30,6 @@ module Plastic
 
       def self.main_reading(path) = File.file?(path) ? SchemaState.of_file(path, :store) : SchemaState::Reading.new(name: :empty, pending: [], unknown: [], adopted: [], stamp: 0, number: 0)
 
-      def self.stamp_of(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("PRAGMA user_version") }
-
       def self.holding_tables?(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").positive? }
 
       # `layouts` maps each schema of the connection, nil for a database of one file, to the schema key that builds it; the first is the main file.
@@ -40,7 +38,6 @@ module Plastic
         @layouts = layouts
         @file = file
         @migrations = migrations
-        @kind = SchemaState.kind_of(layouts.values.first)
       end
 
       def call
@@ -56,7 +53,9 @@ module Plastic
 
       private
 
-      def state = SchemaState.new(@connection, @kind, migrations: @migrations).call
+      def state = SchemaState.new(@connection, kind, migrations: @migrations).call
+
+      def kind = SchemaState.kind_of(@layouts.values.first)
 
       def prefix(schema) = schema && "#{schema}."
 
@@ -86,7 +85,7 @@ module Plastic
           next false unless empty?
 
           @layouts.each { |schema, key| @connection.execute_batch(Schema.fetch(key, schema:)) }
-          SchemaMigrator.record(@connection, @migrations.versions(@kind))
+          SchemaMigrator.record(@connection, @migrations.versions(kind))
           true
         end
       end

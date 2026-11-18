@@ -3,7 +3,7 @@
 require "sqlite3"
 require_relative "../backup"
 require_relative "../schema"
-require_relative "../schema/migrator"
+require_relative "../schema/migration_list"
 
 module Plastic
   module Graph
@@ -45,7 +45,7 @@ module Plastic
         def reject(reason) = raise(Rejected, "#{@path} #{reason}")
 
         def verify
-          newest = SchemaMigrator::VERSION
+          newest = MIGRATIONS.newest(:store).to_i
           reject("records the version #{@version}, which is newer than this code (version #{newest})") if @version > newest
           reject("fails the integrity check") unless @database.get_first_value("PRAGMA quick_check") == "ok"
           missing = expected - tables

@@ -29,8 +29,6 @@ module OldLayoutHomes
 
   def database_files(home) = Dir.glob(File.join(home, "{local.db,plastic.db,stores/*/*.db}"))
 
-  def user_versions(home) = database_files(home).to_h { |path| [path, read_value(path, "PRAGMA user_version")] }
-
   # The versions each database file records, nil for a file with no schema_migrations table.
   def recorded_by_file(home) = database_files(home).to_h { |path| [path, recorded_versions(path)] }
 

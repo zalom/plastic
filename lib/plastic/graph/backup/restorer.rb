@@ -3,6 +3,7 @@
 require_relative "../backup"
 require_relative "../database"
 require_relative "../schema/gate"
+require_relative "../schema/state"
 require_relative "databases"
 require_relative "integrity"
 require_relative "publisher"
@@ -96,10 +97,10 @@ module Plastic
           "the backup #{timestamp} is at schema version #{recorded} and the store is at #{live}; restore the whole store, which migrates it forward"
         end
 
-        # The stamp of the live knowledge database; a damaged file is what a restore repairs, so it does not count.
+        # The version the live knowledge database records; a damaged file is what a restore repairs, so it does not count.
         def live_version
           path = @target.file("knowledge_graph")
-          SchemaGate.stamp_of(path) if File.file?(path)
+          SchemaState.of_file(path, :store).number if File.file?(path)
         rescue SQLite3::Exception
           nil
         end

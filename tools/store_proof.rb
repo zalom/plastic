@@ -10,7 +10,7 @@ require "sqlite3"
 # all sit under one job tmp folder, and the proof aborts before any copy when
 # one of them does not. The real databases are read only, copied with
 # VACUUM INTO and checked with the quick check; afterwards each still holds
-# user_version 0 and the VERSION record is the same. Every store under
+# user_version 0 and no schema_migrations table, and the VERSION record is the same. Every store under
 # stores/ is taken; a database a store lacks is skipped by name. The other
 # files of the home are copied with cp.
 module StoreProof
@@ -110,9 +110,13 @@ module StoreProof
     def others = Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).select { |file| File.file?(file) && !file.match?(SIDE_FILE) }.map { |file| file.delete_prefix("#{@home}/") }.sort
 
     def problems(digest)
-      stale = versions.reject { |_file, version| version.zero? }.map { |file, version| "#{file} has user_version #{version}" }
+      stale = [*stamped, *tracked]
       changed?(digest) ? [*stale, "#{VERSION_FILE} changed"] : stale
     end
+
+    def stamped = versions.reject { |_file, version| version.zero? }.map { |file, version| "#{file} has user_version #{version}" }
+
+    def tracked = @files.select { |file| tracking?(file) }.map { |file| "#{file} has a schema_migrations table" }
 
     def changed?(digest) = version_digest != digest
 
@@ -136,6 +140,8 @@ module StoreProof
     def user_version(file)
       self.class.scalar(path(file), "PRAGMA user_version")
     end
+
+    def tracking?(file) = self.class.scalar(path(file), "SELECT count(*) FROM sqlite_master WHERE name = 'schema_migrations'").positive?
   end
 
   # Copies each real database with VACUUM INTO and checks the copy.
@@ -249,7 +255,7 @@ module StoreProof
 
     def finish(real, digest, ran)
       Problems.after(real.problems(digest), ran).check
-      @out.puts "store proof: the command ran on copies and the real files kept user_version 0 and VERSION"
+      @out.puts "store proof: the command ran on copies and the real files kept user_version 0, no schema_migrations table and VERSION"
       0
     end
 
