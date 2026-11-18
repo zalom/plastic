@@ -48,6 +48,14 @@ class SchemaStateTest < Plastic::TestCase
 
   def summary(reading) = [reading.name, reading.pending, reading.unknown, reading.number]
 
+  def test_a_schema_migrations_table_with_no_version_column_raises_its_error
+    @database.execute("CREATE TABLE schema_migrations (id INTEGER)")
+
+    error = assert_raises(SQLite3::SQLException) { state }
+
+    assert_includes error.message, "no such column: version"
+  end
+
   def with_tables(stamp)
     @database.execute("CREATE TABLE intents (id)")
     @database.execute("PRAGMA user_version = #{stamp}")

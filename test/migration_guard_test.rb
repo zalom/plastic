@@ -47,6 +47,13 @@ class MigrationGuardTest < Minitest::Test
     assert_empty MigrationGuard.check(base: tip, head: tip.merge(home_later => "CREATE TABLE settings (id INTEGER);\n"))
   end
 
+  def test_a_file_in_the_folder_that_is_not_named_as_a_migration_sets_no_newest_version
+    notes = "#{FOLDER}/store/README.md"
+    tip = base.merge(notes => "Store migrations.\n")
+
+    assert_empty MigrationGuard.check(base: tip, head: tip.merge(LATER => "ALTER TABLE a ADD COLUMN owner TEXT;\n"))
+  end
+
   def test_a_base_with_no_migrations_passes_every_added_file
     assert_empty MigrationGuard.check(base: {}, head: base)
   end
