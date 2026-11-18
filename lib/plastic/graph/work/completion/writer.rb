@@ -50,7 +50,7 @@ module Plastic
           end
 
           def write_completion(intent_id)
-            check = Check.new(@retrieval, intent_id)
+            check = Check.new(@retrieval, intent_id, folder: @folder)
             found = [*check.problems, Review.new(@retrieval, intent_id).problem].compact
             raise Invalid, found.join(" ") if found.any?
 
