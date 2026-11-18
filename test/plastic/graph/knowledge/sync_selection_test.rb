@@ -6,22 +6,49 @@ require_relative "../../../../lib/plastic/graph/knowledge/sync_selection"
 class KnowledgeSyncSelectionTest < Plastic::TestCase
   SyncSelection = Plastic::Graph::Knowledge::SyncSelection
 
-  PATHS = %w[spec.md resources/report.md graph.json context.json actions/1.json resources/shot.PNG resources/demo.mp4
-    resources/page.html .hidden references/notes.md references/paper.pdf].freeze
+  def selection(types: %w[md html], references: false, asked: []) = SyncSelection.new(types:, references:, asked:)
 
-  def read_by(selection) = PATHS.select { |rel| selection.read?(rel) }
+  def test_reads_markdown_and_html_in_output_reports_by_default
+    selected = selection
 
-  def test_each_path_has_the_kind_its_folder_and_extension_name
-    kinds = PATHS.map { |rel| SyncSelection.kind_of(rel) }
-
-    assert_equal %w[notes notes notes notes notes media media documents documents references references], kinds
+    assert_equal [true, true, false], %w[resources/output/reports/review.md resources/output/reports/page.HTML resources/output/reports/plot.png].map { |rel| selected.read?(rel) }
   end
 
-  def test_with_no_kind_turned_on_only_the_notes_and_the_graph_are_read
-    assert_equal %w[spec.md resources/report.md graph.json context.json actions/1.json], read_by(SyncSelection.none)
+  def test_reads_output_files_by_included_type
+    selected = selection(types: %w[md html pdf])
+
+    assert_equal [true, true, false], %w[resources/output/files/paper.pdf resources/output/files/page.html resources/output/files/shot.png].map { |rel| selected.read?(rel) }
   end
 
-  def test_every_kind_on_reads_every_path
-    assert_equal PATHS, read_by(SyncSelection.all)
+  def test_never_reads_resources_tmp
+    refute selection(references: true).read?("resources/tmp/scratch.md")
+  end
+
+  def test_reads_references_only_with_the_setting_on
+    assert_equal [false, true], [selection, selection(references: true)].map { |selected| selected.read?("resources/references/paper.pdf") }
+  end
+
+  def test_skips_a_type_not_included
+    refute selection(types: %w[md]).read?("resources/output/reports/page.html")
+  end
+
+  def test_intent_root_notes_are_read_as_before
+    selected = selection(types: [])
+
+    assert_equal [true] * 6, %w[spec.md outcome.md graph.json context.json work.log actions/1.json].map { |rel| selected.read?(rel) }
+  end
+
+  def test_a_file_in_no_resources_folder_is_not_read
+    assert_equal [false, false], %w[reviews/one.md notes/shot.png].map { |rel| selection.read?(rel) }
+  end
+
+  def test_a_store_file_outside_the_intent_folders_is_always_selected
+    assert selection(types: []).selects?("roadmaps/one.md")
+  end
+
+  def test_a_type_is_new_when_it_is_neither_included_nor_asked
+    selected = selection(asked: %w[pdf])
+
+    assert_equal %w[docx], selected.new_types(%w[resources/output/files/a.pdf resources/output/reports/b.md resources/output/files/c.DOCX resources/tmp/d.zip resources/references/e.epub])
   end
 end

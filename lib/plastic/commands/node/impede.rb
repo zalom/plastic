@@ -9,6 +9,8 @@ module Plastic
       class Impede < Move
         argument :text, label: "TEXT", text: "the impediment"
 
+        reads_files
+
         workflow :code_impede_node, next: :noop
       end
     end

@@ -28,6 +28,20 @@ module Plastic
             done.map(&:line).uniq
           end
 
+          def read_all(paths)
+            now = Plastic.timestamp(@retrieval.clock.now)
+            reads = paths.map { |path| reader.read(path, now) }
+            commit(reads)
+            reads
+          rescue Database::Error, Invalid => error
+            raise Failed, "cannot read #{paths.join(", ")}: #{error.message}"
+          end
+
+          def reprint(reads)
+            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
+            @printer.print(reads.map { |found| printed_of(found, fresh) })
+          end
+
           private
 
           # The intents of the rows. store/index.json is never read for them: the folders are.
@@ -62,11 +76,6 @@ module Plastic
           def printed_of(found, fresh)
             path = found.path
             fresh[path] || roadmap_print(path) || found.kept_print(@folder)
-          end
-
-          def reprint(reads)
-            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| printed_of(found, fresh) })
           end
         end
       end

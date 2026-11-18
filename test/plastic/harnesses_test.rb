@@ -17,7 +17,7 @@ class HarnessesTest < Plastic::TestCase
   end
 
   def test_each_entry_names_the_hook_command_of_each_event
-    events = { "SessionStart" => "hook start", "Stop" => "hook stop", "SessionEnd" => "hook end" }
+    events = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "Stop" => "hook stop", "SessionEnd" => "hook end" }
 
     assert_equal [events, events], %w[claude-code codex].map { |name| Plastic::Harnesses.fetch(name).events }
   end

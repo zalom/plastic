@@ -58,18 +58,26 @@ module Plastic
           lines
         end
 
-        def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
+        def read(paths) = file_reads.call(paths)
+
+        def read_all(paths) = file_reads.read_all(paths)
+
+        def reprint(reads) = file_reads.reprint(reads)
 
         def print_down(plan)
           printer.print(plan.entries_for(:print).map(&:print))
-          savepoints = plan.old_savepoints
-          [*savepoints.remove(@folder, @databases), *savepoints.kept_lines]
+          leftovers = plan.old_savepoints
+          [*leftovers.remove(@folder, @databases), *leftovers.kept_lines]
         end
 
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
         def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, @databases, DeclaredPrints.new(@retrieval, kinds, facts).call).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
+
+        private
+
+        def file_reads = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer)
       end
     end
   end

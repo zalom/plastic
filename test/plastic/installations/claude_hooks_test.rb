@@ -36,7 +36,7 @@ class ClaudeHooksTest < Plastic::TestCase
   def test_the_install_writes_the_kernel_hooks
     settings, = merge({})
     kernel = %("#{File.join(@plastic_home, "exe", "plastic")}")
-    expected = { "SessionStart" => "#{kernel} hook start", "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
+    expected = { "SessionStart" => "#{kernel} hook start", "UserPromptSubmit" => "#{kernel} hook prompt", "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
 
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
@@ -75,9 +75,9 @@ class ClaudeHooksTest < Plastic::TestCase
     merge({})
     share = File.join(@home, ".local", "share", "plastic")
     settings, = merge(JSON.parse(File.read(settings_path)), root: File.join(share, "releases", "2.0.3"))
-    kernel = %w[SessionStart Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
+    kernel = %w[SessionStart UserPromptSubmit Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|prompt|stop|end)/) }
 
-    assert_equal [[1, 1, 1], true], [kernel.map(&:size), kernel.flatten.all? { |cmd| cmd.include?("#{share}/active/bin/plastic") }]
+    assert_equal [[1, 1, 1, 1], true], [kernel.map(&:size), kernel.flatten.all? { |cmd| cmd.include?("#{share}/active/bin/plastic") }]
   end
 
   def test_a_second_install_keeps_one_group_per_event

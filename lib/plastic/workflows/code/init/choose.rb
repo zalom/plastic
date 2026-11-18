@@ -29,8 +29,11 @@ module Plastic
             [*names.map { |name| Choice.new(label: name, chosen: true) }, Choice.new(label: MEDIA, chosen: media?(settings))]
           end
 
-          # Picked until the setting sync.media turns the sync of images and videos off.
-          def self.media?(settings) = !Plastic::Config::FALSE_VALUES.include?(settings.config.overrides.dig("sync", "media"))
+          # Picked unless the setting sync.types is set and leaves a media type out.
+          def self.media?(settings)
+            types = settings.config.overrides.dig("sync", "types")
+            types.nil? || (Plastic::Config::SyncTypes::MEDIA - Plastic::Config::SyncTypes.parse(types)).empty?
+          end
 
           read "find the installed harnesses and read the person's answer" do |context|
             choices = Choose.choices(context.scope, context.settings)

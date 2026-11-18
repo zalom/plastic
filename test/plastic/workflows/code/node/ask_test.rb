@@ -10,7 +10,7 @@ class WorkflowAskNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs")
   end
 
-  def ask = run_workflow(Plastic::Workflows::Code::Node::Ask, intent_id: "1", id: "n1", text: "which way?")
+  def ask = run_workflow(Plastic::Workflows::Code::Node::Ask, intent_id: "1", id: "n1", text: "which way?", files: [])
 
   def test_a_claimed_node_needs_info_with_its_question
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")

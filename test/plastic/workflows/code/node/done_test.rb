@@ -12,7 +12,7 @@ class WorkflowDoneNodeTest < Plastic::TestCase
   end
 
   def finish(text: "green")
-    run_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text:).first
+    run_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text:, files: []).first
   end
 
   def node = retrieval.node("1", "n1")
@@ -27,7 +27,7 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     finish
 
     before = node.to_h
-    stop_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text: "rechecked")
+    stop_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text: "rechecked", files: [])
 
     assert_equal before, node.to_h
   end

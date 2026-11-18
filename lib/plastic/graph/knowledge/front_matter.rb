@@ -1,14 +1,25 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Plastic
   module Graph
     module Knowledge
-      # The fields of the front matter at the top of an intent file.
+      # The fields of the front matter at the top of an intent file. A value in double quotes is a JSON string,
+      # the way the files are written; any other value is its text.
       class FrontMatter
         BLOCK = /\A---\n(.*?)\n---/m
-        FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
+        FIELD = /^(\w+):[ \t]*(?:("(?:[^"\\\n]|\\.)*")|'((?:[^'\n]|'')*)'|"?([^"\n]*?)"?)[ \t]*$/
 
-        def self.fields(text) = text[BLOCK, 1].to_s.scan(FIELD).to_h
+        def self.fields(text)
+          text[BLOCK, 1].to_s.scan(FIELD).to_h { |name, double, single, plain| [name, double ? decoded(double) : single&.gsub("''", "'") || plain] }
+        end
+
+        def self.decoded(quoted)
+          JSON.parse(quoted)
+        rescue JSON::ParserError
+          quoted[1..-2]
+        end
 
         def initialize(folder)
           @folder = folder

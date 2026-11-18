@@ -78,6 +78,7 @@ module WorkflowNameTable
     code_backup_restore: "Code::Backup::Restore",
     code_resume_graph: "Code::Graph::Resume",
     code_list_projects: "Code::Project::List",
+    code_list_chat: "Code::Chat::List",
     code_list_config: "Code::Config::List",
     code_get_config: "Code::Config::Get",
     code_set_config: "Code::Config::Set",
@@ -106,7 +107,9 @@ module WorkflowNameTable
     code_fail_node: "Code::Node::Fail",
     code_ask_node: "Code::Node::Ask",
     code_impede_node: "Code::Node::Impede",
-    code_resolve_node: "Code::Node::Resolve"
+    code_resolve_node: "Code::Node::Resolve",
+    code_preview_sort_resources: "Code::Resources::Sort::Preview",
+    code_sort_resources: "Code::Resources::Sort"
   }.freeze
 end
 
@@ -115,7 +118,7 @@ module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
     Code::Intent::Abandon Agent::Intent::End Code::Auto Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
-    Code::Backup Code::Backup::Purge Code::Backup::Restore
+    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
   ].freeze
 end
 
@@ -133,8 +136,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_five_keys_in_order
-    assert_equal 95, MAPPING.size
+  def test_the_registry_holds_the_ninety_eight_keys_in_order
+    assert_equal 98, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

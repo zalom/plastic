@@ -103,6 +103,12 @@ commands would.
   directly, by the case. `bin/test --e2e` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
 
+## The chat history
+
+`plastic.db` in the home holds the `chat_messages` table: one row for each prompt or reply, with
+the session, harness, store, intent, role, time and text. `Graph::Work::Chat::Writer` writes it
+from `hook prompt` and `hook stop`, and `Graph::Work::Chat::Reader` reads it for `chat list`.
+
 ## The byte budget
 
 `test/standing_surface_test.rb` sums what every session carries before the person types:

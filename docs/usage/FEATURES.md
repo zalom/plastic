@@ -117,6 +117,20 @@ the on/off settings on a choice screen. Each takes `--harness NAME` to work on t
 harness, and refuses a name the harness registry does not hold. See the
 [page of `config`](../reference/commands/config/README.md).
 
+## Chat history
+
+`plastic hook prompt` records each prompt you type in the `chat_messages` table of
+`~/.plastic/plastic.db`, with the session, the harness, the store and the intent in play. A call
+with no store records the prompt with an empty store and intent. Set `chat_sync` to `full` with
+`plastic config set chat_sync full` to record the reply at the end of each turn as well; the
+default, `user_only`, records prompts alone.
+
+`plastic chat list` prints the recorded messages of every store in time order, one row each with
+the time, the store, the intent and the text. `--since YYYY-MM-DD` leaves out older messages; the
+day starts at midnight in the zone of the clock. A message whose store folder is gone is still
+listed, and one line names the store. The command only reads: the text prints to the terminal and
+nothing is written. See the [page of `chat list`](../reference/commands/chat-list/README.md).
+
 ## Check the installation
 
 | Command | Result |
@@ -139,6 +153,28 @@ except for one repair: it rebuilds the search rows of a store that are out of st
 passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
 the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
+
+The doctor also names each store with files outside the resources layout, as `resources NAME: N files
+are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
+
+## The resources layout
+
+An intent folder keeps its notes in the root and its other files under `resources/`:
+`resources/output/reports/` for Markdown and HTML, `resources/output/files/` for every other
+output, `resources/references/` for what the agent read, and `resources/tmp/` for state that
+no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
+more types through the setting `sync.types`. `resources/references/` is read only when its
+setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
+so in one line and records the type once in `sync.asked`.
+
+`plastic resources sort --store SLUG` moves the files of a store from the old places into this
+layout. It moves the rows with the files, rewrites the relative links that point at a moved
+file, and runs a sync up. A link that named no file before the move is left as it is. Both the
+run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
+also lists every move and changes nothing. A file directly under `resources/output/` moves into
+`reports/` or `files/` by its type. A target that holds other bytes than
+the file that would move onto it stops the call with exit 3 and names the target. A second run
+finds nothing to move and says `sorted: nothing to move`.
 
 ## Help that costs nothing
 

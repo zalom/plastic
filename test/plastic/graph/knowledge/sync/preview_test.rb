@@ -72,9 +72,9 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
   end
 
   def test_the_preview_reads_the_sync_selection_of_the_graph_that_runs_it
-    write("store/1--alpha/resources/shot.png", "image bytes")
+    write("store/1--alpha/resources/output/files/shot.png", "image bytes")
     without = preview.grep(/shot\.png/)
-    seed_config(@plastic_home, "global:\n  sync:\n    media: true\n")
+    seed_config(@plastic_home, "global:\n  sync:\n    types: [md, png]\n")
     with = Plastic::Wiring.graphs(home: @plastic_home, store: "global").work.preview_sync({}).lines.grep(/shot\.png/)
 
     assert_equal [true, true], [without.empty?, !with.empty?]

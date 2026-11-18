@@ -7,7 +7,7 @@ module Plastic
   # The harnesses Plastic ships support for, in the order detection tries
   # them. See docs/reference/harness-adapters.md.
   module Harnesses
-    EVENTS = { "SessionStart" => "hook start", "Stop" => "hook stop", "SessionEnd" => "hook end" }.freeze
+    EVENTS = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "Stop" => "hook stop", "SessionEnd" => "hook end" }.freeze
 
     REGISTRY = [
       Harness.new(name: "claude-code", session_variables: %w[CLAUDE_CODE_SESSION_ID], transcript: "/\\.claude/projects/",
