@@ -32,7 +32,7 @@ class AbandonIntentTest < Plastic::TestCase
   def test_an_intent_without_an_outcome_fails
     open_intent
 
-    assert_kind_of Plastic::Failed, abandon.first
+    assert_raises(Plastic::Failed) { abandon }
   end
 
   def test_an_abandon_with_no_supersedes_link_is_cancelled

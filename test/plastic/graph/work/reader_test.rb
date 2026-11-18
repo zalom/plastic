@@ -33,20 +33,18 @@ class WorkReaderTest < Plastic::TestCase
   def test_nodes_sort_by_prefix_then_number_then_text_whatever_the_shape_of_the_id
     plan(*(1..6).map { |number| "Step #{number}" })
     ids = %w[n10 12 node-3 a2 n2 n1]
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       ids.each_with_index { |id, index| batch.add("UPDATE nodes SET id = :id WHERE id = :old", id:, old: "n#{index + 1}") }
     end
 
-    assert_equal %w[12 a2 n1 n2 n10 node-3], retrieval.nodes("1").map(&:id)
+    assert_equal %w[12 a2 n1 n2 n10 node-3], retrieval.structure.nodes("1").map(&:id)
   end
 
-  def test_claims_read_in_node_number_order
+  def test_claimed_nodes_read_in_node_number_order
     plan(*(1..10).map { |number| "Step #{number}" })
     %w[n10 n2].each { |id| @work.claim_node(intent_id: "1", id:, by: "a") }
-    claims = Plastic::Graph::Work::Session::Claims.new(store_graphs.databases, store: "global")
-    lock = Plastic::Graph::Lock.new(store: "global", intent_id: "1", session_id: "a", mode: "auto", locked_at: nil, renewed_at: nil)
 
-    assert_equal %w[n2 n10], claims.call(lock).map(&:id)
+    assert_equal %w[n2 n10], reader.claimed_nodes.map(&:id)
   end
 
   def test_a_node_waits_until_the_node_it_needs_is_done

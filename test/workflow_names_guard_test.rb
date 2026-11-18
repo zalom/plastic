@@ -2,13 +2,14 @@
 
 require_relative "test_helper"
 require "json"
-require "plastic"
+require "plastic/cli"
 require "plastic/workflow"
+require "plastic/workflows/registry"
 require_relative "support/child_process"
 
 module WorkflowNameTable
   # Every key with the class under Workflows that runs it. A key is stored in
-  # an open routine run, so the keys never change; the classes follow the
+  # an open command run, so the keys never change; the classes follow the
   # command a workflow belongs to.
   MAPPING = {
     code_write_intent: "Code::Intent::New",
@@ -23,9 +24,8 @@ module WorkflowNameTable
     code_prepare_verdict: "Code::Intent::Verdict::Prepare",
     agent_judge_intent: "Agent::Intent::Judge",
     code_record_verdict: "Code::Intent::Verdict",
-    code_start_auto: "Code::Auto",
-    code_pick_delivery: "Code::Auto::Pick",
-    code_show_lock: "Code::Intent::Lock::Status",
+    code_start_intent: "Code::Intent::Start",
+    code_auto_roadmap: "Code::Roadmap::Auto",
     code_preview_sync: "Code::Sync::Up::Preview",
     code_preview_sync_down: "Code::Sync::Down::Preview",
     code_check_graph: "Code::Graph::Check",
@@ -61,7 +61,7 @@ module WorkflowNameTable
     code_read_context: "Code::Intent::Context::Read",
     code_submit_context: "Code::Intent::Context",
     agent_check_architecture: "Agent::Architecture::Status",
-    agent_check_merge: "Agent::Intent::End::CheckMerge",
+    agent_check_delivery: "Agent::Intent::End::CheckDelivery",
     code_prepare_abandon: "Code::Intent::Abandon::Prepare",
     agent_revert_intent: "Agent::Intent::Abandon",
     code_abandon_intent: "Code::Intent::Abandon",
@@ -78,6 +78,7 @@ module WorkflowNameTable
     code_backup_restore: "Code::Backup::Restore",
     code_resume_graph: "Code::Graph::Resume",
     code_list_projects: "Code::Project::List",
+    code_list_chat: "Code::Chat::List",
     code_list_config: "Code::Config::List",
     code_get_config: "Code::Config::Get",
     code_set_config: "Code::Config::Set",
@@ -100,12 +101,16 @@ module WorkflowNameTable
     code_add_edge: "Code::Edge::Add",
     code_remove_edge: "Code::Edge::Remove",
     code_claim_node: "Code::Node::Claim",
+    code_renew_node: "Code::Node::Renew",
     code_release_node: "Code::Node::Release",
     code_done_node: "Code::Node::Done",
     code_fail_node: "Code::Node::Fail",
     code_ask_node: "Code::Node::Ask",
     code_impede_node: "Code::Node::Impede",
-    code_resolve_node: "Code::Node::Resolve"
+    code_resolve_node: "Code::Node::Resolve",
+    code_preview_sort_resources: "Code::Resources::Sort::Preview",
+    code_sort_resources: "Code::Resources::Sort",
+    code_park_intent: "Code::Intent::Park"
   }.freeze
 end
 
@@ -113,8 +118,8 @@ end
 module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
-    Code::Intent::Abandon Agent::Intent::End Code::Auto Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
-    Code::Backup Code::Backup::Purge Code::Backup::Restore
+    Code::Intent::Abandon Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
+    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
   ].freeze
 end
 
@@ -130,10 +135,10 @@ class WorkflowNamesTest < Minitest::Test
 
   def registry = Plastic::Workflows::REGISTRY
 
-  def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic.snake(segment) }) + ".rb"
+  def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_five_keys_in_order
-    assert_equal 95, MAPPING.size
+  def test_the_registry_holds_the_ninety_nine_keys_in_order
+    assert_equal 99, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 
@@ -163,8 +168,8 @@ class WorkflowNamesTest < Minitest::Test
   end
 
   PROBE = <<~RUBY
-    require "plastic"; require "plastic/workflow"; require "json"
-    klass = Plastic::Workflow.fetch(ARGV.fetch(0).to_sym)
+    require "plastic/cli"; require "plastic/workflow"; require "plastic/workflows/registry"; require "json"
+    klass = Plastic::Workflow.fetch(ARGV.fetch(0).to_sym, from: Plastic::Workflows)
     parts = klass.name.delete_prefix("Plastic::Workflows::").split("::")
     kinds = parts.each_index.to_h do |index|
       [parts.first(index + 1).join("::"), parts.first(index + 1).inject(Plastic::Workflows) { |scope, part| scope.const_get(part, false) }.class.name]

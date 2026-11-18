@@ -4,7 +4,7 @@ require "digest"
 require_relative "work_check"
 require_relative "../../knowledge/spec"
 require_relative "../../knowledge/outcome"
-require_relative "../node"
+require_relative "../../rows/node"
 
 module Plastic
   module Graph
@@ -12,9 +12,10 @@ module Plastic
       module Completion
         # Stored prerequisites for delivered closure.
         class Check
-          def initialize(retrieval, intent_id)
+          def initialize(retrieval, intent_id, folder: nil)
             @retrieval = retrieval
             @intent_id = intent_id
+            @folder = folder
           end
 
           def criteria = spec.criteria_by_key
@@ -31,7 +32,7 @@ module Plastic
 
           def abandon_problems = [outcome_problem].compact
 
-          def verification = @verification ||= Knowledge::Outcome.new(@retrieval, @intent_id)
+          def verification = @verification ||= Knowledge::Outcome.new(@retrieval, @intent_id, folder: @folder)
 
           def outcome_hash = Digest::SHA256.hexdigest(outcome.body)
 

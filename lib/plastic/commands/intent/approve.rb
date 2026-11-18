@@ -5,7 +5,7 @@ require_relative "../../routine"
 module Plastic
   module Commands
     module Intent
-      # Writes the owner's go-ahead for an intent. `plastic auto` refuses an intent without it.
+      # Writes the owner's go-ahead for an intent. `plastic node claim` refuses an intent without it.
       class Approve < Routine
         intent_subject
         reads :knowledge

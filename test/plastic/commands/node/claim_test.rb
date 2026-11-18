@@ -13,7 +13,7 @@ require_relative "../../../../lib/plastic/commands/edge/add"
 class NodeClaimCaseTest < Plastic::TestCase
   def chained
     alpha_specified(TWO_CRITERIA)
-    ran("intent approve 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
+    ran("intent approve 1", "intent start 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
   end
 
   def test_claiming_a_ready_node_prints_it_with_its_criterion_and_offers_done
@@ -53,11 +53,12 @@ class NodeClaimTest < Plastic::TestCase
     refute_includes out, "--judge"
   end
 
-  def add_node(title)
+  def add_node(title, *options)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
-    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
-    plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
+    store_graphs.work.approve_intent("1") unless structure.approval("1")
+    store_graphs.work.activate_intent("1")
+    plastic("node", "add", "1", title, "--criterion", "done", *options, table: Plastic::CLI::TABLE)
   end
 
   def two_linked_nodes
@@ -67,14 +68,12 @@ class NodeClaimTest < Plastic::TestCase
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
   end
 
-  def claim(*args) = plastic("node", "claim", "1", *args, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def test_the_brief_includes_the_last_reason
     open_intent
     add_node("a")
-    claim("n1")
-    plastic("node", "fail", "1", "n1", "boom", table: Plastic::CLI::TABLE)
-    plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
+    fail_and_release
 
     result = claim("n1")
 
@@ -137,10 +136,7 @@ class NodeClaimTest < Plastic::TestCase
 
   def test_the_brief_names_the_input_file
     open_intent
-    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
-    sync_up
-    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
-    plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
+    add_node("a", "--input", "docs/a.md")
 
     call = claim("n1")
 
@@ -150,6 +146,7 @@ class NodeClaimTest < Plastic::TestCase
 
   def unapproved_claim
     open_intent
+    store_graphs.work.activate_intent("1")
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
     plastic("node", "add", "1", "a", "--criterion", "done", table: Plastic::CLI::TABLE)
@@ -175,12 +172,13 @@ class NodeClaimTest < Plastic::TestCase
 end
 
 class NodeClaimRefusalTest < Plastic::TestCase
-  def claim(*args) = plastic("node", "claim", "1", *args, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
-    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
+    store_graphs.work.approve_intent("1") unless structure.approval("1")
+    store_graphs.work.activate_intent("1")
     plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
   end
 
@@ -229,7 +227,80 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal [1, ""], [result.code, result.out]
-    assert_includes result.err, "node n1 is claimed; it cannot move to claimed"
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, "node n1 is held by session"
+  end
+
+  def test_a_claim_with_no_session_fails_and_names_the_variable
+    open_intent
+    add_node("a")
+
+    result = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "" }, table: Plastic::CLI::TABLE)
+
+    assert_equal [1, "plastic: node claim names no session; set PLASTIC_SESSION\n"], [result.code, result.err]
+  end
+end
+
+class NodeClaimStartTest < Plastic::TestCase
+  def claim = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+  def intent_with_node(status)
+    open_keyed_intent(status:)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:)
+    end
+    store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "done")
+  end
+
+  def refusal(status) = "plastic: intent 1 is #{status}; start it with plastic intent start 1, or with plastic intent auto 1 for agent delivery\n"
+
+  def test_a_node_of_a_future_intent_exits_1_and_offers_intent_start
+    intent_with_node("future")
+
+    result = claim
+
+    assert_equal [1, refusal("future"), "open", "future"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_match(/^next: plastic intent start 1$/, result.out)
+  end
+
+  def test_a_node_of_a_parked_intent_exits_1_and_offers_intent_start
+    intent_with_node("parked")
+
+    result = claim
+
+    assert_equal [1, refusal("parked"), "open", "parked"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_match(/^next: plastic intent start 1$/, result.out)
+  end
+
+  def test_a_node_of_a_done_intent_exits_1_and_offers_plastic_next
+    intent_with_node("done")
+
+    result = claim
+
+    assert_call result, code: 1, err: "plastic: intent 1 is done\n", out: "next: plastic next\nbecause: a node of a closed intent is never claimed; pick other work\n"
+    assert_equal %w[open done], [retrieval.node("1", "n1").state, retrieval.intent("1").status]
+  end
+
+  def test_a_node_of_an_abandoned_intent_exits_1_and_offers_plastic_next
+    intent_with_node("abandoned")
+
+    result = claim
+
+    assert_call result, code: 1, err: "plastic: intent 1 is abandoned\n", out: ["next: plastic next\n"]
+    assert_equal "abandoned", retrieval.intent("1").status
+  end
+
+  def test_a_node_of_an_open_intent_that_never_started_exits_1
+    intent_with_node("open")
+
+    assert_equal [1, "open"], [claim.code, retrieval.node("1", "n1").state]
+  end
+
+  def test_a_node_of_an_in_progress_intent_is_claimed
+    intent_with_node("in_progress")
+
+    result = claim
+
+    assert_equal [0, "", "claimed"], [result.code, result.err, retrieval.node("1", "n1").state]
   end
 end

@@ -3,14 +3,14 @@
 require_relative "../intent"
 require_relative "ref"
 require_relative "../store_folder"
-require_relative "../../retrieval/evidence/writer"
+require_relative "../../evidence/writer"
 
 module Plastic
   module Graph
     module Knowledge
       class Intent
-        # Writes one new intent: its row, its first savepoint line and its own
-        # file, each in the transaction of the database that owns it. The id is
+        # Writes one new intent: its row and its own file, each in
+        # the transaction of the database that owns it. The id is
         # the next free Luhmann id, a root or the next child of `parent_id`.
         class Writer
           def initialize(databases, retrieval, folder, session: nil)
@@ -20,17 +20,9 @@ module Plastic
             @session = session
           end
 
-          # Why the call cannot write the intent, or nil. `state` may name the status and the reason.
-          def problem(parent_id: nil, ref: nil, **state)
-            store_problem || self.class.status_problem(**state) || parent_problem(parent_id) || Ref.parse(ref)&.problem(@retrieval)
-          end
-
-          # Why a new intent cannot take this status and reason, or nil.
-          def self.status_problem(status: "open", reason: nil)
-            return "a new intent takes the status open, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
-            return "a parked intent needs a reason: pass --reason TEXT" if status == "parked" && reason.to_s.strip.empty?
-
-            "--reason belongs to a parked intent: pass --status parked" if reason && status != "parked"
+          # Why the call cannot write the intent, or nil.
+          def problem(parent_id: nil, ref: nil)
+            store_problem || parent_problem(parent_id) || Ref.parse(ref)&.problem(@retrieval)
           end
 
           # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or in progress.
@@ -41,7 +33,7 @@ module Plastic
 
           # `fields` may name the ref, the kind, the status and the reason; a field left out or nil takes its default.
           def write(title:, parent_id: nil, **fields)
-            now = Plastic.now
+            now = Plastic.timestamp(@retrieval.clock.now)
             values = DEFAULTS.merge(fields.compact)
             intent = Intent.from_h(slug: Intent.slug_for(title), **values, intent_id: next_id(parent_id), parent_id:,
               title:, opened_at: now, updated_at: now)
@@ -61,9 +53,24 @@ module Plastic
           # Sets an open, parked or future intent in progress; a no-op guard against a
           # race with a status that moved to done or abandoned since the check.
           def activate(intent_id)
-            @databases.fetch(:work).transaction do |batch|
-              batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
+            @databases.fetch(:store).transaction do |batch|
+              batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
             end
+          end
+
+          PARK_SQL = <<~SQL
+            UPDATE intents SET status = 'parked', reason = :reason, updated_at = :now
+            WHERE intent_id = :intent_id AND origin_id = :origin AND status = 'in_progress'
+            RETURNING intent_id
+          SQL
+
+          # Parks an intent in progress with its reason, and says whether a row changed; a status that moved
+          # since the check changes no row.
+          def park(intent_id, reason)
+            rows = @databases.fetch(:store).transaction do |batch|
+              batch.write(:intents, PARK_SQL, intent_id:, reason:, origin: @retrieval.origin_id, now: Plastic.timestamp(@retrieval.clock.now))
+            end
+            rows.any?
           end
 
           private
@@ -79,9 +86,8 @@ module Plastic
           DEFAULTS = { kind: "work", status: "open" }.freeze
 
           def write_rows(intent)
-            @databases.fetch(:work).transaction do |batch|
+            @databases.fetch(:store).transaction do |batch|
               batch.put(:intents, intent.new_row, statement: :insert)
-              batch.put(:savepoints, intent.first_savepoint(@session))
             end
             write_document(intent)
           end
@@ -89,7 +95,7 @@ module Plastic
           def write_document(intent)
             origin_id = @retrieval.origin_id
             document = intent.document(origin_id)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), origin_id).write(*document.values_at(:intent_id, :path, :body))
+            Retrieval::Evidence::Writer.new(@databases.fetch(:store), origin_id, clock: @retrieval.clock).write(*document.values_at(:intent_id, :path, :body))
           end
 
           def next_id(parent_id)

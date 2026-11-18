@@ -15,7 +15,7 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_a_routine_lists_its_workflows_in_order
-    assert_equal %i[code_prepare_ending agent_finish_intent agent_check_merge code_close_intent agent_wind_down_intent], page("intent end").flows.map(&:key)
+    assert_equal %i[code_prepare_ending agent_finish_intent agent_check_delivery code_close_intent agent_wind_down_intent], page("intent end").flows.map(&:key)
     assert_equal :routine, page("intent end").kind
   end
 
@@ -23,7 +23,7 @@ class CommandReferenceModelTest < Minitest::Test
     own = page("update").own_call
 
     assert_equal "lib/plastic/commands/update.rb", own.file
-    assert_includes own.code.join("\n"), "raise CLI::Command::Usage"
+    assert_includes own.code.join("\n"), "raise Usage"
     assert_nil page("intent end").own_call
   end
 
@@ -95,8 +95,8 @@ class CommandReferenceModelTest < Minitest::Test
 
   def gate_rows(words) = page(words).flows.flat_map(&:rows).select { |row| row.kind == :gate }
 
-  def test_the_auto_page_builds_and_links_a_method_check_to_its_definition
-    row = page("auto").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("delivery_started?") }
+  def test_the_intent_start_page_builds_and_links_a_method_check_to_its_definition
+    row = page("intent start").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("in_progress") }
 
     refute_nil row
     assert_includes source_line(row.file, row.line), "delivery_started?"

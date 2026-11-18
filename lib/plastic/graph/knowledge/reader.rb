@@ -6,25 +6,26 @@ require_relative "reader/cluster_file"
 require_relative "reader/link_file"
 require_relative "reader/intent_file"
 require_relative "reader/roadmap_file"
-require_relative "../prints"
+require_relative "prints"
 require_relative "store_folder"
+require_relative "store_path"
 
 module Plastic
   module Graph
     module Knowledge
       # Reads one file of a store folder into rows: the other half of Prints.
       # Each read is the statements it adds to a transaction of the database
-      # that owns the file's rows, so the reads of one call commit together.
+      # of the store, so the reads of one call commit together.
       class Reader
-        # One file's read: the database it writes and the statements it adds.
-        Read = Data.define(:path, :database, :apply)
+        # One file's read: the statements it adds to a transaction.
+        Read = Data.define(:path, :apply)
 
         # A read file and the print that keeps it.
         class Read
-          # A file whose rows print nothing, such as an empty savepoint.md, keeps its own hash.
+          # A file whose rows print nothing, such as an empty work.log, keeps its own hash.
           def line = "read #{path}"
 
-          def kept_print(folder) = Prints::Print.new(path, database, folder.digest(path), nil)
+          def kept_print(folder) = Prints::Print.new(path, folder.digest(path), nil)
         end
 
         # The reader of the intents of the rows.
@@ -39,33 +40,37 @@ module Plastic
           @folder = folder
           @intents = intents
           @retrieval = retrieval
-          @writer = Retrieval::Evidence::Writer.new(nil, origin_id)
+          @origin_id = origin_id
         end
 
-        def read(path)
+        def read(path, now)
           file = file_of(path)
-          Read.new(path, file.database, file.method(:apply))
+          Read.new(path, ->(batch) { file.apply(batch, now) })
         end
 
         private
 
         def file_of(path)
-          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs, @intents) if path == StoreFolder::INDEX
+          return index_file(path) if path == StoreFolder::INDEX
           return part_file(path) if Prints::Parts.path?(path)
-          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
+          return roadmap_file(path) if StorePath.roadmap?(path)
 
           intent_file(path)
         end
 
+        def index_file(path) = IndexFile.new(@folder.read(path), @origin_id, @folder.intent_dirs, @intents)
+
+        def roadmap_file(path) = RoadmapFile.new(File.basename(path, ".md"), @folder.read(path))
+
         def part_file(path)
           index = @folder.read(StoreFolder::INDEX)
-          return ClusterFile.new(index, @writer.origin_id) if Prints::ClusterPart.path?(path)
+          return ClusterFile.new(index, @origin_id) if Prints::ClusterPart.path?(path)
 
-          LinkFile.new(index, @writer.origin_id, printed?(path))
+          LinkFile.new(index, @origin_id, printed?(path))
         end
 
         # A part with a printed row has a last print to judge a removal against.
-        def printed?(path) = !@retrieval.nil? && @retrieval.printed.key?(path)
+        def printed?(path) = !@retrieval.nil? && @retrieval.stored.printed.key?(path)
 
         def intent_file(path)
           dir = path.split("/").first(2).join("/")
@@ -77,7 +82,7 @@ module Plastic
 
         def intent_file_of(intent, path)
           file = FolderFile.new(@folder, path, path.delete_prefix("#{intent.dir}/"))
-          IntentFile.new(file, intent.intent_id, retrieval: @retrieval, writer: @writer)
+          IntentFile.new(file, intent.intent_id, retrieval: @retrieval, origin_id: @origin_id)
         end
       end
     end

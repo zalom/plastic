@@ -12,7 +12,7 @@ class WorkflowDoneNodeTest < Plastic::TestCase
   end
 
   def finish(text: "green")
-    run_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text:).first
+    run_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text:, files: []).first
   end
 
   def node = retrieval.node("1", "n1")
@@ -23,11 +23,12 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     assert_equal [:done, "done", "green"], [outcome, node.state, node.findings]
   end
 
-  def test_a_done_node_takes_new_findings
+  def test_a_second_done_by_the_holder_writes_nothing
     finish
 
-    finish(text: "rechecked")
+    before = node.to_h
+    stop_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text: "rechecked", files: [])
 
-    assert_equal "rechecked", node.findings
+    assert_equal before, node.to_h
   end
 end

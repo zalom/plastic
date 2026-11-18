@@ -20,6 +20,20 @@ class FilesTest < Plastic::TestCase
     assert_equal [nil, nil], [Files.read_json(path), Files.read_json(File.join(@home, "absent.json"))]
   end
 
+  def test_an_edit_writes_the_file_back_only_when_the_block_says_it_changed
+    path = File.join(@home, "edit.json")
+    File.write(path, %({"a":1}))
+    untouched = Files.edit_json(path) { |data| data.delete("a") && false }
+    kept = JSON.parse(File.read(path))
+    changed = Files.edit_json(path) { |data| data.delete("a") }
+
+    assert_equal [false, { "a" => 1 }, 1, {}], [untouched, kept, changed, JSON.parse(File.read(path))]
+  end
+
+  def test_an_edit_of_a_missing_file_does_not_call_the_block
+    refute Files.edit_json(File.join(@home, "absent.json")) { flunk }
+  end
+
   def test_json_is_written_pretty_with_a_closing_newline_and_no_temporary_left
     path = File.join(@home, "out.json")
     Files.write_json(path, "a" => 1)

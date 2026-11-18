@@ -1,22 +1,21 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/evidence/writer"
 
 class RetrievalEvidenceIntegrityAuditTest < Plastic::TestCase
   def setup
     super
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "Audited evidence\n")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Audited evidence\n")
+    reindex
   end
 
-  def knowledge = store_graphs.databases.fetch(:knowledge)
-
   def report
-    snapshot = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(knowledge, origin).capture
+    snapshot = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(store_database, origin).capture
     Plastic::Graph::Retrieval::Evidence::IntegrityAudit.report(snapshot)
   end
 
-  def change(sql) = knowledge.transaction { |batch| batch.add(sql) }
+  def change(sql) = store_database.transaction { |batch| batch.add(sql) }
 
   def test_matching_rows_report_no_drift
     assert_equal({ repairable: false, missing: [] }, report)

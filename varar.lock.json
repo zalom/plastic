@@ -11,7 +11,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:1d54665c",
+      "sourceHash": "fnv1a:6f2224bd",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -20,7 +20,7 @@
       ]
     },
     "varar/backup.md": {
-      "sourceHash": "fnv1a:dd8f7b72",
+      "sourceHash": "fnv1a:41278b79",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -29,7 +29,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:fec59191",
+      "sourceHash": "fnv1a:ae41fbe6",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -38,7 +38,7 @@
       ]
     },
     "varar/status.md": {
-      "sourceHash": "fnv1a:f9727331",
+      "sourceHash": "fnv1a:dbcefa24",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -47,7 +47,7 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:ce5de7e3",
+      "sourceHash": "fnv1a:38d99786",
       "examples": [
         {
           "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
@@ -74,7 +74,7 @@
       ]
     },
     "varar/sync-up.md": {
-      "sourceHash": "fnv1a:7bed370f",
+      "sourceHash": "fnv1a:9794ad30",
       "examples": [
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",

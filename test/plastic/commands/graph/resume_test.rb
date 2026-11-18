@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/graph/resume"
 require_relative "../../../../lib/plastic/commands/next"
-require_relative "../../../../lib/plastic/commands/auto"
+require_relative "../../../../lib/plastic/commands/intent/auto"
 require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/node/claim"
 require_relative "../../../../lib/plastic/commands/node/done"
@@ -46,13 +46,13 @@ module GraphResumeHelper
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
-    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+    plastic("intent", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
   end
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
-  def node(verb, intent, node_id, *rest) = plastic("node", verb, intent.intent_id, node_id, *rest, table: Plastic::CLI::TABLE)
+  def node(verb, intent, node_id, *rest) = plastic("node", verb, intent.intent_id, node_id, *rest, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
   def intent_with_nodes_in_each_state
     intent = ready_intent
@@ -104,10 +104,10 @@ class GraphResumeTest < Plastic::TestCase
     refute_includes lines(call), "in progress: n1 done a"
   end
 
-  def test_the_last_savepoint_lines_of_the_intent_in_play_print
+  def test_the_last_log_lines_of_the_intent_in_play_print
     intent_with_nodes_in_each_state
 
-    assert lines(call).any? { |line| line.start_with?("savepoint:") && line.end_with?("Opened: Alpha") }
+    assert_equal 5, lines(call).count { |line| line.start_with?("log: - ") }
   end
 
   def test_no_more_than_five_savepoint_lines_print
@@ -153,7 +153,7 @@ class GraphResumeTest < Plastic::TestCase
     assert_equal [0, "", wanted], [result.code, result.err, lines(result) & wanted]
   end
 
-  def test_a_ready_node_prints_the_savepoint_the_then_line_and_the_claim_as_next
+  def test_a_ready_node_prints_the_log_the_then_line_and_the_claim_as_next
     intent = ready_intent
     add_node(intent, "a")
 
@@ -161,7 +161,7 @@ class GraphResumeTest < Plastic::TestCase
 
     wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 (because node n1 is ready)", "next: plastic node claim 1 n1"]
 
-    assert_equal [0, "", wanted, 1], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("savepoint: ") }]
+    assert_equal [0, "", wanted, 3], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("log: ") }]
   end
 
   def test_no_store_with_work_sends_the_agent_to_plastic_status
@@ -198,7 +198,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "b,global")
 
-    assert_equal "next: plastic auto 1 --project b", next_line(result)
+    assert_equal "next: plastic intent start 1 --project b", next_line(result)
     assert_includes lines(result).find { |line| line.start_with?("because:") }, "store b"
   end
 
@@ -208,7 +208,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "global,b")
 
-    assert_equal "next: plastic auto 1 --project b", next_line(result)
+    assert_equal "next: plastic intent start 1 --project b", next_line(result)
   end
 
   def test_each_then_line_holds_a_stores_own_next_command
@@ -218,7 +218,7 @@ class GraphResumeStoresTest < Plastic::TestCase
     result = call("--stores", "global,b")
 
     assert_equal [0, "", ["store: global", "store: b"]], [result.code, result.err, lines(result).grep(/\Astore: /)]
-    assert_equal ["then: nothing is open", "in play: 1 Beta (open)", "then: plastic auto 1 (because intent 1 is open)", "next: plastic auto 1 --project b"],
+    assert_equal ["then: nothing is open", "in play: 1 Beta (open)", "then: plastic intent start 1 (because intent 1 is open)", "next: plastic intent start 1 --project b"],
       lines(result).grep(/\A(in play|then|next): /).reject { |line| line == "in play: none" }
   end
 
@@ -227,10 +227,10 @@ class GraphResumeStoresTest < Plastic::TestCase
     store_intent("b", "Alpha")
 
     result = call("--stores", "global,b")
-    shown = lines(result).map { |line| line.sub(/\A(savepoint: )\S+/, '\1TIME') }
+    shown = lines(result).map { |line| line.sub(/\A(log: - )\S+/) { "#{$1}TIME" } }
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal ["store: global", "in play: none", "then: nothing is open", "store: b", "in play: 1 Alpha (open)", "savepoint: TIME Opened: Alpha",
+    assert_equal ["store: global", "in play: none", "then: nothing is open", "store: b", "in play: 1 Alpha (open)", "log: - TIME - - - opened - - Opened: Alpha",
       "then: plastic intent spec 1 (because intent 1 has no done criteria)", "", "next: plastic intent spec 1 --project b"], shown.reject { |line| line.start_with?("because:") }
   end
 
@@ -325,5 +325,13 @@ class GraphResumeRebuildTest < Plastic::TestCase
     copy_intent_files("src", "c")
 
     assert_equal "next: plastic sync up --project c", next_line(call("--stores", "c"))
+  end
+
+  def test_the_log_rows_print_the_line_of_a_write
+    intent = ready_intent
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
+    work.add_ruling(intent_id: intent.intent_id, text: "kept")
+
+    assert(lines(call).any? { |line| line.start_with?("log: - ") && line.include?(" ruled ") })
   end
 end

@@ -16,11 +16,25 @@ module Plastic
         @roots = Array(roots).compact.map { |root| File.expand_path(root) }
       end
 
-      def call(stale)
-        reachable = stale.select { |path| reachable?(path) }
-        removed = reachable.count { |path| remove(path) }
-        tidy(reachable.map { |path| File.dirname(path) })
+      def call(stale) = Prune.delete(stale.select { |path| reachable?(path) })
+
+      def self.delete(paths)
+        removed = paths.count { |path| remove(path) }
+        tidy(paths.map { |path| File.dirname(path) })
         removed
+      end
+
+      def self.remove(path)
+        return false unless File.exist?(path)
+
+        File.delete(path)
+        true
+      end
+
+      def self.tidy(folders)
+        folders.uniq.sort_by { |folder| -folder.length }.each do |folder|
+          FileUtils.rmdir(folder) if File.directory?(folder) && Dir.empty?(folder)
+        end
       end
 
       private
@@ -35,19 +49,6 @@ module Plastic
       def refuse(message)
         warn "   #{message}"
         false
-      end
-
-      def remove(path)
-        return false unless File.exist?(path)
-
-        File.delete(path)
-        true
-      end
-
-      def tidy(folders)
-        folders.uniq.sort_by { |folder| -folder.length }.each do |folder|
-          FileUtils.rmdir(folder) if File.directory?(folder) && Dir.empty?(folder)
-        end
       end
     end
   end

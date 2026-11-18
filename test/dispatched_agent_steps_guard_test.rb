@@ -2,13 +2,13 @@
 
 require "minitest/autorun"
 
-# A dispatched agent is a stateless node: the main session takes the lock,
+# A dispatched agent is a stateless node: the main session claims the node,
 # claims each node, records each result and closes the intent. No shipped
 # agent file names one of those commands, or another Plastic write, as a step.
 class DispatchedAgentStepsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SUBJECTS = Dir[File.join(ROOT, "agents", "*.md")].sort
-  ORCHESTRATOR = /plastic auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve)\b|plastic node \w+|node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
+  ORCHESTRATOR = /plastic (?:roadmap )?auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node \w+|node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
 
   def orchestrator_steps(text) = text.each_line.with_index(1).filter_map { |line, number| "#{number}: #{line.strip}" if line.match?(ORCHESTRATOR) }
 
@@ -25,6 +25,7 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
   def test_the_detector_catches_each_orchestrator_command
     ["Take the intent with plastic auto ID.", "Run plastic auto take 7.", "Close with plastic intent end ID.",
       "Run plastic node claim 7 n1.", "node claim it first", "Record plastic node done ID NODE TEXT.",
+      "Start it with plastic intent start 7.", "Deliver it with plastic intent auto 7.", "Pick with plastic roadmap auto r1.",
       "Add plastic edge add 7 n1 n2.", "plastic intent note ID TEXT", "scripts/insight-append DIR TEXT"]
       .each { |line| refute_empty orchestrator_steps(line), line }
   end

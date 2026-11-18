@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../cli/command/failure"
-require_relative "../cli/command/usage"
+require_relative "../errors"
 
 module Plastic
   module Workflows
@@ -29,22 +28,22 @@ module Plastic
       attr_reader :intent_id, :discovery, :source
 
       def read(path)
-        raise CLI::Command::Usage, "#{path} does not exist" unless File.file?(path)
+        raise Usage, "#{path} does not exist" unless File.file?(path)
 
         parse(path)
       end
 
       def parse(path)
         submission = JSON.parse(File.read(path))
-        raise CLI::Command::Usage, "#{path} must hold a JSON object" unless submission.is_a?(Hash)
+        raise Usage, "#{path} must hold a JSON object" unless submission.is_a?(Hash)
 
         submission
       rescue JSON::ParserError => error
-        raise CLI::Command::Usage, "#{path} is not valid JSON: #{error.message}"
+        raise Usage, "#{path} is not valid JSON: #{error.message}"
       end
 
       def require_fields(path, submission)
-        raise CLI::Command::Usage, "#{path} needs the arrays #{FIELD_LIST}" unless (CATEGORY_FIELDS - submission.keys).empty?
+        raise Usage, "#{path} needs the arrays #{FIELD_LIST}" unless (CATEGORY_FIELDS - submission.keys).empty?
 
         validate_categories(submission)
       end
@@ -52,7 +51,7 @@ module Plastic
       def validate_categories(submission)
         return if CATEGORY_FIELDS.all? { |field| submission.fetch(field).is_a?(Array) }
 
-        raise CLI::Command::Usage, "evidence, facts, interpretations, gaps, and rulings must be arrays"
+        raise Usage, "evidence, facts, interpretations, gaps, and rulings must be arrays"
       end
 
       def selected_evidence(submission)
@@ -64,10 +63,10 @@ module Plastic
       def discovered_uris = discovery.fetch("candidates").map { |candidate| candidate.fetch("uri") }
 
       def validate_evidence(reference, allowed)
-        raise CLI::Command::Failure, "evidence was not discovered: #{reference}" unless allowed.include?(reference)
+        raise Failed, "evidence was not discovered: #{reference}" unless allowed.include?(reference)
 
         fields = source.retrieval(reference).fetch_reference(reference)
-        raise CLI::Command::Failure, "evidence revision changed: #{reference}" unless fields.fetch(:uri) == reference
+        raise Failed, "evidence revision changed: #{reference}" unless fields.fetch(:uri) == reference
       end
 
       def metadata(selected)

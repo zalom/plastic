@@ -5,6 +5,10 @@ require_relative "../../lib/plastic/routine"
 require_relative "../../lib/plastic/cli/table"
 
 class RoutineTest < Plastic::TestCase
+  def test_a_routine_gives_its_workflows_no_fact_unless_it_defines_given_facts
+    assert_empty Plastic::Routine.given_facts
+  end
+
   def test_a_chain_of_two_code_workflows_prints_next_and_because
     call = plastic("kernel", "two", "ada")
 
@@ -13,10 +17,10 @@ class RoutineTest < Plastic::TestCase
     assert_equal "", call.err
   end
 
-  def test_a_tool_that_writes_nothing_keeps_no_routine_run_row
+  def test_a_tool_that_writes_nothing_keeps_no_command_run_row
     plastic("kernel", "two", "ada")
 
-    assert_nil routine_run("kernel two", "")
+    assert_nil command_run("kernel two", "")
   end
 
   def test_an_agent_workflow_hands_off_with_its_steps
@@ -29,9 +33,9 @@ class RoutineTest < Plastic::TestCase
     assert_equal "", call.err
   end
 
-  def test_the_hand_off_is_kept_as_an_open_routine_run_row
+  def test_the_hand_off_is_kept_as_an_open_command_run_row
     plastic("kernel", "draft", "notes", "--dir", @home)
-    run = routine_run("kernel draft", "notes")
+    run = command_run("kernel draft", "notes")
 
     assert_equal "handed_off", run.status
     assert_equal :agent_write_draft, run.at
@@ -40,21 +44,21 @@ class RoutineTest < Plastic::TestCase
 
   def test_the_next_call_reads_the_facts_back_and_finishes
     plastic("kernel", "draft", "notes", "--dir", @home)
-    stamp = routine_run("kernel draft", "notes").facts.fetch(:stamp)
+    stamp = command_run("kernel draft", "notes").facts.fetch(:stamp)
     File.write(File.join(@home, "notes.md"), "draft")
     call = plastic("kernel", "draft", "notes", "--dir", @home)
 
     assert_call call, code: 0, out: "because: the draft for notes is written, stamped #{stamp}\n"
-    assert_equal "finished", routine_run("kernel draft", "notes").status
+    assert_equal "finished", command_run("kernel draft", "notes").status
   end
 
-  def test_a_call_after_a_finished_routine_run_starts_a_new_one
+  def test_a_call_after_a_finished_command_run_starts_a_new_one
     File.write(File.join(@home, "notes.md"), "draft")
     plastic("kernel", "draft", "notes", "--dir", @home)
-    first = routine_run("kernel draft", "notes").facts.fetch(:stamp)
+    first = command_run("kernel draft", "notes").facts.fetch(:stamp)
     plastic("kernel", "draft", "notes", "--dir", @home)
 
-    refute_equal first, routine_run("kernel draft", "notes").facts.fetch(:stamp)
+    refute_equal first, command_run("kernel draft", "notes").facts.fetch(:stamp)
   end
 
   def test_a_chain_that_points_backward_raises_before_any_step
@@ -109,6 +113,7 @@ Dir[File.join(__dir__, "../../lib/plastic/commands/**/*.rb")].each { |file| requ
 class PrintsDeclarationTest < Minitest::Test
   NO_FILE = {
     "Session::Note" => "its rows are the session ledger, which no file holds",
+    "Node::Renew" => "a renewal changes the time of a claim, which no printed file holds",
     "Backup" => "a backup copies the databases, which no printed file holds",
     "Backup::Purge" => "it removes backup records, which no printed file holds",
     "Backup::Restore" => "it restores databases and hands the files to sync down",
@@ -158,14 +163,14 @@ class RoutineFailureTest < Plastic::TestCase
     call = plastic("kernel", "gate", "hold")
 
     assert_call call, code: 3, err: "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
-    assert_equal "refused", routine_run("kernel gate", nil).status
+    assert_equal "refused", command_run("kernel gate", nil).status
   end
 
   def test_a_failure_gate_exits_1_and_names_the_workflow
     call = plastic("kernel", "gate", "break")
 
     assert_call call, code: 1, err: "plastic: the check broke on break\n"
-    assert_equal 1, routine_run("kernel gate", nil).exit_code
+    assert_equal 1, command_run("kernel gate", nil).exit_code
   end
 
   def test_a_passing_gate_lets_the_chain_finish
@@ -211,11 +216,11 @@ class RoutineFailureTest < Plastic::TestCase
   def test_a_database_error_fails_the_call
     @plastic_home = File.join(Dir.mktmpdir, ".plastic")
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
-    File.write(File.join(@plastic_home, "local.db"), "not a database")
+    File.write(File.join(@plastic_home, "plastic.db"), "not a database")
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code
-    assert_includes call.err, "local.db"
+    assert_includes call.err, "plastic.db"
     assert_equal "", call.out
   end
 end

@@ -18,6 +18,6 @@ class ReadyGraphTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_ready_graph, gate: no intent 9 in this store", ready("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { ready("9") }.message
   end
 end

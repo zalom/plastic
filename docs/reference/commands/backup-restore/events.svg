@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 505" width="834" height="505" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 582" width="834" height="582" role="img" xml:space="preserve">
 <title>The events of one call of plastic backup restore, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -105,8 +105,8 @@
 <path d="M 472 178 L 480 183 L 472 188 Z" class="head"/>
 <rect x="480" y="152" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="170" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="188" class="t" text-anchor="start">An intent of the store holds a fresh delivery</text>
-<text x="492" y="204" class="t" text-anchor="start">lock, or the backup is not done.</text>
+<text x="492" y="188" class="t" text-anchor="start">An intent of the store holds a live node</text>
+<text x="492" y="204" class="t" text-anchor="start">claim, or the backup is not done.</text>
 <path d="M 64 203 L 64 240" class="wire"/>
 <path d="M 59 232 L 64 240 L 69 232 Z" class="head"/>
 <rect x="24" y="240" width="400" height="51" rx="6" class="lane-code"/>
@@ -120,20 +120,27 @@
 <circle cx="44" cy="336" r="8" class="badge"/>
 <text x="44" y="340" class="badge-t" text-anchor="middle">4</text>
 <text x="64" y="339" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="359" class="t" text-anchor="start">Say what was replaced.</text>
-<path d="M 424 358 L 432 358 L 432 372 L 480 372" class="wire-end"/>
-<path d="M 472 367 L 480 372 L 472 377 Z" class="head"/>
-<rect x="480" y="317" width="330" height="110" rx="6" class="stop-end"/>
-<text x="492" y="335" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="353" class="t" text-anchor="start">The rows are restored and the files are not;</text>
-<text x="492" y="369" class="t" text-anchor="start">ask the person whether to run plastic sync</text>
-<text x="492" y="385" class="t" text-anchor="start">down, which writes the files from the rows, or</text>
-<text x="492" y="401" class="t" text-anchor="start">plastic sync up, which reads the files into</text>
-<text x="492" y="417" class="t" text-anchor="start">the rows.</text>
-<rect x="24" y="457" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="469" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="457" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="160" y="469" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="278" y="457" width="14" height="14" rx="3" class="stop-end"/>
-<text x="298" y="469" class="k" text-anchor="start">Ends</text>
+<text x="64" y="359" class="t" text-anchor="start">Bring the restored store to the newest layout.</text>
+<path d="M 64 368 L 64 394" class="wire"/>
+<path d="M 59 386 L 64 394 L 69 386 Z" class="head"/>
+<rect x="24" y="394" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="413" r="8" class="badge"/>
+<text x="44" y="417" class="badge-t" text-anchor="middle">5</text>
+<text x="64" y="416" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="436" class="t" text-anchor="start">Say what was replaced.</text>
+<path d="M 424 435 L 432 435 L 432 449 L 480 449" class="wire-end"/>
+<path d="M 472 444 L 480 449 L 472 454 Z" class="head"/>
+<rect x="480" y="394" width="330" height="110" rx="6" class="stop-end"/>
+<text x="492" y="412" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="430" class="t" text-anchor="start">The rows are restored and the files are not;</text>
+<text x="492" y="446" class="t" text-anchor="start">ask the person whether to run plastic sync</text>
+<text x="492" y="462" class="t" text-anchor="start">down, which writes the files from the rows, or</text>
+<text x="492" y="478" class="t" text-anchor="start">plastic sync up, which reads the files into</text>
+<text x="492" y="494" class="t" text-anchor="start">the rows.</text>
+<rect x="24" y="534" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="546" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="534" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="160" y="546" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="278" y="534" width="14" height="14" rx="3" class="stop-end"/>
+<text x="298" y="546" class="k" text-anchor="start">Ends</text>
 </svg>

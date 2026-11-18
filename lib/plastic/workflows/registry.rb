@@ -4,7 +4,7 @@ module Plastic
   module Workflows
     # Every workflow key, listed by hand, with the class path under Workflows
     # that runs it. A key is the lane, then the words of its job and never
-    # changes, because an open routine run stores it; the class path follows
+    # changes, because an open command run stores it; the class path follows
     # the command the workflow belongs to: :code_close_intent is
     # Workflows::Code::Intent::End in workflows/code/intent/end.rb, a
     # CodeWorkflow. Workflow.fetch loads a file only when a routine asks for
@@ -24,9 +24,8 @@ module Plastic
       code_prepare_verdict: "Code::Intent::Verdict::Prepare",
       agent_judge_intent: "Agent::Intent::Judge",
       code_record_verdict: "Code::Intent::Verdict",
-      code_start_auto: "Code::Auto",
-      code_pick_delivery: "Code::Auto::Pick",
-      code_show_lock: "Code::Intent::Lock::Status",
+      code_start_intent: "Code::Intent::Start",
+      code_auto_roadmap: "Code::Roadmap::Auto",
       code_preview_sync: "Code::Sync::Up::Preview",
       code_preview_sync_down: "Code::Sync::Down::Preview",
       code_check_graph: "Code::Graph::Check",
@@ -67,7 +66,7 @@ module Plastic
       code_submit_context: "Code::Intent::Context",
       # Architecture: prompts only; the agent maps the code with the tool it chose.
       agent_check_architecture: "Agent::Architecture::Status",
-      agent_check_merge: "Agent::Intent::End::CheckMerge",
+      agent_check_delivery: "Agent::Intent::End::CheckDelivery",
       code_prepare_abandon: "Code::Intent::Abandon::Prepare",
       agent_revert_intent: "Agent::Intent::Abandon",
       code_abandon_intent: "Code::Intent::Abandon",
@@ -88,6 +87,7 @@ module Plastic
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
+      code_list_chat: "Code::Chat::List",
       # Settings: the config file read and written one key at a time.
       code_list_config: "Code::Config::List",
       code_get_config: "Code::Config::Get",
@@ -113,12 +113,20 @@ module Plastic
       code_add_edge: "Code::Edge::Add",
       code_remove_edge: "Code::Edge::Remove",
       code_claim_node: "Code::Node::Claim",
+      code_renew_node: "Code::Node::Renew",
       code_release_node: "Code::Node::Release",
       code_done_node: "Code::Node::Done",
       code_fail_node: "Code::Node::Fail",
       code_ask_node: "Code::Node::Ask",
       code_impede_node: "Code::Node::Impede",
-      code_resolve_node: "Code::Node::Resolve"
+      code_resolve_node: "Code::Node::Resolve",
+
+      # Resources: the sort of an intent folder into the resources layout.
+      code_preview_sort_resources: "Code::Resources::Sort::Preview",
+      code_sort_resources: "Code::Resources::Sort",
+
+      # Statuses: parking started work with its reason.
+      code_park_intent: "Code::Intent::Park"
     }.freeze
   end
 end

@@ -5,7 +5,7 @@ require_relative "../../support/second_load"
 
 class RegistryTest < Plastic::TestCase
   def test_every_offer_names_a_command_in_this_build
-    offers = Plastic::Workflows::REGISTRY.keys.flat_map { |key| Plastic::Workflow.fetch(key).outcomes.filter_map(&:offers) }.reject { |offer| offer.start_with?("%{") }
+    offers = Plastic::Workflows::REGISTRY.keys.flat_map { |key| Plastic::Workflow.fetch(key, from: Plastic::Workflows).outcomes.filter_map(&:offers) }.reject { |offer| offer.start_with?("%{") }
     missing = offers.reject { |command| Plastic::CLI.find(command.delete_prefix("plastic ").split) }
 
     assert_empty missing, "a next: line names a command not in Plastic::CLI::TABLE"
@@ -14,7 +14,7 @@ class RegistryTest < Plastic::TestCase
   def test_a_second_load_of_each_workflow_file_that_clears_its_declarations_keeps_them
     keys = Plastic::Workflows::REGISTRY.keys.select { |key| File.read(workflow_path(key)).include?("clear_declarations") }
     changed = keys.reject do |key|
-      flow = Plastic::Workflow.fetch(key)
+      flow = Plastic::Workflow.fetch(key, from: Plastic::Workflows)
       before = declarations(flow)
       SecondLoad.keeps?(workflow_path(key)) { declarations(flow) == before }
     end

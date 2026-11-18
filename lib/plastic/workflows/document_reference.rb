@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "uri"
-require_relative "../cli/command/usage"
+require_relative "../errors"
 
 module Plastic
   module Workflows
@@ -14,7 +14,7 @@ module Plastic
       end
 
       def source_slug
-        raise CLI::Command::Usage, "invalid document reference #{@text.inspect}" unless valid?
+        raise Usage, "invalid document reference #{@text.inspect}" unless valid?
 
         @text[/\Aplastic:\/\/([^\/]+)/, 1]
       end

@@ -41,7 +41,7 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | Keep the reasons | Appends each ruling to the Insights section of the intent file |
 | Plan the work | Holds the plan as a graph of nodes, and names the nodes ready to claim |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
-| Hand work to agents | Takes the delivery lock, prints the brief an agent starts from, and records each node's report |
+| Hand work to agents | Prints the brief an agent starts from, and records each node's report |
 | Close the work | Closes a delivered intent once its verdict, nodes and outcome allow it, or prints what is missing |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store: SQLite databases, printed to plain Markdown |
@@ -63,7 +63,7 @@ from the original intention through decisions, a plan of dependent nodes, and de
 | What | What is the intention? | `intent.md` |
 | Why | What context, evidence, and decisions shape it? | `spec.md`, `context.json` |
 | How | What is the plan? | `graph.json` |
-| Exec | What happened, and what was delivered? | `savepoint.md`, `outcome.md` |
+| Exec | What happened, and what was delivered? | `work.log`, `outcome.md` |
 
 `graph.json` prints the nodes and the edges between them. Plastic reads the node states and the
 edges to determine which work is ready, and `plastic graph ready ID` lists the nodes ready to
@@ -104,7 +104,7 @@ plastic version     # The version and the release channel
 plastic doctor      # The installation, the databases and the hooks of this agent
 ```
 
-`plastic version` prints the version, the release channel and the file the version came from.
+`plastic version`, or `plastic --version`, prints the version, the release channel and the file the version came from.
 It rebuilds a search index that is out of step and changes nothing else.
 
 `plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3
@@ -130,8 +130,9 @@ plastic init                # Pick the agents to install into
 # 2. See what is open
 plastic status
 
-# 3. Start an intent
+# 3. Open an intent and start it
 plastic intent new "Add a --version flag"
+plastic intent start 1
 
 # 4. Ask what to do next, at any time
 plastic next
@@ -162,7 +163,7 @@ An intent moves through the phases below: the go-ahead, the nodes, the judge, th
 Plastic follows four rules:
 
 1. **Commands print state and rules.** The judgment stays with you and the agent.
-2. **The savepoint is append-only.** `savepoint.md` holds one line for each step, so a new
+2. **The work log is append-only.** `work.log` holds one line for each step, so a new
    session resumes from the last line.
 3. **Status is derived.** Plastic reads what is ready from the node rows and their edges.
 4. **Nothing leaves the machine.** Plastic makes no model call and sends none of your files anywhere.
@@ -179,8 +180,10 @@ plastic next                          # The next action in one line
 
 ### Intents
 ```bash
-plastic intent new "TITLE"            # Create an intent
+plastic intent new "TITLE"            # Create a future intent
 plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
+plastic intent start 12               # Set it in progress for guided work and print the code worktree
+plastic intent park 12 "TEXT"         # Park started work with the reason it waits
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
@@ -219,9 +222,8 @@ write, never touches the original, and ends with the same call without `--dry-ru
 
 ### Auto teams
 ```bash
-plastic auto 12                        # Take the delivery lock and print the code worktree
-plastic auto my-roadmap                # Deliver the next item of a roadmap
-plastic intent lock status 12          # Show who holds the lock
+plastic intent auto 12                 # Set the intent in progress for agent delivery and print the code worktree
+plastic roadmap auto my-roadmap        # Start the next item of a roadmap for agent delivery
 plastic intent brief 12                # Print the brief an agent starts from
 ```
 
@@ -356,8 +358,8 @@ step and records what it reports.
 
 ## Configuration
 
-`~/.plastic/config.yml` holds the settings you changed, in a `global` section and one
-section per harness:
+`~/.plastic/config.yml` is printed from the settings rows in `plastic.db`. It shows the
+settings you changed, in a `global` section and one section per harness, and holds no anchors:
 
 ```yaml
 global:
@@ -369,6 +371,12 @@ harnesses:
       models:
         plastic-executor: gpt-5.5    # One agent's model under Codex
 ```
+
+A sync always reads the Markdown notes and the graph of each intent. Under `resources/`, it reads
+`output/reports` and `output/files` by file type, Markdown and HTML unless `sync.types` names others,
+the `references` folder when `sync.references` is on, and never `tmp`. A file of a type not yet
+named is skipped once, with one line that gives the `plastic config set sync.types` command to
+include it. `plastic init` offers images and videos picked.
 
 ```bash
 plastic config list                         # Every key with its value

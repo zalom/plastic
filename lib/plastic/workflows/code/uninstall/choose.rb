@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "../../../screen_choice"
+require_relative "../../../answer"
 require_relative "../uninstall"
 require_relative "../../../code_workflow"
-require_relative "../../../cli/screen"
 require_relative "../../../installations"
 
 module Plastic
@@ -19,10 +20,10 @@ module Plastic
 
           read "list the recorded and the found harnesses and read the person's answer" do |context|
             found = Installations.listed(context.scope)
-            choices = found.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }
-            result = CLI::Screen::Answer.new(choices).call(context.answer) if found.any?
+            choices = found.map { |name| Choice.new(label: name, chosen: true) }
+            result = Answer.new(choices).call(context.answer) if found.any?
             context[:found] = found
-            context[:picked] = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
+            context[:picked] = result.is_a?(Chosen) ? result.labels : []
             context[:harnesses] = context.picked.join(", ")
           end
 

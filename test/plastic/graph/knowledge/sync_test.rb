@@ -13,7 +13,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   def run_sync(direction, **options) = sync.apply(sync.plan(direction, options))
 
   def change_row(path, body)
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:documents, { intent_id: "1", path: File.basename(path), body:, updated_at: STAMP })
     end
   end
@@ -67,7 +67,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   end
 
   def with_legacy_plan
-    store_graphs.databases[:knowledge].transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:legacy_intents_data, { intent_id: "1", path: "plan.md", body: "# Plan\r\n", updated_at: STAMP })
     end
     run_sync(:down)
@@ -87,15 +87,15 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal ["store/1--alpha/plan.md"], sync.printer.written
   end
 
-  def test_an_emptied_savepoint_drops_its_lines_and_keeps_its_file
-    write("store/1--alpha/savepoint.md", "")
+  def test_an_emptied_work_log_drops_its_lines_and_keeps_its_file
+    write("store/1--alpha/work.log", "")
 
-    assert_equal ["read store/1--alpha/savepoint.md"], run_sync(:up)
-    assert_equal [[], ""], [retrieval.savepoints("1"), folder.read("store/1--alpha/savepoint.md")]
+    assert_equal ["read store/1--alpha/work.log"], run_sync(:up)
+    assert_equal [[], ""], [retrieval.structure.work_log("1"), folder.read("store/1--alpha/work.log")]
   end
 
   def test_print_says_each_path_it_wrote
-    print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
+    print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", "n\n")
 
     assert_equal [["store/1--alpha/notes.md"], []], [sync.printer.print([print]), sync.printer.print([print])]
   end
@@ -104,14 +104,14 @@ class KnowledgeSyncTest < Plastic::TestCase
     folder.delete(".gitignore")
     run_sync(:up)
 
-    assert_equal "*.db\n*.db-journal\n", folder.read(".gitignore")
+    assert_equal "*.db\n*.db-journal\nbackups/\n", folder.read(".gitignore")
   end
 
   def test_a_level_file_with_no_record_is_recorded
-    store_graphs.databases[:knowledge].transaction { |batch| batch.remove(:printed, path: SPEC) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.remove(:printed, path: SPEC) }
 
     assert_equal [], run_sync(:up)
-    assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
+    assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.stored.printed[SPEC]
   end
 end
 
@@ -207,7 +207,7 @@ class KnowledgeSyncTwoHomesClusterPartTest < Plastic::TestCase
 
   def test_a_part_with_no_printed_row_gives_no_conflict_and_the_next_print_writes_the_row
     to_both_homes do |_a, b|
-      database_of(b, :work).transaction { |batch| batch.remove(:printed, path: PART) }
+      database_of(b).transaction { |batch| batch.remove(:printed, path: PART) }
       up = call_in(b, "sync", "up")
       call_in(b, "sync", "down")
 
@@ -631,20 +631,26 @@ class KnowledgeSyncTwoHomesLinksTest < Plastic::TestCase
   def test_an_intent_that_a_live_intent_links_to_on_the_first_home_stays_unarchived_on_the_second_home
     to_both_homes do |a, b|
       link(a, "2", "cites", "1")
+      start_intent(a, "2")
       close_intent(a, "1")
       pull(b, a)
       call_in(b, "sync", "up")
       archive = call_in(b, "intent", "archive", "--older-than", "2099-01-01")
 
-      assert_equal [0, []], [archive.code, home_graphs(b).retrieval.archive_rows.map(&:intent_id)], said(archive)
+      assert_equal [0, []], [archive.code, home_graphs(b).retrieval.archives.rows.map(&:intent_id)], said(archive)
     end
   end
 
   private
 
+  def start_intent(home, intent_id)
+    home_graphs(home).work.activate_intent(intent_id)
+    call_in(home, "sync", "down")
+  end
+
   def close_intent(home, intent_id)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(TwoHomesStatusHelper::CLOSED)
-    database_of(home, :work).transaction { |batch| batch.put(:intents, row) }
+    database_of(home).transaction { |batch| batch.put(:intents, row) }
     call_in(home, "sync", "down")
   end
 end
@@ -737,7 +743,7 @@ class KnowledgeSyncTwoHomesRoadmapTest < Plastic::TestCase
   def test_the_same_change_on_both_homes_is_recorded_and_is_no_conflict
     to_both_homes do |a, b|
       call_in(a, "roadmap", "log", "r1", "same note")
-      put_log(b, rows_of(a, :work, "SELECT position, at, text, session_id FROM roadmap_log WHERE text = 'same note'").first.transform_keys(&:to_sym))
+      put_log(b, rows_of(a, "SELECT position, at, text, session_id FROM roadmap_log WHERE text = 'same note'").first.transform_keys(&:to_sym))
       pull(b, a)
       up = call_in(b, "sync", "up")
 
@@ -771,7 +777,7 @@ class KnowledgeSyncTwoHomesRoadmapTest < Plastic::TestCase
       pull(b, a)
       up = call_in(b, "sync", "up")
 
-      assert_equal [0, ["Road"]], [up.code, rows_of(b, :work, "SELECT title FROM roadmaps WHERE slug = 'r1'").map { |row| row["title"] }], said(up)
+      assert_equal [0, ["Road"]], [up.code, rows_of(b, "SELECT title FROM roadmaps WHERE slug = 'r1'").map { |row| row["title"] }], said(up)
     end
   end
 

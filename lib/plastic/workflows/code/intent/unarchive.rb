@@ -15,7 +15,7 @@ module Plastic
           forget_stop :problem, :ok
 
           step "restore the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? },
-            changes: { work: "The intent leaves the archive", references: "The files kept for the intent are restored" } do |context|
+            changes: { work: "The intent leaves the archive", knowledge: "The files kept for the intent are restored" } do |context|
             ok, problem, = context.work.unarchive_intent(context.intent_id)
             context[:ok] = ok
             context[:problem] = problem

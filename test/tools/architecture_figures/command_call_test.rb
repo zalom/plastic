@@ -7,7 +7,7 @@ require "architecture_figures"
 class ArchitectureFiguresCommandCallTest < Plastic::TestCase
   include ArchitectureFiguresHelper
 
-  def normalize(line) = line.gsub(/\bintent:? \d+/) { |match| match.sub(/\d+/, "ID") }.gsub(/\d+--sample-title/, "ID--slug").squeeze(" ").strip
+  def normalize(line) = line.gsub(/\b(intent:?|start|auto) \d+/) { |match| match.sub(/\d+/, "ID") }.gsub(/\d+--sample-title/, "ID--slug").squeeze(" ").strip
 
   def real_report(result) = result.out.lines.map { |line| normalize(line) }.reject(&:empty?)
 
@@ -25,5 +25,9 @@ class ArchitectureFiguresCommandCallTest < Plastic::TestCase
     assert_equal "intent: ID", normalize("intent: 12")
     assert_equal "store/ID--slug/intent.md", normalize("        store/7--sample-title/intent.md")
     assert_equal "1 document in x.db", normalize("1  document in x.db")
+  end
+
+  def test_the_normalizer_turns_the_ids_of_the_start_commands_into_a_placeholder
+    assert_equal "plastic intent start ID or plastic intent auto ID", normalize("plastic intent start 3 or plastic intent auto 3")
   end
 end

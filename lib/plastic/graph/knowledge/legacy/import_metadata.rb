@@ -37,7 +37,7 @@ module Plastic
 
           def legacy_read(parsed)
             originals = @folder.intent_files.to_h { |path| [path, @folder.read(path)] }
-            Read.new(parsed, originals, Decisions.new.read_decisions(@folder.intent_dirs, originals))
+            Read.new(parsed, originals, Decisions.read(@folder.intent_dirs, originals))
           end
 
           def opened = Graph.open(home: @home, store:)
@@ -48,7 +48,7 @@ module Plastic
           end
 
           def tally = Hash.new(0).merge(intents: @retrieval.intents.size, documents: @retrieval.documents.size,
-            legacy_intents_data: @retrieval.legacy_intents_data.size, savepoints: @retrieval.savepoints.size)
+            legacy_intents_data: @retrieval.stored.legacy_intents_data.size, work_log: @retrieval.structure.work_log.size)
         end
       end
     end

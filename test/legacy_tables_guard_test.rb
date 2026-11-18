@@ -3,7 +3,7 @@
 require "minitest/autorun"
 
 # A table marked legacy holds data that nothing new reads. Only the plumbing that
-# writes, prints, counts and declares it may name it.
+# writes, prints, counts and declares it, and the frozen migrations, may name it.
 class LegacyTablesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   KERNEL = File.join(ROOT, "lib")
@@ -12,14 +12,15 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/db/schema.rb
     plastic/graph/schema/metadata.rb
     plastic/graph/knowledge/reader/intent_file.rb
+    plastic/graph/knowledge/reader/text_file.rb
     plastic/graph/knowledge/archive/snapshot_index.rb
     plastic/graph/knowledge/legacy/store_import.rb
     plastic/graph/knowledge/legacy/import_metadata.rb
     plastic/graph/knowledge/legacy_intents_data.rb
-    plastic/graph/prints.rb
-    plastic/graph/prints/contents.rb
+    plastic/graph/knowledge/prints.rb
+    plastic/graph/knowledge/prints/contents.rb
     plastic/graph/source.rb
-    plastic/graph/retrieval/store_reads.rb
+    plastic/graph/retrieval/store_read.rb
   ].map { |path| File.join(KERNEL, path) }.freeze
   DECLARATION = /create_table\s+:(\w+)[^\n]*legacy:\s*true/
 

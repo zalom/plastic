@@ -15,7 +15,7 @@ class ContextPersistenceTest < Plastic::TestCase
 
   def test_the_context_is_written_as_a_row
     persist
-    row = store_graphs.databases[:knowledge].row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+    row = store_graphs.databases.fetch(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
 
     assert_equal DOCUMENT, JSON.parse(row.fetch("data"))
   end

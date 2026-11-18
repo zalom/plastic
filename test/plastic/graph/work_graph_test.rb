@@ -5,19 +5,19 @@ require_relative "../../test_helper"
 class WorkGraphTest < Plastic::TestCase
   def work = store_graphs.work
 
-  def run_session(graphs) = graphs.databases[:local].row("SELECT session_id FROM routine_runs WHERE subject = 1").fetch("session_id")
+  def run_session(graphs) = graphs.databases[:local].row("SELECT session_id FROM command_runs WHERE subject = 1").fetch("session_id")
 
   def test_write_intent_returns_the_intent_and_ignores_the_databases
     intent = work.write_intent(title: "Alpha")
 
     assert_equal %w[1 Alpha], [intent.intent_id, intent.title]
-    assert_equal "*.db\n*.db-journal\n", folder.read(".gitignore")
+    assert_equal "*.db\n*.db-journal\nbackups/\n", folder.read(".gitignore")
   end
 
   def test_print_intent_prints_the_index_and_the_intent_files
     work.write_intent(title: "Alpha")
 
-    assert_equal %w[store/index.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/graph.json],
+    assert_equal %w[store/index.json store/1--alpha/intent.md store/1--alpha/work.log store/1--alpha/graph.json],
       work.print_intent("1")
     assert_empty work.print_intent("1")
   end
@@ -27,10 +27,11 @@ class WorkGraphTest < Plastic::TestCase
       [work.intent_problem(parent_id: "9"), work.ref_line("ENG-1")]
   end
 
-  def test_the_backups_refuse_a_restore_while_a_live_lock_holds_an_intent
-    work.lock_intent("1", session_id: "s-2", mode: "auto")
+  def test_the_backups_refuse_a_restore_while_a_live_claim_holds_a_node
+    work.add_node(intent_id: "1", title: "Build")
+    work.claim_node(intent_id: "1", id: "n1", by: "s-2")
 
-    assert_predicate work.backups.restorer, :locked?
+    assert_predicate work.backups.restorer, :claimed?
   end
 
   def test_a_sync_plan_applies_through_the_work_graph
@@ -59,13 +60,13 @@ class WorkGraphTest < Plastic::TestCase
     assert folder.exist?(".gitignore")
   end
 
-  def test_a_second_session_rerunning_a_tool_moves_the_run_but_keeps_the_earlier_savepoint_lines
+  def test_a_second_session_rerunning_a_tool_moves_the_run_but_keeps_the_earlier_work_log_lines
     first = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
     first.print_intent(first.write_intent(title: "Alpha").intent_id)
     second = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2")
-    second.work.save_routine_run(Plastic::RoutineRun.fresh("intent end", "1"))
+    second.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
 
     assert_equal "s-2", run_session(second)
-    assert_equal "s-1", second.retrieval.savepoints("1").first.session_id
+    assert_equal "s-1", structure.work_log("1").first.session_id
   end
 end

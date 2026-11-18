@@ -56,9 +56,10 @@ class DoctorCommandTest < Plastic::TestCase
     assert_includes result.err, "no harness unknown; the registered harnesses are claude-code, codex, hermes"
   end
 
-  def test_the_doctor_changes_no_file_under_the_home
+  def test_a_second_doctor_run_changes_no_file_under_the_home
     File.delete(machine_path)
     FileUtils.rm_rf(store_dir)
+    doctor
     before = tree_snapshot(@home)
     doctor
 
@@ -88,13 +89,13 @@ class DoctorDamageCaseTest < Plastic::TestCase
   end
 
   def test_a_store_without_the_intents_table_names_the_project_repair
-    drop_table(store_path(:work), "intents")
+    drop_table(store_path(:knowledge), "intents")
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
 
-  def test_a_store_without_references_db_names_the_project_repair
-    File.delete(store_path(:references))
+  def test_a_store_without_retrieval_graph_db_names_the_project_repair
+    File.delete(store_path(:work))
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
@@ -163,8 +164,8 @@ class CodexDoctorDamageCaseTest < Plastic::TestCase
     assert_includes result.err, DoctorCommandTest::GATE
   end
 
-  def test_a_store_without_references_db_names_the_project_repair
-    File.delete(store_path(:references))
+  def test_a_store_without_retrieval_graph_db_names_the_project_repair
+    File.delete(store_path(:work))
 
     assert_damage "store alpha", "plastic project new #{SLUG} #{project_dir}"
   end
@@ -214,7 +215,7 @@ class DoctorRepairTest < Plastic::TestCase
   def damaged(project)
     command("project", "new", "alpha", project)
     Pool.release(@home)
-    FileUtils.rm_f(File.join(@plastic_home, "stores", "alpha", "references.db"))
+    FileUtils.rm_f(File.join(@plastic_home, "stores", "alpha", "work_graph.db"))
     command("doctor", "--harness", "claude-code")
   end
 end
@@ -269,9 +270,10 @@ class CodexDoctorCommandTest < Plastic::TestCase
     assert_equal [1, 0, "", ["hook SessionStart", "plastic install --reinstall"]], [found.code, repaired.code, repaired.err, words]
   end
 
-  def test_a_damaged_codex_home_is_unchanged_after_the_doctor
+  def test_a_second_doctor_run_on_a_damaged_codex_home_changes_no_file
     File.delete(codex_record)
     File.delete(machine_path)
+    doctor("--harness", "codex")
     before = tree_snapshot(@home)
     result = doctor("--harness", "codex")
 

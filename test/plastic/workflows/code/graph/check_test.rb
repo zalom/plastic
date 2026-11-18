@@ -6,6 +6,8 @@ require_relative "../../../../../lib/plastic/workflows/code/graph/check"
 class CheckGraphTest < Plastic::TestCase
   def check(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Graph::Check, intent_id:)
 
+  def failed_check(intent_id = "1") = stop_workflow(Plastic::Workflows::Code::Graph::Check, intent_id:)
+
   def specified
     write("#{open_intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
     sync_up
@@ -32,13 +34,13 @@ class CheckGraphTest < Plastic::TestCase
     specified
     store_graphs.work.add_node(intent_id: "1", title: "a", criterion: "done", state: "done")
 
-    outcome, context = check
+    error, context = failed_check
 
     assert_equal ["finding: node n1 is done with no findings"], context.printed
-    assert_equal "code_check_graph, gate: see the findings above", outcome.message
+    assert_equal "see the findings above", error.message
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_check_graph, gate: no intent 9 in this store", check("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { check("9") }.message
   end
 end

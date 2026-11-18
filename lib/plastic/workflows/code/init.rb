@@ -2,8 +2,9 @@
 
 require_relative "../../code_workflow"
 require_relative "../../harnesses"
+require_relative "../../config/sync_types"
 require_relative "../installation"
-require_relative "../installation_hooks"
+require_relative "../../doctor/installation_hooks"
 
 module Plastic
   module Workflows
@@ -17,22 +18,30 @@ module Plastic
         sets :broken, :installed, :checked
 
         read "check the harness settings files" do |context|
-          context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
+          context[:broken] = Plastic::Doctor::InstallationHooks.new(home: context.scope.home).unreadable
         end
 
         gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,
           pass: ->(context) { context.broken.nil? }
 
         step "install Plastic into the picked harnesses", done: ->(context) { !context.installed.nil? },
-          changes: { home: "Plastic is installed into the Plastic home", harness: "The instructions and hooks of each picked harness are written" } do |context|
+          changes: { home: ["Plastic is installed into the Plastic home", "Whether a sync keeps images and videos is written to the settings rows"],
+                     harness: "The instructions and hooks of each picked harness are written" } do |context|
           installation = Installation.of(context)
           keys = context.picked.map { |name| Harnesses.fetch(name).installer }
           Installation.capture { installation.wire(keys) }.each { |line| context.print(line) }
+          Init.sync_media(context)
           context[:installed] = installation.version
           context[:checked] = context.picked.first
         end
 
         outcome :done, offers: "plastic doctor --harness %{checked}", because: "Plastic %{installed} is installed into %{harnesses}"
+
+        def self.sync_media(context)
+          config = context.settings.config
+          types = config.list("sync.types")
+          config.set("sync.types", context.media ? Plastic::Config::SyncTypes.with_media(types) : Plastic::Config::SyncTypes.without_media(types))
+        end
       end
     end
   end

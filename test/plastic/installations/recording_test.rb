@@ -36,7 +36,7 @@ class InstallationsRecordingTest < Plastic::TestCase
     installed_into("claude")
     hooks = recorded("claude-code").hooks
 
-    assert_equal %w[SessionEnd SessionStart Stop], hooks.map { |entry| entry["event"] }.uniq.sort
+    assert_equal %w[SessionEnd SessionStart Stop UserPromptSubmit], hooks.map { |entry| entry["event"] }.uniq.sort
     refute_includes hooks.map { |entry| entry["command"] }, "my-stop"
   end
 

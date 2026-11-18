@@ -36,24 +36,4 @@ class StoreLayoutTest < Plastic::TestCase
   def test_the_global_slug_resolves_to_the_global_root
     assert_equal File.join(home, "stores", "global"), Plastic::StoreLayout.root(moved_home, "global")
   end
-
-  def test_project_slugs_skip_the_global_store_and_hidden_folders
-    %w[beta alpha global .cache].each { |slug| FileUtils.mkdir_p(File.join(moved_home, "stores", slug)) }
-
-    assert_equal %w[alpha beta], Plastic::StoreLayout.project_slugs(home)
-  end
-
-  def test_project_slugs_are_empty_when_the_projects_folder_is_missing
-    assert_empty Plastic::StoreLayout.project_slugs(home)
-  end
-
-  def test_a_project_store_names_its_home_and_its_project_scope
-    store = File.join(home, "stores", "alpha", "store")
-
-    assert_equal [home, "project:alpha"], Plastic::StoreLayout.home_and_scope(store)
-  end
-
-  def test_a_store_outside_the_project_parents_is_the_global_store
-    assert_equal [home, "global"], Plastic::StoreLayout.home_and_scope(File.join(home, "store"))
-  end
 end

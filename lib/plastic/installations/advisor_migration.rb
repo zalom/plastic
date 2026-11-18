@@ -38,17 +38,19 @@ module Plastic
       end
 
       def rename_default(config)
-        claude = config["advisor"].is_a?(Hash) ? config["advisor"]["claude"] : nil
-        claude["default"] = RENAMES.fetch(claude["default"]) if claude.is_a?(Hash) && RENAMES.key?(claude["default"])
+        advisor = config["advisor"]
+        claude = advisor["claude"] if advisor.is_a?(Hash)
+        current = claude["default"] if claude.is_a?(Hash)
+        claude["default"] = RENAMES.fetch(current) if RENAMES.key?(current)
       end
 
       def rename_sections(config)
         agents = config["agents"]
         return unless agents.is_a?(Hash)
 
-        %w[models efforts].filter_map { |part| agents[part] }.grep(Hash).each do |section|
-          [section, *%w[claude codex].map { |harness| section[harness] }].grep(Hash).each { |keys| rename_keys(keys) }
-        end
+        %w[models efforts].filter_map { |part| agents[part] }.grep(Hash)
+          .flat_map { |section| [section, *section.values_at("claude", "codex")] }
+          .grep(Hash).each { |keys| rename_keys(keys) }
       end
 
       def rename_keys(section)

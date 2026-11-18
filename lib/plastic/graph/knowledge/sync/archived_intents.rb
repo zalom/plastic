@@ -25,7 +25,7 @@ module Plastic
 
           def write_to(databases)
             marks = missing
-            databases.fetch(:work).transaction { |batch| write_all(batch, marks) } if marks.any?
+            databases.fetch(:store).transaction { |batch| write_all(batch, marks) } if marks.any?
           end
 
           private
@@ -33,7 +33,7 @@ module Plastic
           def write_all(batch, marks) = marks.each { |mark| write(batch, mark) }
 
           def write(batch, mark)
-            Mark.new(mark, entries.fetch(mark["intent_id"])).put_all(batch)
+            Mark.new(mark, entries.fetch(mark["intent_id"]), @retrieval.clock).put_all(batch)
           end
 
           def archives = Array(data["archives"]).grep(Hash).select { |mark| entries.key?(mark["intent_id"]) }

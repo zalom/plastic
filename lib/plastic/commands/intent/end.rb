@@ -11,15 +11,16 @@ module Plastic
         writes :work
         prints :intent
         reads :knowledge
+        backs_up_first
 
         workflow :code_prepare_ending do
-          on :unverified, next: :agent_check_merge
+          on :unverified, next: :agent_check_delivery
           on :closed, next: :noop
           on :ready, next: :code_close_intent
           on :agent_needed, next: :agent_finish_intent
         end
         workflow :agent_finish_intent, next: :noop
-        workflow :agent_check_merge, next: :noop
+        workflow :agent_check_delivery, next: :noop
         workflow :code_close_intent do
           on :done, next: :agent_wind_down_intent
         end

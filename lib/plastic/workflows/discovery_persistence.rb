@@ -17,8 +17,8 @@ module Plastic
 
       def persist
         intent_id = @context.intent_id
-        @context.database(:knowledge).transaction do |batch|
-          batch.put(:retrieval_discoveries, { intent_id:, data: @body, updated_at: Plastic.now })
+        @context.database(:store).transaction do |batch|
+          batch.put(:retrieval_discoveries, { intent_id:, data: @body, updated_at: Plastic.timestamp(@context.now) })
         end
       end
     end

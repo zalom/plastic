@@ -7,8 +7,7 @@ module Plastic
   module Graph
     class DisposableCopy
       # The databases of one home and one store, written into the copy as a
-      # consistent snapshot. A home.db not yet renamed keeps its name, and
-      # the copy renames it on first use.
+      # consistent snapshot.
       class DatabaseCopy
         def initialize(home, copy, slug)
           @home = home
@@ -28,7 +27,11 @@ module Plastic
 
         def sources = [local, *Schema.store.filter_map { |key| store_entry(key) }].compact
 
-        def local = [Schema.file(:local), "home.db"].map { |file| [file, File.join(@home, file)] }.find { |_file, path| File.file?(path) }
+        def local
+          file = Schema.file(:local)
+          path = File.join(@home, file)
+          [file, path] if File.file?(path)
+        end
 
         def store_entry(key)
           file = Schema.file(key)

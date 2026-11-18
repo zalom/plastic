@@ -11,7 +11,7 @@ class NodeResolveCaseTest < Plastic::TestCase
 end
 
 class NodeResolveTest < Plastic::TestCase
-  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
+  def cli(*args) = plastic(*args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def setup
     super
@@ -25,7 +25,7 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
+    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
   end
 
   def test_an_answer_that_holds_column_names_is_stored_unchanged
@@ -42,14 +42,6 @@ class NodeResolveTest < Plastic::TestCase
 
     assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1"]
     assert_equal "open", retrieval.node("1", "n1").state
-  end
-
-  def test_a_node_row_left_parked_by_an_older_database_resolves_and_blocks_nothing
-    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET state = 'parked' WHERE id = 'n1'") }
-
-    result = cli("node", "resolve", "1", "n1", "go left")
-
-    assert_equal [0, ["n1"]], [result.code, retrieval.ready_nodes("1").map(&:id)]
   end
 
   def test_resolving_a_claimed_node_is_refused

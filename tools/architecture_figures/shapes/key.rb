@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "palette"
+require_relative "text"
+
 module ArchitectureFigures
   module Shapes
     # A row of colored swatches with their meaning.

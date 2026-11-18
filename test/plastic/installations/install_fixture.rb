@@ -1,17 +1,19 @@
 # frozen_string_literal: true
 
 require_relative "package_fixture"
+require_relative "../../test_helpers/config_homes"
 
 # A small shipped package and a fresh home under the test home, with the three
 # agent folders the installer knows.
 module InstallFixture
   include PackageFixture
+  include ConfigHomes
 
   def fresh = File.join(@home, "fresh")
 
   def plastic = File.join(fresh, ".plastic")
 
-  def config_with(text) = write(File.join(plastic, "config.yml"), text)
+  def config_with(text) = seed_config(plastic, text)
 
   def claude_config = { key: "claude", name: "Claude Code", dir: File.join(fresh, ".claude"), skill_prefix: "/" }
 
@@ -31,7 +33,7 @@ module InstallFixture
     root
   end
 
-  def shipped_package(version = "2.0.3") = Plastic::Installations::Package.new(shipped, plastic, version)
+  def shipped_package(version = "2.0.3") = Plastic::Installations::Package.new(shipped, plastic, version, Plastic::Wiring.settings(plastic))
 
   def make_agent_folders(*configs) = configs.each { |config| FileUtils.mkdir_p(config[:home_dir] || config[:dir]) }
 end

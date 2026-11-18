@@ -25,20 +25,22 @@ module Plastic
       def fragments
         return [] unless File.directory?(@source)
 
-        Dir.children(@source).select { |entry| fragment?(entry) }.map { |entry| File.join(@plastic_home, entry) }
+        Dir.children(@source).select { |entry| SkillCopy.fragment?(entry) }.map { |entry| File.join(@plastic_home, entry) }
       end
+
+      def self.fragment?(entry) = entry.start_with?("_") && entry.end_with?(".md")
+
+      def self.visible(folder) = Dir.children(folder).reject { |entry| entry.start_with?(".") }
 
       private
 
       def entries(exclude) = Dir.children(@source).reject { |entry| entry.start_with?(".") || exclude.include?(entry) }
 
-      def fragment?(entry) = entry.start_with?("_") && entry.end_with?(".md")
-
       def copy_entry(entry, skills_root)
         path = File.join(@source, entry)
         return copy_folder(path, File.join(skills_root, "plastic-#{entry}")) if File.directory?(path)
 
-        fragment?(entry) ? [copy_fragment(path, entry)] : []
+        SkillCopy.fragment?(entry) ? [copy_fragment(path, entry)] : []
       end
 
       def copy_fragment(path, entry)
@@ -50,7 +52,7 @@ module Plastic
 
       def copy_folder(source, target)
         FileUtils.mkdir_p(target)
-        visible(source).flat_map do |entry|
+        SkillCopy.visible(source).flat_map do |entry|
           path = File.join(source, entry)
           copied = File.join(target, entry)
           next copy_folder(path, copied) if File.directory?(path)
@@ -59,8 +61,6 @@ module Plastic
           [copied]
         end
       end
-
-      def visible(folder) = Dir.children(folder).reject { |entry| entry.start_with?(".") }
     end
   end
 end

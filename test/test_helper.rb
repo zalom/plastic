@@ -36,7 +36,7 @@ module Plastic
       return if @booted
 
       @booted = true
-      require "plastic"
+      require "plastic/cli"
       require "plastic/graph"
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
@@ -54,8 +54,17 @@ module Plastic
       @home = @template.dir
       @plastic_home = File.join(@home, ".plastic")
       @template.begin
+      mark_stores_recently_backed_up
     end
 
-    def teardown = @template.reset
+    # The home sits inside the test's own transaction, which VACUUM INTO cannot copy, so an automatic backup there would only fail. A folder named for the current minute keeps it from being due.
+    def mark_stores_recently_backed_up
+      stamp = Plastic::Graph::Backup::FolderName.timestamp(Time.now)
+      Dir.glob(File.join(@plastic_home, "stores", "*")).each { |root| FileUtils.mkdir_p(File.join(root, "backups", stamp)) }
+    end
+
+    def teardown
+      @template.reset
+    end
   end
 end

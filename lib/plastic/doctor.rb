@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "cli/command/usage"
+require_relative "errors"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
-require_relative "workflows/installation"
 require_relative "harnesses/detection"
 require_relative "harnesses/session_rows"
 
@@ -18,7 +17,7 @@ module Plastic
     def self.harness(scope, session:)
       row = recorded(scope, session)
       [row, detected(scope, session)].find { |name| Harnesses.registered?(name) } or
-        raise CLI::Command::Usage, "#{row ? unregistered(session, row) : "no harness names this call"}; " \
+        raise Usage, "#{row ? unregistered(session, row) : "no harness names this call"}; " \
                                    "name one with --harness: #{HARNESSES.keys.join(", ")}"
     end
 
@@ -36,20 +35,18 @@ module Plastic
 
     def self.kind(name, harnesses = HARNESSES)
       harnesses.fetch(name) do
-        raise CLI::Command::Usage, "no harness #{name}; the registered harnesses are #{harnesses.keys.join(", ")}"
+        raise Usage, "no harness #{name}; the registered harnesses are #{harnesses.keys.join(", ")}"
       end
     end
 
-    def self.checks(scope, kind, running:)
-      Core.new(scope, running:).checks + harness_checks(scope, kind, running:)
+    def self.checks(scope, kind, running:, now:, store:)
+      Core.new(scope, running:, now:, store:).checks + harness_checks(scope, kind, running:)
     end
 
     def self.harness_checks(scope, kind, running:) = kind ? kind.new(scope, running:).checks : []
 
-    def self.check(scope, harness:)
-      checks(scope, kind(harness), running: Workflows::Installation.running(scope))
-    end
+    def self.check(scope, harness:, running:, now:, store:) = checks(scope, kind(harness), running:, now:, store:)
 
-    def self.failing(scope, harness:) = check(scope, harness:).select(&:repair)
+    def self.failing(scope, harness:, running:, now:, store:) = check(scope, harness:, running:, now:, store:).select(&:repair)
   end
 end

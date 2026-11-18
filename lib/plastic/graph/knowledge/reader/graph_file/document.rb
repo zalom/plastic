@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../../../work/approval"
-require_relative "../../../work/completion_row"
-require_relative "../../../work/edge"
-require_relative "../../../work/node"
-require_relative "../../../work/verdict"
+require_relative "../../../rows/approval"
+require_relative "../../../rows/completion_row"
+require_relative "../../../rows/edge"
+require_relative "../../../rows/node"
+require_relative "../../../rows/run"
+require_relative "legacy_nodes"
+require_relative "../../../rows/verdict"
 
 module Plastic
   module Graph
@@ -15,7 +17,7 @@ module Plastic
           # The JSON object of a graph file, or the reason the text is not one.
           class Document
             TABLES = {
-              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, edges: Work::Edge
+              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, runs: Work::Run, edges: Work::Edge
             }.freeze
 
             PUT_ONLY = { completions: Work::CompletionRow }.freeze
@@ -45,7 +47,8 @@ module Plastic
             private
 
             def parsed(text)
-              object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
+              data = object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
+              data && LegacyNodes.new(data).call
             rescue JSON::ParserError => error
               refuse(error.message.lines.first.chomp)
             end

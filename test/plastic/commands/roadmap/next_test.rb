@@ -36,8 +36,8 @@ class RoadmapNextTest < Plastic::TestCase
 
   def mark_done(item)
     intent = open_intent("Item #{item}")
-    store_graphs.databases.fetch(:work).transaction do |batch|
-      batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id)
+    store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id) }
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:roadmap_items, "UPDATE roadmap_items SET intent_id = :id WHERE roadmap = 'r1' AND item = :item",
         id: intent.intent_id, item:)
     end
@@ -69,7 +69,7 @@ class RoadmapNextTest < Plastic::TestCase
   end
 
   def test_an_imported_cycle_is_blocked_without_recursing
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:roadmap_edges, { roadmap: "r1", from: "b", to: "a", kind: "after" }, statement: :insert)
     end
 

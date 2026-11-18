@@ -26,7 +26,7 @@ class CommandReferenceMarkdownIndexTest < Minitest::Test
   def test_the_core_group_holds_the_distribution_and_entry_commands
     core = text[/## Core.*?(?=\n## )/m]
 
-    %w[install update rollback uninstall version doctor status next search auto].each { |word| assert_includes core, "`plastic #{word}`" }
+    %w[install update rollback uninstall version doctor status next search].each { |word| assert_includes core, "`plastic #{word}`" }
   end
 
   def test_backup_alone_is_in_the_backup_family

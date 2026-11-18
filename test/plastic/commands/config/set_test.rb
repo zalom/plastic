@@ -45,6 +45,14 @@ class ConfigSetTest < Plastic::TestCase
     assert_includes result.out, "next: plastic config get runner.stop_hook"
   end
 
+  def test_a_file_changed_by_hand_makes_the_set_exit_3_with_the_line
+    set("screens", "false")
+    File.write(path, "global:\n  screens: true\n")
+    result = set("statusline", "true")
+
+    assert_equal [3, true], [result.code, result.err.include?("changed since it was printed from the settings")]
+  end
+
   def test_false_is_written_as_false
     result = set("screens", "false")
 

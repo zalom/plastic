@@ -19,6 +19,6 @@ class WriteNoteTest < Plastic::TestCase
   end
 
   def test_a_call_with_no_session_fails_the_call
-    assert_equal "code_write_note, gate: the call names no session; set PLASTIC_SESSION", note(nil).first.message
+    assert_equal "the call names no session; set PLASTIC_SESSION", assert_raises(Plastic::Failed) { note(nil) }.message
   end
 end

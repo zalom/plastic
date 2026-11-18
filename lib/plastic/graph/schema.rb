@@ -1,36 +1,33 @@
 # frozen_string_literal: true
 
 require_relative "table"
-require_relative "knowledge/intent"
-require_relative "knowledge/roadmap"
 require_relative "schema/metadata"
-require_relative "schema/migrations"
 require_relative "schema/catalog"
 
 module Plastic
   module Graph
     # Builds database DDL and exposes the tables that Plastic's graph uses.
     module Schema
-      extend SchemaMigrations
+      class UnknownTable < KeyError; end
 
       def self.file(key) = databases.fetch(key).first
 
-      def self.fetch(key)
-        names = databases.fetch(key).last
-        [*names.map { |name| ddl(name) }, migrations[key], *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
+      # The file that holds the table `name`.
+      def self.file_of(name)
+        absent = -> { raise UnknownTable, "no database file holds the table #{name}" }
+        databases.values_at(*store, *derived).find(absent) { |_file, names| names.include?(name.to_sym) }.first
       end
 
-      def self.prepare(connection, schema)
-        connection.execute_batch(schema)
-        migrate_revision_membership(connection)
-        migrate_passage_identity(connection)
-        migrate_intent_states(connection)
-        migrate_lock_column(connection)
+      def self.fetch(key, schema: nil)
+        names = databases.fetch(key).last
+        names.map { |name| ddl(name, schema) }.join("\n")
       end
+
+      def self.prepare(connection, schema) = connection.execute_batch(schema)
 
       def self.table_named(name) = tables.fetch(name.to_sym)
 
-      def self.ddl(name) = SchemaCatalog::VIRTUAL.fetch(name) { table_named(name).ddl }
+      def self.ddl(name, schema = nil) = SchemaCatalog::VIRTUAL.fetch(name) { table_named(name) }.ddl(schema)
 
       def self.tally(table, count)
         name = table.to_s
@@ -46,13 +43,11 @@ module Plastic
       end
 
       def self.databases = SchemaCatalog::DATABASES
-      def self.store = SchemaCatalog::STORE
+      def self.store = SchemaCatalog.store
+      def self.derived = SchemaCatalog.derived
       def self.tables = SchemaCatalog::TABLES
-      def self.triggers = SchemaCatalog::TRIGGERS
-      def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)
-      def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
+      def self.later_tables = SchemaCatalog.since
 
-      def self.migrations = SchemaMetadata::MIGRATIONS
       def self.nouns = SchemaMetadata::NOUNS
     end
   end

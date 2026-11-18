@@ -21,10 +21,10 @@ class PreviewUpdateTest < Plastic::TestCase
   end
 
   def test_a_home_with_nothing_installed_is_refused
-    outcome, = preview
+    error = assert_raises(Plastic::Refused) { preview }
 
     assert_equal [Plastic::Refused, "Plastic is not installed under this home; run plastic install first"],
-      [outcome.class, outcome.message]
+      [error.class, error.message]
   end
 
   def test_a_home_with_only_a_release_from_install_sh_continues_from_that_release

@@ -19,14 +19,14 @@ class DropRoadmapItemTest < Plastic::TestCase
     outcome, context = drop("a")
 
     assert_equal [:done, ["dropped: a"]], [outcome, context.printed]
-    assert_equal "dropped", sole(retrieval.roadmap_items("r1")).mark
+    assert_equal "dropped", sole(retrieval.roadmaps.items("r1")).mark
   end
 
   def test_an_unknown_item_fails_the_call
-    assert_equal "code_drop_roadmap_item, gate: no item z on roadmap r1", drop("z").first.message
+    assert_equal "no item z on roadmap r1", assert_raises(Plastic::Failed) { drop("z") }.message
   end
 
   def test_an_unknown_roadmap_fails_the_call
-    assert_equal "code_drop_roadmap_item, gate: no roadmap r9", drop("a", slug: "r9").first.message
+    assert_equal "no roadmap r9", assert_raises(Plastic::Failed) { drop("a", slug: "r9") }.message
   end
 end

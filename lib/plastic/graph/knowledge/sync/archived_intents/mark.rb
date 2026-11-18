@@ -9,10 +9,10 @@ module Plastic
       class Sync
         class ArchivedIntents
           # One archive entry of the index with the index entry of its intent: the rows they stand for.
-          Mark = Data.define(:fields, :entry) do
+          Mark = Data.define(:fields, :entry, :clock) do
             def intent_id = fields["intent_id"]
 
-            def intent_row = Intent.from_h(Reader::IndexFile.intent_row(entry)).new_row
+            def intent_row = Intent.from_h(Reader::IndexFile.intent_row(entry, Plastic.timestamp(clock.now))).new_row
 
             def archive_row = { intent_id:, at: fields["at"], restored_at: nil, session_id: fields["session_id"] }
 

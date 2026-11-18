@@ -11,7 +11,9 @@ class DoctorCoreTest < Plastic::TestCase
     whole_home
   end
 
-  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:).checks
+  def checks(running: RUNNING, loader: -> { "2.0.0" }) = Plastic::Doctor::Core.new(scope, running:, loader:, now: FixedClock::AT, store:).checks
+
+  def store = Plastic::Wiring.store(@plastic_home)
 
   def check(label, **options) = checks(**options).find { |item| item.label == label }
 
@@ -57,30 +59,16 @@ class DoctorCoreTest < Plastic::TestCase
   end
 
   def test_a_store_that_lacks_a_table_names_the_table_and_the_repair
-    drop_table(store_path(:work), "intents")
+    drop_table(store_path(:knowledge), "intents")
     store = check("store #{SLUG}:")
 
-    assert_equal ["work_graph.db lacks the table intents", "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
+    assert_equal ["knowledge_graph.db lacks the table intents", "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
   end
 
   def test_a_store_with_no_folder_names_each_database
     FileUtils.rm_rf(store_dir)
 
-    assert_equal 3, check("store #{SLUG}:").value.scan("is missing").size
-  end
-
-  def test_a_store_with_no_backfill_marker_names_project_new
-    forget_backfill(SLUG)
-    store = check("store #{SLUG}:")
-
-    assert_equal [Plastic::Doctor::RetrievalMarker::PROBLEM, "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
-  end
-
-  def test_a_global_store_with_no_backfill_marker_names_the_reinstall
-    forget_backfill("global")
-    global = check("global store:")
-
-    assert_equal [Plastic::Doctor::RetrievalMarker::PROBLEM, "plastic install --reinstall"], [global.value, global.repair]
+    assert_equal 2, check("store #{SLUG}:").value.scan("is missing").size
   end
 
   def test_a_missing_global_store_names_the_reinstall
@@ -107,10 +95,93 @@ class DoctorCoreTest < Plastic::TestCase
     assert_equal "add a line naming ~/.plastic/PLASTIC.md to #{agents}", check("AGENTS.md #{SLUG}:").repair
   end
 
-  def test_the_checks_change_no_file
+  def test_the_checks_change_no_file_but_the_home_gitignore
+    checks
     before = Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).sort
     checks
 
     assert_equal before, Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).sort
+  end
+end
+
+class DoctorHomeFilesTest < Plastic::TestCase
+  include WholeHome
+
+  def setup
+    super
+    whole_home
+  end
+
+  def checks = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT, store:).checks
+
+  def store = Plastic::Wiring.store(@plastic_home)
+
+  def check(label) = checks.find { |item| item.label == label }
+
+  def test_a_problem_the_store_reports_is_a_finding_with_the_repair_of_the_store
+    fake = FakeSettings::Store.new("the rows changed", nil)
+    found = Plastic::Doctor::Core.new(scope, running: RUNNING, loader: -> { "2.0.0" }, now: FixedClock::AT, store: fake).checks.find { |item| item.label == "config.yml:" }
+
+    assert_equal ["the rows changed", Plastic::Config::Store::REPAIR], [found.value, found.repair]
+  end
+
+  def gitignore = File.join(@plastic_home, ".gitignore")
+
+  def test_the_home_gitignore_gets_the_database_line_when_it_lacks_it
+    File.write(gitignore, "backups/\n")
+    checks
+
+    assert_equal ["backups/", "*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_a_home_with_no_gitignore_gets_one_with_the_database_line
+    checks
+
+    assert_equal ["*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_the_database_line_is_added_once
+    checks
+    checks
+
+    assert_equal ["*.db", "*.db-*"], File.readlines(gitignore, chomp: true)
+  end
+
+  def test_the_gitignore_check_says_what_it_added
+    assert_equal "ok, *.db *.db-* added", check(".gitignore:").value
+  end
+
+  def test_a_local_db_beside_plastic_db_is_a_finding_that_names_the_file
+    File.write(File.join(@plastic_home, "local.db"), "left from before")
+    found = check("local.db:")
+
+    assert_equal ["#{File.join(@plastic_home, "local.db")} is left beside plastic.db", "move local.db out of #{@plastic_home}; plastic update keeps a copy of it in backups/"], [found.value, found.repair]
+  end
+
+  def test_a_config_file_edited_by_hand_after_the_print_is_a_finding_with_the_refusal_line
+    Plastic::Wiring.store(@plastic_home).set("global", "screens", false)
+    File.write(File.join(@plastic_home, "config.yml"), "x: 1\n")
+    found = check("config.yml:")
+
+    assert_equal ["#{File.join(@plastic_home, "config.yml")} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", "plastic config set KEY VALUE"],
+      [found.value, found.repair]
+  end
+
+  def test_a_config_file_printed_from_the_settings_is_ok
+    Plastic::Wiring.store(@plastic_home).set("global", "screens", false)
+
+    assert_match(/\Aok, /, check("config.yml:").value)
+  end
+
+  def test_a_local_db_with_no_plastic_db_is_a_finding_that_names_plastic_update
+    File.write(File.join(@plastic_home, "local.db"), "not migrated")
+    File.delete(File.join(@plastic_home, "plastic.db"))
+    found = check("local.db:")
+
+    assert_equal ["#{File.join(@plastic_home, "local.db")} is not migrated", "plastic update"], [found.value, found.repair]
+  end
+
+  def test_a_home_with_no_local_db_has_no_local_db_check
+    assert_nil check("local.db:")
   end
 end

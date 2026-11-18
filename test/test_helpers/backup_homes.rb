@@ -19,7 +19,11 @@ module BackupHomes
   def seed_store(home, slug)
     graphs = Plastic::Graph.create(home:, store: slug)
     graphs.work.write_intent(title: slug.capitalize)
-    graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+    graphs.databases.fetch(:store).rows("SELECT 1")
+  end
+
+  def add_references(home, slug = "alpha")
+    SQLite3::Database.new(File.join(home, "stores", slug, "references.db")).tap { |db| db.execute("CREATE TABLE sqlar (name TEXT)") }.close
   end
 
   def at(*parts) = Time.utc(*parts)
@@ -32,29 +36,25 @@ module BackupHomes
 
   def backup_at(home, time, slug: "alpha", databases: nil)
     local_db = Plastic::Graph.open(home:, store: slug).databases.fetch(:local)
-    target = Plastic::Graph::Knowledge::Backup::Target.new(local_db, File.join(home, "stores", slug), slug, nil)
-    Plastic::Graph::Knowledge::Backup::Publisher.new(target, now: time, databases:).call
+    target = Plastic::Graph::Backup::Target.new(local_db, File.join(home, "stores", slug), slug, nil)
+    Plastic::Graph::Backup::Publisher.new(target, now: time, databases:).call
   end
 
   def backups_dir(home, slug = "alpha") = File.join(home, "stores", slug, "backups")
 
   def folder_names(home, slug = "alpha")
-    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).sort : []
-  end
-
-  def row_names(home, slug = "alpha")
-    Plastic::Graph.open(home:, store: slug).retrieval.backups.map(&:name)
+    Dir.exist?(backups_dir(home, slug)) ? Dir.children(backups_dir(home, slug)).grep(Plastic::Graph::Backup::FolderName::PATTERN).sort : []
   end
 
   def store_file(home, name, slug = "alpha") = File.join(home, "stores", slug, "#{name}.db")
 
   def intent_count(home, slug = "alpha")
-    Plastic::Graph.open(home:, store: slug).databases.fetch(:work).row("SELECT count(*) AS n FROM intents").fetch("n")
+    Plastic::Graph.open(home:, store: slug).databases.fetch(:store).row("SELECT count(*) AS n FROM intents").fetch("n")
   end
 
   def add_intent(home, slug = "alpha") = Plastic::Graph.open(home:, store: slug).work.write_intent(title: "More")
 
-  def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "local.db")).execute("SELECT tool FROM routine_runs").flatten
+  def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "plastic.db")).execute("SELECT tool FROM command_runs").flatten
 
   def backup_call(home, *argv) = plastic("backup", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 

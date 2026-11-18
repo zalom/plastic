@@ -1,28 +1,48 @@
 # frozen_string_literal: true
 
+require_relative "../../../screen_choice"
+require_relative "../../../answer"
 require_relative "../init"
 require_relative "../../../code_workflow"
-require_relative "../../../cli/screen"
 require_relative "../../../harnesses"
 
 module Plastic
   module Workflows
     module Code
       class Init
-        # Reads the person's answer against the installed harnesses, every one
-        # of them picked at the start.
+        # Reads the person's answer against the installed harnesses and the
+        # sync of images and videos, every one of them picked at the start.
         class Choose < CodeWorkflow
           clear_declarations
-          summary "Finds the harnesses on this machine and chooses which ones to set up."
+          summary "Finds the harnesses on this machine and chooses which ones to set up, and whether a sync keeps images and videos."
 
-          sets :found, :picked, :harnesses
+          MEDIA = "sync images and videos"
+
+          sets :found, :picked, :harnesses, :media
+
+          # The found harnesses, all picked, then the sync of images and videos,
+          # picked unless the home turned it off; none when no harness is found.
+          def self.choices(scope, settings)
+            names = Harnesses.found_in(scope).map(&:name)
+            return [] if names.empty?
+
+            [*names.map { |name| Choice.new(label: name, chosen: true) }, Choice.new(label: MEDIA, chosen: media?(settings))]
+          end
+
+          # Picked unless the setting sync.types is set and leaves a media type out.
+          def self.media?(settings)
+            types = settings.config.overrides.dig("sync", "types")
+            types.nil? || (Plastic::Config::SyncTypes::MEDIA - Plastic::Config::SyncTypes.parse(types)).empty?
+          end
 
           read "find the installed harnesses and read the person's answer" do |context|
-            found = Harnesses.found_in(context.scope).map(&:name)
-            choices = found.map { |name| CLI::Screen::Choice.new(label: name, chosen: true) }
-            result = CLI::Screen::Answer.new(choices).call(context.answer) if found.any?
+            choices = Choose.choices(context.scope, context.settings)
+            found = choices.map(&:label) - [MEDIA]
+            result = Answer.new(choices).call(context.answer) if found.any?
+            labels = result.is_a?(Chosen) ? result.labels : []
             context[:found] = found
-            context[:picked] = result.is_a?(CLI::Screen::Chosen) ? result.labels : []
+            context[:picked] = labels - [MEDIA]
+            context[:media] = labels.include?(MEDIA)
             context[:harnesses] = context.picked.join(", ")
           end
 

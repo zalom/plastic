@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command/usage"
+require_relative "../errors"
 require_relative "../graph/retrieval_graph"
 require_relative "../graph/retrieval/search/excerpt"
 require_relative "../graph/retrieval/search/results"
+require_relative "../graph/retrieval_source"
 require_relative "search_scope"
 
 module Plastic
@@ -17,7 +18,7 @@ module Plastic
       def rows
         results.call(SearchScope.new(context).sources, limit)
       rescue Graph::RetrievalGraph::InvalidSearch => error
-        raise CLI::Command::Usage, error.message
+        raise Usage, error.message
       end
 
       private
@@ -26,7 +27,7 @@ module Plastic
 
       def results
         terms = context.terms
-        Graph::Retrieval::Search::Results.new(context.scope.plastic_home, terms, excerpt: Graph::Retrieval::Search::Excerpt.new(terms))
+        Graph::Retrieval::Search::Results.new(context.scope.plastic_home, terms, excerpt: Graph::Retrieval::Search::Excerpt.new(terms), opener: Graph::RetrievalSource)
       end
 
       def limit

@@ -13,7 +13,7 @@ class ArchitectureFiguresNodeLifecycleTest < Minitest::Test
     assert_empty(%w[open claimed done failed needs_info impeded removed] - drawn)
   end
 
-  def test_the_figure_draws_the_lock_a_claim_keeps_live
-    assert_includes drawn, "Delivery lock"
+  def test_the_figure_draws_the_run_a_claim_opens
+    assert_includes drawn, "Run"
   end
 end

@@ -111,7 +111,7 @@ class StatusTest < Plastic::TestCase
   def test_counts_the_nodes_of_an_intent_by_state
     open_keyed_intent
     2.times { |i| plastic("node", "add", "1", "node #{i}", "--criterion", "done", table: Plastic::CLI::TABLE) }
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_includes call.out, "claimed: 1, open: 1"
     assert_equal 0, call.code

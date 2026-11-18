@@ -3,21 +3,23 @@
 require "yaml"
 require_relative "harnesses"
 require_relative "config/defaults"
-require_relative "config/layout"
-require_relative "config/document"
+require_relative "config/store"
+require_relative "config/sync_types"
+require_relative "config/upgrade"
 
 module Plastic
-  # The home's config.yml, read once per call: the shipped defaults, then the
-  # file's `global` section, then the section of the harness, when one is
-  # named. A missing file, or one that does not parse, reads every setting at
-  # its default: a broken config never stops a hook or a command. See
-  # docs/reference/commands/config/README.md.
+  # The settings rows of the machine database, read once per call: the shipped
+  # defaults, then the `global` rows, then the rows of the harness, when one is
+  # named. A database that is missing, busy or behind reads every setting at
+  # its default: a broken home never stops a hook or a command. config.yml is
+  # printed from the rows. See docs/reference/commands/config/README.md.
   class Config
     TRUE_VALUES = [true, "true"].freeze
     FALSE_VALUES = [false, "false"].freeze
 
-    def initialize(plastic_home, harness: nil)
-      @path = File.join(plastic_home, "config.yml")
+    def initialize(plastic_home, database:, harness: nil, clock: Time)
+      @store = Store.new(plastic_home, database:, clock:)
+      @rows = Rows.new(database)
       @harness = harness && Harnesses.fetch(harness).name
     end
 
@@ -37,16 +39,18 @@ module Plastic
 
     def value(key) = dig(key.split("."))
 
+    def list(key) = SyncTypes.parse(value(key))
+
     # The stores a search reads when none is named: the comma value of search.source_projects.
     def source_projects = value("search.source_projects").to_s.split(",")
 
     def settings = (@settings ||= Config.merged(shipped, overrides))
 
-    def overrides = Config.merged(section("global"), @harness ? section("harnesses", @harness) : {})
+    def overrides = Config.merged(@rows.scope("global"), @harness ? @rows.scope(@harness) : {})
 
     def entries = Config.flattened(settings)
 
-    def set(key, value) = Document.new(@path).set(key.split("."), value, harness: @harness)
+    def set(key, value) = @store.set(@harness || "global", key, value)
 
     def self.merged(base, over)
       base.merge(over) { |_key, old, new| (old.is_a?(Hash) && new.is_a?(Hash)) ? merged(old, new) : new }
@@ -66,15 +70,5 @@ module Plastic
     def shipped = @harness ? Config.merged(Defaults::GLOBAL, Defaults.harness(@harness)) : Defaults::GLOBAL
 
     def dig(path) = Config.dug(settings, path.map(&:to_s))
-
-    def section(*keys) = Layout.within(sections, *keys)
-
-    def sections = (@sections ||= Layout.new(data).sections)
-
-    def data
-      YAML.safe_load_file(@path, aliases: true)
-    rescue
-      {}
-    end
   end
 end

@@ -46,13 +46,19 @@ intent instead.
 
 | Command | Result |
 | ------- | ------ |
-| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it in progress, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
-| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was locked and renewed, whether it is live or expired and why, and the code worktree. |
+| `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`, and an archived one fails and offers `plastic intent unarchive ID`. |
+| `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
+| `plastic roadmap auto SLUG` | Starts the roadmap's first free item with an intent, or opens its first ready item and starts it. An item is free when it is not parked and no other session claimed one of its nodes or ran a command on its intent within 15 minutes. With no item free yet it offers `plastic roadmap show SLUG` and names the items it waits on, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
+| `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
 
-`plastic auto` takes exactly one id and runs no version control command: it prints the
-worktree command, and the agent runs it. A live lock of another session refuses with exit 3,
-and an expired lock is taken over. `plastic auto ID` refuses an intent without the go-ahead
-that `plastic intent approve ID` writes. `plastic intent end` and `plastic intent abandon` release the lock.
+`plastic intent new` writes a future intent, and `plastic roadmap open` writes an open one.
+`plastic intent start` and `plastic intent auto` run no version control command: they print the
+worktree, and the agent makes it. They end on `plastic intent spec ID` while the spec is unsettled or
+the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic intent brief ID`
+otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
+the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim`, names the session that works a node. It
+fails for an intent that is not in progress, offers `plastic next` for a done or abandoned one, and
+refuses one without the go-ahead.
 
 ## Rulings and revisions
 
@@ -114,16 +120,30 @@ other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 ## Settings
 
 `plastic config list` prints every setting with its value, `plastic config get KEY` prints one,
-and `plastic config set KEY VALUE` writes one into `~/.plastic/config.yml`. `plastic config` shows
+and `plastic config set KEY VALUE` writes one into the settings rows of `~/.plastic/plastic.db` and prints `~/.plastic/config.yml` from them. The one-time import of an older `config.yml` resolves YAML anchors and merge keys to plain values, and the printed file holds none. A `config.yml` edited by hand after the print is refused: move it aside, then run `plastic config set KEY VALUE` to print it again. `plastic config` shows
 the on/off settings on a choice screen. Each takes `--harness NAME` to work on the settings of one
 harness, and refuses a name the harness registry does not hold. See the
 [page of `config`](../reference/commands/config/README.md).
+
+## Chat history
+
+`plastic hook prompt` records each prompt you type in the `chat_messages` table of
+`~/.plastic/plastic.db`, with the session, the harness, the store and the intent in play. A call
+with no store records the prompt with an empty store and intent. Set `chat_sync` to `full` with
+`plastic config set chat_sync full` to record the reply at the end of each turn as well; the
+default, `user_only`, records prompts alone.
+
+`plastic chat list` prints the recorded messages of every store in time order, one row each with
+the time, the store, the intent and the text. `--since YYYY-MM-DD` leaves out older messages; the
+day starts at midnight in the zone of the clock. A message whose store folder is gone is still
+listed, and one line names the store. The command only reads: the text prints to the terminal and
+nothing is written. See the [page of `chat list`](../reference/commands/chat-list/README.md).
 
 ## Check the installation
 
 | Command | Result |
 | ------- | ------ |
-| `plastic version` | The version, the release channel and the file the version came from. |
+| `plastic version` | Also `plastic --version`. The version, the release channel and the file the version came from. |
 | `plastic doctor` | One row for each check of this harness, then one repair row. Exits 0 when every check passes and 1 on a finding. |
 
 `plastic doctor` checks the version record, Ruby, the sqlite3 gem, the machine database, each
@@ -141,6 +161,28 @@ except for one repair: it rebuilds the search rows of a store that are out of st
 passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
 the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
+
+The doctor also names each store with files outside the resources layout, as `resources NAME: N files
+are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
+
+## The resources layout
+
+An intent folder keeps its notes in the root and its other files under `resources/`:
+`resources/output/reports/` for Markdown and HTML, `resources/output/files/` for every other
+output, `resources/references/` for what the agent read, and `resources/tmp/` for state that
+no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
+more types through the setting `sync.types`. `resources/references/` is read only when its
+setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
+so in one line and records the type once in `sync.asked`.
+
+`plastic resources sort --store SLUG` moves the files of a store from the old places into this
+layout. It moves the rows with the files, rewrites the relative links that point at a moved
+file, and runs a sync up. A link that named no file before the move is left as it is. Both the
+run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
+also lists every move and changes nothing. A file directly under `resources/output/` moves into
+`reports/` or `files/` by its type. A target that holds other bytes than
+the file that would move onto it stops the call with exit 3 and names the target. A second run
+finds nothing to move and says `sorted: nothing to move`.
 
 ## Help that costs nothing
 

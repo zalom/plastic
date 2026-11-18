@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 204" width="834" height="204" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 292" width="834" height="292" role="img" xml:space="preserve">
 <title>The events of one call of plastic config set, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -87,15 +87,30 @@
 <circle cx="44" cy="83" r="8" class="badge"/>
 <text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
 <text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="106" class="t" text-anchor="start">Write the setting.</text>
-<path d="M 424 95 L 480 95" class="wire-end"/>
+<text x="64" y="106" class="t" text-anchor="start">Check the config file.</text>
+<path d="M 424 95 L 480 95" class="wire-refusal"/>
 <path d="M 472 90 L 480 95 L 472 100 Z" class="head"/>
-<rect x="480" y="64" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="82" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="100" class="t" text-anchor="start">The setting is written.</text>
-<text x="492" y="116" class="t" text-anchor="start">next: plastic config get &lt;key&gt;&lt;harness words&gt;</text>
-<rect x="24" y="156" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="168" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="156" width="14" height="14" rx="3" class="stop-end"/>
-<text x="160" y="168" class="k" text-anchor="start">Ends</text>
+<rect x="480" y="64" width="330" height="62" rx="6" class="stop-refusal"/>
+<text x="492" y="82" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="100" class="t" text-anchor="start">The file was edited by hand.</text>
+<text x="492" y="116" class="t" text-anchor="start">next: plastic config set KEY VALUE</text>
+<path d="M 64 115 L 64 152" class="wire"/>
+<path d="M 59 144 L 64 152 L 69 144 Z" class="head"/>
+<rect x="24" y="152" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="171" r="8" class="badge"/>
+<text x="44" y="175" class="badge-t" text-anchor="middle">2</text>
+<text x="64" y="174" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="194" class="t" text-anchor="start">Write the setting.</text>
+<path d="M 424 183 L 480 183" class="wire-end"/>
+<path d="M 472 178 L 480 183 L 472 188 Z" class="head"/>
+<rect x="480" y="152" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="170" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="188" class="t" text-anchor="start">The setting is written.</text>
+<text x="492" y="204" class="t" text-anchor="start">next: plastic config get &lt;key&gt;&lt;harness words&gt;</text>
+<rect x="24" y="244" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="256" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="244" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="160" y="256" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="278" y="244" width="14" height="14" rx="3" class="stop-end"/>
+<text x="298" y="256" class="k" text-anchor="start">Ends</text>
 </svg>

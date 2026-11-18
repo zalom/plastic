@@ -41,7 +41,6 @@ module Plastic
       private
 
       def write_files
-        Files.write_if_missing(File.join(@home, "config.yml"), "version: 3\n")
         Files.write_if_missing(File.join(@home, "projects.yml"), "---\nprojects: {}\n")
         Files.write_if_missing(File.join(@home, "AGENTS.md"), AGENT_INSTRUCTIONS)
       end

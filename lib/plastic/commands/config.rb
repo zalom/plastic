@@ -16,7 +16,7 @@ module Plastic
 
       argument :answer, label: "ANSWER", text: "the person's answer to the numbered list", optional: true
 
-      changes(home: "Each setting the person switched is written to config.yml in the Plastic home")
+      changes(home: "Each setting the person switched is written to the settings rows in plastic.db, and config.yml is printed from them")
 
       def self.toggled(toggles, picked)
         toggles.to_h { |key, _on| [key, picked.include?(key)] }.reject { |key, on| toggles[key] == on }
@@ -24,19 +24,19 @@ module Plastic
 
       def call
         result = pick(choices)
-        save(result.labels) if result.is_a?(CLI::Screen::Chosen)
-        output.next_step("plastic config list#{harness_words}", because: "the person left with no change") if result.is_a?(CLI::Screen::Left)
+        save(result.labels) if result.is_a?(Chosen)
+        output.next_step("plastic config list#{harness_words}", because: "the person left with no change") if result.is_a?(Left)
       end
 
       private
 
       def toggles = config.entries.select { |_key, value| ON_OFF.include?(value) }
 
-      def choices = toggles.map { |key, on| CLI::Screen::Choice.new(label: key, chosen: on) }
+      def choices = toggles.map { |key, on| Choice.new(label: key, chosen: on) }
 
       def pick(choices)
         text = parsed[:answer]
-        return CLI::Screen::Answer.new(choices).call(text) if text
+        return Answer.new(choices).call(text) if text
 
         CLI::Screen.for(environment, output:).ask(QUESTION, choices, command: "plastic config#{harness_words}")
       end

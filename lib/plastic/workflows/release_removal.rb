@@ -25,6 +25,13 @@ module Plastic
           launcher: File.join(scope.setting("PLASTIC_BIN", File.join(home, ".local", "bin")), "plastic"))
       end
 
+      def self.owned?(name) = OWN.include?(name) || name.match?(STAGES)
+
+      def self.remove_entry(path)
+        FileUtils.chmod_R("u+w", path, force: true)
+        FileUtils.rm_rf(path)
+      end
+
       def initialize(share:, launcher:)
         @share = share
         @installed = Installations::Share.new(share)
@@ -45,17 +52,12 @@ module Plastic
 
       def remove_share
         empty = own_entries.size == Dir.children(share).size
-        own_entries.each { |name| remove_entry(File.join(share, name)) }
+        own_entries.each { |name| ReleaseRemoval.remove_entry(File.join(share, name)) }
         Dir.rmdir(share) if empty
         empty
       end
 
-      def own_entries = Dir.children(share).select { |name| OWN.include?(name) || name.match?(STAGES) }.partition { |name| name != "rubies" }.flatten
-
-      def remove_entry(path)
-        FileUtils.chmod_R("u+w", path, force: true)
-        FileUtils.rm_rf(path)
-      end
+      def own_entries = Dir.children(share).select { |name| ReleaseRemoval.owned?(name) }.partition { |name| name != "rubies" }.flatten
 
       def closing_lines(removed, stayed) = (removed - stayed).map { |path| ["removed:", path] } + kept(stayed)
 

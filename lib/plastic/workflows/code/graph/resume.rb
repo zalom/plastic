@@ -20,7 +20,7 @@ module Plastic
           sets :next_command, :why
 
           read "refuse --stores with --project" do |context|
-            raise CLI::Command::Usage, "--stores names the stores; --project does not apply" if context.stores && context.scope.requested?
+            raise Usage, "--stores names the stores; --project does not apply" if context.stores && context.scope.requested?
           end
 
           read "print where each store's work stopped" do |context|
@@ -39,23 +39,23 @@ module Plastic
 
           def self.named(context, stores)
             names = stores.split(",").map(&:strip).uniq
-            raise CLI::Command::Usage, "name at least one store after --stores" if names.empty?
+            raise Usage, "name at least one store after --stores" if names.empty?
 
             names.each { |name| refuse_unregistered(context.scope, name) }
           end
 
           def self.refuse_unregistered(scope, name)
             projects = scope.projects
-            return if name == CLI::Scope::GLOBAL || projects.key?(name)
+            return if name == Scope::GLOBAL || projects.key?(name)
 
-            raise CLI::Command::Usage, "no registered project named #{name.inspect}; the projects are #{projects.keys.sort.join(", ")}"
+            raise Usage, "no registered project named #{name.inspect}; the projects are #{projects.keys.sort.join(", ")}"
           end
 
           def self.report(context, slug)
             home = context.scope.plastic_home
             session = context.session
-            retrieval = Plastic::Graph.open(home:, store: slug, session:).retrieval
-            Plastic::Graph::Work::StoreResume.new(retrieval, Plastic::Graph::Knowledge::StoreFolder.new(File.join(home, "stores", slug)), session)
+            retrieval = Plastic::Graph.open(home:, store: slug, session:, clock: context.clock).retrieval
+            Plastic::Graph::Work::StoreResume.new(retrieval, Plastic::Graph::Knowledge::StoreFolder.new(File.join(home, "stores", slug)), session, now: context.now)
           end
 
           def self.offer_next(context, reports)
@@ -63,7 +63,8 @@ module Plastic
             return say(context, "plastic status", "no store has open work") unless found
 
             command, why = found.next_step
-            say(context, in_store(context.scope, command, found.slug), reports.one? ? why : format(SEVERAL, found.slug))
+            slug = found.slug
+            say(context, in_store(context.scope, command, slug), reports.one? ? why : format(SEVERAL, slug))
           end
 
           def self.say(context, command, why)

@@ -5,16 +5,16 @@ require_relative "../finished"
 module Plastic
   class Routine < CLI::Command
     # One pass along a chain: run a workflow, follow the edge its outcome
-    # takes, and save the routine run at every step, until a workflow ends
-    # the call or an edge reaches :noop. The routine run closes on the value
+    # takes, and save the command run at every step, until a workflow ends
+    # the call or an edge reaches :noop. The command run closes on the value
     # that ends the pass.
     class Traversal
-      # `save` keeps every routine run the pass produces, read tool and
+      # `save` keeps every command run the pass produces, read tool and
       # write tool alike.
-      def initialize(chain, ctx, routine_run, &save)
+      def initialize(chain, ctx, command_run, &save)
         @chain = chain
         @ctx = ctx
-        @routine_run = routine_run
+        @command_run = command_run
         @save = save
       end
 
@@ -24,11 +24,14 @@ module Plastic
         printed = yield(value)
         keep(printed) unless printed.equal?(value)
         printed
+      rescue Failed, Refused => error
+        keep(error)
+        raise
       end
 
       private
 
-      def keep(value) = @save.call(@routine_run.close(value, @ctx.facts))
+      def keep(value) = @save.call(@command_run.close(value, @ctx.facts, @ctx.now))
 
       def visit(key)
         workflow = @chain.fetch(key)
@@ -44,8 +47,8 @@ module Plastic
       end
 
       def advance(from, to)
-        @routine_run = @routine_run.advance(from, to)
-        @save.call(@routine_run)
+        @command_run = @command_run.advance(from, to, @ctx.now)
+        @save.call(@command_run)
       end
     end
   end

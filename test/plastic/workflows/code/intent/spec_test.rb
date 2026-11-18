@@ -31,22 +31,20 @@ class WorkflowShowSpecTest < Plastic::TestCase
     assert_equal :no_criterion, show.first
   end
 
-  def test_a_clear_spec_with_a_go_ahead_is_done
+  def test_a_clear_spec_with_a_go_ahead_ends_on_the_brief
     specified("## Done criteria\n- It works\n")
     store_graphs.work.approve_intent("1")
 
-    assert_equal :done, show.first
+    assert_equal :approved, show.first
   end
 
-  def test_a_clear_spec_without_a_go_ahead_needs_the_agent_to_ask_the_owner
+  def test_a_clear_spec_without_a_go_ahead_waits_for_the_go_ahead
     specified("## Done criteria\n- It works\n")
 
-    outcome, context = show
-
-    assert_equal [:agent_needed, "the owner must give the go-ahead for intent 1"], [outcome, context.why]
+    assert_equal :unapproved, show.first
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_show_spec, gate: no intent 9 in this store", show("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { show("9") }.message
   end
 end

@@ -5,16 +5,17 @@ require_relative "../test_helper"
 
 class CliTest < Plastic::TestCase
   def test_find_picks_the_longest_command_the_words_start
-    table = { "intent lock" => [], "intent lock status" => [] }
+    table = { "node" => [], "node add" => [] }
 
-    assert_equal "intent lock status", Plastic::CLI.find(%w[intent lock status 7], table)
-    assert_equal "intent lock", Plastic::CLI.find(%w[intent lock 7], table)
+    assert_equal "node add", Plastic::CLI.find(%w[node add 7], table)
+    assert_equal "node", Plastic::CLI.find(%w[node 7], table)
   end
 
-  def test_the_table_has_one_auto_entry_and_intent_lock_status
-    auto_words = Plastic::CLI::TABLE.keys.select { |name| name.split.first == "auto" }
+  def test_the_table_has_the_three_start_entries_and_no_top_level_auto_or_lock_entry
+    start_words = Plastic::CLI::TABLE.keys.select { |name| name.split.include?("auto") || name == "intent start" }
 
-    assert_equal [["auto"], "Commands::Intent::Lock::Status"], [auto_words, Plastic::CLI::TABLE.dig("intent lock status", 0)]
+    assert_equal [["intent start", "intent auto", "roadmap auto"], false, false],
+      [start_words, Plastic::CLI::TABLE.key?("auto"), Plastic::CLI::TABLE.key?("intent lock status")]
   end
 
   def test_family_of_names_the_family_of_a_command_and_core_for_words_no_family_holds
@@ -158,6 +159,13 @@ class BinCallTest < Plastic::TestCase
     assert_equal 2, call.code
     assert_equal "plastic nothing here is not a command; run plastic help for the list\n", call.err
     assert_equal "", call.out
+  end
+
+  def test_bin_call_version_flag_prints_what_the_version_command_prints
+    flag = plastic_bin("--version", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [flag.code, flag.err]
+    assert_equal plastic_bin("version", table: Plastic::CLI::TABLE).out, flag.out
   end
 
   def test_bin_call_with_no_words_lists_only_the_shipped_table

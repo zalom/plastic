@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "time"
-require_relative "../verdict"
+require_relative "../../rows/verdict"
 
 module Plastic
   module Graph
@@ -18,15 +18,15 @@ module Plastic
 
           def counting? = latest&.verdict == "accept" && live_times.all? { |time| time <= Time.parse(latest.at) }
 
-          def used_up? = @retrieval.verdicts(@intent_id).size >= Verdict::ROUNDS && !counting?
+          def used_up? = @retrieval.structure.verdicts(@intent_id).size >= Verdict::ROUNDS && !counting?
 
           def problem = ("No accepted review counts yet. Run plastic intent judge #{@intent_id}." unless counting?)
 
           private
 
-          def latest = @latest ||= @retrieval.verdicts(@intent_id).max_by(&:round)
+          def latest = @latest ||= @retrieval.structure.verdicts(@intent_id).max_by(&:round)
 
-          def live_times = @retrieval.nodes(@intent_id).select(&:live?).filter_map(&:changed_at)
+          def live_times = @retrieval.structure.nodes(@intent_id).select(&:live?).filter_map(&:changed_at)
         end
       end
     end

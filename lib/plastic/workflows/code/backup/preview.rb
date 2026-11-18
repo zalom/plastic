@@ -2,7 +2,7 @@
 
 require_relative "../backup"
 require_relative "../../../code_workflow"
-require_relative "../../../graph/knowledge/backup/databases"
+require_relative "../../../graph/backup/databases"
 
 module Plastic
   module Workflows
@@ -16,7 +16,7 @@ module Plastic
           read "preview the backup" do |context|
             next unless context.dry_run
 
-            plan = context.work.backups.plan(databases: Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases))
+            plan = context.work.backups.plan(databases: Plastic::Graph::Backup::Databases.parse(context.databases))
             context.print("preview: backup #{context.store}/#{plan.fetch(:folder)}, #{plan.fetch(:databases).join(", ")}; the original store was not changed")
           end
 

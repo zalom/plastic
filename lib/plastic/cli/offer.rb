@@ -6,6 +6,8 @@ module Plastic
     Offer = Data.define(:command, :because) do
       def self.none(because) = new(nil, because)
 
+      def self.from(error) = new(error.next_command, error.because)
+
       def apply(output) = command ? output.next_step(command, because:) : output
     end
   end

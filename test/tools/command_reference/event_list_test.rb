@@ -7,8 +7,8 @@ class CommandReferenceEventListTest < Minitest::Test
 
   WAYS = {
     records: /\AWhen the intent still needs records or a verdict/,
-    merge: /\AWhen the merge of the work is not verified yet/,
-    close: /\AWhen the records, the verdict and the merge are in place/
+    delivery: /\AWhen the delivery of the work is not recorded yet/,
+    close: /\AWhen the records, the verdict and the delivery are in place/
   }.freeze
 
   def listed(words) = CommandReference::EventList.new(page(words)).events
@@ -18,7 +18,7 @@ class CommandReferenceEventListTest < Minitest::Test
   def test_each_way_after_a_branch_of_intent_end_starts_with_its_condition_in_the_order_of_the_delivery
     kinds = ways("intent end").map { |way| WAYS.find { |_name, pattern| way.match?(pattern) }&.first }
 
-    assert_equal %i[records merge close], kinds
+    assert_equal %i[records delivery close], kinds
   end
 
   def test_no_way_of_intent_end_starts_joined_to_the_end_of_the_one_before
@@ -39,7 +39,7 @@ class CommandReferenceEventListTest < Minitest::Test
 
   def test_the_endings_that_no_call_can_reach_are_not_in_the_events_of_intent_end
     words = listed("intent end").flat_map { |event| event.stops.map(&:text) }
-    unreachable = ["The completion records are ready.", "The merge and the architecture map are recorded.", "Nothing the intent started is left running."]
+    unreachable = ["The completion records are ready.", "The delivery and the architecture map it needs are recorded.", "Nothing the intent started is left running."]
 
     assert_empty unreachable & words
   end

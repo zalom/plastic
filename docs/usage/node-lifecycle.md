@@ -1,6 +1,6 @@
 # The node lifecycle
 
-![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](../contributing/figures/node-lifecycle.svg)
+![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds it. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](../contributing/figures/node-lifecycle.svg)
 
 A node is one unit of work in an intent's work graph. Only the main session, the session the
 person talks to, moves a node. The agents it dispatches do the work and report back.
@@ -26,7 +26,8 @@ removed.
 
 The main session runs `plastic node claim ID NODE` as it dispatches the agent for that node. The
 claim names the main session and prints the node's brief, which the main session hands to the
-agent. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused. After three claims, the next claim moves the
+agent. A claim in an intent that is not in progress fails with exit 1 and offers
+`plastic intent start ID`. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused. After three runs, the next claim moves the
 node to `needs_info` with a standing question, and the owner decides.
 
 ## Done
@@ -37,14 +38,21 @@ failure, a question or an impediment goes in with `plastic node fail`, `plastic 
 `plastic node impede` instead. `plastic node release` sets a claimed or failed node back to
 `open`, and `plastic node resolve` reopens a `needs_info` or `impeded` node with its answer.
 
-## How a claim keeps the lock live
+Each of `node done`, `node fail`, `node ask` and `node impede` takes `--file PATH`, repeated for
+more than one file. The call reads the changed files of the intent folder, limited to the named
+paths, in the same transaction as the move, so the node's result and the files it changed land
+together. A call without `--file` reads every changed file of the folder.
 
-`plastic auto ID` takes the delivery lock: one row of `local.db` that names the session that
-delivers the intent. The lock is live while the session runs and one of these holds:
+## How a claim stays live
 
-- The stop hook renewed the lock within the last 1800 seconds.
-- The session holds a node of the intent that it claimed within the last 7200 seconds.
+A claim names the session that holds the node. The session renews it, and a claim lapses after
+900 seconds without a renewal. The session renews its claims at every `plastic` command it runs,
+at the stop hook, and with `plastic node renew ID NODE`.
 
-A dispatched agent can work for a long time while the main session takes no turns, so the stop
-hook does not renew the lock. The claim keeps the lock live until the agent reports, for up to
-two hours. Run `plastic intent lock status ID` to see who holds the lock and why it is live.
+- Another session can take a lapsed claim with `plastic node claim`. The old run closes as
+  `lapsed` and a new run opens.
+- The old holder's next node command exits 3, names the new holder and changes nothing.
+- A lapsed claim that nobody took still completes for its holder.
+
+Each claim opens one run of the node, and each move out of `claimed` closes it with the move's
+result. `plastic graph show ID` names the holder of each claimed node and its runs.

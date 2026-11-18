@@ -11,6 +11,14 @@ class DatabaseTest < Plastic::TestCase
 
   def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
 
+  def test_the_schema_state_of_a_file_that_does_not_exist_is_nil
+    assert_nil scratch("absent.db").schema_state
+  end
+
+  def test_a_database_with_no_schema_track_has_no_key
+    assert_nil scratch("untracked.db").key
+  end
+
   def test_rows_returns_the_rows_of_one_statement
     assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a")
   end
@@ -22,13 +30,13 @@ class DatabaseTest < Plastic::TestCase
   def test_a_failed_statement_commits_nothing_of_its_transaction
     error = assert_raises(Plastic::Graph::Database::Error) do
       database.transaction do |batch|
-        batch.insert(:routine_runs, { name: "a" })
+        batch.insert(:command_runs, { name: "a" })
         batch.add("INSERT INTO nowhere VALUES (1)")
       end
     end
 
     assert_equal "work_graph.db: no such table: nowhere", error.message
-    assert_equal [], database.rows("SELECT name FROM routine_runs")
+    assert_equal [], database.rows("SELECT name FROM command_runs")
   end
 
   def test_a_folder_that_cannot_be_made_names_the_file
@@ -45,7 +53,7 @@ class DatabaseTest < Plastic::TestCase
     insert("b")
     assert_raises(Database::Error) { database.transaction { |batch| batch.add("INSERT INTO nowhere VALUES (1)") } }
 
-    assert_equal %w[a b], database.rows("SELECT name FROM routine_runs ORDER BY id").map { |row| row["name"] }
+    assert_equal %w[a b], database.rows("SELECT name FROM command_runs ORDER BY id").map { |row| row["name"] }
     connection.rollback
   end
 
@@ -53,7 +61,7 @@ class DatabaseTest < Plastic::TestCase
     databases = Database.open_local("/home")
 
     assert_equal [:local], databases.keys
-    assert_equal ["/home/local.db", "local.db"], [databases[:local].path, databases[:local].file]
+    assert_equal ["/home/plastic.db", "plastic.db"], [databases[:local].path, databases[:local].file]
   end
 
   def test_the_schema_is_made_on_the_first_read
@@ -64,9 +72,9 @@ class DatabaseTest < Plastic::TestCase
     insert("a")
     insert("b")
 
-    assert_equal [{ "name" => "a" }, { "name" => "b" }], database.rows("SELECT name FROM routine_runs ORDER BY id")
-    assert_equal({ "name" => "b" }, database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
-    assert_nil database.row("SELECT name FROM routine_runs WHERE name = 'c'")
+    assert_equal [{ "name" => "a" }, { "name" => "b" }], database.rows("SELECT name FROM command_runs ORDER BY id")
+    assert_equal({ "name" => "b" }, database.row("SELECT name FROM command_runs WHERE name = :name", name: "b"))
+    assert_nil database.row("SELECT name FROM command_runs WHERE name = 'c'")
   end
 
   def test_an_empty_transaction_runs_nothing
@@ -94,9 +102,9 @@ class DatabaseTest < Plastic::TestCase
 
   def test_a_conflict_clause_skips_the_duplicate
     insert("a")
-    database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
+    database.transaction { |batch| batch.insert(:command_runs, { name: "a" }, conflict: "NOTHING") }
 
-    assert_equal 1, database.row("SELECT count(*) AS n FROM routine_runs")["n"]
+    assert_equal 1, database.row("SELECT count(*) AS n FROM command_runs")["n"]
   end
 
   def test_the_record_names_the_columns_in_order
@@ -107,15 +115,15 @@ class DatabaseTest < Plastic::TestCase
 
   def test_a_blob_of_every_byte_reads_back_equal
     bytes = (0..255).map(&:chr).join.b
-    database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQLite3::Blob.new(bytes) }) }
-    row = database.row("SELECT data, typeof(data) AS kind FROM routine_runs")
+    database.transaction { |batch| batch.insert(:command_runs, { name: "b", data: SQLite3::Blob.new(bytes) }) }
+    row = database.row("SELECT data, typeof(data) AS kind FROM command_runs")
 
     assert_equal [bytes, "blob"], [row["data"].b, row["kind"]]
   end
 
   def test_a_binary_string_is_stored_as_text
-    database.transaction { |batch| batch.insert(:routine_runs, { name: "t", data: "café".b }) }
-    row = database.row("SELECT data, typeof(data) AS kind FROM routine_runs")
+    database.transaction { |batch| batch.insert(:command_runs, { name: "t", data: "café".b }) }
+    row = database.row("SELECT data, typeof(data) AS kind FROM command_runs")
 
     assert_equal ["text", "café"], [row["kind"], row["data"].dup.force_encoding("UTF-8")]
   end
@@ -165,7 +173,7 @@ class DatabaseDryRunTest < Plastic::TestCase
     connection.execute("BEGIN")
     insert("b")
     database.dry_run { |batch| tally(batch) }
-    found = [names("routine_runs"), names("tallies")]
+    found = [names("command_runs"), names("tallies")]
     connection.rollback
 
     assert_equal [%w[a b], []], found
@@ -362,23 +370,14 @@ class DatabaseWriteLogTest < Plastic::TestCase
   Database = Plastic::Graph::Database
 
   def test_an_upsert_twice_with_different_values_leaves_the_second
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:store)
     %w[h1 h2].each { |sha| work.transaction { |batch| batch.put(:printed, { path: "p", sha256: sha, at: STAMP }) } }
 
     assert_equal [{ "sha256" => "h2" }], work.rows("SELECT sha256 FROM printed WHERE path = 'p'")
   end
 
-  def test_the_change_row_of_a_put_holds_the_row_as_json_data
-    work = store_graphs.databases.fetch(:work)
-    work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
-    row = work.row("SELECT \"key\", \"row\" FROM changes WHERE \"table\" = 'clusters'")
-
-    assert_equal ["C", "1"], JSON.parse(row["key"]).values_at("name", "intent_id")
-    assert_equal ["C", "1"], JSON.parse(row["row"]).values_at("name", "intent_id")
-  end
-
   def test_the_counts_ignore_writes_that_changed_no_row
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:store)
     2.times { work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) } }
     work.transaction { |batch| batch.remove(:clusters, name: "missing", intent_id: "1") }
 
@@ -386,20 +385,20 @@ class DatabaseWriteLogTest < Plastic::TestCase
   end
 
   def test_a_log_then_a_remove_counts_the_remove_only
-    work = store_graphs.databases.fetch(:work)
+    work = store_graphs.databases.fetch(:store)
     work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
     work.transaction { |batch| batch.remove(:clusters, name: "C", intent_id: "1") }
 
     assert_equal({ "clusters" => 2 }, work.written)
   end
 
-  def test_a_double_write_of_routine_runs_counts_the_larger
+  def test_a_double_write_of_command_runs_counts_the_larger
     database.transaction do |batch|
-      batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name)", name: "a")
-      batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name)", name: "b")
+      batch.write(:command_runs, "INSERT INTO command_runs(name) VALUES (:name)", name: "a")
+      batch.write(:command_runs, "INSERT INTO command_runs(name) VALUES (:name)", name: "b")
     end
 
-    assert_equal({ "routine_runs" => 1 }, database.written)
+    assert_equal({ "command_runs" => 1 }, database.written)
   end
 
   def test_eight_thousand_statements_in_one_batch_all_land
@@ -430,14 +429,14 @@ class WrittenPhraseTest < Plastic::TestCase
     assert_equal "1 tallies and 1 notes in work_graph.db", database.written_phrase
   end
 
-  def test_the_routine_run_row_is_left_out_of_the_phrase
+  def test_the_command_run_row_is_left_out_of_the_phrase
     insert("a")
     insert("t", table: :tallies)
 
     assert_equal "1 tallies in work_graph.db", database.written_phrase
   end
 
-  def test_only_the_routine_run_row_written_has_no_phrase
+  def test_only_the_command_run_row_written_has_no_phrase
     insert("a")
 
     assert_nil database.written_phrase
@@ -461,60 +460,5 @@ class WrittenPhraseTest < Plastic::TestCase
     database.transaction { |batch| batch.write(:notes, "DELETE FROM notes") }
 
     assert_nil database.written_phrase
-  end
-end
-
-# A command that meets a local.db held by another process prints the plain line, never the name of the error class.
-# Each test builds its own throwaway home, so the shared test home never meets the rival connection.
-class DatabaseErrorLineTest < Plastic::TestCase
-  HELD = "local.db is held by another process; run the command again when it is free"
-  Pool = Plastic::Graph::Database::ConnectionPool
-
-  # The test runs on a home of its own, and its connections close before the rival takes the file.
-  def held_home
-    Dir.mktmpdir do |root|
-      @home = File.realpath(root)
-      @plastic_home = File.join(@home, ".plastic")
-      Plastic::Graph.create(home: @plastic_home, store: "global")
-      plastic("intent", "new", "Alpha", table: Plastic::CLI::TABLE)
-      Pool.release(@home)
-      hold(File.join(@plastic_home, "local.db")) { yield }
-    ensure
-      Pool.release(@home)
-    end
-  end
-
-  # The older column name sends the next command through the migration, which needs the write lock the rival holds.
-  def hold(path)
-    rival = SQLite3::Database.new(path)
-    rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at")
-    rival.execute("BEGIN IMMEDIATE")
-    yield
-  ensure
-    rival&.close
-  end
-
-  def test_intent_lock_status_names_the_held_file_with_no_class_name
-    held_home do
-      call = plastic("intent", "lock", "status", "1", table: Plastic::CLI::TABLE)
-
-      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
-    end
-  end
-
-  def test_next_names_the_held_file_with_no_class_name
-    held_home do
-      call = plastic("next", table: Plastic::CLI::TABLE)
-
-      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
-    end
-  end
-
-  def test_hook_stop_names_the_held_file_with_no_class_name_and_exits_0
-    held_home do
-      call = plastic("hook", "stop", input: '{"session_id":"s-1"}', env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
-
-      assert_equal [0, "", "plastic hook: #{HELD}\n"], [call.code, call.out, call.err]
-    end
   end
 end

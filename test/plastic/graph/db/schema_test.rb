@@ -14,15 +14,12 @@ class DbSchemaTest < Plastic::TestCase
 
   # The DDL of every table that existed before the schema file, pinned from origin/alpha.
   OLD_DDL = {
-    routine_runs: "a4248d5193775ccca84c3576ac399a52fd4d32a62acb087e6e5ddd8449921104",
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
-    locks: "c0ffe9a67c940055d590e7c8de8211b4bf537750f01e269013befa4e0ca3949d",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "05ef29caf9de8d5569a5920fdd913b6d4ae2625cac5beadbce5a8da45a587107",
+    nodes: "cfa14e4507a75f95cc241d0316046a819ab03b5fad0b179dbacbc2c53936dac8",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
-    savepoints: "e0ac00f61310e8ed8d5204c5ce7c599b53bee17a3bd57ef84c9717d22a708be9",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
     rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
     links: "1403ac943dc60477e4ad8e0dbd95027029fe8ae233064ca39a4a6540859e7c69",
@@ -33,15 +30,11 @@ class DbSchemaTest < Plastic::TestCase
     roadmap_log: "ed05eef89c9592b5b36da98a8cdd28009314de634a6663e56fc3fc73314ac3cd",
     archives: "1063eeec2b8c6c26d12bb3b369574b04a85a42c45093c5c945acc35f969f9070",
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",
-    backups: "b98b347026dfb8bfc9eb30e67971717fc479f69090533c9818ad0e107552f8d7",
     sqlar: "e009afa1c7e455192a87f15934d1082e9f304b49ceffeab8aece9948142713b1",
     printed: "eeb9e475e607f232e6c325c72d9de74debf78a53fa16b1bffd8839ba597c40be",
-    changes: "1f784ae1ffbda6d665262ef29dbec704842024b50fe79728eaea7c41cd50cb75",
     document_revisions: "3db553065bcfd4d055ff29aa476136e9d9bb74905dd82a03cd72ecc4c9a489a7",
     document_heads: "b87ad04e374493805bac7cc34d9b53cb5293bcef0ec5303a4dafc439047c33b6",
     document_passages: "0c8ed03255aace08648603941623217e717b8a1942850c648e7289c3356adb57",
-    retrieval_schema: "7d26b4c4bd93fd4be0042d0d37f1bb68a3902ed37de23716b7d7b9834be9c14f",
-    retrieval_backfills: "95369ff092103cf0a769e15407a401c1a49590454b00672af3ff6478cc98df75",
     retrieval_contexts: "6cf8985de162e5b6d0bb9518022145d4f1e29fded841fccc78e77886a03419d8",
     retrieval_discoveries: "c5007ca34c9bda2e98cca89774cc78f4547288623601395bd8997f4bc1e84491",
     document_fts: "cb79da3f2b5e36acc326b39310e72a0f4e33faa41eefa2940b986128654af325"
@@ -53,17 +46,17 @@ class DbSchemaTest < Plastic::TestCase
 
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
-      local: ["local.db", %i[routine_runs sessions locks backups]],
-      work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
-        roadmap_edges roadmap_log archives archive_entries approvals verdicts]],
-      knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
-        retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]],
-      references: ["references.db", %i[sqlar printed changes]]
+      local: ["plastic.db", %i[command_runs sessions settings printed chat_messages]],
+      work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
+      knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
+        document_revisions document_heads retrieval_contexts retrieval_discoveries
+        rulings links printed sqlar]],
+      retrieval: ["retrieval_graph.db", %i[document_passages document_fts]]
     }, Schema.databases)
   end
 
   def test_no_kernel_file_but_the_schema_file_declares_a_table
-    allowed = [SCHEMA_PATH, BUILDER_PATH, File.join(KERNEL, "plastic/graph/table.rb"), File.join(KERNEL, "plastic/graph/schema/migrations.rb")]
+    allowed = [SCHEMA_PATH, BUILDER_PATH, File.join(KERNEL, "plastic/graph/table.rb")]
     files = Dir.glob(File.join(KERNEL, "**/*.rb")) - allowed
 
     refute_empty files
@@ -81,11 +74,10 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261115000000", ""], [status.success?, out, err]
+    assert_equal [true, "20261117000000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy
-    assert_equal %i[legacy_intents_data], Schema.legacy_tables
     assert_equal %i[intent_id path origin_id], Schema.table_named(:legacy_intents_data).key
   end
 
@@ -109,12 +101,11 @@ class DbSchemaTest < Plastic::TestCase
     assert_empty file.tables.fetch(:things).key
   end
 
-  def test_the_printed_table_is_neither_logged_nor_counted_and_routine_runs_are_counted
-    assert_equal [false, false, true, true], [Schema.table_named(:printed).logged?, Schema.table_named(:printed).counted?,
-      Schema.table_named(:changes).logged?, Schema.table_named(:routine_runs).counted?]
+  def test_the_printed_table_is_not_counted_and_command_runs_are_counted
+    assert_equal [false, true], [Schema.table_named(:printed).counted?, Schema.table_named(:command_runs).counted?]
   end
 
   def test_a_database_lists_tables_declared_once_and_shared
-    assert_equal %i[work knowledge references], %i[work knowledge references].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
+    assert_equal %i[local knowledge], %i[local work knowledge].select { |key| Schema.databases.fetch(key).last.include?(:printed) }
   end
 end

@@ -16,7 +16,7 @@ module Plastic
           end
 
           def call(intent_id)
-            return unavailable(intent_id) unless retrieval.archived?(intent_id)
+            return unavailable(intent_id) unless retrieval.archives.archived?(intent_id)
             return elsewhere(intent_id) unless snapshot.call(intent_id).entries.any?
 
             restore(intent_id)
@@ -40,7 +40,7 @@ module Plastic
           def mark_restored(intent_id)
             database.transaction do |batch|
               batch.write(:archives, "UPDATE archives SET restored_at = :now WHERE origin_id = :origin AND intent_id = :intent_id",
-                now: Plastic.now, origin: retrieval.origin_id, intent_id:)
+                now: Plastic.timestamp(@retrieval.clock.now), origin: retrieval.origin_id, intent_id:)
             end
           end
         end

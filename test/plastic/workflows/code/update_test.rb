@@ -5,13 +5,42 @@ require_relative "../../../../lib/plastic/workflows/code/update"
 
 class UpdatePlasticTest < Plastic::TestCase
   include InstallerHelper
+  include BackupHomes
+  include OldLayoutHomes
 
   def update(env: {}, **options)
     facts = { channel: nil }.merge(options)
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
+  def store_versions(home) = recorded_by_file(home).select { |path, _| path.end_with?("/knowledge_graph.db") }.values.uniq
+
+  # Every store and the home as an alpha build wrote them: the newest layout, stamped 1, with no schema_migrations table.
+  def alpha_layout(home)
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    Dir.glob(File.join(home, "{plastic.db,stores/*/knowledge_graph.db}")).each do |path|
+      SQLite3::Database.open(path) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    end
+    home
+  end
+
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
+
+  def test_an_update_brings_an_old_layout_home_to_the_newest_layout_after_a_backup_of_each_store
+    home = old_layout(fresh_home)
+    run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
+
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], store_versions(home)
+    assert_equal [1, 1], %w[alpha beta].map { |slug| folder_names(home, slug).size }
+  end
+
+  def test_an_update_moves_an_alpha_home_and_its_stores_from_stamp_1_to_current
+    home = alpha_layout(fresh_home)
+    run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
+    Plastic::Graph::Database::ConnectionPool.release(home)
+
+    assert_equal [[Plastic::Graph::MIGRATIONS.baseline(:store)], [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
+  end
 
   def test_a_newer_package_is_synced_into_the_home
     installed("0.0.1")

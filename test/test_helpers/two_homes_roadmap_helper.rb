@@ -11,11 +11,11 @@ module TwoHomesRoadmapHelper
     call_in(home, "roadmap", "batch", "r1", "1", "--title", "First", "--goal", "g", "--done", "d")
   end
 
-  def logs(home) = rows_of(home, :work, "SELECT text FROM roadmap_log ORDER BY position").map { |row| row["text"] }
+  def logs(home) = rows_of(home, "SELECT text FROM roadmap_log ORDER BY position").map { |row| row["text"] }
 
-  def goal(home) = rows_of(home, :work, "SELECT goal FROM roadmaps WHERE slug = 'r1'").first["goal"]
+  def goal(home) = rows_of(home, "SELECT goal FROM roadmaps WHERE slug = 'r1'").first["goal"]
 
-  def put_log(home, row) = database_of(home, :work).transaction { |batch| batch.put(:roadmap_log, { roadmap: "r1", at: Plastic::TestCase::STAMP, session_id: "s-1" }.merge(row)) }
+  def put_log(home, row) = database_of(home).transaction { |batch| batch.put(:roadmap_log, { roadmap: "r1", at: Plastic::TestCase::STAMP, session_id: "s-1" }.merge(row)) }
 
   def to_both_homes(&) = two_homes(seed: method(:seed), &)
 

@@ -6,13 +6,13 @@ require_relative "../../../../lib/plastic/commands/intent/archive"
 
 class IntentArchiveCaseTest < Plastic::TestCase
   def test_archiving_a_future_intent_prints_the_status_and_offers_the_board
-    ran("intent new Later --status future")
+    ran("intent new Later")
 
     assert_case line("intent archive 1"), code: 0, out: ["intent: 1 archived", "next: plastic status"]
   end
 
   def test_archiving_an_open_intent_exits_1_and_names_the_end_command
-    ran("intent new Alpha")
+    open_intent("Alpha")
 
     assert_case line("intent archive 1"), code: 1, out: ["next: plastic intent end 1"],
       err: ["intent 1 is open; only done, abandoned and future intents archive"]
@@ -23,14 +23,14 @@ class IntentArchiveTest < Plastic::TestCase
   def call(*args) = plastic("intent", "archive", *args, table: Plastic::CLI::TABLE)
 
   def mark_done(intent)
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent.intent_id)
     end
   end
 
   def add_ruling(intent)
     row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: STAMP }
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
   end
 
   def test_archiving_an_unlinked_done_intent_clears_the_folder
@@ -103,7 +103,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 1, result.code
-    refute retrieval.archived?(intent.intent_id)
+    refute archived?(intent.intent_id)
   end
 
   def test_an_intent_refused_while_open_archives_once_it_is_done
@@ -114,7 +114,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 0, result.code
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archiving_an_archived_intent_finishes_idempotently
@@ -125,7 +125,7 @@ class IntentArchiveTest < Plastic::TestCase
     result = call(intent.intent_id)
 
     assert_equal 0, result.code
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archiving_a_missing_intent_reports_a_failure
@@ -136,13 +136,13 @@ class IntentArchiveTest < Plastic::TestCase
 
   def test_a_date_archives_the_done_intent_closed_before_it
     intent = open_intent("Old")
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done', closed_at = '2026-01-10T00:00:00Z' WHERE intent_id = :id", id: intent.intent_id)
     end
 
     result = call("--older-than", "2026-02-01")
 
-    assert_equal [0, true], [result.code, retrieval.archived?(intent.intent_id)]
+    assert_equal [0, true], [result.code, archived?(intent.intent_id)]
     assert_includes result.out, "intent: #{intent.intent_id} archived"
   end
 
@@ -187,6 +187,15 @@ module ArchiveFidelityFixtures
     File.utime(Time.at(1234), Time.at(1234), root)
   end
 
+  def reverted_trees
+    intent = populated_intent
+    before = tree(folder.path(intent.dir))
+
+    assert_archived(intent)
+    assert_reverted(intent)
+    [before, tree(folder.path(intent.dir))]
+  end
+
   def tree(root)
     paths = [root, *Dir.glob("#{root}/**/*", File::FNM_DOTMATCH)].uniq.reject { |path| File.basename(path) == "." }
     paths.sort.to_h { |path| [path.delete_prefix(root), entry(path)] }
@@ -218,7 +227,7 @@ module ArchiveFidelityFixtures
   end
 
   def replace_document_rows(intent)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:documents, "UPDATE documents SET body = 'newer row' WHERE intent_id = :id", id: intent.intent_id)
     end
   end
@@ -235,14 +244,19 @@ class ArchiveFidelityTest < Plastic::TestCase
   include ArchiveFidelityFixtures
 
   def test_revert_preserves_bytes_links_directories_modes_and_times
-    intent = populated_intent
-    before = tree(folder.path(intent.dir))
+    before, after = reverted_trees
 
-    assert_archived(intent)
-    assert_reverted(intent)
-
-    assert_equal before, tree(folder.path(intent.dir))
+    assert_equal without_log(before), without_log(after)
   end
+
+  def test_revert_keeps_the_work_log_and_adds_the_archived_and_unarchived_lines
+    before, after = reverted_trees
+    log = after.fetch("/work.log").last
+
+    assert_equal [true, true], [log.start_with?(before.fetch("/work.log").last), log.match?(/archived - - Archived\n.*unarchived - - Unarchived\n\z/)]
+  end
+
+  def without_log(tree) = tree.except("", "/work.log")
 
   def test_revert_uses_snapshot_even_when_document_rows_change
     intent = future_intent
@@ -280,7 +294,7 @@ class ArchiveFidelityTest < Plastic::TestCase
 
     assert_equal 1, unarchive(intent).code
     assert File.symlink?(folder.path(intent.dir))
-    assert retrieval.archived?(intent.intent_id)
+    assert archived?(intent.intent_id)
   end
 
   def test_archive_offers_status_instead_of_revert
@@ -335,12 +349,9 @@ class ArchiveReadFidelityTest < Plastic::TestCase
   end
 
   def archive_read_state(intent)
-    work = store_graphs.databases.fetch(:work)
-    archive_rows = work.rows("SELECT * FROM archives WHERE intent_id = :id ORDER BY intent_id", id: intent.intent_id)
-    entry_rows = work.rows("SELECT * FROM archive_entries WHERE intent_id = :id ORDER BY path", id: intent.intent_id)
-    changes = { work: work.rows("SELECT * FROM changes ORDER BY seq"),
-                knowledge: store_graphs.databases.fetch(:knowledge).rows("SELECT * FROM changes ORDER BY seq") }
-    { archive_rows:, entry_rows:, changes:, filesystem: filesystem_state(intent) }
+    archive_rows = store_database.rows("SELECT * FROM archives WHERE intent_id = :id ORDER BY intent_id", id: intent.intent_id)
+    entry_rows = store_database.rows("SELECT * FROM archive_entries WHERE intent_id = :id ORDER BY path", id: intent.intent_id)
+    { archive_rows:, entry_rows:, filesystem: filesystem_state(intent) }
   end
 
   def filesystem_state(intent)

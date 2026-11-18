@@ -23,7 +23,7 @@ class AgentSetTest < Plastic::TestCase
 
   def test_an_agent_with_a_manifest_file_on_disk_is_registered
     file = write(File.join(fresh, ".hermes", "skills", "a.md"), "x\n")
-    set.record("hermes").manifest.write([file])
+    set.record("hermes").manifest.write([file], FixedClock::AT)
 
     assert set.registered?("hermes")
   end
@@ -63,7 +63,7 @@ class AgentRecordTest < Plastic::TestCase
 
   def test_a_record_is_registered_when_a_file_its_manifest_lists_exists
     listed = write(File.join(fresh, ".claude", "a.md"), "a\n")
-    record.manifest.write([listed])
+    record.manifest.write([listed], FixedClock::AT)
 
     assert_predicate record, :registered?
     File.delete(listed)

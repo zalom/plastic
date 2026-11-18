@@ -2,9 +2,9 @@
 
 require_relative "../end"
 require_relative "../../../../code_workflow"
-require_relative "../../../../config"
 require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
+require_relative "../../../../graph/knowledge/store_folder"
 require_relative "../../../delivery_ownership"
 require_relative "../../../pull_request_template"
 require_relative "../../../review_round"
@@ -17,7 +17,7 @@ module Plastic
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
             summary "Reads what closing the intent needs: the rows, the verdict, outcome.md and the review."
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :template_found, :missing
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :delivery_recorded, :map_recorded, :delivery_found, :approval_found, :template_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -33,7 +33,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :refusal,
-              words: "another live session holds the lock of the intent",
+              words: "another live session holds a node claim of the intent",
               pass: ->(context) { context.problem.nil? }
 
             read "check the completion records" do |context|
@@ -42,36 +42,31 @@ module Plastic
               context[:judged] = true
               context[:used_up] = false
               context[:awaiting_approval] = false
-              context[:merge_recorded] = context[:map_recorded] = false
+              context[:delivery_recorded] = context[:map_recorded] = false
               context[:missing] = ""
-              context[:merge_found] = context[:approval_found] = context[:template_found] = ""
+              context[:delivery_found] = context[:approval_found] = context[:template_found] = ""
               record_facts(context) unless context.closed
             end
 
             NOT_JUDGED = "No accepted review counts yet."
 
             def self.record_facts(context)
-              check = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
+              check = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id, folder: Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root))
               context[:requirements] = check.record_problems + (review_required?(context) ? pull_request_problems(check) : [])
               review_facts(context)
               verification_facts(context, check.verification)
             end
 
             def self.verification_facts(context, verification)
-              context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              context[:delivery_recorded], context[:map_recorded] = [verification.delivery_recorded?, verification.map_recorded?]
               found_facts(context, verification)
               context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
             end
 
             def self.found_facts(context, verification)
-              context[:merge_found] = merge_found(verification)
+              context[:delivery_found] = verification.delivery_finding
               context[:approval_found] = approval_found(verification)
               context[:template_found] = PullRequestTemplate.fact(context.scope, context.intent)
-            end
-
-            def self.merge_found(verification)
-              found = verification.rejected("Merged")
-              found ? "outcome.md says '#{found}', which is not a merge in the form 'Merged: <branch> into <base> at <commit or pull request>'. " : ""
             end
 
             def self.approval_found(verification)
@@ -87,7 +82,7 @@ module Plastic
             end
 
             def self.review_required?(context)
-              Plastic::Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
+              context.settings.config.choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
             def self.pull_request_problems(check)
@@ -101,13 +96,13 @@ module Plastic
             gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
-            def self.verified?(context) = context.merge_recorded && context.map_recorded
+            def self.verified?(context) = context.delivery_recorded && context.map_recorded
 
             outcome :closed, if: ->(context) { context.closed }, found_by: "read the intent",
               offers: "plastic next", because: "intent %{intent_id} is already done"
             outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }, because: "the intent still needs records or a verdict before it can end"
-            outcome :unverified, if: ->(context) { !verified?(context) }, because: "the merge of the work is not verified yet"
-            outcome :ready, because: "the records, the verdict and the merge are in place"
+            outcome :unverified, if: ->(context) { !verified?(context) }, because: "the delivery of the work is not recorded yet"
+            outcome :ready, because: "the records, the verdict and the delivery are in place"
           end
         end
       end

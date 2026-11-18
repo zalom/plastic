@@ -14,7 +14,7 @@ module Plastic
           end
 
           def state
-            archived = retrieval.archived?(current.fetch(:intent_id))
+            archived = retrieval.archives.archived?(current.fetch(:intent_id))
             { "uri" => reference, "state" => fresh?(archived) ? "fresh" : "stale", "archived" => archived }
           end
 

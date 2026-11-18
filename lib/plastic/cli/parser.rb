@@ -6,7 +6,7 @@ module Plastic
   class CLI
     # Reads one call's argv against the arguments and options a command
     # declares. A missing required argument or switch, an extra word or an unknown
-    # switch is a Command::Usage error: exit 2. --json and --project belong
+    # switch is a Usage error: exit 2. --json and --project belong
     # to every command.
     class Parser
       def initialize(arguments:, options:, banner:)
@@ -43,12 +43,12 @@ module Plastic
 
       def refuse_missing(values)
         missing = @options.find { |option| option.required && values[option.name].nil? }
-        raise Command::Usage, "missing #{missing.switch.split.first}" if missing
+        raise Usage, "missing #{missing.switch.split.first}" if missing
       end
 
       def refuse_extra(words)
         extra = @arguments.any?(&:rest) ? [] : words.drop(@arguments.size)
-        raise Command::Usage, "unexpected #{extra.join(" ")}" if extra.any?
+        raise Usage, "unexpected #{extra.join(" ")}" if extra.any?
       end
     end
   end

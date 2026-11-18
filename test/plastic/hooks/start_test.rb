@@ -36,14 +36,14 @@ class StartTest < Plastic::TestCase
     assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
-  def test_a_compacted_session_names_the_compaction_the_savepoint_and_the_note_with_exit_0
-    printed_intent
-    opened_work.write_note("s-1", "note text")
+  def test_a_compacted_session_prints_its_intent_and_the_last_log_lines_with_exit_0
+    intent_id = printed_intent
     result = call(source: "compact")
     lines = result.out.lines(chomp: true)
 
-    assert_call result, code: 0, err: "", out: ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "Opened: Alpha", "note: note text"]
-    assert_equal ["note: note text", "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."], [lines.last, lines.first]
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal ["Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", "intent: #{intent_id} Alpha"], lines.first(2)
+    assert_equal "next: plastic next", lines.last
   end
 
   def test_an_empty_event_with_no_session_prints_the_recap_and_one_line_on_standard_error
@@ -181,6 +181,40 @@ class StartSessionRowTest < Plastic::TestCase
 
     assert_equal ["claude-code", "clear"], [store_graphs.retrieval.session("s-2").harness, store_graphs.retrieval.session("s-1").end_reason]
   end
+
+  FIXTURES = File.expand_path("../../fixtures/hooks", __dir__)
+  COMPACT_FIRST = "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume."
+
+  def held_claim(session)
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session:).work
+    intent = work.write_intent(title: "Alpha")
+    work.add_node(intent_id: intent.intent_id, title: "Build")
+    work.claim_node(intent_id: intent.intent_id, id: "n1", by: session)
+    intent
+  end
+
+  %w[claude_code codex].each do |harness|
+    define_method(:"test_the_#{harness}_compact_fixture_prints_the_short_recap_of_the_session_that_holds_a_claim") do
+      input = File.read(File.join(FIXTURES, "#{harness}_session_start_compact.documented.json"))
+      session = JSON.parse(input).fetch("session_id")
+      intent = held_claim(session)
+      lines = plastic("hook", "start", input:, env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE).out.lines(chomp: true)
+
+      assert_equal [COMPACT_FIRST, "intent: #{intent.intent_id} Alpha"], lines.first(2)
+      assert_equal "next: plastic graph resume", lines.last
+      refute_empty(lines.grep(/\A- \S+ - n1 #{session} claimed - - /), lines.inspect)
+    end
+  end
+
+  def test_a_work_log_line_prints_after_the_compaction
+    session = "s-dead"
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session:).work
+    intent = work.write_intent(title: "Alpha")
+    work.add_ruling(intent_id: intent.intent_id, text: "kept")
+    result = plastic("hook", "start", input: JSON.generate(session_id: session, source: "compact"), env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE)
+
+    refute_empty(result.out.lines.grep(/ ruled /), result.out)
+  end
 end
 
 class StartDoctorTest < Plastic::TestCase
@@ -310,5 +344,55 @@ class StartHealthyHomeTest < Plastic::TestCase
     assert_equal [0, 0, ""], [doctor.code, resume.code, resume.err]
     assert_match(/\APlastic: a new session/, resume.out)
     refute_match(/doctor/i, resume.out)
+  end
+end
+
+# The session start takes a backup of the current store and of the global
+# store when the newest one is older than twelve hours.
+class StartBackupTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+
+  def start(home, at: THIRTEEN_HOURS_LATER)
+    event = JSON.generate(session_id: "s-1", cwd: project_path(home, "alpha"), source: "startup")
+    plastic("hook", "start", env: env_for(home).merge("PLASTIC_SESSION" => "s-1"), input: event, table: Plastic::CLI::TABLE, clock: Clock.new(at))
+  end
+
+  def stale_home_with_global
+    stale_home.tap do |home|
+      seed_store(home, "global")
+      backup_at(home, SEEDED, slug: "global")
+      %w[alpha global].each { |slug| add_intent(home, slug) }
+    end
+  end
+
+  def test_the_current_store_takes_a_backup_at_session_start
+    home = stale_home_with_global
+    start(home)
+
+    assert_equal [nil, "session start"], backup_reasons(home, "alpha")
+  end
+
+  def test_the_global_store_takes_a_backup_at_session_start
+    home = stale_home_with_global
+    start(home)
+
+    assert_equal [nil, "session start"], backup_reasons(home, "global")
+  end
+
+  def test_a_session_start_inside_twelve_hours_takes_none
+    home = stale_home_with_global
+    start(home, at: ELEVEN_HOURS_LATER)
+
+    assert_equal [[nil], [nil]], [backup_reasons(home, "alpha"), backup_reasons(home, "global")]
+  end
+
+  def test_a_damaged_store_does_not_stop_the_hook_and_prints_no_error
+    home = stale_home_with_global
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    File.write(store_file(home, "work_graph", "global"), "not a database")
+    result = start(home)
+
+    assert_equal 0, result.code
   end
 end

@@ -21,6 +21,12 @@ module Plastic
         [flow.call(context), context]
       end
 
+      # One call of a workflow that stops: the error it raised and the context it printed into.
+      def stop_workflow(flow, kind = Plastic::Failed, **facts)
+        context = call_context(declared: flow.facts, **facts)
+        [assert_raises(kind) { flow.call(context) }, context]
+      end
+
       # The context of one call against the graphs of the global store.
       def call_context(declared: [], harness: scoped_harness, graphs: store_graphs, **facts)
         Plastic::Context.new(declared: (declared + facts.keys).uniq, facts:, graphs:, harness:)
@@ -38,9 +44,9 @@ module Plastic
       def printed_row(context, label) = printed_rows(context).assoc(label)&.last
 
       # The session and store scope of a call made from the test's home.
-      def scoped_harness(session: nil, slug: nil, env: {})
-        scope = Plastic::CLI::Scope.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env), home: @home, slug:, directory: @home)
-        Plastic::Context::Harness.new(session, scope)
+      def scoped_harness(session: nil, slug: nil, env: {}, settings: Plastic::Wiring.settings(@plastic_home))
+        scope = Plastic::Scope.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env), home: @home, slug:, directory: @home)
+        Plastic::Context::Harness.new(session, scope, settings)
       end
     end
   end

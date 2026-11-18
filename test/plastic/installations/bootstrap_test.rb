@@ -25,20 +25,18 @@ class BootstrapTest < Plastic::TestCase
     assert_equal ["  First install - bootstrapping store...\n", "  Store bootstrapped\n"], out.lines
   end
 
-  def test_a_first_install_writes_the_config_the_projects_file_and_the_agent_instructions
+  def test_a_first_install_writes_the_projects_file_and_the_agent_instructions
     bootstrap
 
-    assert_equal ["version: 3\n", "---\nprojects: {}\n", true],
-      [File.read(File.join(plastic, "config.yml")), File.read(File.join(plastic, "projects.yml")),
+    assert_equal ["---\nprojects: {}\n", true],
+      [File.read(File.join(plastic, "projects.yml")),
         File.read(File.join(plastic, "AGENTS.md")).start_with?("# Plastic: Agent Instructions\n")]
   end
 
-  def test_a_first_install_keeps_a_config_that_is_already_there
-    FileUtils.mkdir_p(plastic)
-    File.write(File.join(plastic, "config.yml"), "version: 3\nscreens: false\n")
+  def test_a_first_install_writes_no_config_file
     bootstrap
 
-    assert_equal "version: 3\nscreens: false\n", File.read(File.join(plastic, "config.yml"))
+    refute_path_exists File.join(plastic, "config.yml")
   end
 
   def test_a_first_install_writes_no_legacy_index_into_the_global_store
@@ -50,7 +48,7 @@ class BootstrapTest < Plastic::TestCase
   def test_a_first_install_creates_the_three_store_databases
     bootstrap
 
-    assert_equal %w[knowledge_graph.db references.db work_graph.db], Dir.children(File.dirname(global)).grep(/\.db\z/).sort
+    assert_equal %w[knowledge_graph.db retrieval_graph.db work_graph.db], Dir.children(File.dirname(global)).grep(/\.db\z/).sort
   end
 
   def test_a_first_install_leaves_the_store_ready_for_intent_new

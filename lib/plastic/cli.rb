@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../plastic"
 require_relative "cli/command"
 require_relative "cli/table"
 require_relative "cli/listing"
@@ -12,7 +13,7 @@ module Plastic
     TOPICS = File.expand_path("../../docs/help", __dir__)
 
     # The command the words name: the longest table entry that starts argv,
-    # so `intent lock status` wins over `intent lock`.
+    # so `node claim` wins over `node`.
     def self.find(argv, table = TABLE)
       table.keys.select { |name| starts?(argv, name.split) }.max_by(&:size)
     end
@@ -43,7 +44,7 @@ module Plastic
     end
     private_class_method :loaded?
 
-    def self.file_of(klass) = klass.split("::").map { |part| Plastic.snake(part) }.join("/")
+    def self.file_of(klass) = klass.split("::").map { |part| Plastic::Inflector.underscore(part) }.join("/")
 
     Context = Struct.new(:environment, :table, :topics) do
       def environment_and_table = [environment, table]
@@ -71,6 +72,7 @@ module Plastic
       return list(argv, context) if command.empty? || %w[--help -h].include?(command)
       return help(argv, context) if command == "help"
 
+      argv = ["version", *argv.drop(1)] if command == "--version"
       dispatch(argv, context) { "plastic #{argv.join(" ")} is not a command; run plastic help for the list" }
     end
     private_class_method :route
@@ -99,7 +101,8 @@ module Plastic
       return print_topic(text, context) if text
 
       family = words.reject { |word| %w[--json --help -h].include?(word) }
-      return family_list(family.first, words, context) if family.one? && FAMILIES.key?(family.first)
+      head = family.first
+      return family_list(head, words, context) if family.one? && FAMILIES.key?(head)
 
       dispatch([*words, "--help"], context) { "plastic: no command #{family.join(" ").inspect}; plastic help lists them" }
     end

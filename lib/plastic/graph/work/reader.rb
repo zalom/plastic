@@ -23,6 +23,8 @@ module Plastic
           ORDER BY #{NODE_ORDER}
         SQL
 
+        CLAIMED_SQL = "SELECT * FROM nodes WHERE origin_id = :origin AND state = 'claimed' ORDER BY intent_id, #{NODE_ORDER}"
+
         LINKS_SQL = 'SELECT * FROM links WHERE origin_id = :origin AND (from_ref = :ref OR to_ref = :ref) ORDER BY "at"'
 
         def initialize(databases, origin:)
@@ -34,18 +36,20 @@ module Plastic
         # every `needs` edge into them satisfied (graph/edge.rb: `to` waits
         # until `from` is done).
         def ready_nodes(intent_id)
-          @databases.fetch(:work).rows(READY_NODES_SQL, intent_id:, origin: origin_id).map { |row| Node.from_h(row) }
+          @databases.fetch(:store).rows(READY_NODES_SQL, intent_id:, origin: origin_id).map { |row| Node.from_h(row) }
         end
+
+        def claimed_nodes = @databases.fetch(:store).rows(CLAIMED_SQL, origin: origin_id).map { |row| Node.from_h(row) }
 
         def node(intent_id, id) = nodes(intent_id).find { |node| node.id == id }
 
         def rulings(intent_id = nil) = SOURCES.fetch(:rulings).read(@databases, origin: origin_id, intent_id:)
 
         # Links naming `ref` at either end: a ruling's ref today, any ref later.
-        def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Knowledge::Link.from_h(row) }
+        def links(ref) = @databases.fetch(:store).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Knowledge::Link.from_h(row) }
 
         # Every link of this origin, ordered by its ends and its kind.
-        def every_link = @databases.fetch(:knowledge).rows(Knowledge::Link::ALL_SQL, origin: origin_id).map { |row| Knowledge::Link.from_h(row) }
+        def every_link = @databases.fetch(:store).rows(Knowledge::Link::ALL_SQL, origin: origin_id).map { |row| Knowledge::Link.from_h(row) }
 
         private
 

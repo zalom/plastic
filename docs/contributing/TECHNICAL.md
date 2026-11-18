@@ -30,6 +30,12 @@ The following table says when each step passes.
 | Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
 | RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
 
+Before the steps, the gate runs the migration guard, `bin/lib/migration_guard.rb`, against the
+tip of the base it is given. CI passes `origin/$GITHUB_BASE_REF`. The guard fails the gate when a
+migration that is on the base was changed, renamed or deleted, or when an added migration does
+not sort after the newest migration of its kind on the base. [MIGRATIONS.md](MIGRATIONS.md)
+holds the rules.
+
 A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells and RubyCritic score steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
 
 The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
@@ -70,8 +76,8 @@ The patterns and the rules for every test are in
 [Test a change](../../CONTRIBUTING.md#test-a-change). This section tells how the runs are built.
 
 CI runs the full suite on every push to `main` and `alpha`, and on every pull request
-into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --system` for
-the acceptance documents, the way `rails test` and `rails test:system` split them.
+into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --e2e` for
+the end-to-end (e2e) layer, the acceptance documents.
 
 On a full run, `bin/test` splits the test files in two. It runs the kernel tests under
 `test/plastic/` in a process of their own first, then every other test file in its own
@@ -100,8 +106,14 @@ commands would.
   `legacy-import`. Each runs its command in a child Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
-  directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
+  directly, by the case. `bin/test --e2e` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
+
+## The chat history
+
+`plastic.db` in the home holds the `chat_messages` table: one row for each prompt or reply, with
+the session, harness, store, intent, role, time and text. `Graph::Work::Chat::Writer` writes it
+from `hook prompt` and `hook stop`, and `Graph::Work::Chat::Reader` reads it for `chat list`.
 
 ## The byte budget
 

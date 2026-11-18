@@ -12,7 +12,7 @@ module Plastic
       class Restore < Routine
         include CLI::BackupStore
 
-        writes :work, :knowledge, :references
+        writes :work, :knowledge
 
         option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"
         option :latest, switch: "--latest", default: false, text: "restore the newest backup that is done"
@@ -32,7 +32,7 @@ module Plastic
           database_list
         end
 
-        def scope = @scope ||= CLI::AskingScope.for(environment, slug: parsed[:store], output:)
+        def new_scope = CLI::AskingScope.for(environment, slug: parsed[:store], output:)
       end
     end
   end

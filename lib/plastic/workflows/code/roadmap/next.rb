@@ -17,8 +17,9 @@ module Plastic
           sets :ready, :ready_id, :open
 
           def self.items_of(context)
-            all = context.retrieval.roadmap_items(context.slug)
-            context.position ? all.select { |item| item.batch == context.position.to_i } : all
+            all = context.retrieval.roadmaps.items(context.slug)
+            position = context.position
+            position ? all.select { |item| item.batch == position.to_i } : all
           end
 
           def self.states_of(context)

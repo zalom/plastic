@@ -21,9 +21,9 @@ class WorkflowRemoveLinkTest < Plastic::TestCase
   end
 
   def test_a_link_of_another_kind_fails_and_stays
-    outcome, = remove("source")
+    error = assert_raises(Plastic::Failed) { remove("source") }
 
-    assert_equal "code_remove_link, gate: no source link from 1 to 2", outcome.message
+    assert_equal "no source link from 1 to 2", error.message
     assert_equal 1, retrieval.links("1").size
   end
 end

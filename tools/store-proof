@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "store_proof"
+
+exit StoreProof::CLI.new(ARGV).call

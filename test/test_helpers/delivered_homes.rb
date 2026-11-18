@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 require_relative "two_homes"
+require_relative "config_homes"
 
 module DeliveredHomes
+  include ConfigHomes
+
   include TwoHomes
 
   SESSION = { "PLASTIC_SESSION" => "delivery" }.freeze
@@ -12,12 +15,12 @@ module DeliveredHomes
   DROPPED = "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n"
 
   def deliver(kernel)
-    kernel.command!("auto", "1", env: SESSION)
+    kernel.command!("intent", "auto", "1", env: SESSION)
     kernel.command!("node", "claim", "1", "n2")
     kernel.command!("node", "done", "1", "n2", "The code is green")
     kernel.command!("intent", "verdict", "1", "accept", "Both nodes hold")
     kernel.write("#{DIR}/outcome.md", OUTCOME)
-    File.write(File.join(kernel.plastic_home, "config.yml"), "review:\n  pull_request: off\n")
+    seed_config(kernel.plastic_home, "review:\n  pull_request: off\n")
     kernel.command!("sync", "up")
     kernel.command!("intent", "end", "1", env: SESSION)
     kernel.command!("sync", "down")

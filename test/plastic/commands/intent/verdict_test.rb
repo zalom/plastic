@@ -5,7 +5,7 @@ require_relative "../../../test_helper"
 class IntentVerdictCaseTest < Plastic::TestCase
   def test_an_accept_after_the_work_is_done_prints_round_1_and_offers_the_end
     alpha_with_node
-    ran("auto 1", "node claim 1 n1", "node done 1 n1 Built")
+    ran("intent auto 1", "node claim 1 n1", "node done 1 n1 Built")
 
     assert_case line('intent verdict 1 accept "Every criterion holds"'), code: 0,
       out: ["verdict: accept round 1", "next: plastic intent end 1"]
@@ -114,7 +114,7 @@ class IntentVerdictAcceptGateTest < Plastic::TestCase
   def claimed_node
     specified
     cli("intent", "approve", "1")
-    cli("auto", "1")
+    cli("intent", "auto", "1")
     cli("node", "add", "1", "Deliver", "--criterion", KEY)
     cli("node", "claim", "1", "n1")
   end

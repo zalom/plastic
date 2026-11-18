@@ -3,17 +3,17 @@
 require_relative "../../../test_helper"
 
 class IntentApproveCaseTest < Plastic::TestCase
-  def test_approving_prints_the_intent_and_offers_auto
+  def test_approving_prints_the_intent_and_offers_the_brief
     alpha_specified(UNKEYED_CRITERION)
 
-    assert_case line("intent approve 1"), code: 0, out: ["approved: 1", "next: plastic auto 1"]
+    assert_case line("intent approve 1"), code: 0, out: ["approved: 1", "next: plastic intent brief 1"]
   end
 
   def test_approving_twice_prints_the_same_lines
     alpha_specified(UNKEYED_CRITERION)
     ran("intent approve 1")
 
-    assert_case line("intent approve 1"), code: 0, out: ["approved: 1", "next: plastic auto 1"]
+    assert_case line("intent approve 1"), code: 0, out: ["approved: 1", "next: plastic intent brief 1"]
   end
 
   def test_approving_a_missing_intent_exits_1_and_names_it

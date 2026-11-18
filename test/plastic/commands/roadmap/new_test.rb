@@ -9,7 +9,7 @@ class RoadmapNewTest < Plastic::TestCase
   def test_new_creates_the_roadmap_row_and_offers_the_first_batch
     result = call("r1", "--title", "Make it useful", "--goal", "Close the blockers")
 
-    assert_equal [0, "Make it useful", "Close the blockers", ""], [result.code, *store_graphs.retrieval.roadmap("r1").to_h.values_at(:title, :goal), result.err]
+    assert_equal [0, "Make it useful", "Close the blockers", ""], [result.code, *store_graphs.retrieval.roadmaps.find("r1").to_h.values_at(:title, :goal), result.err]
     assert_includes result.out, "roadmap: r1 Make it useful"
     assert_includes result.out, "next: plastic roadmap batch r1 1"
   end
@@ -17,7 +17,7 @@ class RoadmapNewTest < Plastic::TestCase
   def test_a_roadmap_with_no_title_is_titled_by_its_name
     result = call("r1")
 
-    assert_equal "r1", store_graphs.retrieval.roadmap("r1").title
+    assert_equal "r1", store_graphs.retrieval.roadmaps.find("r1").title
     assert_call result, code: 0, err: "", out: ["roadmap: r1 r1", "next: plastic roadmap batch r1 1"]
   end
 
@@ -32,7 +32,7 @@ class RoadmapNewTest < Plastic::TestCase
 
     result = call("r1", "--title", "Second")
 
-    assert_equal [1, "First"], [result.code, store_graphs.retrieval.roadmap("r1").title]
+    assert_equal [1, "First"], [result.code, store_graphs.retrieval.roadmaps.find("r1").title]
     assert_includes result.err, "roadmap r1 already exists"
     assert_includes result.out, "next: plastic roadmap show r1"
   end
@@ -43,7 +43,7 @@ class RoadmapNewTest < Plastic::TestCase
     write_own_plan
     result = call("r2")
 
-    assert_equal [1, "# My own plan\n", nil], [result.code, File.read(store_path("roadmaps/r2.md")), store_graphs.retrieval.roadmap("r2")]
+    assert_equal [1, "# My own plan\n", nil], [result.code, File.read(store_path("roadmaps/r2.md")), store_graphs.retrieval.roadmaps.find("r2")]
     assert_includes result.err, "roadmaps/r2.md"
   end
 
@@ -60,7 +60,7 @@ class RoadmapNewTest < Plastic::TestCase
     write("roadmaps/r3.md", "<!-- plastic roadmap form 2 -->\n# R3\n\nslug: r3\ntitle: R3\ngoal:\nopened_at: 2026-10-01T10:00:00+02:00\n")
     result = call("r3")
 
-    assert_equal [1, nil], [result.code, store_graphs.retrieval.roadmap("r3")]
+    assert_equal [1, nil], [result.code, store_graphs.retrieval.roadmaps.find("r3")]
     assert_includes result.err, "run plastic sync up"
     assert_includes result.out.lines.map(&:chomp), "next: plastic sync up"
   end

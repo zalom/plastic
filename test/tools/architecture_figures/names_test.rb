@@ -24,7 +24,7 @@ class ArchitectureFiguresNamesTest < Minitest::Test
   def test_the_resolver_catches_a_name_the_code_lacks_and_passes_a_real_one
     absent = [%w[class Frontier Frontier], ["command", "intent frobnicate", "intent frobnicate"], %w[database retrieval.db retrieval.db],
       %w[table legacy_intents_data legacy_intents_data], %w[class Hash Hash], %w[class CLI::Table CLI::Table]]
-    present = [%w[class RoutineRun RoutineRun], ["class", "Graph::WorkGraph", "Graph::WorkGraph"], ["command", "intent new", "intent new"],
+    present = [%w[class CommandRun CommandRun], ["class", "Graph::WorkGraph", "Graph::WorkGraph"], ["command", "intent new", "intent new"],
       ["workflow", ":code_write_intent", ":code_write_intent"], %w[table document_heads document_heads], %w[database work_graph.db work_graph.db]]
 
     assert_equal absent, missing_names(absent)

@@ -25,7 +25,7 @@ class CommandReferenceOverviewFigureTest < Minitest::Test
 
   def test_the_ways_of_intent_end_come_in_the_order_of_the_delivery
     words = drawn_words(page("intent end"))
-    at = ["still needs records", "not verified yet", "in place"].map { |text| words.index(text) }
+    at = ["still needs records", "not recorded yet", "in place"].map { |text| words.index(text) }
 
     assert_equal at.compact.sort, at
   end
@@ -33,7 +33,7 @@ class CommandReferenceOverviewFigureTest < Minitest::Test
   def test_the_three_ways_of_intent_end_are_all_drawn
     words = drawn_words(page("intent end"))
 
-    assert_equal [true, true, true], ["still needs records", "not verified yet", "in place"].map { |text| words.include?(text) }
+    assert_equal [true, true, true], ["still needs records", "not recorded yet", "in place"].map { |text| words.include?(text) }
   end
 
   def test_every_workflow_of_a_page_is_drawn_once
@@ -69,11 +69,11 @@ class CommandReferenceOverviewFigureTest < Minitest::Test
   end
 
   def test_the_workflows_of_intent_end_hold_the_summary_of_the_last_workflow
-    assert_includes drawn_words(page("intent end")), "Closes the intent and releases its lock."
+    assert_includes drawn_words(page("intent end")), "Closes the intent and ends its run of work."
   end
 
   def test_the_workflows_of_intent_end_hold_the_text_of_a_branch
-    assert_includes drawn_words(page("intent end")), "the merge of the work is not verified yet"
+    assert_includes drawn_words(page("intent end")), "the delivery of the work is not recorded yet"
   end
 end
 

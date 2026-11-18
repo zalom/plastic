@@ -1,32 +1,34 @@
 # frozen_string_literal: true
 
-require_relative "../config"
+require_relative "../config/agent_models"
 require_relative "../config/layout"
 
 module Plastic
   module Installations
-    # What the person set in config.yml that an install reads: the model and
+    # What the person set with plastic config set that an install reads: the model and
     # effort of each agent role for one harness, whether the advisor is on, and
     # whether the status line is on.
     class Choices
       SECTIONS = { "claude" => "claude-code" }.freeze
 
-      def initialize(home)
-        @home = home
+      def initialize(settings)
+        @settings = settings
       end
 
       def models(harness: "claude") = overrides(harness, "models")
 
       def efforts(harness: "claude") = overrides(harness, "efforts")
 
-      def advisor? = Config.new(@home).flag(%w[advisor enabled], default: true)
+      def advisor? = @settings.config.flag(%w[advisor enabled], default: true)
 
-      def statusline? = Config.new(@home).flag(["statusline"], default: false)
+      def skipped_roles = advisor? ? [] : Config::AgentModels::CONSULTATION_AGENTS
+
+      def statusline? = @settings.config.flag(["statusline"], default: false)
 
       private
 
       def overrides(harness, part)
-        config = Config.new(@home, harness: SECTIONS.fetch(harness, harness))
+        config = @settings.config(harness: SECTIONS.fetch(harness, harness))
         Config::Layout.within(config.overrides, "agents", part).reject { |_agent, value| value.is_a?(Hash) }
       end
     end

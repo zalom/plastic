@@ -96,7 +96,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
   def read_up = sync.apply(sync.plan(:up))
 
   def put_completion
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:completions, { intent_id: "1", origin_id: retrieval.origin_id, at: "2026-10-19T09:00:00Z", session_id: "s0", judge: "verdict",
                                 criteria: "{}", evidence: "{}", outcome_sha256: "kept" })
     end
@@ -106,7 +106,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text(completion: completion_hash))
     read_up
 
-    assert_equal [["1", "s1", retrieval.origin_id]], store_graphs.databases.fetch(:work).rows("SELECT intent_id, session_id, origin_id FROM completions").map(&:values)
+    assert_equal [["1", "s1", retrieval.origin_id]], store_graphs.databases.fetch(:store).rows("SELECT intent_id, session_id, origin_id FROM completions").map(&:values)
   end
 
   def test_a_file_without_the_completion_key_leaves_the_row_the_intent_held
@@ -114,7 +114,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text)
     read_up
 
-    assert_equal ["kept"], store_graphs.databases.fetch(:work).rows("SELECT outcome_sha256 FROM completions").map { |row| row["outcome_sha256"] }
+    assert_equal ["kept"], store_graphs.databases.fetch(:store).rows("SELECT outcome_sha256 FROM completions").map { |row| row["outcome_sha256"] }
   end
 
   def test_a_null_completion_leaves_the_row_the_intent_held
@@ -122,7 +122,7 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     write(GRAPH, graph_text(completion: nil))
     read_up
 
-    assert_equal 1, store_graphs.databases.fetch(:work).rows("SELECT * FROM completions").size
+    assert_equal 1, store_graphs.databases.fetch(:store).rows("SELECT * FROM completions").size
   end
 
   def test_a_completion_that_names_another_intent_is_refused
@@ -164,7 +164,7 @@ module GraphFileHelpers
 
   def sync_up_plan = sync.plan(:up)
 
-  def node_rows = retrieval.nodes("1").map(&:to_h)
+  def node_rows = structure.nodes("1").map(&:to_h)
 
   def printed_node(title)
     node = store_graphs.work.add_node(intent_id: "1", title:, criterion: "Done")
@@ -182,8 +182,15 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
     sync.apply(sync_up_plan)
 
-    assert_equal [["n1", "done", "agent-7", 2, "2026-10-20T08:00:00Z", retrieval.origin_id]],
-      node_rows.map { |row| row.values_at(:id, :state, :by, :retries, :updated_at, :origin_id) }
+    assert_equal [["n1", "done", "2026-10-20T08:00:00Z", retrieval.origin_id]],
+      node_rows.map { |row| row.values_at(:id, :state, :updated_at, :origin_id) }
+  end
+
+  def test_sync_up_reads_the_runs_of_a_hand_edited_graph_json
+    write(GRAPH, graph_text(nodes: [node_hash("n1")]))
+    sync.apply(sync_up_plan)
+
+    assert_equal [["n1", 1, "agent-7", "done"]], structure.runs("1").map { |run| [run.node_id, run.number, run.session_id, run.result] }
   end
 
   def test_the_rows_of_the_file_replace_the_node_rows_the_intent_held
@@ -205,18 +212,18 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     write_full_graph
     sync.apply(sync_up_plan)
 
-    assert_equal [["n1", "n2", "needs"]], retrieval.edges("1").map { |edge| edge.to_h.values_at(:from, :to, :kind) }
-    assert_equal "2026-10-20T09:00:00Z", retrieval.approvals("1").first.at
+    assert_equal [["n1", "n2", "needs"]], structure.edges("1").map { |edge| edge.to_h.values_at(:from, :to, :kind) }
+    assert_equal "2026-10-20T09:00:00Z", structure.approvals("1").first.at
   end
 
   def test_the_verdicts_are_read_with_the_nodes
     write_full_graph
     sync.apply(sync_up_plan)
 
-    assert_equal [[1, "accept"]], retrieval.verdicts("1").map { |row| row.to_h.values_at(:round, :verdict) }
+    assert_equal [[1, "accept"]], structure.verdicts("1").map { |row| row.to_h.values_at(:round, :verdict) }
   end
 
-  def file_and_print = [folder.read(GRAPH), retrieval.printed[GRAPH]]
+  def file_and_print = [folder.read(GRAPH), retrieval.stored.printed[GRAPH]]
 
   def test_a_second_sync_up_leaves_the_file_bytes_and_the_printed_hash_as_they_are
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
@@ -253,10 +260,9 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
 
   def test_the_reader_applies_a_graph_file_it_is_given
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
-    read = reader.read(GRAPH)
+    read = reader.read(GRAPH, FixedClock::STAMP)
     apply_read(read)
 
-    assert_equal %i[work], [read.database]
     assert_equal ["n1"], node_rows.map { |row| row[:id] }
   end
 end

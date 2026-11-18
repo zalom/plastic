@@ -29,7 +29,7 @@ class IntentNoteTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions = store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
+  def revisions = store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
 
   def with_outcome(text = OUTCOME)
     intent = open_intent

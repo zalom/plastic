@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "agent_models"
+require_relative "sync_types"
 
 module Plastic
   class Config
@@ -9,11 +10,13 @@ module Plastic
     module Defaults
       GLOBAL = {
         "statusline" => false,
+        "chat_sync" => "user_only",
         "screens" => true,
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },
         "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false },
+        "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [] },
         "advisor" => { "enabled" => true }
       }.freeze
 

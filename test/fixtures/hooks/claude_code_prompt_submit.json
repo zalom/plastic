@@ -1,0 +1,9 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/work/.claude/projects/-work-project/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/work/project",
+  "prompt_id": "00000000-0000-4000-8000-000000000002",
+  "permission_mode": "auto",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Reply with the word ready."
+}

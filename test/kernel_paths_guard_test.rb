@@ -33,7 +33,7 @@ module RetiredNames
     "Workflows::RemoveLink", "Workflows::CreateRoadmap", "Workflows::WriteRoadmapBatch", "Workflows::AddRoadmapItem", "Workflows::ShowRoadmap",
     "Workflows::NextRoadmap", "Workflows::DropRoadmapItem", "Workflows::OpenRoadmapItem", "Workflows::CheckRoadmap", "Workflows::LogRoadmap",
     "Workflows::RemoveRoadmapEdge", "Workflows::AdvanceDelivery", "Workflows::CloseIntent", "Workflows::PrepareEnding", "Workflows::FinishIntent",
-    "Workflows::CheckMerge", "Workflows::WindDownIntent", "Workflows::DiscoverRetrieval", "Workflows::ExternalAgentWorkflow", "Workflows::Search",
+    "Workflows::CheckDelivery", "Workflows::WindDownIntent", "Workflows::DiscoverRetrieval", "Workflows::ExternalAgentWorkflow", "Workflows::Search",
     "Workflows::GetDocument", "Workflows::BatchDocuments", "Workflows::SubmitContext", "Workflows::CheckContextOwner", "Workflows::ReadContext",
     "Workflows::CheckArchitecture", "Workflows::RefreshArchitecture", "Workflows::AbandonIntent", "Workflows::PrepareAbandon", "Workflows::RevertIntent",
     "Workflows::WriteNote", "Workflows::ArchiveIntent", "Workflows::UnarchiveIntent", "Workflows::Backup", "Workflows::PreviewBackup",
@@ -114,7 +114,7 @@ class KernelPathsTest < Minitest::Test
   end
 
   FORKED_LOADS = <<~'CODE'
-    require "plastic"
+    require "plastic/cli"
     ARGV.each do |file|
       pid = fork { GC.disable; exit!(begin; load(file); true; rescue Exception; false; end ? 0 : 1) }
       puts("FAILED #{file}") unless Process.wait2(pid).last.success?
@@ -129,6 +129,21 @@ class KernelPathsTest < Minitest::Test
   def forked_loads(files)
     out, = ChildProcess.capture2e(RbConfig.ruby, "-W0", "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
     out.lines.grep(/\AFAILED /).map { |line| line.chomp.delete_prefix("FAILED ") }
+  end
+
+  def test_requiring_plastic_loads_the_core_and_no_cli
+    out, = ChildProcess.capture2e(RbConfig.ruby, "-W0", "-I", File.join(ROOT, "lib"), "-e", %(require "plastic"; print defined?(Plastic::CLI).inspect), chdir: ROOT)
+
+    assert_equal "nil", out
+  end
+
+  ENTRY_POINTS = { "exe/plastic" => %(require_relative "../lib/plastic/cli"), "tools/command_reference.rb" => %(require "plastic/cli"),
+                   "test/test_helper.rb" => %(require "plastic/cli") }.freeze
+
+  def test_every_entry_point_requires_the_cli_by_name
+    stale = ENTRY_POINTS.reject { |path, line| File.read(File.join(ROOT, path), encoding: "UTF-8").include?(line) }
+
+    assert_empty stale.keys
   end
 
   def test_the_test_helper_covers_lib

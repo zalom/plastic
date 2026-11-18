@@ -35,12 +35,6 @@ class HookRegistryTest < Minitest::Test
     assert_equal ["plastic-check-update"], Plastic::Installations::HookRegistry.claude_launcher_names(REGISTERED)
   end
 
-  def test_a_command_running_a_registered_launcher_is_current_and_another_is_not
-    registry = Plastic::Installations::HookRegistry
-
-    assert_equal [true, false], [registry.claude_current_command?("/h/plastic-check-update", REGISTERED), registry.claude_current_command?("/h/other", REGISTERED)]
-  end
-
   def test_one_group_for_an_event_maps_to_a_hash_with_the_launcher_command
     hooks = Plastic::Installations::HookRegistry.claude_settings_hooks(hook_dir: "/h", registered: REGISTERED)
 

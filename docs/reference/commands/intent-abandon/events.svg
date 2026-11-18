@@ -110,7 +110,7 @@
 <path d="M 472 232 L 480 237 L 472 242 Z" class="head"/>
 <rect x="480" y="206" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="224" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="242" class="t" text-anchor="start">Another live session holds the lock of the</text>
+<text x="492" y="242" class="t" text-anchor="start">Another live session holds a node claim of the</text>
 <text x="492" y="258" class="t" text-anchor="start">intent.</text>
 <text x="24" y="302" class="way" text-anchor="start">When the work of the intent is not reverted yet:</text>
 <rect x="24" y="314" width="400" height="51" rx="6" class="lane-agent"/>
@@ -136,19 +136,19 @@
 <rect x="480" y="461" width="330" height="46" rx="6" class="stop-end"/>
 <text x="492" y="479" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="492" y="497" class="t" text-anchor="start">The revert is recorded.</text>
-<text x="24" y="541" class="way" text-anchor="start">When the work is reverted, so the intent can be marked abandoned:</text>
+<text x="24" y="541" class="way" text-anchor="start">When no work of the intent is left to revert, so the intent can be marked abandoned:</text>
 <rect x="24" y="553" width="400" height="51" rx="6" class="lane-code"/>
 <circle cx="44" cy="572" r="8" class="badge"/>
 <text x="44" y="576" class="badge-t" text-anchor="middle">5</text>
 <text x="64" y="575" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="595" class="t" text-anchor="start">Check cleanup again.</text>
+<text x="64" y="595" class="t" text-anchor="start">Forget the abandon of an earlier call.</text>
 <path d="M 64 604 L 64 630" class="wire"/>
 <path d="M 59 622 L 64 630 L 69 622 Z" class="head"/>
 <rect x="24" y="630" width="400" height="51" rx="6" class="lane-code"/>
 <circle cx="44" cy="649" r="8" class="badge"/>
 <text x="44" y="653" class="badge-t" text-anchor="middle">6</text>
 <text x="64" y="652" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="672" class="t" text-anchor="start">Abandon the intent and finish cleanup.</text>
+<text x="64" y="672" class="t" text-anchor="start">Abandon the intent.</text>
 <path d="M 64 681 L 64 707" class="wire"/>
 <path d="M 59 699 L 64 707 L 69 699 Z" class="head"/>
 <rect x="24" y="707" width="400" height="51" rx="6" class="lane-agent"/>

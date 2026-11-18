@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../config"
-
 module Plastic
   module Workflows
     # Resolves the selected stores for a retrieval discovery request.
@@ -25,12 +23,12 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        (values.empty? ? Plastic::Config.new(@context.scope.plastic_home).source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
+        (values.empty? ? @context.settings.config.source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
       end
 
       def validate(selected)
         unknown = selected - (known_stores | ["global"])
-        raise CLI::Command::Failure, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
+        raise Failed, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
       end
 
       def known_stores

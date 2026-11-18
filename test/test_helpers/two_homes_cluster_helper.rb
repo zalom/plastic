@@ -20,7 +20,7 @@ module TwoHomesClusterHelper
   # Puts one cluster row, with the origin of that home unless `origin` names another.
   def put_cluster(home, name, intent_id, origin: nil)
     row = { name:, intent_id: }
-    database_of(home, :work).transaction { |batch| batch.put(:clusters, origin ? row.merge(origin_id: origin) : row) }
+    database_of(home).transaction { |batch| batch.put(:clusters, origin ? row.merge(origin_id: origin) : row) }
   end
 
   # A change of the clusters on a home through its rows, printed to the file by sync down.
@@ -30,12 +30,12 @@ module TwoHomesClusterHelper
   end
 
   def clusters(home, origin: origin_of(home))
-    rows_of(home, :work, "SELECT name, intent_id FROM clusters WHERE origin_id = :origin ORDER BY name, intent_id", origin:).map { |row| [row["name"], row["intent_id"]] }
+    rows_of(home, "SELECT name, intent_id FROM clusters WHERE origin_id = :origin ORDER BY name, intent_id", origin:).map { |row| [row["name"], row["intent_id"]] }
   end
 
   def listed(home) = JSON.parse(read_file(home, FILE)).fetch("clusters").map { |cluster| cluster["name"] }.sort
 
-  def printed_part?(home) = home_graphs(home).retrieval.printed.key?(PART)
+  def printed_part?(home) = home_graphs(home).retrieval.stored.printed.key?(PART)
 
   def said(call) = call.out + call.err
 end

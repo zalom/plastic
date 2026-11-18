@@ -8,7 +8,7 @@ class ScreenTerminalListTest < Plastic::TestCase
   Keys = Class.new(StringIO) { def wait_readable(*) = true }
   DOWN = "\e[B"
 
-  def choices = %w[claude codex cursor].each_with_index.map { |label, index| Screen::Choice.new(label:, chosen: index.zero?) }
+  def choices = %w[claude codex cursor].each_with_index.map { |label, index| Plastic::Choice.new(label:, chosen: index.zero?) }
 
   def pressed(keys)
     prompt = Screen::TerminalList.prompt(Keys.new(keys), StringIO.new, env: { "TTY_TEST" => true })
@@ -16,18 +16,18 @@ class ScreenTerminalListTest < Plastic::TestCase
   end
 
   def test_enter_keeps_the_preselected_items
-    assert_equal Screen::Chosen.new(labels: %w[claude]), pressed("\r")
+    assert_equal Plastic::Chosen.new(labels: %w[claude]), pressed("\r")
   end
 
   def test_space_toggles_the_item_under_the_cursor
-    assert_equal Screen::Chosen.new(labels: %w[claude codex]), pressed("#{DOWN} \r")
+    assert_equal Plastic::Chosen.new(labels: %w[claude codex]), pressed("#{DOWN} \r")
   end
 
   def test_a_preselected_item_can_be_toggled_off
-    assert_equal Screen::Chosen.new(labels: []), pressed(" \r")
+    assert_equal Plastic::Chosen.new(labels: []), pressed(" \r")
   end
 
   def test_ctrl_c_leaves_with_no_change
-    assert_equal Screen::Left.new, pressed("\u0003")
+    assert_equal Plastic::Left.new, pressed("\u0003")
   end
 end

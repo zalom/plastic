@@ -19,7 +19,6 @@ module Plastic
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
         "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
-        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: lock the intent and print the worktree"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
         "search" => ["Commands::Search", "Search literal indexed passages across selected stores"]
@@ -27,17 +26,19 @@ module Plastic
       "intent" => {
         "intent abandon" => ["Commands::Intent::Abandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
         "intent end" => ["Commands::Intent::End", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
-        "intent new" => ["Commands::Intent::New", "Open an intent: write its rows and its folder"],
+        "intent new" => ["Commands::Intent::New", "Write a future intent: its rows and its folder"],
+        "intent start" => ["Commands::Intent::Start", "Start an intent for guided work: set it in progress and print its worktree"],
+        "intent auto" => ["Commands::Intent::Auto", "Start an intent for agent delivery: set it in progress and print its worktree"],
+        "intent park" => ["Commands::Intent::Park", "Park an intent in progress with the reason it waits; intent start resumes it"],
         "intent rule" => ["Commands::Intent::Rule", "Write an owner ruling, with --supersedes to replace an older one"],
         "intent revise" => ["Commands::Intent::Revise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
         "intent note" => ["Commands::Intent::Note", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],
-        "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
+        "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; no node of it is claimed without it"],
         "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
         "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],
         "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md"],
         "intent discover" => ["Commands::Intent::Discover", "Record deterministic retrieval candidates for an intent"],
         "intent context" => ["Commands::Intent::Context", "Read or submit selected retrieval context for an intent"],
-        "intent lock status" => ["Commands::Intent::Lock::Status", "Print the session that holds an intent's lock, and its worktree"],
         "intent show" => ["Commands::Intent::Show", "Print one intent's status, criteria, decisions, rulings and nodes"],
         "intent brief" => ["Commands::Intent::Brief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
         "intent link" => ["Commands::Intent::Link", "Write a typed link from an intent to a ref"],
@@ -61,13 +62,16 @@ module Plastic
         "config" => ["Commands::Config", "Pick which on/off settings are on, on the choice screen"],
         "config list" => ["Commands::Config::List", "List every setting with its value, globally or for one harness"],
         "config get" => ["Commands::Config::Get", "Print the value of one setting"],
-        "config set" => ["Commands::Config::Set", "Write one setting to config.yml, globally or for one harness"]
+        "config set" => ["Commands::Config::Set", "Write one setting to the settings rows, globally or for one harness"]
       },
       "backup" => {
         "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
         "backup list" => ["Commands::Backup::List", "List one store's backups with status and goal, flagging a missing or changed file"],
         "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed or --older-than"],
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
+      },
+      "resources" => {
+        "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
       },
       "document" => {
         "document get" => ["Commands::Document::Get", "Fetch one current or revision-qualified document"],

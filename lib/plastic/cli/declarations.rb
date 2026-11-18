@@ -9,13 +9,13 @@ module Plastic
     # The words a command's class body declares itself with: what the tool
     # takes, what it works on, and which graphs it reads and writes.
     module Declarations
-      GRAPHS = %i[work knowledge retrieval references].freeze
+      GRAPHS = %i[work knowledge retrieval].freeze
       PRINTS = %i[intent roadmap index].freeze
       OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
 
       # The arguments that name the thing a call works on, such as the
       # intent id and the node id. A tool that writes keeps one open routine
-      # run per subject (see RoutineRun).
+      # run per subject (see CommandRun).
       def subject(*names)
         @subject = names if names.any?
         @subject
@@ -58,7 +58,7 @@ module Plastic
       end
 
       def changes(places = nil, **named)
-        given = places || (named unless named.empty?)
+        given = named.empty? ? places : named
         @changes = given if given
         @changes
       end

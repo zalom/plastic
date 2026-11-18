@@ -2,14 +2,14 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/search_query"
-require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/graph/evidence/writer"
 
 class SearchQueryTest < Plastic::TestCase
   def setup
     super
     open_intent
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", "falcon wings")
-    retrieval.backfill
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", "falcon wings")
+    retrieval.repair
   end
 
   def rows(limit: "5", terms: "falcon")
@@ -22,13 +22,13 @@ class SearchQueryTest < Plastic::TestCase
   end
 
   def test_a_limit_out_of_range_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { rows(limit: "0") }
+    error = assert_raises(Plastic::Usage) { rows(limit: "0") }
 
     assert_equal "search limit must be between 1 and 100", error.message
   end
 
   def test_a_limit_that_is_not_a_number_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { rows(limit: "many") }
+    error = assert_raises(Plastic::Usage) { rows(limit: "many") }
 
     assert_equal "search limit must be an integer", error.message
   end

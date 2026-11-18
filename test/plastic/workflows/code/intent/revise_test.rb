@@ -9,9 +9,7 @@ class ReviseIntentTest < Plastic::TestCase
   def test_a_change_that_is_not_valid_stops_the_call
     open_intent
 
-    outcome, = revise(line: "two\nlines")
-
-    assert_kind_of Plastic::Failed, outcome
+    assert_raises(Plastic::Failed) { revise(line: "two\nlines") }
   end
 
   def test_a_valid_change_passes_the_gate

@@ -116,3 +116,17 @@ module InstallerHelper
     end
   end
 end
+
+# A home of its own for a test whose install closes and reopens the home's connections: the rows it writes are committed, and the shared template home would keep them for the next test.
+module OwnHome
+  def setup
+    @home = File.realpath(Dir.mktmpdir("install-own-home"))
+    @plastic_home = File.join(@home, ".plastic")
+    Plastic::Graph.create(home: @plastic_home, store: "global")
+  end
+
+  def teardown
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(@home)
+  end
+end

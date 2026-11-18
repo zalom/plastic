@@ -8,6 +8,7 @@ commits and releases. This page points to the rest.
 | [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | The system architecture in drawings, and how the `plastic` command is built. |
 | [docs/contributing/CODING_PRACTICES.md](docs/contributing/CODING_PRACTICES.md) | How Ruby is written, linted and scored here. |
 | [docs/contributing/TECHNICAL.md](docs/contributing/TECHNICAL.md) | The gates, the byte budget and the test layout. |
+| [docs/contributing/MIGRATIONS.md](docs/contributing/MIGRATIONS.md) | How to add a database migration, and the rules the gate enforces on it. |
 
 ## Test a change
 
@@ -82,8 +83,8 @@ on your machine.
    `lib/plastic/cli/table/work_families.rb`, which `table.rb` adds to the other families.
 2. Add the class in one file under `lib/plastic/commands/`. Each word of the command is a name in
    the class path and a folder in the file path: `intent end` is `Commands::Intent::End` in
-   `intent/end.rb`, and `intent lock status` is `Commands::Intent::Lock::Status` in
-   `intent/lock/status.rb`. A group with no command of its own is a module; `backup` and `config`
+   `intent/end.rb`, and `node renew` is `Commands::Node::Renew` in
+   `node/renew.rb`. A group with no command of its own is a module; `backup` and `config`
    are classes that also hold their subcommands, and a subcommand file requires its parent first.
    Inside `commands/`, write `Plastic::Graph`, never `Graph`, wherever a group name would shadow a
    top-level class. Follow `architecture/status.rb` for the smallest example.
@@ -98,5 +99,5 @@ on your machine.
 2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
    `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
    no tag yet. The release carries the three files `install.sh` downloads.
-3. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
-   lanes and the stable-line guarantees.
+3. Read [docs/release-lines.md](docs/release-lines.md) for the light trunk rules, how to cut
+   a beta and the stable-line guarantees.

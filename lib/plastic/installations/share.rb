@@ -15,9 +15,9 @@ module Plastic
 
       def active_path = File.join(root, "active")
 
-      def active_version = version_at(active_path)
+      def active_version = Share.version_at(active_path)
 
-      def previous_version = version_at(File.join(root, "previous"))
+      def previous_version = Share.version_at(File.join(root, "previous"))
 
       def versions
         releases = File.join(root, "releases")
@@ -28,14 +28,14 @@ module Plastic
 
       def launcher_link(path) = LauncherLink.new(path, root)
 
-      private
-
-      attr_reader :root
-
-      def version_at(path)
+      def self.version_at(path)
         file = File.join(path, "VERSION")
         File.file?(file) ? File.read(file).strip : nil
       end
+
+      private
+
+      attr_reader :root
     end
   end
 end

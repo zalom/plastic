@@ -67,7 +67,8 @@ class ConfigCommandTest < Plastic::TestCase
     config("q")
     config("a", "--harness", "codex")
 
-    assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true } } }, saved["harnesses"])
+    assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true },
+                                "sync" => { "references" => true } } }, saved["harnesses"])
   end
 
   def test_an_answer_that_keeps_every_setting_writes_nothing

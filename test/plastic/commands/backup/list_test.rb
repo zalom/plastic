@@ -72,23 +72,15 @@ class BackupListTest < Plastic::TestCase
     assert_includes result.out, "(changed)"
   end
 
-  def test_a_row_with_no_folder_is_flagged_missing
+  def test_a_backup_whose_status_file_holds_no_digest_is_listed_unverified_and_does_not_fail
     home = fresh_home
     backup_at(home, at(*FIRST))
-    FileUtils.rm_rf(File.join(backups_dir(home), "20260101100000"))
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
+    report = folders.report("20260101100000").except("digest")
+    File.write(File.join(folders.path("20260101100000"), "status.yml"), report.to_yaml)
     result = list_call(home, "--store", "alpha")
 
-    assert_equal 1, result.code
-    assert_includes result.out, "(missing)"
-  end
-
-  def test_a_folder_with_no_row_is_listed_as_no_row_and_does_not_fail
-    home = fresh_home
-    backup_at(home, at(*FIRST))
-    Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/20260101100000") }
-    result = list_call(home, "--store", "alpha")
-
-    assert_call result, code: 0, out: ["20260101100000", "(no row)"]
+    assert_call result, code: 0, out: ["20260101100000", "(unverified)"]
   end
 
   def test_a_row_of_another_store_is_neither_listed_nor_removed
@@ -97,6 +89,6 @@ class BackupListTest < Plastic::TestCase
     result = list_call(home, "--store", "alpha")
 
     refute_includes result.out, "20260101100000"
-    assert_equal ["beta/20260101100000"], row_names(home, "beta")
+    assert_equal ["20260101100000"], folder_names(home, "beta")
   end
 end

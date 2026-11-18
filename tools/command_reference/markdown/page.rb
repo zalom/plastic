@@ -43,9 +43,10 @@ module CommandReference
       end
 
       def changes
-        return ["## What one call changes", "", "This command changes nothing.", ""] if @page.changes.empty?
+        found = @page.changes
+        return ["## What one call changes", "", "This command changes nothing.", ""] if found.empty?
 
-        ["## What one call changes", "", "| What changes | Where | Reach |", "| --- | --- | --- |", *@page.changes.map { |each| change_row(each) }, "", *definition]
+        ["## What one call changes", "", "| What changes | Where | Reach |", "| --- | --- | --- |", *found.map(&:table_row), "", *definition]
       end
 
       def definition
@@ -53,14 +54,9 @@ module CommandReference
         travels ? [GOES_WITH_THE_STORE, ""] : []
       end
 
-      def change_row(change) = "| #{Words.shown(change.text)} | #{change.where} | #{change.reach} |"
-
       def agent_texts
-        said = EventList.new(@page).events.reject { |event| event.say.to_s.strip.empty? }
-        return [] if said.empty?
-
-        ["## What the agent workflow steps print", "", "| Step | The text the agent gets |", "| --- | --- |",
-          *said.map { |event| "| #{event.number} | #{Words.shown(event.say)} |" }, ""]
+        rows = EventList.new(@page).events.select(&:said?).map(&:say_row)
+        rows.empty? ? [] : ["## What the agent workflow steps print", "", "| Step | The text the agent gets |", "| --- | --- |", *rows, ""]
       end
 
       def footer

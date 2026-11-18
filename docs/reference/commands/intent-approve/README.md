@@ -1,6 +1,6 @@
 # plastic intent approve
 
-Write the owner's go-ahead for an intent; auto refuses an intent without it.
+Write the owner's go-ahead for an intent; no node of it is claimed without it.
 
 ```sh
 plastic intent approve ID

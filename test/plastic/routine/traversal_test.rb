@@ -5,11 +5,11 @@ require_relative "../../test_helper"
 class TraversalTest < Plastic::TestCase
   def traverse(routine, facts)
     ctx = Plastic::Context.new(declared: routine.chain.facts + facts.keys, facts:, graphs: {})
-    run = Plastic::RoutineRun.fresh("kernel test", "ada")
-    Plastic::Routine::Traversal.new(routine.chain, ctx, run) { |saved| store_graphs.work.save_routine_run(saved) }.call { |value| value }
+    run = Plastic::CommandRun.fresh("kernel test", "ada", FixedClock::AT)
+    Plastic::Routine::Traversal.new(routine.chain, ctx, run) { |saved| store_graphs.work.save_command_run(saved) }.call { |value| value }
   end
 
-  def kept = retrieval.routine_run("kernel test", "ada")
+  def kept = retrieval.command_run("kernel test", "ada")
 
   def test_a_chain_that_reaches_noop_finishes_on_the_last_outcome
     value = traverse(Fixtures::TwoStep, name: "ada")
@@ -24,9 +24,9 @@ class TraversalTest < Plastic::TestCase
   end
 
   def test_a_gate_ends_the_pass_on_its_value_and_keeps_it
-    value = traverse(Fixtures::Gate, mode: "hold")
+    error = assert_raises(Plastic::Refused) { traverse(Fixtures::Gate, mode: "hold") }
 
-    assert_equal Plastic::Refused.new(:code_hold, "the owner holds hold"), value
+    assert_equal "the owner holds hold", error.message
     assert_equal "refused", kept.status
   end
 
@@ -37,8 +37,8 @@ class TraversalTest < Plastic::TestCase
   end
 
   def test_a_closing_line_with_a_hole_fails_the_pass
-    value = traverse(Fixtures::Holed, {})
+    error = assert_raises(Plastic::Failed) { traverse(Fixtures::Holed, {}) }
 
-    assert_equal [Plastic::Failed, "closing"], [value.class, value.step]
+    assert_equal "code_hole, closing", error.source
   end
 end

@@ -5,10 +5,12 @@ require_relative "../../lib/plastic/config"
 require "tmpdir"
 
 class ConfigTest < Plastic::TestCase
+  include ConfigHomes
+
   def config(text)
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
-      yield Plastic::Config.new(dir)
+      seed_config(dir, text)
+      yield Plastic::Wiring.config(dir)
     end
   end
 
@@ -29,7 +31,7 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_a_missing_file_reads_as_the_default
-    Dir.mktmpdir { |dir| refute Plastic::Config.new(dir).flag(%w[runner stop_hook], default: false) }
+    Dir.mktmpdir { |dir| refute Plastic::Wiring.config(dir).flag(%w[runner stop_hook], default: false) }
   end
 
   def test_a_file_that_does_not_parse_falls_back_to_the_default
@@ -53,13 +55,13 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_a_missing_file_reads_the_choice_default
-    Dir.mktmpdir { |dir| assert_equal "off", Plastic::Config.new(dir).choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
+    Dir.mktmpdir { |dir| assert_equal "off", Plastic::Wiring.config(dir).choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
   end
 
   def harness_config(text, harness)
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "config.yml"), text)
-      yield Plastic::Config.new(dir, harness:)
+      seed_config(dir, text)
+      yield Plastic::Wiring.config(dir, harness:)
     end
   end
 
@@ -116,6 +118,6 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_an_unregistered_harness_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { Plastic::Config.new(@plastic_home, harness: "cursor") }
+    assert_raises(Plastic::Usage) { Plastic::Wiring.config(@plastic_home, harness: "cursor") }
   end
 end

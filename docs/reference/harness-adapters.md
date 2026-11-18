@@ -28,7 +28,7 @@ Plastic ships one entry for each harness it knows, in `lib/plastic/harnesses.rb`
 | Transcript path | under `.claude/projects/` | under `.codex/sessions/` | none |
 | Process name | `claude` | `codex` | none |
 | Event field only it writes | none | `turn_id` | none |
-| Hooks | `hook start`, `hook stop`, `hook end` | `hook start`, `hook stop`, `hook end` | none |
+| Hooks | `hook start`, `hook prompt`, `hook stop`, `hook end` | `hook start`, `hook prompt`, `hook stop`, `hook end` | none |
 | Folder | `.claude` | `.codex` | `.hermes` |
 | Settings file | `.claude/settings.json` | `.codex/hooks.json` | none |
 | Doctor checks | `Doctor::ClaudeCode` | `Doctor::Codex` | none |
@@ -127,7 +127,7 @@ The installer copies each role file of `agents/` into every harness that reads a
 | Codex | `~/.codex/agents/` | `NAME.toml`, rendered with the name, the description, the model fields and the instructions |
 | Hermes | `~/.hermes/agents/` | `NAME.md`, copied |
 
-A model or an effort set for a harness in `config.yml` rewrites that agent's model line for
+A model or an effort set for a harness with `plastic config set` rewrites that agent's model line for
 that harness only. With `advisor.enabled: false`, the two advisor agents are not installed.
 
 `plastic init` counts a harness as found when its folder, `.claude`, `.codex` or `.hermes`, is in
@@ -154,18 +154,19 @@ harness name as `NAME`. `plastic uninstall` reads it and removes exactly what it
 | `sections` | Each instruction file that holds a Plastic section, with the section's begin and end markers |
 
 The uninstall removes only these entries from the settings file and these sections from the
-instruction files, so the person's own entries and text stay. Only the main session runs
+instruction files, so the person's own entries and text stay. `hook prompt` answers the UserPromptSubmit event of both harnesses and records the prompt in the
+chat history of `plastic.db`. Only the main session runs
 Plastic's hooks: no record lists a SubagentStart or a SubagentStop entry.
 
 ## Harness support
 
 | Harness | Install | Instructions | Hooks | Status line | Agents |
 | ------- | ------- | ------------ | ----- | ----------- | ------ |
-| Claude Code | `install.sh`, then `plastic init` | The import section in `~/.claude/CLAUDE.md` | `hook start`, `hook stop` and `hook end`, plus the update check at session start, in `~/.claude/settings.json` | Yes, unless `statusline` is off in `config.yml` | `~/.claude/agents/` |
-| Codex CLI | `install.sh`, then `plastic init` | The section in `~/.codex/AGENTS.md` | `hook start`, `hook stop` and `hook end` in `~/.codex/hooks.json` | No | `~/.codex/agents/` |
+| Claude Code | `install.sh`, then `plastic init` | The import section in `~/.claude/CLAUDE.md` | `hook start`, `hook prompt`, `hook stop` and `hook end`, plus the update check at session start, in `~/.claude/settings.json` | Yes, unless `statusline` is off in `config.yml` | `~/.claude/agents/` |
+| Codex CLI | `install.sh`, then `plastic init` | The section in `~/.codex/AGENTS.md` | `hook start`, `hook prompt`, `hook stop` and `hook end` in `~/.codex/hooks.json` | No | `~/.codex/agents/` |
 | Hermes | `install.sh`, then `plastic init` | None | None | No | `~/.hermes/agents/` |
 
-So Claude Code gets three kernel hooks and the update check through `settings.json`. Each
+So Claude Code gets four kernel hooks and the update check through `settings.json`. Each
 harness keeps its version record in its own folder: `~/.claude/plastic/VERSION`,
 `~/.agents/plastic/VERSION` and `~/.hermes/plastic/VERSION`.
 

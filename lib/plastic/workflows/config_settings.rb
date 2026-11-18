@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../config"
-require_relative "../cli/command"
+require_relative "../errors"
 
 module Plastic
   module Workflows
@@ -19,15 +18,17 @@ module Plastic
 
       def set(key, value) = config.set(key, value)
 
+      def problem = @context.settings.store.problem
+
       def current(key)
-        entries.fetch(key) { raise CLI::Command::Usage, "no setting #{key}; plastic config list names them" }
+        entries.fetch(key) { raise Usage, "no setting #{key}; plastic config list names them" }
       end
 
       def harness_words = @context.harness.then { |name| name ? " --harness #{name}" : "" }
 
       private
 
-      def config = (@config ||= Plastic::Config.new(@context.scope.plastic_home, harness: @context.harness))
+      def config = (@config ||= @context.settings.config(harness: @context.harness))
     end
   end
 end

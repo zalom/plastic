@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../archive"
+require_relative "marking"
 
 module Plastic
   module Graph
@@ -8,11 +9,11 @@ module Plastic
       class Archive
         # Persists an intent directory snapshot before any archive removal begins.
         class Capture
-          def initialize(database, folder, origin_id, session:)
+          def initialize(database, folder, origin_id, marking)
             @database = database
             @folder = folder
             @origin_id = origin_id
-            @session = session
+            @marking = marking
           end
 
           def capture(intent)
@@ -24,16 +25,14 @@ module Plastic
 
           private
 
-          attr_reader :database, :folder, :origin_id, :session
+          attr_reader :database, :folder, :marking, :origin_id
 
           def store(intent, entries)
             database.transaction do |batch|
               snapshot(intent.intent_id).capture(batch, entries)
-              batch.put(:archives, archive_row(intent), statement: :upsert)
+              batch.put(:archives, marking.row(intent), statement: :upsert)
             end
           end
-
-          def archive_row(intent) = { intent_id: intent.intent_id, at: Plastic.now, restored_at: nil, session_id: session }
 
           def root(intent) = Location.root(folder, intent)
 

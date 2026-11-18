@@ -37,8 +37,8 @@ class RetrievalEvidenceTest < Plastic::TestCase
     assert_equal 1, evidence.fetch_passage(uri(@alpha), 1).fetch(:position)
   end
 
-  def test_a_search_of_current_evidence_needs_the_backfill_first
-    store_graphs.databases[:knowledge].transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+  def test_a_search_of_current_evidence_needs_the_retrieval_file
+    lose_retrieval_file
 
     assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { evidence.search_current("alpha") }
   end

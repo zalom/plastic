@@ -5,8 +5,7 @@ require_relative "move"
 module Plastic
   module Commands
     module Node
-      # Reopens a needs_info or impeded node with its resolution and resets its
-      # retries.
+      # Reopens a needs_info or impeded node with its resolution.
       class Resolve < Move
         argument :text, label: "TEXT", text: "the resolution"
 

@@ -10,14 +10,15 @@ module Plastic
     module Code
       # Runs the checks of the shared parts and of one harness, prints a row for
       # each, and names each repair once. It rebuilds the search rows of a store
-      # that are out of step, and changes nothing else.
+      # that are out of step, adds the work log lines a failed write left out, and changes nothing else.
       class Doctor < CodeWorkflow
         clear_declarations
 
         sets :repairs
 
         read "check the installation, the databases, the hooks and the instruction files of the harness" do |context|
-          checks = Plastic::Doctor.check(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session))
+          checks = Plastic::Doctor.check(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session),
+            running: Installation.running(context.scope), now: context.now, store: context.settings.store)
           checks.each { |check| context.row(check.label, check.value) }
           repairs = checks.filter_map(&:repair).uniq
           context.row("repair:", repairs) unless repairs.empty?

@@ -5,12 +5,12 @@ Plastic tracks work on your machine, in files you own. It collects no usage data
 | Record | Place | Written when |
 | ------ | ----- | ------------ |
 | Install ledger | `~/.plastic/versions.json`, one JSON object per line | Install, update, rollback, reinstall |
-| Savepoint lines | The `savepoints` table of the store's `work_graph.db`, printed to `savepoint.md` in each intent folder | When the intent is created, and when a hand-written line reaches the rows through `plastic sync up` |
+| Work log lines | The `work_log` table of the store's `work_graph.db`, printed to `work.log` in each intent folder | Each intent, node, edge and archive write, and when a hand-written line reaches the rows through `plastic sync up`. The kinds are `opened`, `approved`, `parked`, `ruled`, `verdict`, `wrote`, `noted`, `added`, `removed`, `claimed`, `capped`, `released`, `done`, `failed`, `asked`, `impeded`, `resolved`, `edge_added`, `edge_removed`, `archived`, `unarchived` and `abandoned`. A write stores its rows and its `work_log` line in one transaction, so a cut-short write leaves neither. |
 | Roadmap log | The roadmap's rows, printed to `roadmaps/<slug>.md` in the store | Each `plastic roadmap log` |
-| Sessions | The `sessions` table of `~/.plastic/local.db` | Each session start, turn end and session end |
+| Sessions | The `sessions` table of `~/.plastic/plastic.db` | Each session start, turn end and session end |
 
 The `plastic` command reads these records and writes them too: the installer commands write the
-install ledger, `plastic intent new` writes an intent's first savepoint line, `plastic roadmap
+install ledger, `plastic intent new` writes an intent's first work log line, `plastic roadmap
 log` appends to a roadmap's log, and the session hooks and `plastic session note` write the
 session rows.
 

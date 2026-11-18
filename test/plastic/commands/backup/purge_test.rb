@@ -113,7 +113,6 @@ class BackupPurgeTest < Plastic::TestCase
 
     assert_equal 0, purge_call(home, "--store", "alpha", "--older-than", "2026-03-01").code
     assert_equal stamps.last(2), folder_names(home)
-    assert_equal stamps.last(2).map { |name| "alpha/#{name}" }, row_names(home)
   end
 
   def test_older_than_reads_a_full_time_with_its_offset
@@ -135,36 +134,12 @@ class BackupPurgeTest < Plastic::TestCase
     assert_nothing_deleted home, purge_call(home, "--store", "alpha", "--older-than", "2026-02-30"), "2026-02-30"
   end
 
-  def test_a_folder_with_no_row_is_deleted
-    home = seeded_home
-    Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/#{stamps.first}") }
-    purge_call(home, "--store", "alpha", "--all")
-
-    assert_empty folder_names(home)
-  end
-
-  def test_a_row_whose_folder_is_gone_is_removed
-    home = seeded_home
-    FileUtils.rm_rf(File.join(backups_dir(home), stamps.first))
-    purge_call(home, "--store", "alpha", "--all")
-
-    assert_empty row_names(home)
-  end
-
   def test_all_deletes_only_the_named_stores_backups
     home = seeded_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0), slug: "beta")
     purge_call(home, "--store", "alpha", "--all")
 
-    assert_equal [%w[20260101100000], %w[beta/20260101100000]], [folder_names(home, "beta"), row_names(home, "beta")]
-  end
-
-  def test_a_row_of_another_store_is_neither_listed_nor_removed
-    home = seeded_home
-    backup_at(home, at(2025, 1, 1, 10, 0, 0), slug: "beta")
-    purge_call(home, "--store", "alpha", "--older-than", "2030-01-01")
-
-    assert_equal ["beta/20250101100000"], row_names(home, "beta")
+    assert_equal %w[20260101100000], folder_names(home, "beta")
   end
 
   def test_a_preview_lists_the_folders_and_deletes_nothing
@@ -172,7 +147,7 @@ class BackupPurgeTest < Plastic::TestCase
     result = purge_call(home, "--store", "alpha", "--all", "--dry-run")
 
     assert_call result, code: 0, out: ["preview", stamps.first, stamps.last]
-    assert_equal [4, 4], [folder_names(home).size, row_names(home).size]
+    assert_equal 4, folder_names(home).size
   end
 end
 
@@ -221,13 +196,6 @@ class BackupPurgeFailedTest < Plastic::TestCase
 
     assert_equal 0, purge_call(home, "--store", "alpha", "--failed").code
     assert_equal ["20260101100000", RUNNING], folder_names(home)
-  end
-
-  def test_failed_keeps_the_rows_of_done_backups
-    home = seeded_home
-    purge_call(home, "--store", "alpha", "--failed")
-
-    assert_equal ["alpha/20260101100000"], row_names(home)
   end
 
   def test_failed_names_each_folder_it_deleted

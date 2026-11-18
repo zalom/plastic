@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "workflow"
-require_relative "failed"
-require_relative "cli/command/usage"
+require_relative "errors"
 require_relative "code_workflow/gate"
 require_relative "code_workflow/read"
 require_relative "code_workflow/step"
@@ -49,7 +48,7 @@ module Plastic
       end
 
       # A read that clears what a stopped step of an earlier call left in
-      # `names`, so a resumed routine run tries that step again rather than
+      # `names`, so a resumed command run tries that step again rather than
       # replaying its stop. An earlier call stopped when `problem` is set.
       def forget_stop(*names)
         read("forget a stop of an earlier call") do |context|
@@ -63,8 +62,9 @@ module Plastic
       # false, and the check must hold after the body. So a rerun after a
       # failure or a handoff never repeats the change.
       def step(step_name, done:, changes: nil, &body)
-        raise Invalid, "#{name}: step #{step_name.inspect} needs a block" unless body
-        raise Invalid, "#{name}: step #{step_name.inspect} needs changes:, a hash of place to words, or {} when it changes nothing" unless changes
+        label = step_name.inspect
+        raise Invalid, "#{name}: step #{label} needs a block" unless body
+        raise Invalid, "#{name}: step #{label} needs changes:, a hash of place to words, or {} when it changes nothing" unless changes
 
         steps << Step.new(step_name, done, changes, body)
       end
@@ -100,13 +100,12 @@ module Plastic
 
     private
 
-    # Nil when the step is done with; otherwise the value that ends the call.
     def perform(step)
       step.call(ctx, self.class)
-    rescue CLI::Command::Usage
+    rescue Usage, Failed, Refused
       raise
     rescue => error
-      Failed.raised(key, step.name, error)
+      raise Failed.raised(key, step.name, error)
     end
 
     def pick

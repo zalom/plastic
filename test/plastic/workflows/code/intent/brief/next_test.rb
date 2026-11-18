@@ -7,6 +7,7 @@ class DeliveryNextTest < Plastic::TestCase
   def setup
     super
     open_intent
+    store_graphs.work.activate_intent("1")
   end
 
   def next_action = run_workflow(Plastic::Workflows::Code::Intent::Brief::Next, intent_id: "1")

@@ -5,7 +5,7 @@ require_relative "../commands/installer_helper"
 require "json"
 require "shellwords"
 require_relative "../../../lib/plastic/cli/projects_file"
-require_relative "../../../lib/plastic/graph/retrieval/source"
+require_relative "../../../lib/plastic/graph/retrieval_source"
 
 class MissingStoreTest < Plastic::TestCase
   include Plastic::TestCase::PreviewHelper
@@ -119,6 +119,7 @@ end
 
 class MissingGlobalStoreRepairTest < Plastic::TestCase
   include InstallerHelper
+  include OwnHome
 
   def test_the_install_line_next_prints_for_a_missing_global_store_runs_and_makes_the_store
     installed_home_without_stores

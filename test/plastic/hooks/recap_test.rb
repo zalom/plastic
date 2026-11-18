@@ -9,7 +9,7 @@ class RecapTest < Plastic::TestCase
   def opened(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 
   def recap(source: nil, session: "s-1")
-    Plastic::Hooks::Recap.new(opened(session).retrieval, session_id: session, source:, directory: @home).lines
+    Plastic::Hooks::Recap.new(opened(session).retrieval, session_id: session, source:, directory: @home).lines(now: Time.now)
   end
 
   def printed_intent(title = "Alpha")
@@ -56,15 +56,14 @@ class RecapTest < Plastic::TestCase
     assert_includes recap(source: "clear"), "in progress: #{intent_id} Alpha"
   end
 
-  def test_compact_prints_the_savepoint_lines_and_the_note
+  def test_compact_prints_the_intent_its_log_lines_the_note_and_the_next_command
     printed_intent
     opened.work.write_note("s-1", "note text")
 
     lines = recap(source: "compact")
 
     assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", lines.first
-    assert lines.any? { |line| line.include?("Opened: Alpha") }
-    assert_equal "note: note text", lines.last
+    assert_equal [true, ["note: note text", "next: plastic next"]], [lines.any? { |line| line.include?("Opened: Alpha") }, lines.last(2)]
   end
 
   def test_the_intents_are_listed_by_group_with_their_state
@@ -82,12 +81,21 @@ class RecapTest < Plastic::TestCase
     assert_equal %w[active future finished], recap.grep(/\A(active|future|finished): /).map { |line| line[/\A\w+/] }
   end
 
-  def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
+  def test_an_open_intent_with_a_run_prints_the_last_run_and_the_live_next_step_not_the_run_s
     intent_id = opened.work.write_intent(title: "Beta").intent_id
-    run = Plastic::RoutineRun.fresh("intent show", intent_id).with(status: "finished", next_command: "plastic next")
-    opened.work.save_routine_run(run)
+    run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
+    opened.work.save_command_run(run)
 
-    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
+    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic intent start #{intent_id}"
+  end
+
+  def test_an_intent_whose_next_step_is_the_agent_s_prints_the_last_run_with_no_next
+    intent_id = opened.work.write_intent(title: "Gamma", status: "in_progress").intent_id
+    run = Plastic::CommandRun.fresh("node done", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic node done #{intent_id} n1 TEXT")
+    opened.work.save_command_run(run)
+
+    assert_includes recap, "active: #{intent_id} Gamma (in_progress), last run node done finished #{run.updated_at}"
+    refute_includes recap.join("\n"), "next: plastic node done"
   end
 
   def test_a_group_over_the_cap_prints_ten_and_a_count_of_the_rest
@@ -102,9 +110,24 @@ class RecapTest < Plastic::TestCase
   def test_a_resumed_session_says_so
     assert_equal ["Plastic: a resumed session. The rows below carry the state; run plastic graph resume."], recap(source: "resume")
   end
+
+  def test_a_recap_prints_no_note_line_when_no_session_left_a_note
+    printed_intent
+
+    refute(recap.any? { |line| line.start_with?("note:") })
+  end
+
+  def test_a_new_session_prints_the_note_of_its_predecessor
+    opened.work.open_session("s-1", harness: "claude-code", directory: @home)
+    printed_intent
+    opened.work.write_note("s-1", "left behind")
+    opened.work.end_session("s-1", reason: "clear")
+
+    assert_includes recap(session: "s-2"), "note: left behind"
+  end
 end
 
-class RecapLockTest < Plastic::TestCase
+class RecapClaimTest < Plastic::TestCase
   fixtures :empty
 
   def opened(session = "s-1") = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
@@ -114,73 +137,60 @@ class RecapLockTest < Plastic::TestCase
     work.write_intent(title:).intent_id.tap { |intent_id| work.print_intent(intent_id) }
   end
 
-  def lock_intent
+  def claim_node(session = "s-1")
     intent_id = printed_intent
-    opened.work.lock_intent(intent_id, session_id: "s-1", mode: "auto")
-    [intent_id, opened.retrieval.lock(intent_id)]
+    opened(session).work.add_node(intent_id:, title: "Build")
+    opened(session).work.claim_node(intent_id:, id: "n1", by: session)
+    [intent_id, opened.retrieval.node(intent_id, "n1")]
   end
 
-  def expired_lines(now)
-    Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home).lines(now:).grep(/the lock of this session expired/)
+  def recap = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home)
+
+  def lapsed_lines(now) = recap.lines(now:).grep(/the claim of this session on node/)
+
+  def lapsed_after(node) = Time.parse(node.seen_at) + Plastic::Graph::Work::Node::LAPSE + 1
+
+  def test_an_own_claim_past_its_window_prints_the_lapsed_line_with_the_claim_command
+    intent_id, node = claim_node
+
+    assert_includes recap.lines(now: lapsed_after(node)),
+      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{node.seen_at}); plastic node claim #{intent_id} n1 takes it again"
   end
 
-  def test_an_own_lock_past_its_window_prints_the_expired_line_with_the_auto_command
-    intent_id, lock = lock_intent
-    later = Time.parse(lock.renewed_at) + Plastic::Graph::Lock::TTL + 1
+  def test_an_own_claim_within_its_window_prints_no_lapsed_line
+    _intent_id, node = claim_node
 
-    lines = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home).lines(now: later)
-
-    assert_includes lines, "intent #{intent_id}: the lock of this session expired (last renewed #{lock.renewed_at}); plastic auto #{intent_id} locks it again"
+    assert_empty lapsed_lines(Time.parse(node.seen_at) + 1)
   end
 
-  def test_an_own_lock_within_its_window_prints_no_expired_line
-    _intent_id, lock = lock_intent
-    within = Time.parse(lock.renewed_at) + 1
+  def test_a_claim_of_another_session_prints_no_lapsed_line
+    _intent_id, node = claim_node("s-2")
 
-    assert_empty expired_lines(within)
+    assert_empty lapsed_lines(lapsed_after(node))
   end
-
-  def test_a_lock_of_another_session_prints_no_expired_line
-    intent_id = printed_intent
-    opened.work.lock_intent(intent_id, session_id: "s-2", mode: "auto")
-    later = Time.parse(opened.retrieval.lock(intent_id).renewed_at) + Plastic::Graph::Lock::TTL + 1
-
-    assert_empty expired_lines(later)
-  end
-
-  def expired_long_after(lock) = Time.parse(lock.renewed_at) + Plastic::Graph::Lock::TTL + 1
 
   def close_intent(intent_id, status)
-    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
   end
 
-  def test_a_lock_on_a_done_intent_prints_no_expired_line
-    intent_id, lock = lock_intent
+  def test_a_claim_on_a_done_intent_prints_no_lapsed_line
+    intent_id, node = claim_node
     close_intent(intent_id, "done")
 
-    assert_empty expired_lines(expired_long_after(lock))
+    assert_empty lapsed_lines(lapsed_after(node))
   end
 
-  def test_a_lock_on_an_abandoned_intent_prints_no_expired_line
-    intent_id, lock = lock_intent
+  def test_a_claim_on_an_abandoned_intent_prints_no_lapsed_line
+    intent_id, node = claim_node
     close_intent(intent_id, "abandoned")
 
-    assert_empty expired_lines(expired_long_after(lock))
+    assert_empty lapsed_lines(lapsed_after(node))
   end
 
-  def test_a_lock_on_an_intent_that_no_longer_exists_prints_no_expired_line
-    intent_id, lock = lock_intent
-    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
+  def test_a_claim_on_an_intent_that_no_longer_exists_prints_no_lapsed_line
+    intent_id, node = claim_node
+    opened.databases.fetch(:store).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
 
-    assert_empty expired_lines(expired_long_after(lock))
-  end
-
-  def test_a_lock_of_another_store_prints_no_expired_line
-    stamp = "2026-01-01T00:00:00Z"
-    opened.databases.fetch(:local).transaction do |batch|
-      batch.put(:locks, { store: "other", intent_id: "1", session_id: "s-1", mode: "auto", locked_at: stamp, renewed_at: stamp }, statement: :insert)
-    end
-
-    assert_empty expired_lines(Time.iso8601(stamp) + Plastic::Graph::Lock::TTL + 1)
+    assert_empty lapsed_lines(lapsed_after(node))
   end
 end

@@ -31,12 +31,12 @@ jobs:
       - name: Run the acceptance documents
         env:
           HOME: ${{ runner.temp }}/suite-home
-        run: ruby bin/test --system
+        run: ruby bin/test --e2e
       - name: Run the gate on the changed files
         if: github.event_name == 'pull_request'
         env:
           HOME: ${{ runner.temp }}/suite-home
-        run: bundle exec ruby bin/verify-change "$(git merge-base "origin/$GITHUB_BASE_REF" HEAD)"
+        run: bundle exec ruby bin/verify-change "origin/$GITHUB_BASE_REF"
       - name: Check that the suite wrote nothing into the home
         run: |
           written=$(find "$RUNNER_TEMP/suite-home" -mindepth 1)

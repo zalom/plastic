@@ -17,7 +17,7 @@ module Plastic
         sets :next_command, :why, :handoff_text
 
         read "pick the intent and its next command" do |context|
-          pick = Plastic::Graph::Work::NextPick.new(context.retrieval, context.session)
+          pick = Plastic::Graph::Work::NextPick.new(context.retrieval, context.session, now: context.now)
           context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::NextOffer.new(context.retrieval, pick).call
         end
 

@@ -8,15 +8,15 @@ module Plastic
     module CommandHelper
       Result = Data.define(:out, :err, :code)
 
-      def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new)
+      def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new, clock: Time)
         Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env),
-          input: input.respond_to?(:gets) ? input : StringIO.new(input), out:, err:, home: @home, directory: @home)
+          input: input.respond_to?(:gets) ? input : StringIO.new(input), out:, err:, home: @home, directory: @home, clock:)
       end
 
-      def plastic(*argv, env: {}, input: "", table: Fixtures::TABLE)
+      def plastic(*argv, env: {}, input: "", table: Fixtures::TABLE, clock: Time)
         out = StringIO.new
         err = StringIO.new
-        code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:), table:)
+        code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:, clock:), table:)
         Result.new(out.string, err.string, code)
       end
 
@@ -27,8 +27,8 @@ module Plastic
         Result.new(out.string, err.string, code)
       end
 
-      def routine_run(tool, subject)
-        Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.routine_run(tool, subject)
+      def command_run(tool, subject)
+        Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.command_run(tool, subject)
       end
     end
   end

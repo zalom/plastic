@@ -18,13 +18,18 @@ module TwoHomes
     kernel.command!("intent", "new", "Prove the resume")
     kernel.write("#{DIR}/spec.md", SPEC)
     kernel.command!("sync", "up")
-    kernel.command!("node", "add", "1", "Write the test", "--criterion", "proof")
-    kernel.command!("node", "add", "1", "Write the code", "--criterion", "proof")
-    kernel.command!("edge", "add", "1", "n1", "n2")
+    add_two_nodes(kernel)
     kernel.command!("intent", "approve", "1")
+    kernel.command!("intent", "start", "1")
     kernel.command!("node", "claim", "1", "n1")
     kernel.command!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
     kernel.command!("intent", "verdict", "1", "revise", "The findings hold :id and :intent_id")
+  end
+
+  def add_two_nodes(kernel)
+    kernel.command!("node", "add", "1", "Write the test", "--criterion", "proof")
+    kernel.command!("node", "add", "1", "Write the code", "--criterion", "proof")
+    kernel.command!("edge", "add", "1", "n1", "n2")
   end
 
   def move_files(from, to)
@@ -37,9 +42,9 @@ module TwoHomes
     end
   end
 
-  def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, by, retries, updated_at, findings FROM nodes ORDER BY id")
+  def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, claimed_by, answered_at, updated_at, findings FROM nodes ORDER BY id")
 
-  def query(kernel, sql) = kernel.rows("work_graph.db", sql)
+  def query(kernel, sql) = kernel.rows(sql.match?(/\bFROM (intents|clusters|completions|approvals|verdicts|archives)\b/) ? "knowledge_graph.db" : "work_graph.db", sql)
 
   def home_command(directory) = HomeCommand.new(directory)
 

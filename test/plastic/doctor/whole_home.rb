@@ -4,7 +4,7 @@ require "json"
 require "yaml"
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/installations/compact_instructions"
-require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/installations/hook_entries"
 
 module WholeHome
   RUNNING = "9.1.0"
@@ -69,10 +69,15 @@ module WholeHome
     [SLUG, "global"].each { |store| Plastic::Graph.create(home: @plastic_home, store:) }
   end
 
+  def record_versions(connection, key)
+    Plastic::Graph::SchemaMigrator.record(connection, Plastic::Graph::MIGRATIONS.versions(Plastic::Graph::SchemaState.kind_of(key)))
+  end
+
   def database(path, key)
     FileUtils.mkdir_p(File.dirname(path))
     connection = SQLite3::Database.new(path)
     schema.prepare(connection, schema.fetch(key))
+    record_versions(connection, key) if Plastic::Graph::SchemaState::KINDS.key?(key)
   ensure
     connection&.close
   end
@@ -81,13 +86,6 @@ module WholeHome
     write(File.join(@plastic_home, "projects.yml"), YAML.dump("projects" => { SLUG => { "path" => project_dir } }))
     write(File.join(project_dir, "AGENTS.md"), "# Alpha\n\nPlastic's instructions are in ~/.plastic/PLASTIC.md.\n")
     write(File.join(project_dir, "CLAUDE.md"), "# Alpha\n\n@AGENTS.md\n")
-  end
-
-  def forget_backfill(store)
-    connection = SQLite3::Database.new(File.join(@plastic_home, "stores", store, schema.file(:knowledge)))
-    connection.execute("DELETE FROM retrieval_backfills")
-  ensure
-    connection&.close
   end
 
   def drop_table(path, table)

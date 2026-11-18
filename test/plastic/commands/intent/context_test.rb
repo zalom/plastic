@@ -10,9 +10,9 @@ module IntentContextTestSupport
 
   def write_document(store, body)
     graphs = Plastic::Graph.create(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
-    graphs.retrieval.backfill
-    graphs.retrieval.archived?("1")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write("1", "evidence.md", body)
+    graphs.retrieval.repair
+    graphs.retrieval.archives.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end
 
@@ -23,7 +23,7 @@ module IntentContextTestSupport
 
   def archive_source_intent
     source = Plastic::Graph.create(home: @plastic_home, store: "other")
-    source.databases.fetch(:work).transaction do |batch|
+    source.databases.fetch(:store).transaction do |batch|
       batch.put(:archives, { intent_id: "1", at: Plastic::TestCase::STAMP, restored_at: nil, session_id: "context-test" })
     end
   end
@@ -36,21 +36,20 @@ module IntentContextTestSupport
   end
 
   def remove_selected_revision
-    Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
+    Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:store).transaction do |batch|
       batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
     end
   end
 
   def remove_current_head
     graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", "evidence.md")
   end
 
   def mark_retrieval_incomplete
-    graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
-    graphs.databases.fetch(:knowledge).transaction do |batch|
-      batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
-    end
+    store = Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:store)
+    Plastic::Graph::Database::ConnectionPool.connections.delete(store.path)&.close
+    File.delete(store.retrieval_path)
   end
 
   def submit_context(submission, json: false)
@@ -90,7 +89,7 @@ module IntentContextAssertionSupport
 
     assert_equal submission, submitted.slice(*fields)
     assert_equal submission, readback.slice(*fields)
-    row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+    row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
     persisted = submitted.slice(*fields, "archive_states", "intent_id", "discovery")
 
     assert_equal persisted, JSON.parse(row.fetch("data"))
@@ -301,7 +300,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
   def store_legacy_discovery(reference)
     document = { "query" => "selected", "scope" => ["other"], "candidates" => [{ "uri" => reference }] }
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:store).transaction do |batch|
       batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic::TestCase::STAMP })
     end
   end
@@ -380,7 +379,7 @@ class IntentContextSavingTest < Plastic::TestCase
   def test_the_saved_run_of_a_submission_holds_no_document
     submit_context(context_submission(discovered_reference))
 
-    facts = global_graphs.databases.fetch(:local).rows("SELECT facts FROM routine_runs WHERE tool = 'intent context'").map { |row| row.fetch("facts") }
+    facts = global_graphs.databases.fetch(:local).rows("SELECT facts FROM command_runs WHERE tool = 'intent context'").map { |row| row.fetch("facts") }
 
     refute_empty facts
     refute(facts.any? { |text| text.include?("a source fact") })
@@ -388,7 +387,7 @@ class IntentContextSavingTest < Plastic::TestCase
 
   def test_a_write_error_of_the_save_stops_the_call_with_exit_1_and_names_the_error
     reference = discovered_reference
-    global_graphs.databases.fetch(:knowledge).transaction do |batch|
+    global_graphs.databases.fetch(:store).transaction do |batch|
       batch.add("CREATE TRIGGER refuse_context BEFORE INSERT ON retrieval_contexts BEGIN SELECT RAISE(ABORT, 'the context table refuses a row'); END")
     end
 
@@ -401,12 +400,12 @@ class IntentContextSavingTest < Plastic::TestCase
   def test_a_second_identical_submission_skips_the_save
     submission = context_submission(discovered_reference)
     submit_context(submission)
-    knowledge = global_graphs.databases.fetch(:knowledge)
-    knowledge.transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = '2000-01-01T00:00:00Z'") }
+    store_database = global_graphs.databases.fetch(:store)
+    store_database.transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = '2000-01-01T00:00:00Z'") }
 
     submit_context(submission)
 
-    assert_equal "2000-01-01T00:00:00Z", knowledge.row("SELECT updated_at FROM retrieval_contexts WHERE intent_id = '1'").fetch("updated_at")
+    assert_equal "2000-01-01T00:00:00Z", store_database.row("SELECT updated_at FROM retrieval_contexts WHERE intent_id = '1'").fetch("updated_at")
   end
 
   def test_the_ending_of_a_submission_says_the_context_is_saved

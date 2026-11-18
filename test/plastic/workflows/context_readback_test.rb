@@ -23,7 +23,7 @@ class ContextReadbackTest < Plastic::TestCase
   end
 
   def test_evidence_whose_document_was_removed_reads_stale
-    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases[:knowledge], origin).remove("1", retrieval.intent("1").file)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", retrieval.intent("1").file)
 
     assert_equal "stale", sole(readback.dig("freshness", "evidence")).fetch("state")
   end

@@ -46,7 +46,7 @@ class IntentAbandonTest < Plastic::TestCase
   def abandon(*extra) = cli("intent", "abandon", "1", *extra)
 
   def supersede(from, to)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:links, { from_ref: from, to_ref: to, kind: "supersedes", at: LifecycleHelper::EARLY })
     end
   end
@@ -60,16 +60,35 @@ class IntentAbandonTest < Plastic::TestCase
     assert_includes result.err, "invalid option: --judge"
   end
 
-  def test_without_the_reverted_bullet_it_hands_over_the_revert_steps
+  def test_a_started_intent_without_the_reverted_bullet_hands_over_the_revert_steps
+    droppable(reverted: false, status: "in_progress")
+    result = abandon
+
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "Reverted:"
+  end
+
+  def test_an_open_intent_with_a_node_without_the_reverted_bullet_hands_over_the_revert_steps
     droppable(reverted: false)
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
     result = abandon
 
     assert_equal [0, "open"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "Reverted:"
   end
 
+  %w[future open].each do |status|
+    define_method(:"test_an_unstarted_#{status}_intent_with_no_node_closes_with_no_reverted_bullet") do
+      droppable(reverted: false, status:)
+      result = abandon
+
+      assert_equal [0, "", "abandoned"], [result.code, result.err, retrieval.intent("1").status]
+      assert_includes result.out, "intent: 1 abandoned"
+    end
+  end
+
   def test_the_revert_step_tells_the_agent_to_use_version_control_as_the_project_defines_it
-    droppable(reverted: false)
+    droppable(reverted: false, status: "in_progress")
     result = abandon
 
     refute_includes result.out, "your own"
@@ -85,15 +104,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal 0, result.code
-    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, retrieval.completion("1")]
-  end
-
-  def test_it_releases_the_lock
-    droppable
-    cli("auto", "1")
-    abandon
-
-    assert_nil retrieval.lock("1")
+    assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, structure.completions("1").first]
   end
 
   def test_a_supersedes_link_from_another_intent_gives_superseded
@@ -130,9 +141,10 @@ class IntentAbandonTest < Plastic::TestCase
     end
   end
 
-  def test_a_live_foreign_lock_refuses_with_exit_3
+  def test_a_live_claim_of_another_session_refuses_with_exit_3
     droppable
-    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
+    store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "someone-else")
 
     assert_equal [3, "open"], [abandon.code, retrieval.intent("1").status]
   end

@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require_relative "end_value"
-require_relative "failed"
+require_relative "errors"
 
 module Plastic
   # The workflows reached their end: next: names the outcome's offer, or none. Exit 0.
   #
-  # A routine ends in one of four values, each named after the routine run status it
-  # leaves and each with its own exit code. Each value prints its own last
-  # lines through `report` and returns the exit code; no workflow picks a
+  # A routine ends in a value, Finished or HandedOff, or in an error that
+  # stops it: Failed, Refused or Usage. Each ending is named after the command
+  # run status it leaves and has its own exit code; no workflow picks a
   # number, so exit 8 cannot exist.
   #
   #   Finished   exit 0  the workflows reached their end
@@ -25,8 +25,10 @@ module Plastic
     def self.closing(workflow, outcome, ctx)
       command, because = workflow.closing(outcome, ctx)
       new(next_command: command, because:)
+    rescue Usage, Failed, Refused
+      raise
     rescue => error
-      Failed.raised(workflow.key, "closing", error)
+      raise Failed.raised(workflow.key, "closing", error)
     end
 
     def exit_code = 0

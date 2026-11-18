@@ -1,25 +1,24 @@
 # frozen_string_literal: true
 
-require_relative "former_name"
-
 module Plastic
   module Graph
     class Database
-      # The local database, for what belongs to one machine. A home.db left
-      # from before becomes local.db on the first use, and this database
-      # then says so once.
+      # The local database, for what belongs to one machine. A home that still
+      # holds local.db and no plastic.db is behind: the install and the update
+      # move it, and nothing on open renames or creates a file.
       class Local < Database
-        def initialize(home)
-          super(File.join(home, Schema.file(:local)), Schema.fetch(:local))
-          @former = FormerName.new(File.join(home, "home.db"))
-        end
+        FORMER = "local.db"
 
-        def phrases = [@former.said, *super].compact
+        def initialize(home)
+          super(File.join(home, Schema.file(:local)), Schema.fetch(:local), key: :local)
+          @former = File.join(home, FORMER)
+        end
 
         private
 
-        def connection
-          @former.move_to(path)
+        def open_file
+          raise Behind, "#{FORMER} is not migrated to #{file}; run plastic update" if File.exist?(@former) && !File.exist?(path)
+
           super
         end
       end

@@ -16,7 +16,7 @@ class KnowledgeRoadmapCheckTest < Plastic::TestCase
 
   def findings = Plastic::Graph::Knowledge::Roadmap::Check.new(retrieval, "plan").all
 
-  def put(table, row) = store_graphs.databases[:work].transaction { |batch| batch.put(table, row) }
+  def put(table, row) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(table, row) }
 
   def test_a_roadmap_with_only_forward_edges_has_no_finding
     assert_empty findings

@@ -64,14 +64,6 @@ class KnowledgeIntentTest < Plastic::TestCase
     assert_equal %i[intent_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], intent.new_row.keys
   end
 
-  def test_the_first_savepoint_line_names_the_title
-    assert_equal({ intent_id: "1a", position: 1, at: AT, text: "Opened: Build", session_id: nil }, intent.first_savepoint)
-  end
-
-  def test_the_first_savepoint_line_carries_the_session_that_opened_it
-    assert_equal "s-1", intent.first_savepoint("s-1").fetch(:session_id)
-  end
-
   def test_the_own_file_holds_the_front_matter_and_the_sections
     page = ["---", 'id: "1a"', 'intent: "Build"', 'parent: "1"', 'ref: "ENG-1"', 'origin: "o"', %(created: "#{AT}"), "---", "",
       "# 1a - Build", "", "## Intent", "", "Build", "", "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
@@ -84,15 +76,14 @@ class KnowledgeIntentTest < Plastic::TestCase
   end
 
   def test_each_state_belongs_to_exactly_one_group
-    groups = Intent::STATUSES.to_h { |status| [status, Intent::Listing.group_of(status)] }
+    groups = Plastic::Graph::IntentStatus::ALL.to_h { |status| [status, Intent::Listing.group_of(status)] }
 
     assert_equal({ "open" => "active", "in_progress" => "active", "parked" => "active", "future" => "future",
                    "done" => "finished", "abandoned" => "finished" }, groups)
   end
 
   def test_the_states_are_the_six_with_in_progress_for_work_under_way
-    assert_equal %w[open in_progress parked future done abandoned], Intent::STATUSES
-    assert_equal %w[open parked future], Intent::NEW_STATUSES
+    assert_equal %w[open in_progress parked future done abandoned], Plastic::Graph::IntentStatus::ALL
   end
 
   def test_the_old_word_for_work_under_way_is_renamed

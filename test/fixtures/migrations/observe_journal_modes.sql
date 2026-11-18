@@ -1,0 +1,1 @@
+CREATE TABLE main.observed_journal_modes AS SELECT d.name AS schema, (SELECT journal_mode FROM pragma_journal_mode WHERE schema = d.name) AS mode FROM pragma_database_list AS d WHERE d.name <> 'temp';

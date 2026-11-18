@@ -7,7 +7,7 @@ require_relative "../../cli/config_scope"
 module Plastic
   module Commands
     class Config
-      # Writes one setting to config.yml: under `global`, or under the
+      # Writes one setting to the settings rows: under `global`, or under the
       # harness's section with --harness.
       class Set < Routine
         include CLI::ConfigScope

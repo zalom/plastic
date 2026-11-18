@@ -6,7 +6,7 @@ require "tmpdir"
 require_relative "preview/mirror"
 require_relative "preview/changes"
 require_relative "../legacy/unguarded"
-require_relative "../../../config"
+require_relative "../sync_settings"
 
 module Plastic
   module Graph
@@ -24,10 +24,10 @@ module Plastic
 
           def self.conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
 
-          def call = preview.lines
+          def call(sync = SyncSettings.none) = preview(sync).lines
 
-          def preview
-            found = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| run_in(copy) }
+          def preview(sync = SyncSettings.none)
+            found = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| run_in(copy, sync) }
             found.with(lines: found.lines.map { |line| "preview: #{line}" })
           end
 
@@ -51,15 +51,15 @@ module Plastic
 
           def parent_dir = File.directory?(@home) ? @home : Dir.tmpdir
 
-          def run_in(copy)
+          def run_in(copy, sync)
             twin = copy_source(copy)
-            applied = applied_in(copy)
+            applied = applied_in(copy, sync)
             changes = Changes.new(source, twin).call
             applied.with(lines: [*applied.lines, *changes, "paths that would change: #{changes.size}"])
           end
 
-          def applied_in(copy)
-            work = Graph.open(home: copy, store: @store).work
+          def applied_in(copy, sync)
+            work = Graph.open(home: copy, store: @store, sync: sync.with(remove_after_import: false)).work
             plan = checked(work.sync_plan(@direction, options))
             lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
             Run.new(lines:, conflicts: plan.conflicts, merging: plan.merging?, **refused(work, plan))
@@ -87,11 +87,10 @@ module Plastic
           end
 
           def copy_home_files(copy)
-            %w[origin_id config.yml projects.yml].each do |name|
+            %w[origin_id projects.yml].each do |name|
               path = File.join(@home, name)
               FileUtils.cp(path, copy) if File.file?(path)
             end
-            Config.new(copy).set("migrate.remove_after_import", false)
           end
         end
       end

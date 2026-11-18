@@ -6,7 +6,7 @@ require_relative "../../../../lib/plastic/graph/work/next_offer"
 
 class WorkNextOfferTest < Plastic::TestCase
   def offer
-    pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1")
+    pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now)
     Plastic::Graph::Work::NextOffer.new(retrieval, pick).call
   end
 
@@ -20,6 +20,13 @@ class WorkNextOfferTest < Plastic::TestCase
     assert_equal ["plastic intent spec 1", "intent 1 has no done criteria", nil], offer
   end
 
+  def test_an_approved_open_intent_with_no_done_criteria_offers_intent_start_before_the_spec
+    open_intent
+    store_graphs.work.approve_intent("1")
+
+    assert_equal ["plastic intent start 1", "intent 1 is open", nil], offer
+  end
+
   def test_several_candidates_hand_the_choice_to_the_agent
     open_intent("Alpha")
     open_intent("Beta")
@@ -29,5 +36,24 @@ class WorkNextOfferTest < Plastic::TestCase
     assert_nil command
     assert_equal "choose the intent to work on", why
     assert_includes handoff, "plastic status"
+  end
+
+  Approvals = Data.define(:approved) do
+    def approval(_id) = approved
+  end
+  Reads = Data.define(:structure)
+
+  def go_ahead(approved) = Plastic::Graph::Work::NextOffer.go_ahead_offer(Reads.new(Approvals.new(approved)), "1")
+
+  def test_an_approved_open_intent_offers_intent_start
+    assert_equal ["plastic intent start 1", "intent 1 is open", nil], go_ahead(true)
+  end
+
+  def test_an_open_intent_before_the_go_ahead_hands_the_owner_the_approve_command
+    command, why, handoff = go_ahead(nil)
+
+    assert_nil command
+    assert_equal "the owner must give the go-ahead for intent 1", why
+    assert_includes handoff, "plastic intent approve 1"
   end
 end

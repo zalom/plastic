@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../node"
+require_relative "../../rows/node"
 require_relative "stray_nodes"
 
 module Plastic
@@ -48,7 +48,7 @@ module Plastic
 
           def stray_text(nodes) = StrayNodes.message(nodes, @keys)
 
-          def live_nodes = @retrieval.nodes(@intent_id).select(&:live?)
+          def live_nodes = @retrieval.structure.nodes(@intent_id).select(&:live?)
         end
       end
     end

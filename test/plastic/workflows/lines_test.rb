@@ -4,13 +4,21 @@ require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/lines"
 
 class LinesTest < Minitest::Test
-  Node = Struct.new(:id, :state, :title)
+  Node = Struct.new(:id, :state, :title, :claimed_by)
   Ruling = Struct.new(:id, :text, :supersedes)
 
   def lines = Plastic::Workflows::Lines
 
   def test_a_node_line_names_its_state_and_title
     assert_equal "node: n1 open Build", lines.node(Node.new(id: "n1", state: "open", title: "Build"))
+  end
+
+  def test_a_claimed_node_line_names_its_holder
+    assert_equal "node: n1 claimed Build, held by s-1", lines.node(Node.new("n1", "claimed", "Build", "s-1"))
+  end
+
+  def test_a_claimed_node_line_without_a_holder_names_none
+    assert_equal "node: n1 claimed Build", lines.node(Node.new("n1", "claimed", "Build"))
   end
 
   def test_a_ready_node_line_leaves_out_the_state
@@ -21,5 +29,11 @@ class LinesTest < Minitest::Test
     rulings = [Ruling.new(id: "r1", text: "old"), Ruling.new(id: "r2", text: "new", supersedes: "r1")]
 
     assert_equal ["ruling: r1 old (superseded)", "ruling: r2 new"], lines.rulings(rulings)
+  end
+
+  def test_rulings_print_in_number_order_not_text_order
+    rulings = %w[D10 D1 D2].map { |id| Ruling.new(id: id, text: id.downcase) }
+
+    assert_equal ["ruling: D1 d1", "ruling: D2 d2", "ruling: D10 d10"], lines.rulings(rulings)
   end
 end

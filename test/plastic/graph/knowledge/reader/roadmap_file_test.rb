@@ -26,7 +26,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal [TRICKY, "Line one\nLine two"], [retrieval.roadmap("plan").title, retrieval.roadmap("plan").goal]
+    assert_equal [TRICKY, "Line one\nLine two"], [roadmaps.find("plan").title, roadmaps.find("plan").goal]
   end
 
   def test_a_done_note_and_a_log_line_that_look_like_markup_read_back_whole
@@ -35,7 +35,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal ["first\nsecond", [TRICKY]], [retrieval.batches("plan").first.done, retrieval.roadmap_log("plan").map(&:text)]
+    assert_equal ["first\nsecond", [TRICKY]], [roadmaps.batches("plan").first.done, roadmaps.log("plan").map(&:text)]
   end
 
   def test_a_title_with_the_dash_separator_reads_back_whole
@@ -44,7 +44,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(first)
 
-    assert_equal ["Hello — world — ready", "dropped"], retrieval.roadmap_items("plan").first.to_h.values_at(:title, :mark)
+    assert_equal ["Hello — world — ready", "dropped"], roadmaps.items("plan").first.to_h.values_at(:title, :mark)
   end
 
   def test_the_edges_and_the_session_of_a_log_line_come_back
@@ -53,7 +53,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal [%w[1 2 after], ["s1"]], [retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }.first, retrieval.roadmap_log("plan").map(&:session_id)]
+    assert_equal [%w[1 2 after], ["s1"]], [roadmaps.edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }.first, roadmaps.log("plan").map(&:session_id)]
   end
 
   def test_the_reader_stamps_the_update_time_and_the_origin
@@ -62,7 +62,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal [origin, true], [retrieval.roadmap("plan").origin_id, !retrieval.roadmap("plan").updated_at.nil?]
+    assert_equal [origin, true], [roadmaps.find("plan").origin_id, !roadmaps.find("plan").updated_at.nil?]
   end
 
   def test_an_item_with_no_title_reads_back_as_an_item_with_no_title
@@ -71,7 +71,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal [nil, "Second"], retrieval.roadmap_items("plan").map(&:title)
+    assert_equal [nil, "Second"], roadmaps.items("plan").map(&:title)
   end
 
   def test_spaces_at_the_end_of_a_value_read_back_as_the_rows_hold_them
@@ -80,7 +80,7 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     clear
     read(text)
 
-    assert_equal [["Item one  ", "  spaced  "], "plan"], [retrieval.roadmap_items("plan").first.to_h.values_at(:title, :goal), retrieval.roadmap("plan").slug]
+    assert_equal [["Item one  ", "  spaced  "], "plan"], [roadmaps.items("plan").first.to_h.values_at(:title, :goal), roadmaps.find("plan").slug]
   end
 
   def test_a_value_left_out_prints_its_label_with_no_space_after_it
@@ -93,12 +93,12 @@ end
 class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
   RoadmapFile = Plastic::Graph::Knowledge::Reader::RoadmapFile
 
-  def work = store_graphs.databases.fetch(:work)
+  def work = store_graphs.databases.fetch(:store)
 
-  def seed
+  def seed(batch_title: "One")
     work.transaction do |batch|
       batch.put(:roadmaps, { slug: "plan", title: "Plan", opened_at: STAMP, updated_at: STAMP })
-      batch.put(:batches, { roadmap: "plan", position: 1, title: "One", done: "", updated_at: STAMP })
+      batch.put(:batches, { roadmap: "plan", position: 1, title: batch_title, done: "", updated_at: STAMP })
       batch.put(:roadmap_items, { roadmap: "plan", item: "1", batch: 1, position: 1, title: "First", done: "", updated_at: STAMP })
     end
   end
@@ -108,21 +108,28 @@ class KnowledgeReaderRoadmapFileDoneTest < Plastic::TestCase
     work.transaction do |batch|
       %i[roadmaps batches roadmap_items].each { |table| batch.remove(table, **{ ((table == :roadmaps) ? :slug : :roadmap) => "plan" }) }
     end
-    work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch) }
+    work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch, FixedClock::STAMP) }
   end
 
   def test_an_item_with_no_done_lines_reads_back_with_the_empty_done_the_writer_stores
     seed
     reread
 
-    assert_equal "", retrieval.roadmap_items("plan").first.done
+    assert_equal "", roadmaps.items("plan").first.done
   end
 
   def test_a_batch_with_no_done_lines_reads_back_with_the_empty_done_the_writer_stores
     seed
     reread
 
-    assert_equal "", retrieval.batches("plan").first.done
+    assert_equal "", roadmaps.batches("plan").first.done
+  end
+
+  def test_a_batch_with_an_empty_title_reads_back_with_the_empty_title_the_rows_hold
+    seed(batch_title: "")
+    reread
+
+    assert_equal "", roadmaps.batches("plan").first.title
   end
 end
 

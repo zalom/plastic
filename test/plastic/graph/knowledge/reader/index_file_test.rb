@@ -11,11 +11,11 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def entry(**fields) = retrieval.intent("1").index_h.merge(fields.transform_keys(&:to_s))
 
-  def apply(text) = store_graphs.databases[:work].transaction { |batch| IndexFile.new(text.dup, origin).apply(batch) }
+  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text.dup, origin).apply(batch, FixedClock::STAMP) }
 
-  def apply_in(dirs, text) = store_graphs.databases[:work].transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch) }
+  def apply_in(dirs, text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch, FixedClock::STAMP) }
 
-  def put_old_cluster = store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
+  def put_old_cluster = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
   def test_a_hand_edit_renames_an_intent_and_leaves_the_clusters_to_their_own_part
     put_old_cluster
@@ -27,13 +27,13 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def test_an_intent_of_another_origin_is_refused
     file = IndexFile.new(index([{ "intent_id" => "1", "origin_id" => "beef" }], []), "a1b2")
-    error = assert_raises(Plastic::Invalid) { file.apply(nil) }
+    error = assert_raises(Plastic::Invalid) { file.apply(nil, FixedClock::STAMP) }
 
     assert_equal "store/index.json lists 1 of origin beef; a store holds only its own intents", error.message
   end
 
   def test_an_index_that_is_not_a_json_object_is_refused_with_its_reason
-    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2").apply(nil) }
+    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2").apply(nil, FixedClock::STAMP) }
 
     assert_equal "store/index.json is not a JSON object", error.message
   end
@@ -51,7 +51,7 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
   end
 
   def test_an_intent_row_takes_every_index_field_and_a_fresh_time
-    row = IndexFile.intent_row({ "intent_id" => "2", "title" => "T", "extra" => "x" })
+    row = IndexFile.intent_row({ "intent_id" => "2", "title" => "T", "extra" => "x" }, Plastic.timestamp(FixedClock::AT))
 
     assert_equal %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], row.keys
     assert_equal ["2", "T", nil], row.values_at(:intent_id, :title, :kind)
@@ -80,5 +80,28 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
     apply(index([entry(title: "Noted", note: "kept out")], []))
 
     assert_equal "Noted", retrieval.intent("1").title
+  end
+
+  def printed_elsewhere(entries) = JSON.generate({ "origin_id" => "beef", "intents" => entries.map { |entry| entry.merge("origin_id" => "beef") }, "clusters" => [] })
+
+  def cross(entries) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(printed_elsewhere(entries), origin, nil, { "1" => retrieval.intent("1") }).apply(batch, FixedClock::STAMP) }
+
+  def test_an_index_another_home_printed_changes_the_title_of_the_row_of_this_home
+    cross([entry(title: "Renamed")])
+
+    assert_equal ["Renamed", FixedClock::STAMP], retrieval.intent("1").to_h.values_at(:title, :updated_at)
+  end
+
+  def test_an_index_another_home_printed_leaves_a_level_row_as_it_was
+    before = retrieval.intent("1").updated_at
+    cross([entry])
+
+    assert_equal before, retrieval.intent("1").updated_at
+  end
+
+  def test_an_index_another_home_printed_adds_no_row_for_an_intent_this_home_does_not_hold
+    cross([entry(intent_id: "9", slug: "ghost")])
+
+    assert_equal ["1"], retrieval.intents.map(&:intent_id)
   end
 end

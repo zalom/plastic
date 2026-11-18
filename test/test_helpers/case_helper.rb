@@ -63,11 +63,11 @@ module Plastic
         sync_up
       end
 
-      # Intent 1 with a spec, the owner's go-ahead and one node, Build, on the criterion tests-pass.
+      # Intent 1 in progress with a spec, the owner's go-ahead and one node, Build, on the criterion tests-pass.
       def alpha_with_node(approved: true)
         alpha_specified
         ran("intent approve 1") if approved
-        ran("node add 1 Build --criterion tests-pass")
+        ran("intent start 1", "node add 1 Build --criterion tests-pass")
       end
 
       # A legacy store with one roadmap file, read into rows, whose first batch has a goal and two done criteria.
@@ -84,7 +84,7 @@ module Plastic
         ran("intent new Alpha", 'intent rule 1 "Flowbite styles every delivery"', 'intent rule 1 "Direct mode only" --supersedes D1')
         write("store/1--alpha/spec.md", TWO_KEYED_CRITERIA)
         sync_up
-        ran("intent approve 1", 'node add 1 "do the thing" --criterion it-is-done', 'node add 1 "build it" --criterion it-builds',
+        ran("intent approve 1", "intent start 1", 'node add 1 "do the thing" --criterion it-is-done', 'node add 1 "build it" --criterion it-builds',
           "edge add 1 n1 n2", "node claim 1 n1", "node fail 1 n1 broke", "node release 1 n1", "node claim 1 n1", 'node done 1 n1 "it passed"')
       end
 

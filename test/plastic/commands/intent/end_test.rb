@@ -14,6 +14,16 @@ class IntentEndAcceptedCaseTest < Plastic::TestCase
     assert_equal [0, "done", 1], [result.code, retrieval.intent("1").status, work_rows("completions").size]
     refute_match(/^next:/, result.out)
   end
+
+  def test_ending_an_intent_with_a_done_node_adds_a_done_line_with_no_node
+    accepted_intent
+    review_off
+    cli("intent", "end", "1", session: "delivery")
+    done = retrieval.structure.work_log("1").select { |line| line.kind == "done" }
+
+    assert_equal ["n1", ""], done.map(&:node)
+    assert_equal "Done", done.last.text
+  end
 end
 
 class IntentEndTest < Plastic::TestCase
@@ -45,7 +55,7 @@ class IntentEndTest < Plastic::TestCase
     assert_equal [2, "in_progress"], [cli("intent", "end", "1", "--abandoned").code, retrieval.intent("1").status]
   end
 
-  def test_with_every_row_good_and_review_off_the_intent_closes_delivered_and_releases_the_lock
+  def test_with_every_row_good_and_review_off_the_intent_closes_delivered
     accepted_intent(records: MERGE_RECORDS)
     review_off
 
@@ -53,20 +63,19 @@ class IntentEndTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_equal ["done", "delivered"], retrieval.intent("1").to_h.values_at(:status, :disposition)
-    assert_nil retrieval.lock("1")
   end
 
   def test_the_completion_row_holds_the_verdict_judge_and_the_criteria
     closed_intent
-    row = retrieval.completion("1")
+    row = structure.completions("1").first
 
-    assert_equal "verdict", row.fetch("judge")
-    assert_equal({ KEY => CRITERION }, JSON.parse(row.fetch("criteria")))
+    assert_equal "verdict", row.judge
+    assert_equal({ KEY => CRITERION }, JSON.parse(row.criteria))
   end
 
   def test_the_completion_evidence_maps_each_key_to_node_ids_and_findings
     closed_intent
-    evidence = JSON.parse(retrieval.completion("1").fetch("evidence"))
+    evidence = JSON.parse(structure.completions("1").first.evidence)
 
     assert_includes evidence.fetch(KEY).to_s, "n1"
     assert_includes evidence.fetch(KEY).to_s, "Acceptance passes for works"
@@ -98,10 +107,11 @@ class IntentEndTest < Plastic::TestCase
     assert_match(/^next: plastic next/, result.out)
   end
 
-  def test_a_live_foreign_lock_refuses_the_close
+  def test_a_live_claim_of_another_session_refuses_the_close
     accepted_intent
     review_off
-    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
+    node = store_graphs.work.add_node(intent_id: "1", title: "Build")
+    store_graphs.work.claim_node(intent_id: "1", id: node.id, by: "someone-else")
 
     result = finish
 
@@ -272,6 +282,37 @@ class IntentEndMergeTest < Plastic::TestCase
 
     assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.err + result.out, "Approved: <person> on <YYYY-MM-DD>"
+  end
+
+  def test_a_direct_commit_with_the_architecture_map_closes_the_intent
+    accepted_intent(records: "- Committed: main at 4f2a9c1\n- Architecture map: enola at 4f2a9c1\n")
+    review_off
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_delivered_files_in_the_intent_folder_close_the_intent_with_no_architecture_map
+    accepted_intent(records: "- Delivered: resources/output/files/resume.pdf because the resume lives outside version control\n")
+    write("#{retrieval.intent("1").dir}/resources/output/files/resume.pdf", "%PDF")
+    review_off
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_delivered_files_missing_from_the_intent_folder_hand_over_the_delivery_check_naming_the_path
+    accepted_intent(records: "- Delivered: resources/output/files/resume.pdf because the resume lives outside version control\n")
+    review_off
+    result = finish
+
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "resources/output/files/resume.pdf"
+  end
+
+  def test_the_delivery_handoff_names_the_three_lines_and_the_output_folders
+    lacking_merge_record
+    out = finish.out
+
+    ["- Merged: ", "- Committed: ", "- Delivered: ", "resources/output/reports", "resources/output/files"].each { |part| assert_includes out, part }
   end
 
   def test_a_second_end_after_the_merge_record_resumes_and_closes

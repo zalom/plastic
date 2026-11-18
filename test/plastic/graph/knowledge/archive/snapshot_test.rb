@@ -9,7 +9,7 @@ class KnowledgeArchiveSnapshotTest < Plastic::TestCase
   def setup
     super
     @intent = open_intent("Snapshot", status: "future")
-    @database = store_graphs.databases.fetch(:work)
+    @database = store_graphs.databases.fetch(:store)
     @snapshot = Plastic::Graph::Knowledge::Archive::Snapshot.new(@database, @intent.intent_id, origin)
     @root = folder.path(@intent.dir)
     @entries = Plastic::Graph::Knowledge::Archive::Tree.read(@root)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
-require_relative "../../lib/plastic"
+require_relative "../../lib/plastic/cli"
 require "fileutils"
 require "stringio"
 require "tmpdir"
@@ -43,8 +43,8 @@ class CliReleaseContractTest < Minitest::Test
     assert_path_exists File.join(@dir, ".plastic", "stores", "global", "store", "1--a-sample-delivery", "graph.json")
   end
 
-  def test_the_real_process_names_the_next_step
-    assert_equal "plastic next", @result.fetch("next")
+  def test_the_real_process_names_no_next_step_and_says_how_the_future_intent_starts
+    assert_equal [nil, "intent 1 is future; plastic intent start 1 or plastic intent auto 1 starts it"], @result.values_at("next", "because")
   end
 
   def test_an_unknown_command_is_not_in_this_build_yet

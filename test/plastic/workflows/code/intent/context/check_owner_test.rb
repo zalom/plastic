@@ -19,11 +19,11 @@ class CheckContextOwnerTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_check_context_owner, gate: no intent 9 in owning store", check("9").message
+    assert_equal "no intent 9 in owning store", assert_raises(Plastic::Failed) { check("9") }.message
   end
 
   def test_a_malformed_id_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { check("../1") }
+    error = assert_raises(Plastic::Usage) { check("../1") }
 
     assert_equal "invalid intent id \"../1\"", error.message
   end

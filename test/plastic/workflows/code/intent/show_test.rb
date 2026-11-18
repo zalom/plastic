@@ -25,7 +25,16 @@ class WorkflowShowIntentTest < Plastic::TestCase
     assert_equal ["open decision: Which way", "ruling: D1 Left", "node: n1 open Build"], printed.drop(2).first(3)
   end
 
+  def test_ten_rulings_print_in_number_order
+    open_intent
+    10.times { |number| store_graphs.work.add_ruling(intent_id: "1", text: "Ruling #{number + 1}") }
+
+    rulings = show.last.printed.grep(/\Aruling:/).map { |line| line[/D\d+/] }
+
+    assert_equal (1..10).map { |number| "D#{number}" }, rulings
+  end
+
   def test_an_unknown_intent_fails_the_call
-    assert_equal "code_show_intent, gate: no intent 9 in this store", show("9").first.message
+    assert_equal "no intent 9 in this store", assert_raises(Plastic::Failed) { show("9") }.message
   end
 end

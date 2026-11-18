@@ -8,7 +8,7 @@ class RoutinePrintingTest < Plastic::TestCase
   include HandEditHelper
 
   def row_counts
-    %i[work knowledge].to_h { |key| [key, store_graphs.databases.fetch(key).row("SELECT COUNT(*) AS n FROM #{(key == :work) ? "approvals" : "document_revisions"}").fetch("n")] }
+    %w[approvals document_revisions].to_h { |table| [table, store_database.row("SELECT COUNT(*) AS n FROM #{table}").fetch("n")] }
   end
 
   def test_a_level_file_whose_bytes_equal_its_print_passes
@@ -40,7 +40,7 @@ class RoutinePrintingTest < Plastic::TestCase
     edited_spec
     cli("intent", "approve", "1")
 
-    assert_equal 0, store_graphs.databases.fetch(:work).row("SELECT COUNT(*) AS n FROM approvals").fetch("n")
+    assert_equal 0, store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM approvals").fetch("n")
   end
 
   def test_an_edited_spec_stays_as_written_after_a_refusal
@@ -69,14 +69,14 @@ class RoutinePrintingTest < Plastic::TestCase
     assert_equal "# by hand\n", File.read(store_path("#{intent.dir}/intent.md"))
   end
 
-  def test_an_edited_savepoint_refuses_auto_and_writes_no_lock_row
+  def test_an_edited_work_log_refuses_intent_auto_and_leaves_the_intent_unstarted
     intent = specified
     cli("intent", "approve", "1")
-    write("#{intent.dir}/savepoint.md", "by hand\n")
-    result = cli("auto", "1")
+    write("#{intent.dir}/work.log", "by hand\n")
+    result = cli("intent", "auto", "1")
 
-    assert_refused(result, "#{intent.dir}/savepoint.md")
-    assert_empty store_graphs.databases.fetch(:local).rows("SELECT * FROM locks")
+    assert_refused(result, "#{intent.dir}/work.log")
+    refute_equal "in_progress", retrieval.intent("1").status
   end
 
   def test_an_edited_outcome_refuses_a_note_and_a_revise
@@ -96,7 +96,7 @@ class RoutinePrintingTest < Plastic::TestCase
   end
 
   def keep_file(name, bytes)
-    store_graphs.databases.fetch(:references).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.put(:sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: Digest::SHA256.hexdigest(bytes), origin_id: origin })
     end
     store_graphs.work.print_intent("1")
@@ -153,7 +153,7 @@ class RoutinePrintingContextTest < Plastic::TestCase
     path = edited_context
     named = cli("sync", "up")
     again = cli("intent", "note", "1", "a line")
-    rows = JSON.parse(retrieval.contexts("1").first.data)
+    rows = JSON.parse(retrieval.structure.contexts("1").first.data)
 
     assert_equal [0, 0, true, { "hand" => true }], [named.code, again.code, level_context?(path), rows], again.err
   end
@@ -275,10 +275,10 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     assert_equal [1, 0, 0], round_trip(method(:note))
   end
 
-  def test_an_edited_savepoint_is_cleared_by_the_command_the_refusal_names
+  def test_an_edited_work_log_is_cleared_by_the_command_the_refusal_names
     intent = specified
     cli("intent", "approve", "1")
-    write("#{intent.dir}/savepoint.md", "by hand\n")
+    write("#{intent.dir}/work.log", "by hand\n")
 
     assert_equal [1, 0, 0], round_trip(method(:note))
   end

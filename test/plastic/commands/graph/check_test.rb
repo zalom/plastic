@@ -17,8 +17,16 @@ class GraphCheckTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
   def update_node(id, sql_set)
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:nodes, "UPDATE nodes SET #{sql_set} WHERE intent_id = '1' AND id = '#{id}'")
+    end
+  end
+
+  def add_runs(id, count)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      (1..count).each do |number|
+        batch.put(:runs, { intent_id: "1", node_id: id, number:, agent: "", session_id: "s-1", started_at: "2026-11-17T01:00:00Z", ended_at: "2026-11-17T01:01:00Z", result: "failed" })
+      end
     end
   end
 
@@ -67,7 +75,7 @@ class GraphCheckTest < Plastic::TestCase
   def test_retries_over_the_cap_is_a_finding
     open_keyed_intent
     add_node("a")
-    update_node("n1", "retries = 4")
+    add_runs("n1", 4)
 
     result = call("1")
 

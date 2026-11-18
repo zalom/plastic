@@ -5,6 +5,8 @@ require_relative "../../../../lib/plastic/workflows/code/install"
 
 class InstallPlasticTest < Plastic::TestCase
   include InstallerHelper
+  include BackupHomes
+  include OldLayoutHomes
 
   def install(**choices)
     facts = { reinstall: false, force: false }.merge(choices)
@@ -23,14 +25,25 @@ class InstallPlasticTest < Plastic::TestCase
     refute_path_exists manifest
   end
 
+  def test_a_reinstall_over_an_old_layout_home_migrates_the_store_it_backed_up_and_completes_with_the_failed_one_behind
+    home = old_layout(fresh_home)
+    File.write(store_file(home, "work_graph"), "not a database")
+    outcome, context = run_workflow(Plastic::Workflows::Code::Install, reinstall: true, force: false, harness: scoped_harness(env: env_for(home)))
+
+    assert_equal [:done, Plastic::Graph::MIGRATIONS.versions(:store), nil], [outcome, *versions_of(home)]
+    assert_match(/\A   migrate: alpha stays behind because it could not be migrated \(.*work_graph\.db.*\); fix the cause and run plastic update\z/, context.printed.grep(/migrate:/).first)
+  end
+
+  def versions_of(home) = [store_file(home, "knowledge_graph", "beta"), store_file(home, "knowledge_graph")].map { |path| recorded_versions(path) }
+
   def test_an_installed_home_is_refused_without_reinstall
     install
     before = tree_snapshot(@plastic_home)
 
-    outcome, = install
+    error = assert_raises(Plastic::Refused) { install }
 
     assert_equal [Plastic::Refused, "Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again"],
-      [outcome.class, outcome.message]
+      [error.class, error.message]
     assert_equal before, tree_snapshot(@plastic_home)
   end
 
@@ -45,9 +58,9 @@ class InstallPlasticTest < Plastic::TestCase
   def test_settings_that_do_not_parse_fail_with_no_file_written
     File.write(File.join(claude_folder, "settings.json"), "{ broken")
 
-    outcome, = install
+    error = assert_raises(Plastic::Failed) { install }
 
-    assert_includes outcome.message, "settings.json is not valid JSON; nothing was changed"
+    assert_includes error.message, "settings.json is not valid JSON; nothing was changed"
     refute_path_exists File.join(@plastic_home, "VERSION")
   end
 end

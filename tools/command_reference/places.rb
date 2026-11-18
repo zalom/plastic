@@ -6,12 +6,11 @@ module CommandReference
     KEYS = [*Plastic::CLI::Declarations::GRAPHS, :store, :databases, :backups, :local, :home, :harness].freeze
     WHERE = {
       work: "the work graph database, in the store folder", knowledge: "the knowledge graph database, in the store folder",
-      references: "the references database, in the store folder", retrieval: "the search index, in the store folder",
+      retrieval: "the search index, in the store folder",
       store: "the store folder", databases: "the database files of the store, in the store folder", backups: "the backups folder, in the store folder", local: "the local database, in the home folder",
       home: "the Plastic home folder", harness: "the settings of the agent harness, in the home folder"
     }.freeze
-    WITH_PRINT = %i[work knowledge references].freeze
-    WITH_STORE = %i[store].freeze
+    WITH_PRINT = %i[work knowledge].freeze
     TRAVELS = "goes with the store"
     STAYS = "stays on this machine"
 
@@ -19,7 +18,9 @@ module CommandReference
 
     def self.where(key) = WHERE.fetch(key)
 
-    def self.reach(key, prints) = (WITH_STORE.include?(key) || (WITH_PRINT.include?(key) && prints)) ? TRAVELS : STAYS
+    def self.reach(key) = { store: TRAVELS }.fetch(key, STAYS)
+
+    def self.reach_printing(key) = WITH_PRINT.include?(key) ? TRAVELS : reach(key)
   end
 
   # The build stops with every word a page lacks, one line each.

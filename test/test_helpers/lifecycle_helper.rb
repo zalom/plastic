@@ -4,6 +4,8 @@ module Plastic
   class TestCase
     # An intent at each point of the ruled lifecycle, driven through the command line.
     module LifecycleHelper
+      include ConfigHomes
+
       KEY = "works"
       CRITERION = "It works"
       EARLY = "2026-10-05T10:00:00+02:00"
@@ -29,7 +31,7 @@ module Plastic
 
       def delivered_nodes(keys = { KEY => CRITERION })
         cli("intent", "approve", "1")
-        cli("auto", "1")
+        cli("intent", "auto", "1")
         keys.each_key.with_index(1) do |key, number|
           cli("node", "add", "1", "Deliver #{key}", "--criterion", key)
           cli("node", "claim", "1", "n#{number}")
@@ -38,17 +40,17 @@ module Plastic
       end
 
       def set_node_times(at)
-        store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
+        store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at", at:) }
       end
 
       def put_verdict(round, verdict, at, findings: "Checked against the spec")
-        store_graphs.databases.fetch(:work).transaction do |batch|
+        store_graphs.databases.fetch(:store).transaction do |batch|
           batch.add("INSERT INTO verdicts(intent_id, round, origin_id, verdict, findings, at, session_id) VALUES (:intent_id, :round, :origin, :verdict, :findings, :at, :session)",
             intent_id: "1", round:, origin:, verdict:, findings:, at:, session: "delivery")
         end
       end
 
-      def work_rows(table) = store_graphs.databases.fetch(:work).rows("SELECT * FROM #{table}")
+      def work_rows(table) = store_graphs.databases.fetch(:store).rows("SELECT * FROM #{table}")
 
       def accepted_intent(keys = { KEY => CRITERION }, **specified_options)
         intent = specified(keys, **specified_options)
@@ -58,9 +60,9 @@ module Plastic
         intent
       end
 
-      def review_off = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: off\n")
+      def review_off = seed_config(@plastic_home, "review:\n  pull_request: off\n")
 
-      def review_on = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: required\n")
+      def review_on = seed_config(@plastic_home, "review:\n  pull_request: required\n")
     end
   end
 end

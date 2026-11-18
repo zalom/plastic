@@ -21,8 +21,7 @@ class IntentBriefCaseTest < Plastic::TestCase
       "ruling: D2 Direct mode only", "ready: n2 build it"]
   end
 
-  MAIN_SESSION = ["main session: take the delivery lock with plastic auto 1",
-    "main session: record each ruling with plastic intent rule 1 TEXT",
+  MAIN_SESSION = ["main session: record each ruling with plastic intent rule 1 TEXT",
     "main session: write spec.md and add the work nodes with plastic node add 1 TITLE --criterion KEY",
     "main session: claim each node as you dispatch it with plastic node claim 1 NODE",
     "main session: judge each node's report and record it with plastic node done 1 NODE TEXT",
@@ -33,7 +32,7 @@ class IntentBriefCaseTest < Plastic::TestCase
     "--criterion KEY, then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
 
   def test_a_brief_with_no_spec_says_where_the_agent_writes_it
-    ran("intent new Alpha")
+    ran("intent new Alpha", "intent start 1")
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: none yet; the agent writes store/1--alpha/spec.md, and the done criteria are the bullets under its "## Done criteria" heading, ' \
@@ -42,7 +41,7 @@ class IntentBriefCaseTest < Plastic::TestCase
 
   def test_a_brief_with_a_spec_a_ruling_and_a_node_names_each_and_offers_the_claim
     alpha_specified("# Spec\n\n## Done criteria\n\n- [tests-pass] the CLI ships\n")
-    ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
+    ran("intent approve 1", "intent start 1", 'intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: store/1--alpha/spec.md; the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text',
@@ -118,6 +117,16 @@ class IntentBriefTest < Plastic::TestCase
     assert_includes result.out, "plastic edge add ID"
   end
 
+  def test_a_parked_intent_offers_no_command_and_names_its_reason
+    open_intent(status: "parked", reason: "waits on review")
+
+    result = call("1")
+
+    refute_match(/^next: /, result.out)
+    assert_call result, code: 0, err: "",
+      out: ["because: intent 1 is parked: waits on review; plastic intent start 1 resumes the work once the reason is resolved\n"]
+  end
+
   def test_misses_nothing_on_an_empty_intent
     intent = open_intent
 
@@ -126,5 +135,12 @@ class IntentBriefTest < Plastic::TestCase
     assert_equal 0, result.code
     refute_includes result.out, "ruling:"
     refute_includes result.out, "ready:"
+  end
+
+  def test_the_command_gives_the_workflow_the_usage_of_the_node_and_edge_commands
+    usages = Plastic::Commands::Intent::Brief.given_facts.fetch(:command_usages)
+
+    assert_equal 11, usages.size
+    assert_includes usages, Plastic::Commands::Edge::Remove.usage_line
   end
 end

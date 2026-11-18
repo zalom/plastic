@@ -19,20 +19,16 @@ class ReadContextTest < Plastic::TestCase
   def test_an_intent_with_no_saved_context_fails_the_call
     open_intent
 
-    assert_equal "code_read_context, gate: no retrieval context for intent 1", read_context.first.message
+    assert_equal "no retrieval context for intent 1", assert_raises(Plastic::Failed) { read_context }.message
   end
 
-  def test_a_store_with_no_backfill_marker_names_its_repair
+  def test_a_saved_context_is_read_after_the_derived_retrieval_file_is_lost
     reference = retrieval.reference("1", open_intent.file).fetch(:uri)
     Plastic::Workflows::ContextPersistence.new(call_context(intent_id: "1")).persist({ "evidence" => [reference] })
-    forget_backfill
+    lose_retrieval_file
 
-    assert_includes read_context.first.message, "run plastic install --reinstall, then try again"
-  end
+    outcome, context = read_context
 
-  private
-
-  def forget_backfill
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+    assert_equal [:done, [reference]], [outcome, printed_row(context, "context").fetch("evidence")]
   end
 end

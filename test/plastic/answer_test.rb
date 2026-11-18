@@ -1,0 +1,56 @@
+# frozen_string_literal: true
+
+require_relative "../test_helper"
+require_relative "../../lib/plastic/answer"
+
+class AnswerTest < Plastic::TestCase
+  def choices = %w[claude codex cursor].map { |label| Plastic::Choice.new(label:, chosen: false) }
+
+  def answer(text) = Plastic::Answer.new(choices).call(text)
+
+  def refusal(text) = assert_raises(Plastic::Usage) { answer(text) }.message
+
+  def test_numbers_pick_those_items_in_list_order
+    assert_equal Plastic::Chosen.new(labels: %w[claude cursor]), answer(" 3, 1 ")
+  end
+
+  def test_a_repeated_number_picks_its_item_once
+    assert_equal Plastic::Chosen.new(labels: %w[codex]), answer("2,2")
+  end
+
+  def test_a_picks_every_item
+    assert_equal Plastic::Chosen.new(labels: %w[claude codex cursor]), answer("A")
+  end
+
+  def test_q_leaves_with_no_change
+    assert_equal Plastic::Left.new, answer("q")
+  end
+
+  def test_an_unknown_number_is_refused_with_the_valid_ones
+    assert_includes refusal("1,7"), "no choice 7; the choices are 1, 2, 3"
+  end
+
+  def test_zero_is_an_unknown_number
+    assert_includes refusal("0"), "no choice 0"
+  end
+
+  def test_an_unknown_word_is_refused_with_the_grammar
+    assert_includes refusal("1,x"), Plastic::Answer::GRAMMAR
+  end
+
+  def test_an_empty_answer_is_refused_with_the_grammar
+    assert_includes refusal(" "), Plastic::Answer::GRAMMAR
+  end
+
+  def test_a_terminal_pick_reads_back_as_the_numbers_of_its_items
+    assert_equal "1,3", Plastic::Answer.of(Plastic::Chosen.new(labels: %w[claude cursor]), choices)
+  end
+
+  def test_leaving_the_terminal_list_reads_back_as_q
+    assert_equal "q", Plastic::Answer.of(Plastic::Left.new, choices)
+  end
+
+  def test_a_terminal_pick_of_nothing_reads_back_as_q
+    assert_equal "q", Plastic::Answer.of(Plastic::Chosen.new(labels: []), choices)
+  end
+end

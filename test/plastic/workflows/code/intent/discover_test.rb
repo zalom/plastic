@@ -6,10 +6,10 @@ require_relative "../../../../../lib/plastic/workflows/code/intent/discover"
 class DiscoverRetrievalTest < Plastic::TestCase
   def discover(intent_id = "1") = run_workflow(Plastic::Workflows::Code::Intent::Discover, intent_id:, terms: "alpha", source_projects: [])
 
-  def saved_discovery = store_graphs.databases[:knowledge].row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
+  def saved_discovery = store_graphs.databases.fetch(:store).row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
 
   def save_context(data)
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: STAMP }) }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: STAMP }) }
   end
 
   def test_the_discovery_is_recorded_and_reported
@@ -44,19 +44,9 @@ class DiscoverRetrievalTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_fails_with_no_discovery
-    outcome, = discover("9")
+    error = assert_raises(Plastic::Failed) { discover("9") }
 
-    assert_equal "code_discover_retrieval, gate: no intent 9 in owning store", outcome.message
-    assert_nil saved_discovery
-  end
-
-  def test_a_store_with_no_backfill_marker_names_its_repair
-    open_intent
-    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
-
-    outcome, = discover
-
-    assert_includes outcome.message, "run plastic install --reinstall, then try again"
+    assert_equal "no intent 9 in owning store", error.message
     assert_nil saved_discovery
   end
 end

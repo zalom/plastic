@@ -21,6 +21,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| Each setting the person switched is written to config.yml in the Plastic home | the Plastic home folder | stays on this machine |
+| Each setting the person switched is written to the settings rows in plastic.db, and config.yml is printed from them | the Plastic home folder | stays on this machine |
 
 The command is `Plastic::Commands::Config`, in [`commands/config.rb`](../../../../lib/plastic/commands/config.rb).
