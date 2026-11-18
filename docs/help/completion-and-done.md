@@ -11,7 +11,7 @@ prints every intent's status and disposition from those rows.
 
 `outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. The
 delivered path writes it with the result and its Verification lines; the abandoned path writes
-why the intent is dropped and a `Reverted:` line.
+why the intent is dropped and, for an intent that started, a `Reverted:` line.
 
 `plastic intent end ID` takes no options. It closes the intent when the rows allow it:
 every live node done, every criterion covered, an accepted verdict at or after the newest live
@@ -26,7 +26,8 @@ The completion row holds the judge `verdict` and the evidence built from the row
 criterion key with its done nodes and their findings. The close,
 prints the intent files, and hands the agent the steps that stop the processes and agents the
 intent started. `plastic intent abandon ID` closes an intent that will not ship, once
-outcome.md holds a `Reverted:` bullet; it writes no completion row.
+outcome.md says why. An intent that started also needs a `Reverted:` bullet; a future or open
+intent with no node has nothing to revert. It writes no completion row.
 
 Once the intent is closed, it takes no more rulings, nodes or verdicts: a done intent is never
 moved back to active.

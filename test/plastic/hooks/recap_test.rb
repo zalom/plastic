@@ -81,12 +81,21 @@ class RecapTest < Plastic::TestCase
     assert_equal %w[active future finished], recap.grep(/\A(active|future|finished): /).map { |line| line[/\A\w+/] }
   end
 
-  def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
+  def test_an_open_intent_with_a_run_prints_the_last_run_and_the_live_next_step_not_the_run_s
     intent_id = opened.work.write_intent(title: "Beta").intent_id
     run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
     opened.work.save_command_run(run)
 
-    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
+    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic intent start #{intent_id}"
+  end
+
+  def test_an_intent_whose_next_step_is_the_agent_s_prints_the_last_run_with_no_next
+    intent_id = opened.work.write_intent(title: "Gamma", status: "in_progress").intent_id
+    run = Plastic::CommandRun.fresh("node done", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic node done #{intent_id} n1 TEXT")
+    opened.work.save_command_run(run)
+
+    assert_includes recap, "active: #{intent_id} Gamma (in_progress), last run node done finished #{run.updated_at}"
+    refute_includes recap.join("\n"), "next: plastic node done"
   end
 
   def test_a_group_over_the_cap_prints_ten_and_a_count_of_the_rest

@@ -143,7 +143,7 @@ nothing is written. See the [page of `chat list`](../reference/commands/chat-lis
 
 | Command | Result |
 | ------- | ------ |
-| `plastic version` | The version, the release channel and the file the version came from. |
+| `plastic version` | Also `plastic --version`. The version, the release channel and the file the version came from. |
 | `plastic doctor` | One row for each check of this harness, then one repair row. Exits 0 when every check passes and 1 on a finding. |
 
 `plastic doctor` checks the version record, Ruby, the sqlite3 gem, the machine database, each

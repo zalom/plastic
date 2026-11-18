@@ -12,9 +12,15 @@ class PrepareAbandonTest < Plastic::TestCase
     assert_raises(Plastic::Failed) { prepare }
   end
 
-  def test_an_open_intent_without_a_reverted_line_hands_over_the_revert_steps
-    open_intent
+  def test_a_started_intent_without_a_reverted_line_hands_over_the_revert_steps
+    open_intent(status: "in_progress")
 
     assert_equal :reverting, prepare.first
+  end
+
+  def test_an_open_intent_with_no_node_and_no_reverted_line_is_abandoned
+    open_intent
+
+    assert_equal :abandoning, prepare.first
   end
 end

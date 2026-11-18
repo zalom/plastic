@@ -72,6 +72,7 @@ module Plastic
       return list(argv, context) if command.empty? || %w[--help -h].include?(command)
       return help(argv, context) if command == "help"
 
+      argv = ["version", *argv.drop(1)] if command == "--version"
       dispatch(argv, context) { "plastic #{argv.join(" ")} is not a command; run plastic help for the list" }
     end
     private_class_method :route

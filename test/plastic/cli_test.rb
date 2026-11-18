@@ -161,6 +161,13 @@ class BinCallTest < Plastic::TestCase
     assert_equal "", call.out
   end
 
+  def test_bin_call_version_flag_prints_what_the_version_command_prints
+    flag = plastic_bin("--version", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [flag.code, flag.err]
+    assert_equal plastic_bin("version", table: Plastic::CLI::TABLE).out, flag.out
+  end
+
   def test_bin_call_with_no_words_lists_only_the_shipped_table
     call = plastic_bin(table: Plastic::CLI::TABLE)
 

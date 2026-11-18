@@ -32,8 +32,8 @@ module Plastic
 
     FIELDS = members.freeze
 
-    # The run in one phrase: the tool, its status, when, and the next command it printed.
-    def summary = [tool, status, updated_at].join(" ") + Array(next_command).map { |command| ", next: #{command}" }.join
+    # The run in one phrase: the tool, its status and when.
+    def summary = [tool, status, updated_at].join(" ")
 
     def self.fresh(tool, subject, time)
       now = Plastic.timestamp(time)

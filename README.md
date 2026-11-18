@@ -104,7 +104,7 @@ plastic version     # The version and the release channel
 plastic doctor      # The installation, the databases and the hooks of this agent
 ```
 
-`plastic version` prints the version, the release channel and the file the version came from.
+`plastic version`, or `plastic --version`, prints the version, the release channel and the file the version came from.
 It rebuilds a search index that is out of step and changes nothing else.
 
 `plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3

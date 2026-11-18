@@ -27,10 +27,15 @@ the tag and the GitHub release for a version that has no tag yet. `install.sh` a
 
 ## Cut a beta
 
-1. Branch from `alpha`. Set `package.json` to the next `-beta.N` version, add its
-   `CHANGELOG.md` entry, and commit `chore: release X.Y.Z-beta.N`.
-2. Merge that commit into `beta` as `chore: beta follows alpha at X.Y.Z-beta.N`, and push
+1. On `alpha`, by its own pull request, move the entries under `## Unreleased` in
+   `CHANGELOG.md` to a heading for the next `-beta.N` version.
+2. Branch from `alpha`. Set `package.json` to that version and commit
+   `chore: release X.Y.Z-beta.N`.
+3. Merge that commit into `beta` as `chore: beta follows alpha at X.Y.Z-beta.N`, and push
    `beta`. The push publishes the beta.
+
+The release commit stays off `alpha`, which keeps its own `-alpha.N` version. Raise that
+version on `alpha` when an alpha release is wanted: the push that carries it publishes it.
 
 The owner decides when a beta is cut. A switched-off change rides along in every cut, and
 turning its switch on in a later commit is what releases it.

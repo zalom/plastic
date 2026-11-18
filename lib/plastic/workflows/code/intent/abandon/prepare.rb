@@ -10,8 +10,10 @@ module Plastic
     module Code
       module Intent
         class Abandon
-          # Reads the intent and its claims: a missing or closed intent fails, a foreign live claim refuses, and an outcome without a Reverted line hands over the revert steps.
+          # Reads the intent and its claims: a missing or closed intent fails, a foreign live claim refuses, and a started intent whose outcome has no Reverted line hands over the revert steps.
           class Prepare < CodeWorkflow
+            UNSTARTED = %w[future open].freeze
+
             summary "Reads the intent and its claims and checks that it can be abandoned."
             sets :intent, :status, :problem, :intent_folder, :reverted
 
@@ -27,7 +29,7 @@ module Plastic
             read "check delivery ownership" do |context|
               context[:problem] = DeliveryOwnership.problem(context)
               context[:intent_folder] = context.intent.dir
-              context[:reverted] = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id).verification.reverted?
+              context[:reverted] = unstarted?(context) || Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id).verification.reverted?
             end
 
             gate "%{problem}", stops: :refusal,
@@ -35,7 +37,12 @@ module Plastic
               pass: ->(context) { context.problem.nil? }
 
             outcome :reverting, if: ->(context) { !context.reverted }, because: "the work of the intent is not reverted yet"
-            outcome :abandoning, because: "the work is reverted, so the intent can be marked abandoned"
+            outcome :abandoning, because: "no work of the intent is left to revert, so the intent can be marked abandoned"
+
+            # A future or open intent with no node has no work to revert.
+            def self.unstarted?(context)
+              UNSTARTED.include?(context.status) && context.retrieval.structure.nodes(context.intent_id).empty?
+            end
           end
         end
       end

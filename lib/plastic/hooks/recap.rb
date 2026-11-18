@@ -2,6 +2,7 @@
 
 require_relative "../graph/knowledge/intent"
 require_relative "../graph/knowledge/intent/listing"
+require_relative "../graph/work/delivery_action"
 require_relative "../graph/work/last_log_lines"
 require_relative "../graph/work/session_intent"
 require_relative "compact_recap"
@@ -56,7 +57,12 @@ module Plastic
 
       def last_run(intent_id)
         run = @retrieval.last_run(intent_id)
-        run ? ", last run #{run.summary}" : ""
+        run ? ", last run #{run.summary}#{live_next(intent_id)}" : ""
+      end
+
+      def live_next(intent_id)
+        command, = Graph::Work::DeliveryAction.new(@retrieval, intent_id).call
+        command ? ", next: #{command}" : ""
       end
 
       def previous_session_lines = FIRST_LINES.key?(@source) ? [] : @predecessor.lines
