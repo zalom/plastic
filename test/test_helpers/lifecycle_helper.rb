@@ -31,7 +31,7 @@ module Plastic
 
       def delivered_nodes(keys = { KEY => CRITERION })
         cli("intent", "approve", "1")
-        cli("auto", "1")
+        cli("intent", "auto", "1")
         keys.each_key.with_index(1) do |key, number|
           cli("node", "add", "1", "Deliver #{key}", "--criterion", key)
           cli("node", "claim", "1", "n#{number}")

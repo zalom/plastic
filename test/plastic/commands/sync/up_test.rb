@@ -381,7 +381,9 @@ class SyncUpGraphArchiveKeptTest < Minitest::Test
   include DeliveredHomes
 
   def kept(kernel)
-    kernel.command!("intent", "new", "Waiting", "--status", "parked", "--reason", "Waiting for the supplier")
+    kernel.command!("intent", "new", "Waiting")
+    kernel.command!("intent", "start", "2", env: SESSION)
+    kernel.command!("intent", "park", "2", "Waiting", "for", "the", "supplier", env: SESSION)
     kernel.command!("intent", "new", "Dropped")
     abandon(kernel, "3")
   end

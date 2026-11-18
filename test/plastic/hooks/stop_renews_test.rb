@@ -24,6 +24,7 @@ class StopRenewsClaimsTest < Plastic::TestCase
   def setup
     super
     open_intent
+    store_graphs.work.activate_intent("1")
     claim_for("s-1")
     claim_for("s-2")
   end

@@ -5,7 +5,8 @@ require_relative "planning_directive"
 module Plastic
   module Graph
     module Work
-      # The next concrete action for a delivery, or instructions for the harness.
+      # The next concrete action for a delivery, or instructions for the harness. An intent that is
+      # not in progress yet is started first; a parked one offers no command until its reason is resolved.
       class DeliveryAction
         def self.worker_clause(node)
           worker = node.claimed_by.to_s
@@ -20,7 +21,8 @@ module Plastic
         end
 
         def call
-          return [nil, "intent #{@intent_id} is closed", nil] unless @retrieval.intent(@intent_id).open?
+          intent = @retrieval.intent(@intent_id)
+          return status_action(intent) unless intent.status == "in_progress"
           return planning if live.empty?
           return ["plastic intent end #{@intent_id}", "the nodes are done; verify the intent's criteria", nil] if live.all? { |node| node.state == "done" }
 
@@ -28,6 +30,15 @@ module Plastic
         end
 
         private
+
+        def status_action(intent)
+          return [nil, "intent #{@intent_id} is closed", nil] if intent.closed?
+
+          status = intent.status
+          return [nil, "intent #{@intent_id} is parked: #{intent.reason}; plastic intent start #{@intent_id} resumes the work once the reason is resolved", nil] if status == "parked"
+
+          ["plastic intent start #{@intent_id}", "intent #{@intent_id} is #{status}", nil]
+        end
 
         def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
 

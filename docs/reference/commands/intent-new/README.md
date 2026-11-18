@@ -1,9 +1,9 @@
 # plastic intent new
 
-Open an intent: write its rows and its folder.
+Write a future intent: its rows and its folder.
 
 ```sh
-plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS] [--reason TEXT]
+plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND]
 ```
 
 | Argument or option | What it gives | Default |
@@ -13,8 +13,6 @@ plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND]
 | `--ref REF` | a ticket, a link, or another intent as ID-ORIGIN |  |
 | `--after ID` | an intent this one grows out of, linked as source |  |
 | `--kind KIND` | the kind of work | `"work"` |
-| `--status STATUS` | open, parked or future | `"open"` |
-| `--reason TEXT` | why a parked intent waits; required with --status parked |  |
 
 ## The events of one call, step by step
 

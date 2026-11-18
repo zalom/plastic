@@ -24,8 +24,8 @@ module Plastic
       code_prepare_verdict: "Code::Intent::Verdict::Prepare",
       agent_judge_intent: "Agent::Intent::Judge",
       code_record_verdict: "Code::Intent::Verdict",
-      code_start_auto: "Code::Auto",
-      code_pick_delivery: "Code::Auto::Pick",
+      code_start_intent: "Code::Intent::Start",
+      code_auto_roadmap: "Code::Roadmap::Auto",
       code_preview_sync: "Code::Sync::Up::Preview",
       code_preview_sync_down: "Code::Sync::Down::Preview",
       code_check_graph: "Code::Graph::Check",
@@ -123,7 +123,10 @@ module Plastic
 
       # Resources: the sort of an intent folder into the resources layout.
       code_preview_sort_resources: "Code::Resources::Sort::Preview",
-      code_sort_resources: "Code::Resources::Sort"
+      code_sort_resources: "Code::Resources::Sort",
+
+      # Statuses: parking started work with its reason.
+      code_park_intent: "Code::Intent::Park"
     }.freeze
   end
 end

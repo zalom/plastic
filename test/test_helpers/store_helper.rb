@@ -43,7 +43,7 @@ module Plastic
 
       def archived?(intent_id) = retrieval.archives.archived?(intent_id)
 
-      # A new intent with its files printed, as plastic intent new leaves it.
+      # A new open intent with its files printed, as plastic roadmap open leaves it.
       def open_intent(title = "Alpha", **fields)
         work = store_graphs.work
         intent = work.write_intent(title:, **fields)
@@ -52,12 +52,13 @@ module Plastic
         intent
       end
 
-      # An open intent with the owner's go-ahead whose synced spec.md holds one done criterion, so a node can name its key and be claimed.
+      # An intent in progress with the owner's go-ahead whose synced spec.md holds one done criterion, so a node can name its key and be claimed.
       def open_keyed_intent(title = "Alpha", key: "done", **fields)
         intent = open_intent(title, **fields)
         write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [ ] [#{key}] it is done\n")
         sync_up
         store_graphs.work.approve_intent(intent.intent_id)
+        store_graphs.work.activate_intent(intent.intent_id)
         intent
       end
 

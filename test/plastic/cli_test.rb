@@ -11,10 +11,11 @@ class CliTest < Plastic::TestCase
     assert_equal "node", Plastic::CLI.find(%w[node 7], table)
   end
 
-  def test_the_table_has_one_auto_entry_and_no_lock_entry
-    auto_words = Plastic::CLI::TABLE.keys.select { |name| name.split.first == "auto" }
+  def test_the_table_has_the_three_start_entries_and_no_top_level_auto_or_lock_entry
+    start_words = Plastic::CLI::TABLE.keys.select { |name| name.split.include?("auto") || name == "intent start" }
 
-    assert_equal [["auto"], false], [auto_words, Plastic::CLI::TABLE.key?("intent lock status")]
+    assert_equal [["intent start", "intent auto", "roadmap auto"], false, false],
+      [start_words, Plastic::CLI::TABLE.key?("auto"), Plastic::CLI::TABLE.key?("intent lock status")]
   end
 
   def test_family_of_names_the_family_of_a_command_and_core_for_words_no_family_holds

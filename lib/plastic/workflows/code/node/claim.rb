@@ -1,32 +1,46 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
-require_relative "../auto"
 
 module Plastic
   module Workflows
     module Code
       module Node
-        # Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth run of a
-        # node moves it to needs_info instead, with the owner's question, and refuses. A node another
-        # session holds, its claim renewed within 15 minutes, refuses and names the holder. A refused
-        # claim keeps its command run open, so the next call claims again.
+        # Claims an open node whose needed nodes are done, once the intent is in progress and the owner gave the
+        # go-ahead. A done or abandoned intent fails and offers plastic next. The fourth run of a node moves it
+        # to needs_info instead, with the owner's question, and refuses. A node another session holds, its claim
+        # renewed within 15 minutes, refuses and names the holder. A refused claim keeps its command run open,
+        # so the next call claims again.
         class Claim < CodeWorkflow
           clear_declarations
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :result, :node, :problem, :approval_problem
+          sets :intent, :status, :result, :node, :problem, :approval_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
+            context[:status] = context.intent&.status
           end
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "node claim names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
+          gate "intent %{intent_id} is %{status}", stops: :failure, offers: "plastic next",
+            because: "a node of a closed intent is never claimed; pick other work",
+            pass: ->(context) { !context.intent.closed? }
+          gate "intent %{intent_id} is %{status}; start it with plastic intent start %{intent_id}, or with plastic intent auto %{intent_id} for agent delivery",
+            stops: :failure, offers: "plastic intent start %{intent_id}", because: "a node is claimed only in an intent in progress",
+            pass: ->(context) { context.status == "in_progress" }
 
           read "check the go-ahead" do |context|
-            context[:approval_problem] = Auto.approval_problem(context.intent_id, context)
+            context[:approval_problem] = approval_problem(context.intent_id, context)
+          end
+
+          # The refusal a claim gives before the owner's go-ahead.
+          def self.approval_problem(id, context)
+            return nil if context.retrieval.structure.approval(id)
+
+            "intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}"
           end
 
           gate "%{approval_problem}", stops: :refusal,

@@ -38,6 +38,7 @@ class StopChatTest < Plastic::TestCase
   def hold_ready_work
     at = "2026-10-05T10:00:00+02:00"
     store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.put(:intents, { intent_id: "1", slug: "i1", title: "Intent 1", status: "in_progress" })
       batch.put(:nodes, { intent_id: "1", id: "c", state: "claimed", claimed_by: "s-1", claimed_at: at, seen_at: at, updated_at: at })
       batch.put(:nodes, { intent_id: "1", id: "a", state: "open" })
     end

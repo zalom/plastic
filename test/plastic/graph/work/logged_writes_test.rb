@@ -56,6 +56,13 @@ class WorkLoggedWritesTest < Plastic::TestCase
     assert_equal %w[opened noted abandoned], kinds
   end
 
+  def test_parking_an_intent_that_is_not_in_progress_appends_no_line
+    intent
+    work.park_intent("1", "waits on review")
+
+    assert_equal %w[opened], kinds
+  end
+
   def test_a_note_appends_a_line_with_the_path_and_the_full_hash_of_the_document
     intent
     work.note_intent(work_intent, "note", "one line")

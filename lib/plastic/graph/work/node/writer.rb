@@ -72,8 +72,10 @@ module Plastic
           def renew_claims(session)
             now = Plastic.timestamp(@clock.now)
             @databases.fetch(:store).transaction do |batch|
-              batch.add("UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin",
-                now:, session:, origin: @retrieval.origin_id)
+              batch.add(<<~SQL, now:, session:, origin: @retrieval.origin_id)
+                UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin
+                  AND intent_id IN (SELECT intent_id FROM intents WHERE status = 'in_progress' AND origin_id = :origin)
+              SQL
             end
           end
 

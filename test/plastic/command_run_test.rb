@@ -118,7 +118,7 @@ class CommandRunTest < Plastic::TestCase
   def test_a_node_add_wrote_row_leaves_out_the_command_run
     specified
     cli("intent", "approve", "1")
-    cli("auto", "1")
+    cli("intent", "auto", "1")
     call = cli("node", "add", "1", "Deliver it", "--criterion", KEY)
 
     refute_includes call.out, "command run"
@@ -185,7 +185,7 @@ class ReadKeepsNoRunTest < Plastic::TestCase
   def test_node_add_keeps_exactly_one_command_run_row
     specified
     cli("intent", "approve", "1")
-    cli("auto", "1")
+    cli("intent", "auto", "1")
 
     assert_equal 1, added_by { cli("node", "add", "1", "Deliver it", "--criterion", KEY) }
   end

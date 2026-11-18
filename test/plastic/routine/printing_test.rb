@@ -69,11 +69,11 @@ class RoutinePrintingTest < Plastic::TestCase
     assert_equal "# by hand\n", File.read(store_path("#{intent.dir}/intent.md"))
   end
 
-  def test_an_edited_work_log_refuses_auto_and_leaves_the_intent_unstarted
+  def test_an_edited_work_log_refuses_intent_auto_and_leaves_the_intent_unstarted
     intent = specified
     cli("intent", "approve", "1")
     write("#{intent.dir}/work.log", "by hand\n")
-    result = cli("auto", "1")
+    result = cli("intent", "auto", "1")
 
     assert_refused(result, "#{intent.dir}/work.log")
     refute_equal "in_progress", retrieval.intent("1").status

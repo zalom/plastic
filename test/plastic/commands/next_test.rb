@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/next"
-require_relative "../../../lib/plastic/commands/auto"
+require_relative "../../../lib/plastic/commands/intent/auto"
 require_relative "../../../lib/plastic/commands/node/add"
 require_relative "../../../lib/plastic/commands/node/claim"
 require_relative "../../../lib/plastic/commands/node/done"
@@ -22,7 +22,7 @@ class NextPlanStepCaseTest < Plastic::TestCase
 
   def test_a_locked_intent_with_no_plan_hands_the_agent_the_plan_step
     alpha_specified(UNKEYED_CRITERION)
-    ran("intent approve 1", "auto 1")
+    ran("intent approve 1", "intent auto 1")
 
     assert_case line("next"), code: 0, out: [PLAN_STEP]
   end
@@ -40,7 +40,7 @@ class NextTest < Plastic::TestCase
 
   def start(intent)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
-    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+    plastic("intent", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
   end
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
@@ -63,7 +63,7 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "next: plastic intent spec #{intent.intent_id}"
   end
 
-  def test_an_open_status_with_a_go_ahead_offers_auto_start
+  def test_an_open_status_with_a_go_ahead_offers_intent_start
     intent = open_intent
     clear_spec(intent)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
@@ -71,7 +71,7 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "next: plastic auto #{intent.intent_id}"
+    assert_includes result.out, "next: plastic intent start #{intent.intent_id}"
   end
 
   def test_no_nodes_hands_planning_to_the_harness
@@ -238,7 +238,7 @@ class DeliveryHandoffTest < Plastic::TestCase
   def active_intent
     intent = specified(records: nil)
     cli("intent", "approve", "1")
-    cli("auto", "1")
+    cli("intent", "auto", "1")
     intent
   end
 

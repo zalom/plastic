@@ -327,7 +327,7 @@ class PrintAfterWriteTest < Plastic::TestCase
   def test_node_done_prints_the_state
     keyed
     run_cli("intent", "approve", "1")
-    run_cli("auto", "1")
+    run_cli("intent", "auto", "1")
     run_cli("node", "claim", "1", "n1")
     run_cli("node", "done", "1", "n1", "it passes")
 
@@ -413,10 +413,10 @@ end
 class PrintTriggerTest < Plastic::TestCase
   include LifecycleHelper
 
-  def test_auto_prints_the_intent_files_and_the_index
+  def test_intent_auto_prints_the_intent_files_and_the_index
     specified
     cli("intent", "approve", "1")
-    result = cli("auto", "1")
+    result = cli("intent", "auto", "1")
 
     assert_equal [0, "in_progress", true], [result.code, listed("1").fetch("status"), result.out.include?("files:")]
   end

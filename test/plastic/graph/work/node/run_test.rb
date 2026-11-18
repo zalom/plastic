@@ -3,7 +3,7 @@
 require_relative "../../../../test_helper"
 
 # Every claim of a node is one row of runs; a claim lapses after 15 minutes without a renewal.
-class WorkNodeRunTest < Plastic::TestCase
+class WorkNodeRunCase < Plastic::TestCase
   Clock = Struct.new(:now)
 
   START = Time.utc(2026, 11, 17, 8, 0, 0)
@@ -12,6 +12,7 @@ class WorkNodeRunTest < Plastic::TestCase
     super
     @clock = Clock.new(START)
     store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
     graphs("s-1").work.add_node(intent_id: "1", title: "Build", criterion: "it works")
   end
 
@@ -24,7 +25,9 @@ class WorkNodeRunTest < Plastic::TestCase
   def claim(session = "s-1") = work(session).claim_node(intent_id: "1", id: "n1", by: session)
 
   def runs = retrieval.structure.runs("1").select { |run| run.node_id == "n1" }
+end
 
+class WorkNodeRunTest < WorkNodeRunCase
   def test_a_claim_opens_a_run_of_the_session
     claim
 
@@ -94,23 +97,6 @@ class WorkNodeRunTest < Plastic::TestCase
     assert_equal [:held, "s-1", 1], [state, node.claimed_by, runs.size]
   end
 
-  def test_a_renewal_moves_the_lapse_out
-    claim("s-1")
-    at(10)
-    work("s-1").renew_claims("s-1")
-    at(20)
-
-    assert_equal :held, claim("s-2").first
-  end
-
-  def test_a_renewal_touches_only_the_claims_of_its_session
-    claim("s-1")
-    at(10)
-    work("s-2").renew_claims("s-2")
-
-    assert_equal "2026-11-17T08:00:00Z", retrieval.node("1", "n1").seen_at
-  end
-
   def test_a_lapsed_claim_nobody_took_completes_for_its_holder
     claim("s-1")
     at(40)
@@ -137,5 +123,34 @@ class WorkNodeRunTest < Plastic::TestCase
     outcome, = Plastic::Graph::Work::Node::Claim.new(graphs("s-1").databases, retrieval, @clock).call(stale, by: "s-1", agent: "")
 
     assert_equal :held, outcome
+  end
+end
+
+# A session renews its own claims of intents in progress.
+class WorkNodeRenewalTest < WorkNodeRunCase
+  def test_a_renewal_moves_the_lapse_out
+    claim("s-1")
+    at(10)
+    work("s-1").renew_claims("s-1")
+    at(20)
+
+    assert_equal :held, claim("s-2").first
+  end
+
+  def test_a_renewal_leaves_out_the_claims_of_a_parked_intent
+    claim("s-1")
+    store_graphs.work.park_intent("1", "waits on review")
+    at(10)
+    work("s-1").renew_claims("s-1")
+
+    assert_equal "2026-11-17T08:00:00Z", retrieval.node("1", "n1").seen_at
+  end
+
+  def test_a_renewal_touches_only_the_claims_of_its_session
+    claim("s-1")
+    at(10)
+    work("s-2").renew_claims("s-2")
+
+    assert_equal "2026-11-17T08:00:00Z", retrieval.node("1", "n1").seen_at
   end
 end

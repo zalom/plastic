@@ -6,13 +6,13 @@ require_relative "../../../../lib/plastic/commands/intent/archive"
 
 class IntentArchiveCaseTest < Plastic::TestCase
   def test_archiving_a_future_intent_prints_the_status_and_offers_the_board
-    ran("intent new Later --status future")
+    ran("intent new Later")
 
     assert_case line("intent archive 1"), code: 0, out: ["intent: 1 archived", "next: plastic status"]
   end
 
   def test_archiving_an_open_intent_exits_1_and_names_the_end_command
-    ran("intent new Alpha")
+    open_intent("Alpha")
 
     assert_case line("intent archive 1"), code: 1, out: ["next: plastic intent end 1"],
       err: ["intent 1 is open; only done, abandoned and future intents archive"]

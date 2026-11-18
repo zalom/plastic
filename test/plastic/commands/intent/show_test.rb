@@ -9,7 +9,7 @@ class IntentShowCaseTest < Plastic::TestCase
     alpha_specified
     ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
 
-    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (open)", "criteria: 1", "ruling: D1 ship the CLI first",
+    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (future)", "criteria: 1", "ruling: D1 ship the CLI first",
       "node: n1 open Build", "Opened: Alpha", "next: plastic intent brief 1"]
   end
 

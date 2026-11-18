@@ -20,6 +20,7 @@ class NodeDoneTest < Plastic::TestCase
     super
     specified
     cli("intent", "approve", "1")
+    cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
     cli("node", "claim", "1", "n1")
   end

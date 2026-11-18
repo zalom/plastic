@@ -34,7 +34,7 @@ module Plastic
             context.print("approved: #{context.intent_id}")
           end
 
-          outcome :done, offers: "plastic auto %{intent_id}", because: "intent %{intent_id} has the owner's go-ahead"
+          outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} has the owner's go-ahead"
         end
       end
     end

@@ -25,24 +25,23 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     assert_equal "this store still has INDEX.md; run plastic sync up to import it first", writer.problem
   end
 
-  def test_only_the_new_statuses_are_taken
-    assert_equal ["a new intent takes the status open, parked or future, not done", "a new intent takes the status open, parked or future, not in_progress",
-      "a new intent takes the status open, parked or future, not active", nil, nil],
-      [{ status: "done" }, { status: "in_progress" }, { status: "active" }, { status: "future" }, { status: "parked", reason: "later" }].map { |call| writer.problem(**call) }
-  end
-
-  def test_a_parked_intent_needs_a_reason
-    assert_equal "a parked intent needs a reason: pass --reason TEXT", writer.problem(status: "parked")
-  end
-
-  def test_a_reason_belongs_to_a_parked_intent_only
-    assert_equal "--reason belongs to a parked intent: pass --status parked", writer.problem(status: "open", reason: "later")
-  end
-
   def test_write_stores_the_reason_of_a_parked_intent
     parked = writer.write(title: "Wait", status: "parked", reason: "waiting for the vendor")
 
     assert_equal ["parked", "waiting for the vendor"], parked.to_h.values_at(:status, :reason)
+  end
+
+  def test_park_moves_an_intent_in_progress_and_says_a_row_changed
+    writer.write(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+
+    assert_equal [true, "parked", "waits on review"], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
+  def test_park_of_an_intent_not_in_progress_changes_no_row_and_says_so
+    writer.write(title: "Alpha")
+
+    assert_equal [false, "open", nil], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
   end
 
   def test_the_parent_must_exist

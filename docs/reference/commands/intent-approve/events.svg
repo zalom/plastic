@@ -119,7 +119,7 @@
 <rect x="480" y="299" width="330" height="62" rx="6" class="stop-end"/>
 <text x="492" y="317" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="492" y="335" class="t" text-anchor="start">Intent &lt;intent id&gt; has the owner&#39;s go-ahead.</text>
-<text x="492" y="351" class="t" text-anchor="start">next: plastic auto &lt;intent id&gt;</text>
+<text x="492" y="351" class="t" text-anchor="start">next: plastic intent brief &lt;intent id&gt;</text>
 <rect x="24" y="391" width="14" height="14" rx="3" class="lane-code"/>
 <text x="44" y="403" class="k" text-anchor="start">Code Workflow</text>
 <rect x="140" y="391" width="14" height="14" rx="3" class="stop-failure"/>

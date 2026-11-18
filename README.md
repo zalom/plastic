@@ -130,8 +130,9 @@ plastic init                # Pick the agents to install into
 # 2. See what is open
 plastic status
 
-# 3. Start an intent
+# 3. Open an intent and start it
 plastic intent new "Add a --version flag"
+plastic intent start 1
 
 # 4. Ask what to do next, at any time
 plastic next
@@ -179,8 +180,10 @@ plastic next                          # The next action in one line
 
 ### Intents
 ```bash
-plastic intent new "TITLE"            # Create an intent
+plastic intent new "TITLE"            # Create a future intent
 plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
+plastic intent start 12               # Set it in progress for guided work and print the code worktree
+plastic intent park 12 "TEXT"         # Park started work with the reason it waits
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
@@ -219,8 +222,8 @@ write, never touches the original, and ends with the same call without `--dry-ru
 
 ### Auto teams
 ```bash
-plastic auto 12                        # Set the intent in progress and print the code worktree
-plastic auto my-roadmap                # Deliver the next item of a roadmap
+plastic intent auto 12                 # Set the intent in progress for agent delivery and print the code worktree
+plastic roadmap auto my-roadmap        # Start the next item of a roadmap for agent delivery
 plastic intent brief 12                # Print the brief an agent starts from
 ```
 

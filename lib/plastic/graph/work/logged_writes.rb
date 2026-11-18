@@ -39,6 +39,8 @@ module Plastic
           end
         end
 
+        def park_intent(intent_id, reason) = @log.logged(intent_id, "parked", "Parked: #{reason}") { @writers.intents.park(intent_id, reason) }
+
         def archive_intent(intent_id) = @log.logged(intent_id, "archived", "Archived") { @writers.archives.archive(intent_id) }
 
         def unarchive_intent(intent_id) = @log.logged(intent_id, "unarchived", "Unarchived") { @writers.archives.restore(intent_id) }

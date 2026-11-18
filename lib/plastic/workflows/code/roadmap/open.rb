@@ -7,9 +7,11 @@ module Plastic
     module Code
       module Roadmap
         # Opens a ready item's intent, its spec.md holding the batch and item's
-        # goal and done criteria, then links the intent to the roadmap.
+        # goal and done criteria, then links the intent to the roadmap. An intent
+        # already named, as roadmap auto names an item in flight, opens nothing.
         class Open < CodeWorkflow
           clear_declarations
+          summary "Opens a ready roadmap item's intent with its spec and links it to the roadmap; an intent already named opens nothing."
 
           sets :problem, :kind, :intent_id
 

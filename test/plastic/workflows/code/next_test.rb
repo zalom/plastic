@@ -37,7 +37,7 @@ class PickNextTest < Plastic::TestCase
     specified_intent
     store_graphs.work.approve_intent("1")
 
-    assert_equal [:done, "plastic auto 1", "intent 1 is open"], pick
+    assert_equal [:done, "plastic intent start 1", "intent 1 is open"], pick
   end
 
   def test_an_active_intent_offers_its_next_node

@@ -3,11 +3,13 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/work/delivery_action"
 
-class WorkDeliveryActionTest < Plastic::TestCase
+# An intent in progress, the way every delivery action test starts.
+class WorkDeliveryActionCase < Plastic::TestCase
   def setup
     super
     @work = store_graphs.work
     @work.write_intent(title: "Alpha")
+    @work.activate_intent("1")
   end
 
   def action(intent_id = "1") = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id).call
@@ -15,7 +17,9 @@ class WorkDeliveryActionTest < Plastic::TestCase
   def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
 
   def claim(id) = @work.claim_node(intent_id: "1", id:, by: "worker")
+end
 
+class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_an_intent_with_no_live_node_asks_the_harness_to_plan
     plan("Gone")
     @work.remove_node(intent_id: "1", id: "n1")
@@ -121,6 +125,21 @@ class WorkDeliveryActionTest < Plastic::TestCase
     @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
 
     assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
+  end
+end
+
+# The action of an intent that is not in progress.
+class WorkDeliveryActionStatusTest < WorkDeliveryActionCase
+  def test_an_intent_that_is_not_in_progress_offers_intent_start
+    @work.write_intent(title: "Beta", status: "future")
+
+    assert_equal ["plastic intent start 2", "intent 2 is future", nil], action("2")
+  end
+
+  def test_a_parked_intent_offers_no_command_and_names_its_reason
+    @work.write_intent(title: "Beta", status: "parked", reason: "waits on review")
+
+    assert_equal [nil, "intent 2 is parked: waits on review; plastic intent start 2 resumes the work once the reason is resolved", nil], action("2")
   end
 
   def test_a_closed_intent_has_no_action

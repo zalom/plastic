@@ -24,8 +24,8 @@ module WorkflowNameTable
     code_prepare_verdict: "Code::Intent::Verdict::Prepare",
     agent_judge_intent: "Agent::Intent::Judge",
     code_record_verdict: "Code::Intent::Verdict",
-    code_start_auto: "Code::Auto",
-    code_pick_delivery: "Code::Auto::Pick",
+    code_start_intent: "Code::Intent::Start",
+    code_auto_roadmap: "Code::Roadmap::Auto",
     code_preview_sync: "Code::Sync::Up::Preview",
     code_preview_sync_down: "Code::Sync::Down::Preview",
     code_check_graph: "Code::Graph::Check",
@@ -109,7 +109,8 @@ module WorkflowNameTable
     code_impede_node: "Code::Node::Impede",
     code_resolve_node: "Code::Node::Resolve",
     code_preview_sort_resources: "Code::Resources::Sort::Preview",
-    code_sort_resources: "Code::Resources::Sort"
+    code_sort_resources: "Code::Resources::Sort",
+    code_park_intent: "Code::Intent::Park"
   }.freeze
 end
 
@@ -117,7 +118,7 @@ end
 module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
-    Code::Intent::Abandon Agent::Intent::End Code::Auto Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
+    Code::Intent::Abandon Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
     Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
   ].freeze
 end
@@ -136,8 +137,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_eight_keys_in_order
-    assert_equal 98, MAPPING.size
+  def test_the_registry_holds_the_ninety_nine_keys_in_order
+    assert_equal 99, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

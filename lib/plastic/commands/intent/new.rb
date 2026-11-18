@@ -5,8 +5,8 @@ require_relative "../../routine"
 module Plastic
   module Commands
     module Intent
-      # Opens an intent: writes its row and its first rows, and prints its
-      # folder and store/index.json in the same call.
+      # Writes a future intent: its row and its first rows, and prints its folder and
+      # store/index.json in the same call. intent start or intent auto starts it.
       class New < Routine
         subject :title
         argument :title, label: "TITLE", text: "what the intent is for, in words", rest: true
@@ -14,8 +14,6 @@ module Plastic
         option :ref, switch: "--ref REF", text: "a ticket, a link, or another intent as ID-ORIGIN"
         option :after, switch: "--after ID", text: "an intent this one grows out of, linked as source"
         option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
-        option :status, switch: "--status STATUS", text: "open, parked or future", default: "open"
-        option :reason, switch: "--reason TEXT", text: "why a parked intent waits; required with --status parked"
         writes :work, :knowledge
         prints :intent
 

@@ -85,7 +85,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
   holder of each claimed node.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic runs no version control command, so it does not create this worktree:
-  at arm time (`plastic auto ID`, the only auto command), it resolves the repo from
+  when the intent starts (`plastic intent start ID` or `plastic intent auto ID`), it resolves the repo from
   `projects.yml`, computes the expected path and branch, and prints the path and the branch
   as `worktree:` and `branch:` rows. The agent makes the worktree at the printed path on the printed
   branch. The code worktree lives

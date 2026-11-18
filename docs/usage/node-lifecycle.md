@@ -26,7 +26,8 @@ removed.
 
 The main session runs `plastic node claim ID NODE` as it dispatches the agent for that node. The
 claim names the main session and prints the node's brief, which the main session hands to the
-agent. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused. After three runs, the next claim moves the
+agent. A claim in an intent that is not in progress fails with exit 1 and offers
+`plastic intent start ID`. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused. After three runs, the next claim moves the
 node to `needs_info` with a standing question, and the owner decides.
 
 ## Done

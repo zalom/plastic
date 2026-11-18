@@ -5,7 +5,7 @@ require_relative "../../../../../lib/plastic/workflows/code/intent/new"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::Code::Intent::New
-  DECLARED = %i[title parent_id ref after kind status reason problem intent_id linked].freeze
+  DECLARED = %i[title parent_id ref after kind problem intent_id linked].freeze
 
   # The work graph as WriteIntent calls it, keeping each call.
   class Work
@@ -40,7 +40,7 @@ class WriteIntentTest < Plastic::TestCase
 
   def flow_context(problem, retrieval, facts)
     work = Work.new(problem)
-    context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", status: "open", kind: "work" }.merge(facts),
+    context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", kind: "work" }.merge(facts),
       graphs: { work:, retrieval: })
     [context, work]
   end
@@ -60,8 +60,8 @@ class WriteIntentTest < Plastic::TestCase
 
     assert_equal :done, outcome
     assert_equal ["intent: 1a", "store: global, because no project names this folder", "ref: ENG-1, in words"], printed
-    assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open", reason: nil }],
-      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open", reason: nil }]], calls
+    assert_equal [[:problem, { parent_id: "1", ref: "ENG-1" }],
+      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "future" }]], calls
   end
 
   def test_no_ref_prints_no_ref_line
@@ -91,10 +91,10 @@ class WriteIntentTest < Plastic::TestCase
     assert_includes calls.map(&:first), :write
   end
 
-  def test_the_outcome_offers_the_next_command_and_names_the_intent
+  def test_the_outcome_offers_no_command_and_names_the_starts
     outcome = WriteIntent.outcomes.first
 
-    assert_equal [:done, "plastic next", "intent %{intent_id} has its rows and its files"],
+    assert_equal [:done, nil, "intent %{intent_id} is future; plastic intent start %{intent_id} or plastic intent auto %{intent_id} starts it"],
       [outcome.name, outcome.offers, outcome.because]
   end
 

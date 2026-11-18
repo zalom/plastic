@@ -1,0 +1,193 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/commands/roadmap/auto"
+
+# The roadmap items the roadmap auto tests start from.
+class RoadmapAutoCase < Plastic::TestCase
+  include RoadmapHelper
+  include AutoHelper
+
+  def opened(item_id) = store_graphs.work.open_roadmap_item("r1", item_id).first
+
+  def approved_item
+    roadmap
+    item("a")
+    opened("a").tap { |intent_id| approve(intent_id) }
+  end
+
+  def intent_count = retrieval.intents.size
+
+  def item_intent(item_id) = roadmaps.items("r1").find { |row| row.item == item_id }.intent_id
+end
+
+class RoadmapAutoTest < RoadmapAutoCase
+  def test_an_in_flight_item_goes_in_progress
+    intent_id = approved_item
+
+    result = roadmap_auto("r1")
+
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent brief #{intent_id}"
+    assert_equal ["in_progress", []], [status_of(intent_id), claim_rows]
+  end
+
+  def test_a_ready_item_opens_its_intent_and_starts_it
+    roadmap
+    item("a")
+
+    result = roadmap_auto("r1")
+
+    intent_id = roadmaps.items("r1").first.intent_id
+
+    assert_call result, code: 0, err: "", out: ["intent: #{intent_id}\n", "next: plastic intent spec #{intent_id}\n"]
+    assert_equal "in_progress", status_of(intent_id)
+  end
+
+  def test_a_started_ready_item_without_a_go_ahead_offers_the_spec
+    roadmap
+    item("a")
+
+    result = roadmap_auto("r1")
+
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent spec #{roadmaps.items("r1").first.intent_id}"
+  end
+
+  def test_a_second_call_starts_the_same_item_and_opens_no_second_intent
+    roadmap
+    item("a")
+    roadmap_auto("r1")
+
+    result = roadmap_auto("r1")
+
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent spec 1"
+    assert_equal [1, "in_progress"], [intent_count, status_of(roadmaps.items("r1").first.intent_id)]
+  end
+
+  def test_an_item_held_by_another_session_is_skipped_and_the_roadmap_waits
+    intent_id = approved_item
+    store_graphs.work.add_node(intent_id:, title: "Build")
+    store_graphs.work.claim_node(intent_id:, id: "n1", by: "s-2")
+
+    result = roadmap_auto("r1")
+
+    assert_call result, code: 0, err: "", out: ["next: plastic roadmap show r1\n", "because: no item of r1 is free to deliver yet; it waits on a\n"]
+    assert_equal "open", status_of(intent_id)
+  end
+
+  def test_a_parked_item_is_skipped_and_the_roadmap_waits
+    intent_id = approved_item
+    set_status(intent_id, "parked")
+
+    result = roadmap_auto("r1")
+
+    assert_call result, code: 0, err: "", out: ["next: plastic roadmap show r1\n", "because: no item of r1 is free to deliver yet; it waits on a\n"]
+    assert_equal "parked", status_of(intent_id)
+  end
+
+  def test_a_delivered_roadmap_offers_roadmap_show
+    roadmap
+    item("a")
+    store_graphs.work.drop_item("r1", "a")
+
+    result = roadmap_auto("r1")
+
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic roadmap show r1"
+  end
+
+  def test_an_unknown_roadmap_fails
+    result = roadmap_auto("r9")
+
+    assert_call result, code: 1, out: "", err: "plastic: no roadmap r9\n"
+    assert_empty claim_rows
+  end
+
+  def test_a_call_with_no_session_fails_and_names_intent_auto
+    approved_item
+
+    result = roadmap_auto("r1", env: { "PLASTIC_SESSION" => "" })
+
+    assert_call result, code: 1, out: "intent: 1\n", err: "plastic: intent auto names no session; set PLASTIC_SESSION\n"
+  end
+
+  def failed_call_then_drop
+    roadmap
+    item("a")
+    item("b")
+    opened("a")
+    failed = roadmap_auto("r1", env: { "PLASTIC_SESSION" => "" })
+    store_graphs.work.drop_item("r1", "a")
+    failed
+  end
+
+  def test_a_resumed_call_never_starts_a_stale_intent
+    failed = failed_call_then_drop
+
+    result = roadmap_auto("r1")
+
+    assert_equal 1, failed.code
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent spec 2"
+    assert_equal "in_progress", status_of(item_intent("b"))
+  end
+
+  def test_a_picked_intent_whose_work_log_changed_by_hand_is_refused_and_kept
+    intent_id = approved_item
+    path = "#{retrieval.intent(intent_id).dir}/work.log"
+    write(path, "by hand\n")
+
+    result = roadmap_auto("r1")
+
+    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, claim_rows, File.read(store_path(path)), result.err.include?("#{path} changed since its last print on this home"), next_line(result)], result.err
+  end
+
+  def test_a_ready_item_is_not_refused_for_a_file_of_another_intent
+    roadmap
+    item("a")
+    other = open_intent("Other")
+    write("#{other.dir}/work.log", "by hand\n")
+
+    result = roadmap_auto("r1")
+
+    assert_call result.with(out: next_line(result)), code: 0, err: "", out: "next: plastic intent spec 2"
+  end
+end
+
+# roadmap auto across two sessions and future intents.
+class RoadmapAutoSessionsTest < RoadmapAutoCase
+  def test_a_second_session_skips_the_item_the_first_one_just_started_and_takes_the_next
+    roadmap
+    item("a")
+    item("b")
+    roadmap_auto("r1")
+
+    result = roadmap_auto("r1", env: { "PLASTIC_SESSION" => "s-2" })
+
+    assert_call result, code: 0, err: "", out: ["intent: 2\n", "next: plastic intent spec 2\n"]
+    assert_equal %w[in_progress in_progress], [status_of(item_intent("a")), status_of(item_intent("b"))]
+  end
+
+  def test_an_item_another_session_last_touched_15_minutes_ago_is_free_again
+    roadmap
+    item("a")
+    item("b")
+    clock = Struct.new(:now).new(FixedClock::AT)
+    plastic("roadmap", "auto", "r1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE, clock:)
+    clock.now += 16 * 60
+
+    result = plastic("roadmap", "auto", "r1", env: { "PLASTIC_SESSION" => "s-2" }, table: Plastic::CLI::TABLE, clock:)
+
+    assert_call result, code: 0, err: "", out: ["next: plastic intent spec 1\n"]
+    assert_equal [1, nil], [intent_count, item_intent("b")]
+  end
+
+  def test_an_item_whose_intent_is_future_starts_that_intent_and_opens_no_other
+    roadmap
+    item("a")
+    intent_id = opened("a")
+    set_status(intent_id, "future")
+
+    result = roadmap_auto("r1")
+
+    assert_call result, code: 0, err: "", out: ["next: plastic intent spec #{intent_id}\n"]
+    assert_equal [1, "in_progress"], [intent_count, status_of(intent_id)]
+  end
+end
