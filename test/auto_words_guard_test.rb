@@ -2,14 +2,15 @@
 
 require_relative "test_helper"
 
-# Retired auto words guard. `plastic auto ID` is the only auto
-# command, so no
-# shipped document and no kernel file names `auto start`, `auto lock`, the
-# old `plastic-lock` script or `roadmap start`, which is `roadmap open`. CHANGELOG.md is
-# history and keeps the words it was written with.
+# Retired auto words guard. `plastic intent auto ID` and `plastic roadmap auto SLUG`
+# replace the top-level `plastic auto`, and `intent new` takes no status, so no
+# shipped document and no kernel file names `plastic auto`, `auto start`, `auto lock`,
+# the old `plastic-lock` script, `roadmap start`, which is `roadmap open`, or a status
+# or reason option of `intent new`. CHANGELOG.md is history and keeps the words it was
+# written with.
 class AutoWordsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  RETIRED = /\bauto start\b|\bauto lock\b|\bplastic-lock\b|\broadmap start\b/
+  RETIRED = /\bplastic auto\b|\bauto start\b|\bauto lock\b|\bplastic-lock\b|\broadmap start\b|intent new\b.*--(?:status|reason)\b/
 
   def subjects
     documents = %w[README.md AGENTS.md agents/*.md docs/**/*.md lib/plastic/**/*.rb]
@@ -41,6 +42,18 @@ class AutoWordsGuardTest < Minitest::Test
   end
 
   def test_the_detector_leaves_the_new_words_alone
-    refute retired?("run plastic auto 7, then plastic intent brief 7")
+    refute retired?("run plastic intent auto 7, then plastic roadmap auto r1 and plastic intent start 8")
+  end
+
+  def test_the_detector_catches_the_retired_top_level_auto
+    assert retired?("run plastic auto 7, then plastic intent brief 7")
+  end
+
+  def test_the_detector_catches_a_status_option_of_intent_new
+    assert retired?("plastic intent new Later --status parked --reason waits")
+  end
+
+  def test_the_detector_leaves_the_park_reason_alone
+    refute retired?("plastic intent park 7 waits on the review, and plastic intent new Later")
   end
 end

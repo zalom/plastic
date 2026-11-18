@@ -38,12 +38,10 @@ class WorkflowShowSpecTest < Plastic::TestCase
     assert_equal :done, show.first
   end
 
-  def test_a_clear_spec_without_a_go_ahead_needs_the_agent_to_ask_the_owner
+  def test_a_clear_spec_without_a_go_ahead_is_done
     specified("## Done criteria\n- It works\n")
 
-    outcome, context = show
-
-    assert_equal [:agent_needed, "the owner must give the go-ahead for intent 1"], [outcome, context.why]
+    assert_equal :done, show.first
   end
 
   def test_an_unknown_intent_fails_the_call

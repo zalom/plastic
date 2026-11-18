@@ -95,8 +95,8 @@ class CommandReferenceModelTest < Minitest::Test
 
   def gate_rows(words) = page(words).flows.flat_map(&:rows).select { |row| row.kind == :gate }
 
-  def test_the_auto_page_builds_and_links_a_method_check_to_its_definition
-    row = page("auto").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("in_progress") }
+  def test_the_intent_start_page_builds_and_links_a_method_check_to_its_definition
+    row = page("intent start").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("in_progress") }
 
     refute_nil row
     assert_includes source_line(row.file, row.line), "delivery_started?"

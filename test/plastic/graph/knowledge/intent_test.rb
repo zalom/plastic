@@ -84,7 +84,6 @@ class KnowledgeIntentTest < Plastic::TestCase
 
   def test_the_states_are_the_six_with_in_progress_for_work_under_way
     assert_equal %w[open in_progress parked future done abandoned], Plastic::Graph::IntentStatus::ALL
-    assert_equal %w[open parked future], Intent::NEW_STATUSES
   end
 
   def test_the_old_word_for_work_under_way_is_renamed

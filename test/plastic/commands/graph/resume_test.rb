@@ -46,7 +46,7 @@ module GraphResumeHelper
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
-    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+    plastic("intent", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
   end
 
@@ -198,7 +198,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "b,global")
 
-    assert_equal "next: plastic auto 1 --project b", next_line(result)
+    assert_equal "next: plastic intent start 1 --project b", next_line(result)
     assert_includes lines(result).find { |line| line.start_with?("because:") }, "store b"
   end
 
@@ -208,7 +208,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "global,b")
 
-    assert_equal "next: plastic auto 1 --project b", next_line(result)
+    assert_equal "next: plastic intent start 1 --project b", next_line(result)
   end
 
   def test_each_then_line_holds_a_stores_own_next_command
@@ -218,7 +218,7 @@ class GraphResumeStoresTest < Plastic::TestCase
     result = call("--stores", "global,b")
 
     assert_equal [0, "", ["store: global", "store: b"]], [result.code, result.err, lines(result).grep(/\Astore: /)]
-    assert_equal ["then: nothing is open", "in play: 1 Beta (open)", "then: plastic auto 1 (because intent 1 is open)", "next: plastic auto 1 --project b"],
+    assert_equal ["then: nothing is open", "in play: 1 Beta (open)", "then: plastic intent start 1 (because intent 1 is open)", "next: plastic intent start 1 --project b"],
       lines(result).grep(/\A(in play|then|next): /).reject { |line| line == "in play: none" }
   end
 

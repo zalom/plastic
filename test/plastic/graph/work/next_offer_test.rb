@@ -20,6 +20,13 @@ class WorkNextOfferTest < Plastic::TestCase
     assert_equal ["plastic intent spec 1", "intent 1 has no done criteria", nil], offer
   end
 
+  def test_an_approved_open_intent_with_no_done_criteria_offers_intent_start_before_the_spec
+    open_intent
+    store_graphs.work.approve_intent("1")
+
+    assert_equal ["plastic intent start 1", "intent 1 is open", nil], offer
+  end
+
   def test_several_candidates_hand_the_choice_to_the_agent
     open_intent("Alpha")
     open_intent("Beta")
@@ -38,8 +45,8 @@ class WorkNextOfferTest < Plastic::TestCase
 
   def go_ahead(approved) = Plastic::Graph::Work::NextOffer.go_ahead_offer(Reads.new(Approvals.new(approved)), "1")
 
-  def test_an_approved_open_intent_offers_auto
-    assert_equal ["plastic auto 1", "intent 1 is open", nil], go_ahead(true)
+  def test_an_approved_open_intent_offers_intent_start
+    assert_equal ["plastic intent start 1", "intent 1 is open", nil], go_ahead(true)
   end
 
   def test_an_open_intent_before_the_go_ahead_hands_the_owner_the_approve_command

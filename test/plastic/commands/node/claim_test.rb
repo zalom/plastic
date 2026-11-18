@@ -242,3 +242,49 @@ class NodeClaimRefusalTest < Plastic::TestCase
     assert_equal [1, "plastic: node claim names no session; set PLASTIC_SESSION\n"], [result.code, result.err]
   end
 end
+
+class NodeClaimStartTest < Plastic::TestCase
+  def claim = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+  def intent_with_node(status)
+    open_keyed_intent(status:)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:)
+    end
+    store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "done")
+  end
+
+  def refusal(status) = "plastic: intent 1 is #{status}; start it with plastic intent start 1, or with plastic intent auto 1 for agent delivery\n"
+
+  def test_a_node_of_a_future_intent_exits_1_and_offers_intent_start
+    intent_with_node("future")
+
+    result = claim
+
+    assert_equal [1, refusal("future"), "open", "future"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_match(/^next: plastic intent start 1$/, result.out)
+  end
+
+  def test_a_node_of_a_parked_intent_exits_1_and_offers_intent_start
+    intent_with_node("parked")
+
+    result = claim
+
+    assert_equal [1, refusal("parked"), "open", "parked"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_match(/^next: plastic intent start 1$/, result.out)
+  end
+
+  def test_a_node_of_an_open_intent_that_never_started_exits_1
+    intent_with_node("open")
+
+    assert_equal [1, "open"], [claim.code, retrieval.node("1", "n1").state]
+  end
+
+  def test_a_node_of_an_in_progress_intent_is_claimed
+    intent_with_node("in_progress")
+
+    result = claim
+
+    assert_equal [0, "", "claimed"], [result.code, result.err, retrieval.node("1", "n1").state]
+  end
+end
