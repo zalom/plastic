@@ -5,6 +5,7 @@ require_relative "../backup/writer"
 require_relative "../schema/gate"
 require_relative "../schema/migrator"
 require_relative "../schema/migration_list"
+require_relative "../schema/state"
 require_relative "migration_reason"
 require_relative "store_age"
 
@@ -62,12 +63,19 @@ module Plastic
 
       def run_migration
         migrating = connection
+        return SchemaMigrator.new(migrating, :store).call unless baseline_pending?(migrating)
+
+        with_references(migrating) { SchemaMigrator.new(migrating, :store).call }
+      end
+
+      # Only the baseline reads the references file of a beta.2 store; a later migration runs without it.
+      def baseline_pending?(migrating) = SchemaState.new(migrating, :store).call.pending.include?(MIGRATIONS.baseline(:store))
+
+      def with_references(migrating)
         migrating.execute("ATTACH DATABASE ? AS refs", [File.exist?(references_file) ? references_file : ":memory:"])
-        begin
-          SchemaMigrator.new(migrating, MIGRATIONS.of(:store).first.path).call
-        ensure
-          migrating.execute("DETACH DATABASE refs")
-        end
+        yield
+      ensure
+        migrating.execute("DETACH DATABASE refs")
       end
 
       def retire_references

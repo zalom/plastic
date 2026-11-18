@@ -1,40 +1,57 @@
 # frozen_string_literal: true
 
 require_relative "../behind"
+require_relative "migration_list"
+require_relative "state"
 
 module Plastic
   module Graph
-    # Runs one SQL migration on one connection. The file's stamp moves from 0 to 1 in the
-    # same transaction as the migration, and a runner that read 0 before another committed
-    # reads 1 once it holds the write lock and runs nothing.
+    # Runs the pending migrations of one kind on one connection, in ascending order, and records each version in the
+    # schema_migrations table of the main file right after it runs. An empty main file, as a store whose knowledge file
+    # was lost, takes every migration. The whole run is one transaction under the write lock: a failure leaves no
+    # migration and no row. A runner that finds the versions recorded once it holds the lock runs nothing.
+    # Docs: docs/contributing/MIGRATIONS.md.
     class SchemaMigrator
-      VERSION = 1
-      STAMP = "PRAGMA main.user_version"
+      TABLE = "CREATE TABLE IF NOT EXISTS main.schema_migrations (version TEXT PRIMARY KEY)"
+      INSERT = "INSERT INTO main.schema_migrations (version) VALUES (?)"
 
-      def initialize(connection, migration)
+      def self.record(connection, versions)
+        connection.execute(TABLE)
+        versions.each { |version| connection.execute(INSERT, [version]) }
+      end
+
+      def initialize(connection, kind, migrations: MIGRATIONS)
         @connection = connection
-        @migration = migration
+        @kind = kind
+        @migrations = migrations
       end
 
       def call
-        return if stamped?
+        return unless due?(reading)
 
-        @connection.atomically { apply unless stamped? }
+        @connection.atomically do
+          fresh = reading
+          apply(fresh) if due?(fresh)
+        end
         nil
       end
 
       private
 
-      def stamped?
-        stamp = @connection.get_first_value(STAMP)
-        raise Ahead, "the database is at version #{stamp} and this code migrates to #{VERSION}; restore the backup taken before the update" if stamp > VERSION
+      def reading = SchemaState.new(@connection, @kind, migrations: @migrations).call
 
-        stamp == VERSION
+      def due?(state)
+        raise Ahead, "the database records #{state.unknown.join(", ")}, which this code does not know; restore the backup taken before the update" if state.ahead?
+
+        !state.current?
       end
 
-      def apply
-        @connection.execute_batch(File.read(@migration))
-        @connection.execute("PRAGMA main.user_version = #{VERSION}")
+      def apply(state)
+        self.class.record(@connection, state.adopted)
+        @migrations.of(@kind).select { |migration| state.pending.include?(migration.version) }.each do |migration|
+          @connection.execute_batch(migration.sql)
+          @connection.execute(INSERT, [migration.version])
+        end
       end
     end
   end
