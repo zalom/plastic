@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 975" width="834" height="975" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 992" width="834" height="992" role="img" xml:space="preserve">
 <title>The workflows of one call of plastic roadmap auto, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -86,86 +86,87 @@
 <rect x="290" y="56" width="254" height="100" rx="6" class="lane-code"/>
 <text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="302" y="96" class="t" text-anchor="start">Picks the roadmap item to</text>
-<text x="302" y="113" class="t" text-anchor="start">deliver: the first free item in</text>
-<text x="302" y="130" class="t" text-anchor="start">flight, or the first ready item</text>
-<text x="302" y="147" class="t" text-anchor="start">to open.</text>
+<text x="302" y="113" class="t" text-anchor="start">deliver: the first free item</text>
+<text x="302" y="130" class="t" text-anchor="start">with an intent to start, or the</text>
+<text x="302" y="147" class="t" text-anchor="start">first ready item to open.</text>
 <rect x="24" y="56" width="222" height="100" rx="6" class="stop-end"/>
 <text x="36" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="36" y="96" class="t" text-anchor="start">Every item of &lt;slug&gt; is</text>
 <text x="36" y="113" class="t" text-anchor="start">done or dropped.</text>
 <text x="36" y="130" class="t" text-anchor="start">next: plastic roadmap show</text>
 <text x="36" y="147" class="t" text-anchor="start">&lt;slug&gt;</text>
-<rect x="24" y="164" width="222" height="100" rx="6" class="stop-end"/>
+<rect x="24" y="164" width="222" height="117" rx="6" class="stop-end"/>
 <text x="36" y="184" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
 <text x="36" y="204" class="t" text-anchor="start">No item of &lt;slug&gt; is free</text>
-<text x="36" y="221" class="t" text-anchor="start">to deliver yet.</text>
-<text x="36" y="238" class="t" text-anchor="start">next: plastic roadmap auto</text>
-<text x="36" y="255" class="t" text-anchor="start">&lt;slug&gt;</text>
+<text x="36" y="221" class="t" text-anchor="start">to deliver yet; it waits on</text>
+<text x="36" y="238" class="t" text-anchor="start">&lt;waiting&gt;.</text>
+<text x="36" y="255" class="t" text-anchor="start">next: plastic roadmap show</text>
+<text x="36" y="272" class="t" text-anchor="start">&lt;slug&gt;</text>
 <path d="M 290 106 L 268 106" class="wire-end"/>
-<path d="M 268 106 L 268 214" class="wire-end"/>
+<path d="M 268 106 L 268 222" class="wire-end"/>
 <path d="M 268 106 L 246 106" class="wire-end"/>
 <path d="M 254 101 L 246 106 L 254 111 Z" class="head"/>
-<path d="M 268 214 L 246 214" class="wire-end"/>
-<path d="M 254 209 L 246 214 L 254 219 Z" class="head"/>
+<path d="M 268 222 L 246 222" class="wire-end"/>
+<path d="M 254 217 L 246 222 L 254 227 Z" class="head"/>
 <rect x="588" y="56" width="222" height="66" rx="6" class="stop-failure"/>
 <text x="600" y="76" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="600" y="96" class="t" text-anchor="start">A check fails. The events</text>
 <text x="600" y="113" class="t" text-anchor="start">below show each check.</text>
 <path d="M 544 106 L 588 106" class="wire-failure"/>
 <path d="M 580 101 L 588 106 L 580 111 Z" class="head"/>
-<path d="M 417 156 L 417 294 L 417 294 L 417 302" class="wire"/>
-<text x="417" y="316" class="k" text-anchor="middle">an item of &lt;slug&gt; in flight is</text>
-<text x="417" y="330" class="k" text-anchor="middle">free to deliver or item &lt;item id&gt;</text>
-<text x="417" y="344" class="k" text-anchor="middle">of &lt;slug&gt; is ready</text>
-<path d="M 417 354 L 417 368" class="wire"/>
-<path d="M 412 360 L 417 368 L 422 360 Z" class="head"/>
-<rect x="290" y="368" width="254" height="100" rx="6" class="lane-code"/>
-<text x="302" y="388" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="302" y="408" class="t" text-anchor="start">Opens a ready roadmap item&#39;s</text>
-<text x="302" y="425" class="t" text-anchor="start">intent with its spec and links</text>
-<text x="302" y="442" class="t" text-anchor="start">it to the roadmap; an intent</text>
-<text x="302" y="459" class="t" text-anchor="start">already named opens nothing.</text>
-<rect x="588" y="368" width="222" height="100" rx="6" class="stop-refusal"/>
-<text x="600" y="388" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
-<text x="600" y="408" class="t" text-anchor="start">A check fails or the step</text>
-<text x="600" y="425" class="t" text-anchor="start">belongs to the owner. The</text>
-<text x="600" y="442" class="t" text-anchor="start">events below show each</text>
-<text x="600" y="459" class="t" text-anchor="start">check.</text>
-<path d="M 544 418 L 588 418" class="wire-refusal"/>
-<path d="M 580 413 L 588 418 L 580 423 Z" class="head"/>
-<path d="M 417 468 L 417 490 L 417 490 L 417 498" class="wire"/>
-<text x="417" y="512" class="k" text-anchor="middle"></text>
-<path d="M 417 522 L 417 536" class="wire"/>
-<path d="M 412 528 L 417 536 L 422 528 Z" class="head"/>
-<rect x="290" y="536" width="254" height="66" rx="6" class="lane-code"/>
-<text x="302" y="556" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="302" y="576" class="t" text-anchor="start">Starts the intent: it goes in</text>
-<text x="302" y="593" class="t" text-anchor="start">progress and names its worktree.</text>
-<rect x="588" y="536" width="222" height="66" rx="6" class="stop-failure"/>
-<text x="600" y="556" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="600" y="576" class="t" text-anchor="start">A check fails. The events</text>
-<text x="600" y="593" class="t" text-anchor="start">below show each check.</text>
-<path d="M 544 569 L 588 569" class="wire-failure"/>
-<path d="M 580 564 L 588 569 L 580 574 Z" class="head"/>
-<path d="M 417 602 L 417 628" class="wire"/>
-<path d="M 412 620 L 417 628 L 422 620 Z" class="head"/>
-<rect x="290" y="628" width="254" height="100" rx="6" class="stop-end"/>
-<text x="302" y="648" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="668" class="t" text-anchor="start">The worktree of intent &lt;intent</text>
-<text x="302" y="685" class="t" text-anchor="start">id&gt; is not made yet.</text>
-<text x="302" y="702" class="t" text-anchor="start">next: &lt;start command&gt; &lt;intent</text>
-<text x="302" y="719" class="t" text-anchor="start">id&gt;</text>
-<rect x="290" y="736" width="254" height="117" rx="6" class="stop-end"/>
-<text x="302" y="756" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="776" class="t" text-anchor="start">The spec names no done</text>
-<text x="302" y="793" class="t" text-anchor="start">criterion, has an open</text>
-<text x="302" y="810" class="t" text-anchor="start">decision, or has no go-ahead.</text>
-<text x="302" y="827" class="t" text-anchor="start">next: plastic intent spec</text>
-<text x="302" y="844" class="t" text-anchor="start">&lt;intent id&gt;</text>
-<rect x="290" y="861" width="254" height="100" rx="6" class="stop-end"/>
-<text x="302" y="881" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="901" class="t" text-anchor="start">Intent &lt;intent id&gt; is in</text>
-<text x="302" y="918" class="t" text-anchor="start">progress.</text>
-<text x="302" y="935" class="t" text-anchor="start">next: plastic intent brief</text>
-<text x="302" y="952" class="t" text-anchor="start">&lt;intent id&gt;</text>
+<path d="M 417 156 L 417 311 L 417 311 L 417 319" class="wire"/>
+<text x="417" y="333" class="k" text-anchor="middle">an item of &lt;slug&gt; in flight is</text>
+<text x="417" y="347" class="k" text-anchor="middle">free to deliver or item &lt;item id&gt;</text>
+<text x="417" y="361" class="k" text-anchor="middle">of &lt;slug&gt; is ready</text>
+<path d="M 417 371 L 417 385" class="wire"/>
+<path d="M 412 377 L 417 385 L 422 377 Z" class="head"/>
+<rect x="290" y="385" width="254" height="100" rx="6" class="lane-code"/>
+<text x="302" y="405" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="425" class="t" text-anchor="start">Opens a ready roadmap item&#39;s</text>
+<text x="302" y="442" class="t" text-anchor="start">intent with its spec and links</text>
+<text x="302" y="459" class="t" text-anchor="start">it to the roadmap; an intent</text>
+<text x="302" y="476" class="t" text-anchor="start">already named opens nothing.</text>
+<rect x="588" y="385" width="222" height="100" rx="6" class="stop-refusal"/>
+<text x="600" y="405" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
+<text x="600" y="425" class="t" text-anchor="start">A check fails or the step</text>
+<text x="600" y="442" class="t" text-anchor="start">belongs to the owner. The</text>
+<text x="600" y="459" class="t" text-anchor="start">events below show each</text>
+<text x="600" y="476" class="t" text-anchor="start">check.</text>
+<path d="M 544 435 L 588 435" class="wire-refusal"/>
+<path d="M 580 430 L 588 435 L 580 440 Z" class="head"/>
+<path d="M 417 485 L 417 507 L 417 507 L 417 515" class="wire"/>
+<text x="417" y="529" class="k" text-anchor="middle"></text>
+<path d="M 417 539 L 417 553" class="wire"/>
+<path d="M 412 545 L 417 553 L 422 545 Z" class="head"/>
+<rect x="290" y="553" width="254" height="66" rx="6" class="lane-code"/>
+<text x="302" y="573" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="593" class="t" text-anchor="start">Starts the intent: it goes in</text>
+<text x="302" y="610" class="t" text-anchor="start">progress and names its worktree.</text>
+<rect x="588" y="553" width="222" height="66" rx="6" class="stop-failure"/>
+<text x="600" y="573" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="600" y="593" class="t" text-anchor="start">A check fails. The events</text>
+<text x="600" y="610" class="t" text-anchor="start">below show each check.</text>
+<path d="M 544 586 L 588 586" class="wire-failure"/>
+<path d="M 580 581 L 588 586 L 580 591 Z" class="head"/>
+<path d="M 417 619 L 417 645" class="wire"/>
+<path d="M 412 637 L 417 645 L 422 637 Z" class="head"/>
+<rect x="290" y="645" width="254" height="100" rx="6" class="stop-end"/>
+<text x="302" y="665" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="685" class="t" text-anchor="start">The worktree of intent &lt;intent</text>
+<text x="302" y="702" class="t" text-anchor="start">id&gt; is not made yet.</text>
+<text x="302" y="719" class="t" text-anchor="start">next: &lt;start command&gt; &lt;intent</text>
+<text x="302" y="736" class="t" text-anchor="start">id&gt;</text>
+<rect x="290" y="753" width="254" height="117" rx="6" class="stop-end"/>
+<text x="302" y="773" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="793" class="t" text-anchor="start">The spec names no done</text>
+<text x="302" y="810" class="t" text-anchor="start">criterion, has an open</text>
+<text x="302" y="827" class="t" text-anchor="start">decision, or has no go-ahead.</text>
+<text x="302" y="844" class="t" text-anchor="start">next: plastic intent spec</text>
+<text x="302" y="861" class="t" text-anchor="start">&lt;intent id&gt;</text>
+<rect x="290" y="878" width="254" height="100" rx="6" class="stop-end"/>
+<text x="302" y="898" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="918" class="t" text-anchor="start">Intent &lt;intent id&gt; is in</text>
+<text x="302" y="935" class="t" text-anchor="start">progress.</text>
+<text x="302" y="952" class="t" text-anchor="start">next: plastic intent brief</text>
+<text x="302" y="969" class="t" text-anchor="start">&lt;intent id&gt;</text>
 </svg>

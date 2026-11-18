@@ -24,6 +24,11 @@ module Plastic
             ORDER BY updated_at DESC LIMIT 1
           SQL
 
+          SESSIONS_ON_SQL = <<~SQL
+            SELECT DISTINCT session_id FROM command_runs WHERE store = :store AND session_id IS NOT NULL AND updated_at >= :since
+              AND (subject = :intent_id OR json_extract(facts, '$.intent_id') = :intent_id)
+          SQL
+
           def initialize(databases, store:, origin:)
             @databases = databases
             @store = store
@@ -61,6 +66,9 @@ module Plastic
             row = local.row(LAST_RUN_SQL, store: @store, intent_id:)
             row && CommandRun.from_row(row, row.fetch("subject"))
           end
+
+          # The sessions whose command runs of this store named `intent_id` at or after `since`, a stored time.
+          def sessions_on(intent_id, since:) = local.rows(SESSIONS_ON_SQL, store: @store, intent_id:, since:).map { |row| row.fetch("session_id") }
 
           # Intent ids this session touched, most recent first.
           def touched(session_id) = Touched.new(@databases, store: @store, origin: @origin).call(session_id)

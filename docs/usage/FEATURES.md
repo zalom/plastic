@@ -48,7 +48,7 @@ intent instead.
 | ------- | ------ |
 | `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`. |
 | `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
-| `plastic roadmap auto SLUG` | Starts the roadmap's first free item in flight, or opens its first ready item and starts it. With no item free yet it offers itself again, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
+| `plastic roadmap auto SLUG` | Starts the roadmap's first free item with an intent, or opens its first ready item and starts it. An item is free when it is not parked and no other session claimed one of its nodes or ran a command on its intent within 15 minutes. With no item free yet it offers `plastic roadmap show SLUG` and names the items it waits on, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
 
 `plastic intent new` writes a future intent, and `plastic roadmap open` writes an open one.
