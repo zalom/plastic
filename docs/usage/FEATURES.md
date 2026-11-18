@@ -47,7 +47,7 @@ intent instead.
 | Command | Result |
 | ------- | ------ |
 | `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`. |
-| `plastic intent auto ID` | The same start, for agent delivery. |
+| `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
 | `plastic roadmap auto SLUG` | Starts the roadmap's first free item in flight, or opens its first ready item and starts it. With no item free yet it offers itself again, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
 
@@ -55,7 +55,8 @@ intent instead.
 `plastic intent start` and `plastic intent auto` run no version control command: they print the
 worktree, and the agent makes it. They end on `plastic intent spec ID` while the spec is unsettled or
 the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic intent brief ID`
-otherwise. A node claim, taken with `plastic node claim`, names the session that works a node. It
+otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
+the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim`, names the session that works a node. It
 fails for an intent that is not in progress and refuses one without the go-ahead.
 
 ## Rulings and revisions

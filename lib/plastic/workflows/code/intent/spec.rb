@@ -9,7 +9,9 @@ module Plastic
     module Code
       module Intent
         # Prints the grilling method, how done criteria are written, and the open
-        # questions and decisions of spec.md; refuses an unknown id.
+        # questions and decisions of spec.md; refuses an unknown id. A settled spec
+        # with its go-ahead offers the brief; without one it offers nothing, because
+        # the owner gives the go-ahead in guided work and the agents record it in auto.
         class Spec < CodeWorkflow
           clear_declarations
           summary "Prints the open questions and decisions of the spec and how done criteria are written."
@@ -40,7 +42,10 @@ module Plastic
             because: "an open decision is still unrecorded"
           outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
             because: "the spec names no done criterion; write them in spec.md first"
-          outcome :done, offers: "plastic intent approve %{intent_id}", because: "the spec carries no open decision"
+          outcome :approved, if: ->(context) { context.retrieval.structure.approval(context.intent_id) },
+            offers: "plastic intent brief %{intent_id}", because: "the spec is settled and has its go-ahead"
+          outcome :unapproved, because: "the spec is settled and has no go-ahead; in guided work the owner gives it, " \
+            "and in auto the agents run plastic intent approve %{intent_id}"
         end
       end
     end

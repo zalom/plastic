@@ -13,7 +13,8 @@ module Plastic
         workflow :code_show_spec do
           on :open, next: :noop
           on :no_criterion, next: :noop
-          on :done, next: :noop
+          on :approved, next: :noop
+          on :unapproved, next: :noop
         end
       end
     end

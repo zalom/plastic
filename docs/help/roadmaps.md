@@ -39,4 +39,5 @@ running now, and what is next in under a minute.
 **Running a roadmap.** A roadmap is the planning half of the work. Batches lay out the
 parallelism plan: what can run together, and in what order. `plastic roadmap auto SLUG` delivers a
 roadmap in auto mode: it starts the first free item in flight, or opens the first ready item and
-starts it.
+starts it. Its agents settle the spec and run `plastic intent approve ID` themselves when the
+`because:` line of `plastic intent spec` names it.
