@@ -25,19 +25,19 @@ class SchemaHomeMigrationTest < Plastic::TestCase
     assert_equal columns_by_table(File.join(fresh_home, "plastic.db")), columns_by_table(File.join(home, "plastic.db"))
   end
 
-  def test_the_migrated_home_is_stamped_one
+  def test_the_migrated_home_records_every_home_version
     home = old_layout(fresh_home)
     Runner.new(home:, now: NOW).call
 
-    assert_equal 1, read_value(File.join(home, "plastic.db"), "PRAGMA user_version")
+    assert_equal Plastic::Graph::MIGRATIONS.versions(:home), recorded_versions(File.join(home, "plastic.db"))
   end
 
-  def test_a_failing_statement_leaves_the_stamp_at_zero_and_the_backup_in_place
+  def test_a_failing_statement_records_no_version_and_leaves_the_backup_in_place
     home = old_layout(fresh_home)
     SQLite3::Database.new(File.join(home, "local.db")).tap { |db| db.execute('CREATE TABLE "command_runs"("store" TEXT)') }.close
     Runner.new(home:, now: NOW).call
 
-    assert_equal [0, 1], [read_value(File.join(home, "plastic.db"), "PRAGMA user_version"), Dir.glob(File.join(home, "backups", "local-*.db")).size]
+    assert_equal [nil, 1], [recorded_versions(File.join(home, "plastic.db")), Dir.glob(File.join(home, "backups", "local-*.db")).size]
   end
 
   def test_a_second_run_changes_no_byte_of_the_home_database

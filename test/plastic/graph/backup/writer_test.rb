@@ -166,6 +166,7 @@ end
 
 class GraphBackupWriterSafetyTest < Plastic::TestCase
   include BackupHomes
+  include SchemaVersions
 
   Backup = Plastic::Graph::Backup
 
@@ -173,11 +174,9 @@ class GraphBackupWriterSafetyTest < Plastic::TestCase
 
   def writer(home, time, **options) = Backup::Writer.new(root(home), "alpha", now: time, **options)
 
-  def stamp_versions(home, version)
+  def record_newer(home)
     Plastic::Graph::Database::ConnectionPool.release(root(home))
-    %w[work_graph knowledge_graph].each do |name|
-      SQLite3::Database.new(store_file(home, name)).tap { |db| db.execute("PRAGMA user_version = #{version}") }.close
-    end
+    record_unknown_version(store_file(home, "knowledge_graph"))
   end
 
   def damage(home, name)
@@ -216,12 +215,12 @@ class GraphBackupWriterSafetyTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
-  def test_the_status_file_records_the_lowest_schema_version_of_the_store
+  def test_the_status_file_records_the_newest_version_the_knowledge_database_records
     home = fresh_home
-    stamp_versions(home, 3)
+    record_newer(home)
     writer(home, at(2026, 1, 1, 10, 0, 0)).call
 
-    assert_equal 3, Backup::Folders.new(root(home)).report("20260101100000").fetch("version")
+    assert_equal UNKNOWN.to_i, Backup::Folders.new(root(home)).report("20260101100000").fetch("version")
   end
 
   def test_an_automatic_backup_of_an_unchanged_store_is_skipped

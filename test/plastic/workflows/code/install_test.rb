@@ -30,11 +30,11 @@ class InstallPlasticTest < Plastic::TestCase
     File.write(store_file(home, "work_graph"), "not a database")
     outcome, context = run_workflow(Plastic::Workflows::Code::Install, reinstall: true, force: false, harness: scoped_harness(env: env_for(home)))
 
-    assert_equal [:done, Plastic::Graph::SchemaMigrator::VERSION, 0], [outcome, *versions_of(home)]
+    assert_equal [:done, Plastic::Graph::MIGRATIONS.versions(:store), nil], [outcome, *versions_of(home)]
     assert_match(/\A   migrate: alpha stays behind because it could not be migrated \(.*work_graph\.db.*\); fix the cause and run plastic update\z/, context.printed.grep(/migrate:/).first)
   end
 
-  def versions_of(home) = [store_file(home, "knowledge_graph", "beta"), store_file(home, "knowledge_graph")].map { |path| user_versions(home).fetch(path) }
+  def versions_of(home) = [store_file(home, "knowledge_graph", "beta"), store_file(home, "knowledge_graph")].map { |path| recorded_versions(path) }
 
   def test_an_installed_home_is_refused_without_reinstall
     install

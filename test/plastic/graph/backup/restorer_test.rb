@@ -151,7 +151,6 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   Restorer = Plastic::Graph::Backup::Restorer
   STAMP = "20260101100000"
-  ABOVE = Plastic::Graph::SchemaMigrator::VERSION + 1
 
   def setup
     super
@@ -171,16 +170,16 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
 
   def move_above
     Plastic::Graph::Database::ConnectionPool.release(root)
-    store_paths.each { |path| SQLite3::Database.open(path) { |db| db.execute("PRAGMA user_version = #{ABOVE}") } }
+    record_unknown_version(File.join(root, "knowledge_graph.db"))
   end
 
-  def store_versions = [user_versions(@home).fetch(File.join(root, "knowledge_graph.db"))]
+  def store_versions = [recorded_versions(File.join(root, "knowledge_graph.db"))]
 
   def test_a_whole_store_restore_after_the_store_moved_above_brings_every_database_to_the_backup_version
     move_above
     restorer.call(STAMP)
 
-    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], store_versions
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], store_versions
   end
 
   def test_a_restore_of_one_database_across_a_version_boundary_is_refused_and_names_the_whole_store_restore
@@ -199,7 +198,7 @@ class GraphBackupRestoreForwardTest < Plastic::TestCase
   end
 
   def test_a_backup_recording_a_version_above_the_code_is_rejected
-    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 9)
+    Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: SchemaVersions::UNKNOWN.to_i)
     error = assert_raises(Restorer::Rejected) { restorer.call(STAMP) }
 
     assert_includes error.message, "newer than this code"

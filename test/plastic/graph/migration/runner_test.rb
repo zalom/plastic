@@ -34,14 +34,13 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_equal layouts(fresh_home), layouts(home)
   end
 
-  def test_the_home_and_the_knowledge_database_are_stamped_and_the_other_store_databases_stay_unstamped
+  def test_the_home_and_the_knowledge_database_record_their_versions_and_the_other_store_databases_record_none
     home = old_home
     run_runner(home)
-    versions = user_versions(home).transform_keys { |path| path.delete_prefix(home) }
+    recorded = recorded_by_file(home).group_by { |path, _| File.basename(path) }.transform_values { |pairs| pairs.map(&:last).uniq }
+    list = Plastic::Graph::MIGRATIONS
 
-    stamped = versions.group_by { |path, _| File.basename(path) }.transform_values { |pairs| pairs.map(&:last).uniq }
-
-    assert_equal({ "plastic.db" => [Plastic::Graph::SchemaMigrator::VERSION], "knowledge_graph.db" => [Plastic::Graph::SchemaMigrator::VERSION], "work_graph.db" => [0], "retrieval_graph.db" => [0] }, stamped)
+    assert_equal({ "plastic.db" => [list.versions(:home)], "knowledge_graph.db" => [list.versions(:store)], "work_graph.db" => [nil], "retrieval_graph.db" => [nil] }, recorded)
   end
 
   def test_a_backup_of_the_store_is_taken_first_and_says_it_is_the_migration_backup
@@ -78,7 +77,7 @@ class SchemaRunnerTest < Plastic::TestCase
     report = run_runner(home)
 
     assert_equal [["alpha"], before], [report.failed.keys, bytes_in(home, "/alpha/")]
-    assert_equal Plastic::Graph::SchemaMigrator::VERSION, user_versions(home).fetch(store_file(home, "knowledge_graph", "beta"))
+    assert_equal Plastic::Graph::MIGRATIONS.versions(:store), recorded_versions(store_file(home, "knowledge_graph", "beta"))
   end
 
   def test_a_store_whose_backup_folder_cannot_be_written_stays_behind
@@ -87,7 +86,7 @@ class SchemaRunnerTest < Plastic::TestCase
     bytes_in(home, "/alpha/")
     report = run_runner(home)
 
-    assert_equal [["alpha"], [0]], [report.failed.keys, versions_in(home, "/alpha/")]
+    assert_equal [["alpha"], [nil]], [report.failed.keys, versions_in(home, "/alpha/")]
   end
 
   def test_backup_migrate_restore_and_migrate_again_give_equal_row_digests
@@ -97,13 +96,13 @@ class SchemaRunnerTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(home)
     restore_call(home, "--store", "alpha", "--latest")
 
-    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], versions_in(home, "/alpha/knowledge_graph.db")
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], versions_in(home, "/alpha/knowledge_graph.db")
     assert_equal migrated, store_digests(home).except("retrieval_graph.db")
   end
 
   def bytes_in(home, part) = file_bytes(home).select { |path, _| path.include?(part) }
 
-  def versions_in(home, part) = user_versions(home).select { |path, _| path.include?(part) }.values.uniq
+  def versions_in(home, part) = recorded_by_file(home).select { |path, _| path.include?(part) }.values.uniq
 
   def store_digests(home) = store_files(home).to_h { |path| [File.basename(path), row_digest(path)] }
 end

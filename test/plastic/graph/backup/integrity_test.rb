@@ -2,6 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../test_helpers/schema_versions"
 
 class GraphBackupIntegrityTest < Plastic::TestCase
   include BackupHomes
@@ -16,7 +17,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_sound_backup_file_passes
     home = fresh_home
 
-    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::SchemaMigrator::VERSION).call
+    assert_nil Integrity.new(backup_file(home, "work_graph"), "work_graph", version: Plastic::Graph::MIGRATIONS.newest(:store).to_i).call
   end
 
   def test_a_file_that_is_not_a_database_is_rejected
@@ -98,7 +99,7 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
   end
 
   def test_a_version_above_the_newest_is_rejected
-    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 99).call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: SchemaVersions::UNKNOWN.to_i).call }
 
     assert_includes error.message, "newer than this code"
   end

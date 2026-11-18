@@ -13,7 +13,16 @@ class UpdatePlasticTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
-  def store_versions(home) = user_versions(home).select { |path, _| path.end_with?("/knowledge_graph.db") }.values.uniq
+  def store_versions(home) = recorded_by_file(home).select { |path, _| path.end_with?("/knowledge_graph.db") }.values.uniq
+
+  # Every store and the home as an alpha build wrote them: the newest layout, stamped 1, with no schema_migrations table.
+  def alpha_layout(home)
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    Dir.glob(File.join(home, "{plastic.db,stores/*/knowledge_graph.db}")).each do |path|
+      SQLite3::Database.open(path) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    end
+    home
+  end
 
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
 
@@ -21,8 +30,16 @@ class UpdatePlasticTest < Plastic::TestCase
     home = old_layout(fresh_home)
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
 
-    assert_equal [Plastic::Graph::SchemaMigrator::VERSION], store_versions(home)
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], store_versions(home)
     assert_equal [1, 1], %w[alpha beta].map { |slug| folder_names(home, slug).size }
+  end
+
+  def test_an_update_moves_an_alpha_home_and_its_stores_from_stamp_1_to_current
+    home = alpha_layout(fresh_home)
+    run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
+    Plastic::Graph::Database::ConnectionPool.release(home)
+
+    assert_equal [[Plastic::Graph::MIGRATIONS.baseline(:store)], [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
   end
 
   def test_a_newer_package_is_synced_into_the_home

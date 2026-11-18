@@ -3,6 +3,7 @@
 require "tmpdir"
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
+require_relative "../../../test_helpers/schema_versions"
 Plastic::TestCase.boot
 
 module MigratorFixtures

@@ -16,7 +16,7 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     Runner.new(home:, now: NOW).call
 
     assert_equal [File.join(home, "backups", "local-20261116120000.db")], copies(home)
-    assert_equal [0, "ok"], [read_value(copies(home).first, "PRAGMA user_version"), read_value(copies(home).first, "PRAGMA quick_check")]
+    assert_equal [nil, "ok"], [recorded_versions(copies(home).first), read_value(copies(home).first, "PRAGMA quick_check")]
   end
 
   def seed_local_rows(home)
@@ -66,7 +66,7 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     report = Runner.new(home:, now: NOW).call
 
     assert_match(/\Ait could not be migrated \(plastic\.db: .*command_runs/, report.failed.fetch("home"))
-    assert_equal 0, read_value(File.join(home, "plastic.db"), "PRAGMA user_version")
+    assert_nil recorded_versions(File.join(home, "plastic.db"))
   end
 
   def test_a_home_whose_copy_fails_gives_its_reason
@@ -81,20 +81,21 @@ class SchemaRunnerHomeTest < Plastic::TestCase
     File.write(File.join(home, "backups"), "a file where the folder should be")
     report = Runner.new(home:, now: NOW).call
 
-    assert_equal [0, ["home"]], [user_versions(home).fetch(File.join(home, "local.db")), report.failed.keys]
+    assert_equal [nil, ["home"]], [recorded_by_file(home).fetch(File.join(home, "local.db")), report.failed.keys]
   end
 
-  def set_version(home, number)
-    SQLite3::Database.new(File.join(home, "plastic.db")).tap { |db| db.execute("PRAGMA user_version = #{number}") }.close
+  # The home file as a beta.2 build left it: its tables, stamp 0 and no schema_migrations table.
+  def unmigrated(home)
+    SQLite3::Database.new(File.join(home, "plastic.db")).tap { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 0") }.close
   end
 
   def test_a_plastic_db_behind_the_newest_version_leaves_one_checked_copy_named_after_it
     home = fresh_home
-    set_version(home, 0)
+    unmigrated(home)
     Runner.new(home:, now: NOW).call
     copy = Dir.glob(File.join(home, "backups", "plastic-*.db"))
 
-    assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [0, "ok"]], [copy, [read_value(copy.first, "PRAGMA user_version"), read_value(copy.first, "PRAGMA quick_check")]]
+    assert_equal [[File.join(home, "backups", "plastic-20261116120000.db")], [nil, "ok"]], [copy, [recorded_versions(copy.first), read_value(copy.first, "PRAGMA quick_check")]]
   end
 
   def test_a_local_db_already_at_the_newest_version_is_still_renamed_to_plastic_db
