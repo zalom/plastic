@@ -6,6 +6,7 @@ require_relative "../../../test_helper"
 class SchemaRunnerLedgerTest < Plastic::TestCase
   include BackupHomes
   include OldLayoutHomes
+  include PreviousStore
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
@@ -45,6 +46,17 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     run_runner(home)
 
     assert_empty ledger(home)
+  end
+
+  def test_a_ledger_that_cannot_be_written_leaves_the_store_migrated_and_notes_why
+    home = previous_home
+    Plastic::Graph::Database.open_local(home)
+    forget(home)
+    SQLite3::Database.open(File.join(home, "plastic.db")) { |db| db.execute("CREATE TRIGGER refuse BEFORE INSERT ON store_migrations BEGIN SELECT RAISE(ABORT, 'refused'); END") }
+    report = migrate_store(home)
+
+    assert_includes recorded(home), DROP
+    assert(report.notes.any? { |note| note.start_with?("migrate: the ledger in plastic.db does not record the migrations of alpha (") }, report.notes.inspect)
   end
 
   def test_a_run_whose_home_stays_behind_notes_that_the_ledger_does_not_record_its_store_migrations

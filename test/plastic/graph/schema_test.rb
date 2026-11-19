@@ -23,8 +23,11 @@ class SchemaTest < Plastic::TestCase
     assert_equal %w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db], %i[local work knowledge retrieval].map { |key| Schema.file(key) }
   end
 
-  def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:command_runs).ddl, table(:sessions).ddl, table(:settings).ddl, table(:printed).ddl, table(:chat_messages).ddl, table(:store_migrations).ddl].join("\n"), Schema.fetch(:local)
+  def test_the_schema_joins_the_ddl_of_the_tables_of_plastic_db
+    assert_equal %i[command_runs sessions settings printed chat_messages store_migrations].map { |name| table(name).ddl }.join("\n"), Schema.fetch(:local)
+  end
+
+  def test_the_schema_lists_the_tables_of_knowledge_graph_db_in_order
     assert_equal %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar],
       Schema.databases.fetch(:knowledge).last
   end
