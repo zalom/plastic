@@ -7,7 +7,7 @@ module Plastic
   module Graph
     # Finds a verified copy of the bytes of a kept file outside sqlar: the file on disk, or the archive of its intent.
     # A file that is gone from disk is printed back first, into a store-level path or an intent folder on disk with an intent row, and the printed copy is checked. The answer is nil when a verified copy exists, or else the
-    # reason the row has to stay.
+    # reason the row has to stay. Nothing is read or written through a symlink.
     class KeptFileCopy
       ARCHIVED = "SELECT 1 FROM main.archives WHERE intent_id = :intent_id AND restored_at IS NULL"
       FOLDERS = "SELECT DISTINCT 'store/' || intent_id || '--' || slug AS folder FROM main.intents"
@@ -24,6 +24,7 @@ module Plastic
       end
 
       def missing(file)
+        return "a symlink is on its path" if file.linked?(@root)
         return archive_reason(file) if archived?(file)
 
         path = file.path(@root)

@@ -51,7 +51,7 @@ module Plastic
       def kept?(rel) = rel && @selection.read?(rel)
 
       def refuse_outside(files)
-        outside = files.find { |file| !file.inside?(@root) }
+        outside = files.find { |file| !file.linked?(@root) && !file.inside?(@root) }
         raise Refused, "the kept file #{outside.name} leads outside the store folder" if outside
       end
     end

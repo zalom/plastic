@@ -15,7 +15,18 @@ module Plastic
 
       def path(root) = File.expand_path(name, root)
 
-      def inside?(root) = path(root).start_with?(File.join(root, ""))
+      # Whether the real path of its nearest folder on disk lies in the real path of the store folder.
+      def inside?(root)
+        folder = File.dirname(path(root))
+        folder = File.dirname(folder) until File.exist?(folder)
+        File.realpath(folder).then { |real| real == File.realpath(root) || real.start_with?(File.join(File.realpath(root), "")) }
+      end
+
+      # Whether any part of its path in the store folder is a symlink, a broken one included.
+      def linked?(root)
+        parts = name.split("/")
+        parts.each_index.any? { |index| File.symlink?(File.join(root, *parts.first(index + 1))) }
+      end
 
       # The path inside its intent folder, or nil for a store-level path such as originals/.
       def in_intent = name[Knowledge::SyncSelection::INTENT_FILE, 1]
