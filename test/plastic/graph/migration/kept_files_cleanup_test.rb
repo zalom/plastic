@@ -3,6 +3,7 @@
 require "digest"
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/migration/kept_files_cleanup"
+require_relative "../../../../lib/plastic/graph/migration/file_print"
 
 module KeptFilesCleanupCases
   Cleanup = Plastic::Graph::KeptFilesCleanup
@@ -147,5 +148,42 @@ class KeptFilesCleanupTest < Plastic::TestCase
     result = clean
 
     assert_equal [1, [TMP]], [result.removed, result.kept.keys]
+  end
+end
+class KeptFilesPrintTest < Plastic::TestCase
+  include KeptFilesCleanupCases
+
+  # Stands in for a write that leaves other bytes on the disk than it was given.
+  WRONG_PRINT = ->(path, _bytes) { File.binwrite(path, "other bytes") }
+
+  # Bytes whose write fails part way, as on a full disk.
+  FAILING_BYTES = Class.new { def to_s = raise(Errno::ENOSPC) }.new
+
+  def test_a_printed_back_file_leaves_no_other_file_in_its_folder
+    keep(TMP, "scratch")
+    clean
+
+    assert_equal ["scratch.md"], Dir.children(File.dirname(on_disk(TMP)))
+  end
+
+  def test_a_printed_copy_whose_hash_differs_keeps_the_row_and_leaves_no_file
+    keep(TMP, "scratch")
+    result = clean(printer: WRONG_PRINT)
+
+    assert_equal [[TMP], { TMP => "the printed copy differs" }, false], [names, result.kept, File.exist?(on_disk(TMP))]
+  end
+
+  def test_a_print_that_fails_part_way_leaves_nothing_in_the_folder
+    folder = Dir.mktmpdir
+
+    assert_raises(Errno::ENOSPC) { Plastic::Graph::FilePrint.call(File.join(folder, "plan.md"), FAILING_BYTES) }
+    assert_empty Dir.children(folder)
+  end
+
+  def test_a_print_writes_the_bytes_at_the_path
+    path = File.join(Dir.mktmpdir, "plan.md")
+    Plastic::Graph::FilePrint.call(path, "the bytes")
+
+    assert_equal "the bytes", File.read(path)
   end
 end
