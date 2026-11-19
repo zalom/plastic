@@ -88,6 +88,15 @@ class MigrationDownTest < Plastic::TestCase
     assert_refused_unchanged home, "29991231000000"
   end
 
+  def test_a_ledger_that_refuses_the_down_row_leaves_the_store_down_exits_0_and_says_so_on_one_line
+    home = migrated_previous_home
+    refuse_ledger(home, "down")
+    result = down(home, "--store", "alpha")
+
+    assert_equal [0, false, ["down: alpha no longer records migration #{DROP}, but the ledger in plastic.db has no down row for it (refused)"]],
+      [result.code, recorded(home).include?(DROP), result.err.lines.map(&:chomp)]
+  end
+
   def test_a_backup_that_fails_stops_the_down_with_exit_1_and_nothing_changes
     home = migrated_previous_home
     FileUtils.mkdir_p(alpha_file(home, "backups"))

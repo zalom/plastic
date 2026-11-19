@@ -41,6 +41,15 @@ class MigrationPurgeTest < Plastic::TestCase
       out: ["purge: removed 1 row of document_revisions and 1 row of sqlar from legacy.db", "purge: migration #{DROP} of alpha can no longer be undone"]
   end
 
+  def test_a_ledger_that_refuses_the_purge_row_leaves_the_rows_purged_exits_0_and_says_so_on_one_line
+    home = migrated_previous_home
+    refuse_ledger(home, "purge")
+    result = purge(home, DROP, "--store", "alpha")
+
+    assert_equal [0, [], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (refused)"]],
+      [result.code, legacy_tables(home), result.err.lines.map(&:chomp)]
+  end
+
   def test_a_purge_adds_a_purge_row_to_the_ledger
     home = migrated_previous_home
     purge(home, DROP, "--store", "alpha")

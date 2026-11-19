@@ -58,6 +58,13 @@ module PreviousStore
     end
   end
 
+  # Makes plastic.db refuse every ledger row of the `event`, as a locked or broken plastic.db would.
+  def refuse_ledger(home, event)
+    SQLite3::Database.open(File.join(home, "plastic.db")) do |database|
+      database.execute("CREATE TRIGGER refuse_#{event} BEFORE INSERT ON store_migrations WHEN NEW.event = '#{event}' BEGIN SELECT RAISE(ABORT, 'refused'); END")
+    end
+  end
+
   def store_bytes(home) = Dir.glob(alpha_file(home, "*.db")).sort.to_h { |path| [File.basename(path), File.binread(path)] }
 
   def backup_folders(home) = Dir.glob(alpha_file(home, "backups/*")).select { |path| File.directory?(path) }.map { |path| File.basename(path) }.sort

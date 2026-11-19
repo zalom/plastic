@@ -59,6 +59,18 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     assert_match(/^migrate: the ledger in plastic\.db does not record the migrations of alpha \(/, report.notes.join("\n"))
   end
 
+  def test_a_ledger_that_refuses_the_rows_of_one_store_names_the_stores_it_recorded_and_those_it_did_not
+    home = previous_home
+    FileUtils.cp_r(store_path(home, ""), File.join(home, "stores", "beta"))
+    Plastic::Graph::Database.open_local(home)
+    forget(home)
+    SQLite3::Database.open(File.join(home, "plastic.db")) { |db| db.execute("CREATE TRIGGER refuse BEFORE INSERT ON store_migrations WHEN NEW.store = 'beta' BEGIN SELECT RAISE(ABORT, 'refused'); END") }
+    report = migrate_store(home)
+
+    assert_equal [["migrate: the ledger in plastic.db records the migrations of alpha but not those of beta (refused)"], ["alpha"]],
+      [report.notes, ledger(home).map(&:first).uniq]
+  end
+
   def test_a_run_whose_home_stays_behind_notes_that_the_ledger_does_not_record_its_store_migrations
     home = old_home
     SQLite3::Database.new(File.join(home, "local.db")).tap { |db| db.execute('CREATE TABLE "command_runs"("store" TEXT)') }.close
