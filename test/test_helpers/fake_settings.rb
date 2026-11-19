@@ -17,6 +17,8 @@ module Plastic
 
         def list(key) = Array(@values.fetch(key, []))
 
+        def value(key) = @values[key]
+
         def choice(path, default:, allowed:)
           value = @values.fetch(path.join("."), default)
           allowed.include?(value) ? value : default

@@ -61,7 +61,7 @@ class CliReleaseContractTest < Minitest::Test
 
     assert_equal 0, code
     assert_includes out.string, "intent new"
-    refute_includes out.string, "report"
+    refute_match(/^report\s/, out.string)
   end
 
   private

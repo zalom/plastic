@@ -14,7 +14,7 @@ module Plastic
           WHERE h.sha256 = r.sha256 AND h.intent_id = r.intent_id AND h.path = r.path AND h.origin_id = r.origin_id)
       SQL
       CHOSEN = "rowid IN (SELECT value FROM json_each(?))"
-      PRESENT = "SELECT count(*) FROM main.sqlite_master WHERE type = 'table' AND name = '#{TABLE}'".freeze
+      PRESENT = "SELECT count(*) FROM main.sqlite_master WHERE type = 'table' AND name = 'document_revisions'"
 
       def initialize(connection, selection)
         @connection = connection

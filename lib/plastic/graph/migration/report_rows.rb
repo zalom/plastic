@@ -19,9 +19,8 @@ module Plastic
         end
       end
 
-      FOLDER = "resources/output/reports/"
-      REPORTS = "SELECT DISTINCT intent_id, path FROM main.documents WHERE path GLOB '#{FOLDER}*'".freeze
-      PRINTED = "SELECT path FROM main.printed WHERE path GLOB 'store/*/#{FOLDER}*'".freeze
+      REPORTS = "SELECT DISTINCT intent_id, path FROM main.documents WHERE path GLOB 'resources/output/reports/*'"
+      PRINTED = "SELECT path FROM main.printed WHERE path GLOB 'store/*/resources/output/reports/*'"
       PAIRS = "SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(:rows)"
       STEPS = [
         "DELETE FROM main.documents WHERE (intent_id, path) IN (#{PAIRS})",

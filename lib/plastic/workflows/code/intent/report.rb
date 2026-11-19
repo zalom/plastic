@@ -13,7 +13,7 @@ module Plastic
           clear_declarations
 
           CLOSED = %w[done abandoned].freeze
-          MANDATORY = Graph::Knowledge::Intent::Reporter::MANDATORY
+          MANDATORY = Plastic::Graph::Knowledge::Intent::Reporter::MANDATORY
           REFUSED = "no owner message of this store or session holds the words of --asked, and reports.mandatory does not name %{path}; Plastic records only a report the owner asked for"
 
           sets :intent, :status, :problem, :recorded, :given, :reference
