@@ -50,6 +50,22 @@ class GraphBackupDayTest < Plastic::TestCase
     assert_raises(Backup::Writer::Error) { day(home, NEXT_MORNING).begin_day }
   end
 
+  EVENING = Time.new(2026, 1, 2, 18, 0, 0, "+01:00")
+
+  # Another process takes the folder name of the moment between the free-name check and the claim, as a dangling link does.
+  def take_folder_name(home, time) = File.symlink(File.join(Dir.mktmpdir, "gone"), File.join(backups_dir(home), stamp(time)))
+
+  def test_a_session_end_whose_folder_was_taken_keeps_the_earlier_end_of_day_backup
+    home = fresh_home
+    day(home, MORNING).begin_day
+    day(home, NOON).end_session
+    add_intent(home)
+    take_folder_name(home, EVENING)
+    day(home, EVENING).end_session
+
+    assert_equal [stamp(MORNING), stamp(NOON)], Backup::Folders.new(root(home)).names
+  end
+
   def test_a_session_end_after_a_failed_start_of_day_backup_tries_the_end_of_day_backup
     home = fresh_home
     assert_raises(IOError) { day(home, MORNING, copy: failing_copy(MORNING)).begin_day }
