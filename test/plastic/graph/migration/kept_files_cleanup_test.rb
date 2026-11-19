@@ -188,3 +188,45 @@ class KeptFilesPrintTest < Plastic::TestCase
     assert_equal "the bytes", File.read(path)
   end
 end
+
+class KeptFilesFolderTest < Plastic::TestCase
+  include KeptFilesCleanupCases
+
+  RENAMED = "store/1--old-name/resources/tmp/scratch.md"
+  GONE = "store/2--gone/resources/tmp/scratch.md"
+
+  def sync_up = plastic("sync", "up", "--project", "alpha", table: Plastic::CLI::TABLE)
+
+  def test_a_row_of_a_folder_no_intent_holds_stays_and_the_folder_is_not_made
+    keep(RENAMED)
+    result = clean
+
+    assert_equal [[RENAMED], false, { RENAMED => "its intent folder store/1--old-name is not on disk with an intent row" }],
+      [names, File.exist?(on_disk("store/1--old-name")), result.kept]
+  end
+
+  def test_a_row_of_an_intent_whose_folder_is_gone_stays_and_the_folder_is_not_made
+    connection.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('2', 'o', 'gone', 'Gone', 'open')")
+    keep(GONE, intent_id: "2")
+    clean
+
+    assert_equal [[GONE], false], [names, File.exist?(on_disk("store/2--gone"))]
+  end
+
+  def test_a_row_of_an_existing_intent_folder_is_printed_into_its_new_subfolders
+    keep(TMP, "scratch")
+    clean
+
+    assert_equal [[], "scratch"], [names, File.read(on_disk(TMP))]
+  end
+
+  def test_a_sync_of_the_store_passes_after_a_cleanup_that_kept_a_row_of_a_gone_folder
+    keep(RENAMED)
+    clean
+    Plastic::Graph::Database::ConnectionPool.release(root)
+
+    result = sync_up
+
+    assert_equal [0, ""], [result.code, result.err]
+  end
+end
