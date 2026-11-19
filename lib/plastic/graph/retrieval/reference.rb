@@ -40,7 +40,7 @@ module Plastic
 
         attr_reader :address, :documents
 
-        # Identifies one document independently of its current or historical revision.
+        # Identifies one document apart from the revision of its text.
         DocumentIdentity = Data.define(:intent_id, :path)
 
         def qualified(identity, revision) = address.qualified(*identity.deconstruct, revision)
