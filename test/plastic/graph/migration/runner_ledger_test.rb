@@ -56,7 +56,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     report = migrate_store(home)
 
     assert_includes recorded(home), DROP
-    assert(report.notes.any? { |note| note.start_with?("migrate: the ledger in plastic.db does not record the migrations of alpha (") }, report.notes.inspect)
+    assert_match(/^migrate: the ledger in plastic\.db does not record the migrations of alpha \(/, report.notes.join("\n"))
   end
 
   def test_a_run_whose_home_stays_behind_notes_that_the_ledger_does_not_record_its_store_migrations
