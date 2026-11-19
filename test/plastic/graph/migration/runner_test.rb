@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "digest"
+require "json"
 require_relative "../../../test_helper"
 
 class SchemaRunnerTest < Plastic::TestCase
@@ -47,6 +48,38 @@ class SchemaRunnerTest < Plastic::TestCase
     list = Plastic::Graph::MIGRATIONS
 
     assert_equal({ "plastic.db" => [list.versions(:home)], "knowledge_graph.db" => [list.versions(:store)], "work_graph.db" => [nil], "retrieval_graph.db" => [nil] }, recorded)
+  end
+
+  def ledger(home) = read_file(File.join(home, "plastic.db"), "SELECT store, version, event, at, rows, undoable FROM store_migrations ORDER BY id")
+
+  def kept_counts(home, version)
+    tables = read_file(store_path(home, "legacy.db"), "SELECT name FROM sqlite_master WHERE type = 'table'").flatten.select { |name| name.end_with?("_#{version}") }
+    tables.to_h { |name| [name.delete_suffix("_#{version}"), read_file(store_path(home, "legacy.db"), "SELECT count(*) FROM \"#{name}\"").flatten.first] }
+  end
+
+  def test_each_migration_that_ran_on_a_store_adds_an_up_row_to_the_ledger_with_what_it_kept_in_legacy_db
+    home = old_home
+    run_runner(home)
+    rows = ledger(home).select { |row| row.first == "alpha" }
+    kept = JSON.generate(kept_counts(home, "20261119000000").sort.to_h)
+
+    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", "{}", 0], ["alpha", "20261119000000", "up", "2026-11-16T12:00:00Z", kept, 1]],
+      rows.map { |row| [*row.first(4), JSON.generate(JSON.parse(row[4]).sort.to_h), row[5]] }
+  end
+
+  def test_a_run_on_current_stores_adds_no_row_to_the_ledger
+    home = fresh_home
+    run_runner(home)
+
+    assert_empty ledger(home)
+  end
+
+  def test_a_run_whose_home_stays_behind_notes_that_the_ledger_does_not_record_its_store_migrations
+    home = old_home
+    SQLite3::Database.new(File.join(home, "local.db")).tap { |db| db.execute('CREATE TABLE "command_runs"("store" TEXT)') }.close
+    report = run_runner(home)
+
+    assert_includes report.notes, "migrate: plastic.db stays behind, so its ledger does not record the migrations of alpha, beta"
   end
 
   def test_a_backup_of_the_store_is_taken_first_and_says_it_is_the_migration_backup
