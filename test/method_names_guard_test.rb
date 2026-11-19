@@ -91,13 +91,16 @@ class MethodNamesGuardTest < Minitest::Test
       "class A\n  define_method(:run) { 1 }\nend\n" => %w[run],
       "class A\n  def A.run = 1\nend\n" => %w[run],
       "class A\n  attr_reader :take\nend\n" => %w[take],
-      "class A\n  attr_accessor :lock, :take_lock\nend\n" => %w[take_lock],
-      "class A\n  def self.taken?(context) = 1\nend\n" => %w[taken?],
-      "class A\n  def takes_problem = 1\n  def taking = 1\n  def takeover_then_finish = 1\nend\n" => %w[takes_problem taking takeover_then_finish],
-      "class A\n  attr_reader :taken_at\nend\n" => %w[taken_at]
+      "class A\n  attr_accessor :lock, :take_lock\nend\n" => %w[take_lock]
     }
 
     assert_equal samples.values, samples.keys.map { |sample| vague_names(sample) }
+  end
+
+  def test_the_detector_catches_every_form_of_take_as_a_word_of_a_name
+    sample = "class A\n  def self.taken?(context) = 1\n  def takes_problem = 1\n  def taking = 1\n  def takeover_then_finish = 1\n  attr_reader :taken_at\nend\n"
+
+    assert_equal %w[taken? takes_problem taking takeover_then_finish taken_at], vague_names(sample)
   end
 
   def test_the_detector_leaves_clear_names_made_the_same_ways_alone
