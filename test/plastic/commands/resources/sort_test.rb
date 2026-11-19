@@ -23,6 +23,13 @@ class ResourcesSortCommandTest < Plastic::TestCase
     assert_includes out, "preview: link left as it is #{INTENT}/resources/notes.md: missing.md"
   end
 
+  def test_the_preview_names_each_report_move_once_in_preview_words
+    write("#{INTENT}/resources/output/reports/old.html", "<p>old</p>\n")
+    lines = sort("--dry-run").out.lines.grep(/old\.html/)
+
+    assert_equal ["preview: move #{INTENT}/resources/output/reports/old.html -> #{INTENT}/resources/tmp/old.html: neither recorded nor mandatory\n"], lines
+  end
+
   def test_the_real_run_prints_the_links_it_changed_and_the_links_it_left_alone
     out = sort.out
 
