@@ -462,3 +462,30 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     assert_equal [false, ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
   end
 end
+
+class StoreMigrationLegacyRollbackTest < Plastic::TestCase
+  include PreviousStore
+
+  LATER = <<~SQL
+    DELETE FROM schema_migrations WHERE version = '#{PreviousStore::DROP}';
+    CREATE TABLE document_revisions("sha256" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "path" TEXT NOT NULL, "body" TEXT NOT NULL, "created_at" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("sha256", "intent_id", "path", "origin_id"));
+    INSERT INTO document_revisions VALUES ('sha2', '1', 'intent.md', 'new text', 'now', 'origin');
+    INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES ('originals/roadmaps/later.md', 420, 0, 0, CAST('later roadmap' AS BLOB), 'o');
+    CREATE TRIGGER refuse_delete BEFORE DELETE ON sqlar BEGIN SELECT RAISE(ABORT, 'refused'); END;
+  SQL
+
+  # A store whose legacy.db holds the rows of a first run, put back before the drop with new rows, and a cleanup that fails.
+  def failing_second_run
+    home = migrated_previous_home
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(LATER) }
+    [home, migrate_store(home)]
+  end
+
+  def test_a_failed_run_into_a_legacy_db_that_holds_rows_leaves_only_the_old_rows_and_the_store_behind
+    home, report = failing_second_run
+
+    assert_equal ["it could not be migrated (refused)", [["sha"]], [[ROADMAP]], [["sha2"]], false],
+      [report.failed.fetch("alpha"), alpha_rows(home, "legacy.db", "SELECT sha256 FROM document_revisions_#{DROP}"), alpha_rows(home, "legacy.db", "SELECT name FROM sqlar_#{DROP}"),
+        alpha_rows(home, "knowledge_graph.db", "SELECT sha256 FROM document_revisions"), recorded(home).include?(DROP)]
+  end
+end
