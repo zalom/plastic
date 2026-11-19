@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../migration"
 require_relative "../../../code_workflow"
 require_relative "../../../errors"
 require_relative "../../../graph/migration/migration_down"
@@ -7,7 +8,6 @@ require_relative "../../../graph/migration/migration_down"
 module Plastic
   module Workflows
     module Code
-      # The workflows of the commands that work on the migrations of one store.
       module Migration
         # Puts back the rows the newest migration of one store kept in legacy.db and removes its version, after a backup.
         class Down < CodeWorkflow
@@ -31,12 +31,6 @@ module Plastic
             raise STOPS.fetch(error.class), error.message
           end
 
-          # "1 row of document_revisions and 2 rows of sqlar".
-          def self.counted(moved)
-            parts = moved.map { |table, count| "#{count} #{(count == 1) ? "row" : "rows"} of #{table}" }
-            [parts[0...-1].join(", "), parts.last].reject(&:empty?).join(" and ")
-          end
-
           read "check the store can go down" do |context|
             context[:refusal] = down(context).refusal
           end
@@ -51,7 +45,7 @@ module Plastic
           end
 
           read "say what was put back" do |context|
-            context.print("down: put back #{counted(context.moved)} from legacy.db")
+            context.print("down: put back #{Migration.counted(context.moved)} from legacy.db")
             context.print("down: #{context.store} no longer records migration #{context.version}")
           end
 

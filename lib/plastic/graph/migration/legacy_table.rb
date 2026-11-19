@@ -57,6 +57,8 @@ module Plastic
 
       def drop = @connection.execute(%(DROP TABLE IF EXISTS #{SCHEMA}."#{name}"))
 
+      def count = @connection.get_first_value(%(SELECT count(*) FROM #{SCHEMA}."#{name}"))
+
       def kept? = !definition(SCHEMA, name).nil?
 
       private

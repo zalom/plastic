@@ -86,7 +86,9 @@ Each page explains one plastic command in six parts: what it does, how to call i
 
 | Command | What it does |
 | --- | --- |
+| [`plastic migration list`](migration-list/README.md) | Print the ledger rows of one store and what a down would undo now |
 | [`plastic migration down`](migration-down/README.md) | Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup |
+| [`plastic migration purge`](migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
 
 ## resources
 

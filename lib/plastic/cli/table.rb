@@ -71,7 +71,9 @@ module Plastic
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
       },
       "migration" => {
-        "migration down" => ["Commands::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"]
+        "migration list" => ["Commands::Migration::List", "Print the ledger rows of one store and what a down would undo now"],
+        "migration down" => ["Commands::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"],
+        "migration purge" => ["Commands::Migration::Purge", "Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it"]
       },
       "resources" => {
         "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
