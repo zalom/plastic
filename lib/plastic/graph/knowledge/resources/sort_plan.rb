@@ -33,12 +33,17 @@ module Plastic
           def changed = intents.flat_map(&:changed)
 
           # One line for each report the sort moves out of resources/output/reports/.
-          def unasked = intents.flat_map(&:unasked).map { |move| "moved #{move.from} to #{move.to}: #{UNASKED}" }
+          def unasked = unasked_moves.map { |move| "moved #{move.from} to #{move.to}: #{UNASKED}" }
+
+          # The line a dry run prints for `move`; the move of a report says why it moves.
+          def preview(move) = "preview: move #{move.from} -> #{move.to}#{": #{UNASKED}" if unasked_moves.include?(move)}"
 
           # The lines a sort of `count` files prints: the count, the links it changed and the links it left.
           def report(count) = ["sorted: #{count} files moved", *unasked, *changed.map { |link| "link changed #{link}" }, *unresolved.map { |link| "link left as it is #{link}" }]
 
           private
+
+          def unasked_moves = (@unasked_moves ||= intents.flat_map(&:unasked).to_set)
 
           def refuse_conflict(moves)
             conflicting = moves.find { |move| move.onto_other_bytes?(@folder) }
