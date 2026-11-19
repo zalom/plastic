@@ -5,7 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
-- `backup.daily`, off by default, keeps 24 hours of backups for each store. The first command or hook of the day takes the start-of-day backup of every store, and each session end after it replaces the day's end-of-day backup. The backup every 12 hours and the backup before a command that can lose data stay, and a store always keeps its newest backup. No backup holds the search database `retrieval_graph.db`.
+- `backup.daily`, off by default, keeps 24 hours of backups for each store. The first command or hook of the day takes the start-of-day backup of every store, and each session end after it replaces the day's end-of-day backup. The backup every 12 hours and the backup before a command that can lose data stay, and a store always keeps its newest backup. `plastic backup list` and `plastic backup restore` take no daily backup, so they find the backups as they are. No backup holds the search database `retrieval_graph.db`.
 
 ## 3.0.0-beta.3
 

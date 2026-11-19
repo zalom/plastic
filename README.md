@@ -383,7 +383,9 @@ include it. `plastic init` offers images and videos picked.
 With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
 Plastic command or hook of the day copies the databases of every store as the start-of-day
 backup, and each session end after it replaces the day's end-of-day backup. A store always keeps
-its newest backup. Plastic runs no background process for this, and `backup.daily` is off by default.
+its newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so
+they find the backups as they are. Plastic runs no background process for this, and
+`backup.daily` is off by default.
 
 ```bash
 plastic config list                         # Every key with its value
