@@ -107,7 +107,7 @@ module Plastic
       def settlement = Settlement.new(output, usage_line, @workspace)
 
       # The start-of-day backups the call takes first, unless it is a dry run.
-      def back_up_the_day = (DayBackup.new(environment).take(:begin_day) unless parsed[:dry_run])
+      def back_up_the_day = (DayBackup.new(environment).back_up(:begin_day) unless parsed[:dry_run])
 
       # A named project must exist before any work runs.
       def check_scope = @call.project_named? && scope.slug

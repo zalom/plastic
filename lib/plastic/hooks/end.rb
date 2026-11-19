@@ -20,7 +20,7 @@ module Plastic
 
       private
 
-      def back_up_the_day = CLI::DayBackup.new(environment).take(:end_session)
+      def back_up_the_day = CLI::DayBackup.new(environment).back_up(:end_session)
 
       def no_session
         environment.err.puts "plastic hook: the event names no session; nothing recorded"

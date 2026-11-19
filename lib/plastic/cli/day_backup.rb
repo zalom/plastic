@@ -16,7 +16,7 @@ module Plastic
       end
 
       # The moment is begin_day for a call, or end_session for the session end.
-      def take(moment)
+      def back_up(moment)
         return unless Wiring.daily_backups?(@home)
 
         Graph::Backup::Daily.new(home: @home, now: @environment.now).public_send(moment).each { |failure| say(**failure.to_h) }
