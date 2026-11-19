@@ -119,4 +119,20 @@ class IntentReportTest < Plastic::TestCase
 
     assert_includes store_database.rows("SELECT path FROM documents").map { |row| row["path"] }, REPORT
   end
+
+  def test_an_unknown_intent_exits_1_and_writes_nothing
+    say("write the delivery page")
+
+    assert_equal [1, []], [call("9", REPORT, "--asked", "delivery page").code, reported]
+  end
+
+  def test_an_intent_with_no_outcome_gets_one_with_the_reports_section
+    say("write the delivery page")
+    intent = open_intent("Beta")
+    write("#{intent.dir}/#{REPORT}", "<p>page</p>\n")
+    sync_up
+    call(intent.intent_id, REPORT, "--asked", "delivery page")
+
+    assert_equal "# Outcome\n\n## Reports\n\n- #{REPORT}, asked: \"delivery page\"\n", retrieval.fetch(intent.intent_id, "outcome.md").body
+  end
 end

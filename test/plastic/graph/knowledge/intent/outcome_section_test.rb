@@ -27,4 +27,8 @@ class OutcomeSectionTest < Minitest::Test
   def test_an_empty_section_gets_a_blank_line_under_its_heading
     assert_equal "# Outcome\n\n## Reports\n\n- b\n", add("# Outcome\n\n## Reports\n")
   end
+
+  def test_an_outcome_of_blank_lines_only_gets_the_section_alone
+    assert_equal "\n## Reports\n\n- b\n", add("\n\n")
+  end
 end
