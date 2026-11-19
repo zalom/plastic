@@ -147,12 +147,12 @@ class KeptFilesCleanupTest < Plastic::TestCase
       [error.message, names, File.exist?(File.join(root, "..", "outside.md")), File.exist?(on_disk(ROADMAP))]
   end
 
-  def test_a_cleanup_keeps_no_row_in_legacy_db_since_each_removed_row_has_its_file_on_disk
+  def test_a_cleanup_keeps_each_row_it_removes_just_before_the_delete_and_no_row_it_leaves
     [REPORT, TMP, ROADMAP].each { |name| keep(name) }
     put_on_disk(TMP, "changed")
     clean
 
-    assert_equal [[], [REPORT, TMP]], [kept_names, names]
+    assert_equal [[ROADMAP], [REPORT, TMP]], [kept_names, names]
   end
 
   def test_a_refused_cleanup_keeps_nothing
