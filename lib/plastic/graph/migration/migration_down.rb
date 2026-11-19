@@ -9,12 +9,14 @@ require_relative "legacy_store"
 require_relative "legacy_table"
 require_relative "migration_ledger"
 require_relative "migration_reason"
+require_relative "revision_rows"
 
 module Plastic
   module Graph
     # Undoes the newest migration of one current store. It backs the store up, puts the rows the migration kept in
     # legacy.db back into the live tables in their old shape, drops them from legacy.db and removes the version from the
-    # store, all in one transaction, and adds a down row to the ledger in plastic.db. It refuses a store that is not
+    # store, all in one transaction. In it, a version of REBUILDS also builds the rows the older code expects, such as a revision
+    # row for each current document. It adds a down row to the ledger in plastic.db. It refuses a store that is not
     # current, a migration that kept nothing, kept rows that are gone, and a live row that changed after the migration
     # kept it. Docs: docs/contributing/MIGRATIONS.md.
     class MigrationDown
@@ -28,17 +30,22 @@ module Plastic
       class Trial < StandardError; end
       private_constant :Trial
 
-      # The version a down removed, the rows it put back by table, and the backup it took first.
-      Undone = Data.define(:version, :moved, :backup)
+      # The version a down removed, the rows it put back by table, the rows it built by table, and the backup it took first.
+      Undone = Data.define(:version, :moved, :built, :backup)
+
+      # The versions whose down builds rows the older code expects, beside the rows it puts back.
+      REBUILDS = { "20261119000000" => RevisionRows }.freeze
+      NONE = ->(_connection) { {} }
 
       UNDO = "a down cannot undo it; restore a backup to go back"
       DELETE = "DELETE FROM main.schema_migrations WHERE version = ?"
 
-      def initialize(home, slug, now, keeps: LegacyKeep::KEEPS)
+      def initialize(home, slug, now, keeps: LegacyKeep::KEEPS, rebuilds: REBUILDS)
         @home = home
         @slug = slug
         @now = now
         @keeps = keeps
+        @rebuilds = rebuilds
         @store = LegacyStore.new(home, slug)
         @version = MIGRATIONS.versions(:store).last
       end
@@ -59,9 +66,9 @@ module Plastic
       def call
         check
         backup = backed_up
-        moved = undo
+        moved, built = undo
         MigrationLedger.new(Database.open_local(@home).fetch(:local), @now).record(@slug, "down", version, moved:, undoable: false)
-        Undone.new(version:, moved:, backup:)
+        Undone.new(version:, moved:, built:, backup:)
       ensure
         @store.release
       end
@@ -105,12 +112,12 @@ module Plastic
       end
 
       def undo
-        moved = connection.atomically do
+        undone = connection.atomically do
           connection.execute(DELETE, [version])
-          tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }
+          [tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }, @rebuilds.fetch(version, NONE).call(connection)]
         end
         @store.give_back
-        moved
+        undone
       end
     end
   end

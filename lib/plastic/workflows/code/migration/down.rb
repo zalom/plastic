@@ -14,7 +14,7 @@ module Plastic
           clear_declarations
           summary "Puts back the rows the newest migration of one store kept in legacy.db and removes its version, after a backup."
 
-          sets :refusal, :version, :moved, :backup
+          sets :refusal, :version, :moved, :built, :backup
 
           # How a down that fails after the check stops the call: a failed backup is exit 1, a refusal exit 3.
           STOPS = { Plastic::Graph::MigrationDown::BackupFailed => Failed, Plastic::Graph::MigrationDown::Refused => Refused,
@@ -26,6 +26,7 @@ module Plastic
             undone = down(context).call
             context[:version] = undone.version
             context[:moved] = undone.moved
+            context[:built] = undone.built
             context[:backup] = undone.backup
           rescue *STOPS.keys => error
             raise STOPS.fetch(error.class), error.message
@@ -47,6 +48,7 @@ module Plastic
           read "say what was put back" do |context|
             context.print("down: put back #{Migration.counted(context.moved)} from legacy.db")
             context.print("down: #{context.store} no longer records migration #{context.version}")
+            context.print("down: built #{Migration.counted(context.built)} from the current documents") unless context.built.empty?
           end
 
           outcome :done, offers: "plastic migration list --store %{store}",

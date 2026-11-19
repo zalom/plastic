@@ -120,6 +120,10 @@ A down refuses with exit 3 and changes nothing in these cases:
 
 A failed backup stops the down with exit 1 before it changes anything. After a down, the store
 has the layout of the release before the migration, and `plastic update` migrates it up again.
+In the same transaction, the down of migration `20261119000000` builds a `document_revisions` row
+for each current document that has none, from `documents` and `document_heads`. The release
+before it then finds every document in its search, its reads by revision and its integrity audit.
+A migration that needs such rows on its down adds its version to `MigrationDown::REBUILDS`.
 A down undoes only the newest store migration. To go back further, restore a backup.
 
 A down undoes one store, not the install. `plastic.db` and the other stores keep their

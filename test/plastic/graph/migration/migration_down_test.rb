@@ -48,6 +48,7 @@ class GraphMigrationDownTest < Plastic::TestCase
 
     assert_equal before, [layout(home), contents(home, "knowledge_graph.db"), contents(home, "legacy.db")]
   end
+
   # A document written after the migration, with its head, as the code after the drop writes it: no revision row.
   def write_document(home, intent_id, path, body, sha = Digest::SHA256.hexdigest(body))
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
