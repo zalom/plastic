@@ -37,7 +37,7 @@ module Plastic
       origin = Origin.new(home)
       databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:, clock:)
-      folder = Knowledge::StoreFolder.new(root, sync:)
+      folder = Knowledge::StoreFolder.new(root, sync: sync.for_store(databases.fetch(:store)))
       Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
     end
 

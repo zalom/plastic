@@ -65,7 +65,8 @@ module Plastic
         def intent_files = intent_dirs.flat_map { |dir| files(dir) }
 
         def files(dir)
-          selected = Dir.glob("**/*", File::FNM_DOTMATCH, base: path(dir)).select { |rel| @sync.selection.read?(rel) }
+          intent_id = SyncSelection.intent_of(dir)
+          selected = Dir.glob("**/*", File::FNM_DOTMATCH, base: path(dir)).select { |rel| @sync.selection.read?(rel, intent_id:) }
           selected.map { |rel| "#{dir}/#{rel}" }.select { |rel| kept?(rel) }.sort
         end
 

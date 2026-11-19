@@ -29,7 +29,7 @@ module Plastic
       end
 
       # The path inside its intent folder, or nil for a store-level path such as originals/.
-      def in_intent = name[Knowledge::SyncSelection::INTENT_FILE, 1]
+      def in_intent = name[Knowledge::SyncSelection::INTENT_FILE, "rel"]
 
       # The intent folder the path lies in, such as store/1--alpha, or nil for a store-level path.
       def intent_folder = in_intent && name.split("/").first(2).join("/")

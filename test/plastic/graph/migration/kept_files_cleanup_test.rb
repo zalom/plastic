@@ -10,7 +10,7 @@ module KeptFilesCleanupCases
   SyncSelection = Plastic::Graph::Knowledge::SyncSelection
   INSERT = "INSERT INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (?, 420, 0, 0, ?, ?, ?, 'o')"
   TMP = "store/1--alpha/resources/tmp/scratch.md"
-  REPORT = "store/1--alpha/resources/output/reports/review.md"
+  REPORT = "store/1--alpha/resources/output/files/review.md"
   PAPER = "store/1--alpha/resources/references/paper.pdf"
   ROADMAP = "originals/roadmaps/plan.md"
 

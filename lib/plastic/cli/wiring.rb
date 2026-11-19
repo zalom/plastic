@@ -36,7 +36,8 @@ module Plastic
     def self.selection(home) = selection_of(config(home))
 
     def self.selection_of(settings)
-      Graph::Knowledge::SyncSelection.new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"))
+      Graph::Knowledge::SyncSelection.new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"),
+        reports: Graph::Knowledge::Reports.new(mandatory: Graph::Knowledge::Reports.named(settings.value("reports.mandatory"))))
     end
 
     # The held migrations whose switch the settings turn on, such as migrate.drop_document_revisions.
