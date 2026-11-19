@@ -52,7 +52,7 @@ module Plastic
           # The records this sync writes; zero when the folder and the rows are level.
           def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + beyond_entries
 
-          # The writes a sync makes beyond its entries: the second home, the old savepoints and the unread paths.
+          # The writes a sync makes beyond its entries: the second home, the old savepoint files and the unread paths.
           def beyond_entries = second_home_extra + old_savepoints.removable.size + unread.size
 
           # The reads of a second home that no entry already counts.
