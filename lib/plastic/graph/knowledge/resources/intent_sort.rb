@@ -60,7 +60,7 @@ module Plastic
             "resources/tmp/#{rel.delete_prefix(Knowledge::Reports::FOLDER)}"
           end
 
-          def intent_id = @dir[%r{\Astore/([^/]*)--}, 1]
+          def intent_id = SyncSelection.intent_of(@dir)
 
           def rewriter = (@rewriter ||= LinkRewrite.new(@moved.call, KnownFiles.new(@folder)))
 
