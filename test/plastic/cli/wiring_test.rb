@@ -84,4 +84,14 @@ class WiringTest < Plastic::TestCase
     assert_equal [true, false], [settings.config(harness: "claude-code").flag(["statusline"], default: false), settings.config.flag(["statusline"], default: false)]
     assert_nil settings.store.problem
   end
+
+  def test_a_home_with_no_setting_takes_no_daily_backups
+    refute Plastic::Wiring.daily_backups?(@plastic_home)
+  end
+
+  def test_the_daily_setting_turns_the_daily_backups_on
+    seed_config(@plastic_home, "global:\n  backup:\n    daily: true\n")
+
+    assert Plastic::Wiring.daily_backups?(@plastic_home)
+  end
 end

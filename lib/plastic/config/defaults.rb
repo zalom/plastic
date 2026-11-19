@@ -17,7 +17,8 @@ module Plastic
         "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false },
         "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [] },
-        "advisor" => { "enabled" => true }
+        "advisor" => { "enabled" => true },
+        "backup" => { "daily" => false }
       }.freeze
 
       ADVISOR = "plastic-primary-advisor"

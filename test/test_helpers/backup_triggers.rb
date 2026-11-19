@@ -12,6 +12,23 @@ module BackupTriggers
   THIRTEEN_HOURS_LATER = SEEDED + (13 * 3600)
   ELEVEN_HOURS_LATER = SEEDED + (11 * 3600)
 
+  OLD_BACKUP = Time.new(2026, 1, 1, 7, 0, 0, "+01:00")
+  DAY_STARTED = Time.new(2026, 1, 2, 0, 30, 0, "+01:00")
+  LUNCHTIME = Time.new(2026, 1, 2, 13, 0, 0, "+01:00")
+
+  # A home whose store alpha has a backup 30 hours older than LUNCHTIME and a
+  # start-of-day backup taken at DAY_STARTED, and has changed since, with
+  # backup.daily set as given. At LUNCHTIME its 12-hour backup is due and
+  # the day already has its start-of-day backup. The test includes ConfigHomes.
+  def retention_home(daily:)
+    fresh_home.tap do |home|
+      seed_config(home, "global:\n  backup:\n    daily: #{daily}\n")
+      backup_at(home, OLD_BACKUP)
+      Plastic::Graph::Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now: DAY_STARTED).begin_day
+      add_intent(home)
+    end
+  end
+
   def stale_home(slug = "alpha")
     fresh_home.tap { |home| backup_at(home, SEEDED, slug:) }
   end

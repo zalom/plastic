@@ -12,6 +12,7 @@ module Plastic
         include CLI::BackupStore
 
         reads :work
+        skips_daily_backup
 
         workflow :code_backup_list, next: :noop
       end

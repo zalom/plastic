@@ -20,7 +20,8 @@ module Plastic
       def back_up_first
         return unless self.class.backs_up_first? && !parsed[:dry_run]
 
-        result = Graph::Backup::Due.new(home: scope.plastic_home, slug: backup_slug, now: environment.now).call(words)
+        home = scope.plastic_home
+        result = Graph::Backup::Due.new(home:, slug: backup_slug, now: environment.now, retention: Wiring.backup_retention(home)).call(words)
         say_failure(result) if result.status == :failed
       end
 

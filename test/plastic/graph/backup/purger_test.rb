@@ -16,6 +16,14 @@ class GraphBackupPurgerTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
+  def test_a_sweep_keeps_the_expired_folders_it_is_told_to_keep
+    home = fresh_home
+    [at(2026, 1, 1, 10, 0, 0), at(2026, 1, 1, 11, 0, 0), at(2026, 1, 5, 10, 0, 0)].each { |time| backup_at(home, time) }
+    Purger.new(File.join(home, "stores", "alpha")).sweep(now: at(2026, 1, 5, 10, 0, 0), keep: ["20260101100000"])
+
+    assert_equal %w[20260101100000 20260105100000], folder_names(home)
+  end
+
   def test_names_before_a_time_are_strictly_older
     home = fresh_home
     backup_at(home, at(2026, 2, 28, 23, 59, 59))
@@ -51,5 +59,30 @@ class GraphBackupPurgerExpiryTest < Plastic::TestCase
     write(home, NOW - (4 * 86_400))
 
     assert_equal %w[20260104120000 20260106120000], purger(home).expired(now: NOW)
+  end
+
+  def daily(home) = Backup::Purger.new(File.join(home, "stores", "alpha"), retention: Backup::Purger::DAILY_RETENTION)
+
+  def test_under_the_daily_retention_a_backup_older_than_a_day_expires_and_a_newer_one_stays
+    home = fresh_home
+    write(home, NOW - (25 * 3600))
+    write(home, NOW - (23 * 3600))
+
+    assert_equal ["20260109110000"], daily(home).expired(now: NOW)
+  end
+
+  def test_under_the_daily_retention_the_newest_migration_backup_is_kept
+    home = fresh_home
+    write(home, NOW - (2 * 86_400), reason: "migration")
+    write(home, NOW - (26 * 3600))
+
+    assert_equal ["20260109100000"], daily(home).expired(now: NOW)
+  end
+
+  def test_under_the_default_retention_a_backup_two_days_old_stays
+    home = fresh_home
+    write(home, NOW - (2 * 86_400))
+
+    assert_empty purger(home).expired(now: NOW)
   end
 end

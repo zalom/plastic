@@ -18,7 +18,7 @@ module Plastic
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no command run.
     class Start < CLI::Hook
-      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
+      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than 12 hours. With backup.daily on, every store takes its start-of-day backup on the first call of the day")
 
       def initialize(argv, health: method(:failing_checks), **rest)
         super(argv, **rest)
@@ -36,8 +36,10 @@ module Plastic
       def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now, store: Wiring.store(scope.plastic_home, clock: environment.clock))
 
       def back_up_stores
+        home = scope.plastic_home
+        retention = Wiring.backup_retention(home)
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|
-          Graph::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
+          Graph::Backup::Due.new(home:, slug:, now: environment.now, retention:).call("session start")
         end
       end
 
