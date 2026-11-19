@@ -76,4 +76,50 @@ tables is the beta.2 layout, which the store and home baselines migrate. A `user
 is an alpha build that already has the baseline layout, so it gets the baseline row and no SQL
 runs. Any other `user_version` counts as newer than this code.
 
-There are no down migrations. Restore a backup to go back.
+## Keep what a migration removes
+
+A migration that removes data keeps it first in `legacy.db`, a fourth file in the store folder.
+The keep runs in the transaction of the migration, so the rows stay kept only when the migration
+commits.
+
+- Each kept table is named for the live table and the version, such as `sqlar_20261119000000`.
+  It is made from the live table's own `CREATE TABLE` text, so it keeps the old shape.
+- `LegacyKeep::KEEPS` in `lib/plastic/graph/migration/legacy_keep.rb` lists the versions that
+  keep what they remove. `LegacyKeep::WHOLE` lists the tables such a version drops, kept whole
+  just before its SQL runs. A data step gets a `keep:` callable and keeps each row before it
+  deletes it.
+- The store migration attaches `legacy.db` only while a version of `KEEPS` is pending, so no
+  other run makes the file.
+- A backup copies `legacy.db` when the store has one, and a restore puts it back.
+
+To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
+`WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
+
+## The ledger
+
+The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
+or purge of a migration on a store, with the time, the rows the event moved into or out of
+`legacy.db` by table, and whether a down can undo it. The store's own `schema_migrations` table
+stays the truth of its version. When `plastic.db` stays behind, the stores still migrate, and
+one note says that the ledger does not record them.
+
+## Undo the newest migration
+
+| Command | What it does |
+| ------- | ------------ |
+| `plastic migration list --store SLUG` | Prints the ledger rows of the store and what a down would undo now. It changes nothing and offers no next command. |
+| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic rollback`. |
+| `plastic migration purge VERSION --store SLUG` | Removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
+
+A down refuses with exit 3 and changes nothing in these cases:
+
+- The store is behind or ahead of this release.
+- The newest migration kept nothing.
+- The rows it kept are not in `legacy.db`.
+- A live row it would overwrite changed after the migration kept it.
+
+A failed backup stops the down with exit 1 before it changes anything. After a down, the store
+has the layout of the release before the migration, and `plastic update` migrates it up again.
+A down undoes only the newest store migration. To go back further, restore a backup.
+
+A purge of a version that keeps no rows of the store is a usage error, exit 2.

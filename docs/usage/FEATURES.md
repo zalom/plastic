@@ -165,6 +165,21 @@ records. When nothing names a harness, the doctor exits 2 and lists the register
 The doctor also names each store with files outside the resources layout, as `resources NAME: N files
 are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
 
+## Undo a migration
+
+A migration that removes data keeps it in `legacy.db` in the store folder, in the same
+transaction, and the ledger in `plastic.db` records each migration that runs on a store.
+
+| Command | What it does |
+| ------- | ------------ |
+| `plastic migration list --store SLUG` | Prints the ledger rows of the store and what a down would undo now. It changes nothing and offers no next command. |
+| `plastic migration down --store SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic rollback`. |
+| `plastic migration purge VERSION --store SLUG` | Removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
+
+A down exits 3 and changes nothing when the store is not at the newest version, when the newest
+migration kept nothing or its rows were purged, or when a row it would put back changed after
+the migration. `plastic update` migrates the store up again after a down.
+
 ## The resources layout
 
 An intent folder keeps its notes in the root and its other files under `resources/`:
@@ -187,7 +202,7 @@ finds nothing to move and says `sorted: nothing to move`.
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
-then one heading for each family: intent, project, sync, session, config, backup, document,
+then one heading for each family: intent, project, sync, session, config, backup, migration, document,
 architecture, node, edge, graph, roadmap and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.

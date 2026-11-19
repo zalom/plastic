@@ -252,6 +252,9 @@ plastic backup list --store alpha     # Folder, start time, status and goal of e
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
 plastic backup purge --store alpha --failed   # Delete the backups that failed
 plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
+plastic migration list --store alpha  # The ledger of the store's migrations, and what a down would undo
+plastic migration down --store alpha  # Put back the rows the newest migration kept in legacy.db, after a backup
+plastic migration purge 20261119000000 --store alpha   # Remove the rows one migration kept, so it can no longer be undone
 ```
 
 ### Product
