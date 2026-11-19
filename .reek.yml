@@ -18,15 +18,6 @@ detectors:
   DuplicateMethodCall:
     exclude:
     - Plastic::Config::AgentModels#shipped_model_for
-    - ContextBudget#self.boot
-    - ContextBudget#self.build_rows
-    - ContextBudget#self.child_env
-    - ContextBudget#self.measure
-    - ContextBudget#self.median
-    - ContextBudget#self.median_of_samples
-    - ContextBudget#self.render
-    - ContextBudget#self.report_for
-    - ContextBudget::Report#byte_spread
   FeatureEnvy:
     exclude:
     - Plastic::VersionNumber#<=>
@@ -34,8 +25,6 @@ detectors:
     enabled: false
   LongParameterList:
     max_params: 5
-    exclude:
-    - ContextBudget#self.row
   NestedIterators:
     exclude:
     - Plastic::Installations::HookRegistry#claude_launcher_names
@@ -46,7 +35,6 @@ detectors:
     exclude:
     - Plastic::Config::AgentModels
     - Plastic::Installations::HookRegistry
-    - ContextBudget
   TooManyMethods:
     exclude:
     - Plastic::Scope
@@ -54,7 +42,6 @@ detectors:
     max_statements: 10
     exclude:
     - Plastic::Installations::EnginePermissions#merge_into
-    - ContextBudget#self.render
   UncommunicativeVariableName:
     exclude:
     - Plastic::Installations::HookRegistry

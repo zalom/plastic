@@ -253,8 +253,11 @@ class IntentEndMergeTest < Plastic::TestCase
   def test_a_negative_merge_record_is_named_by_the_handoff
     accepted_intent(records: "- Merged: no\n- Architecture map: enola at abc123\n")
     review_off
+    result = finish
 
-    assert_includes finish.out, "Merged: no"
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "Merged: no"
+    assert_match(/^next: plastic intent end 1/, result.out)
   end
 
   def test_a_negative_approval_is_named_by_the_wait_for_the_person
