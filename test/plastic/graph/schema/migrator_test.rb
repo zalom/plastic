@@ -68,6 +68,21 @@ class SchemaMigratorTest < Plastic::TestCase
     assert_equal [%w[legacy], nil], [tables, recorded_versions(@path)]
   end
 
+  def test_the_before_step_runs_with_each_pending_version_just_before_its_sql
+    seen = []
+    Migrator.new(@connection, :store, migrations: tickets_then_owners, before: ->(version) { seen << [version, tables.include?("tickets")] }).call
+
+    assert_equal [[FIRST, false], [SECOND, true]], seen
+  end
+
+  def test_a_version_recorded_at_adoption_runs_no_before_step
+    @connection.execute("PRAGMA user_version = 1")
+    seen = []
+    Migrator.new(@connection, :store, migrations: tickets_only, before: ->(version) { seen << version }).call
+
+    assert_empty seen
+  end
+
   def test_a_recorded_version_is_skipped_and_only_the_later_one_runs
     migrator(@connection, tickets_only).call
     migrator(@connection, tickets_then_owners).call

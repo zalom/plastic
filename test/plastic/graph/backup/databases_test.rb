@@ -30,4 +30,12 @@ class GraphBackupDatabasesTest < Plastic::TestCase
   def test_the_goal_lists_the_files_of_a_partial_choice
     assert_equal "partial:work_graph.db,references.db", Databases.goal(%w[work_graph references])
   end
+
+  def test_every_name_holds_legacy_beside_the_store_databases_and_the_former_references_file
+    assert_equal %w[knowledge_graph legacy references work_graph], Databases.all.sort
+  end
+
+  def test_a_comma_list_may_name_the_legacy_database
+    assert_equal %w[legacy], Databases.parse("legacy")
+  end
 end

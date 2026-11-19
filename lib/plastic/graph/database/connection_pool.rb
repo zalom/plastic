@@ -121,6 +121,9 @@ module Plastic
           made.uniq.product(["", "-wal", "-shm", "-journal"]).map(&:join).select { |file| File.file?(file) }.each { |file| File.delete(file) }
         end
 
+        # Forgets that this process made the file `path`, so a later removal of the files it made keeps it.
+        def self.forget_created(path) = created.delete(File.expand_path(path))
+
         def self.connect(path, attach)
           remember_missing([path, *attach.values])
           Connection.open(path, attach:)

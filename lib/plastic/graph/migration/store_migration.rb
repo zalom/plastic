@@ -7,6 +7,7 @@ require_relative "../schema/migrator"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
 require_relative "kept_files_cleanup"
+require_relative "legacy_keep"
 require_relative "migration_reason"
 require_relative "store_age"
 require_relative "store_compaction"
@@ -16,22 +17,29 @@ module Plastic
     # Brings the files of one store to the newest version. A store behind is backed up first, whatever the age of its
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
     # stayed behind. `notes` holds the lines its data steps and its compaction report. The migration that keeps in sqlar
-    # only the files a sync reads takes the sync `selection` of the machine.
+    # only the files a sync reads takes the sync `selection` of the machine. What a migration removes is kept in legacy.db
+    # in the same transaction, and `ledger` holds an entry for each migration that ran.
     class StoreMigration
       REFERENCES = "references.db"
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup }.freeze
 
-      def initialize(home, slug, now, selection:, compaction: StoreCompaction)
+      # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
+      # their switch, which the run applies.
+      Run = Data.define(:selection, :released)
+
+      def initialize(home, slug, now, run:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
-        @selection = selection
+        @selection = run.selection
+        @released = run.released
         @notes = []
+        @ledger = []
         @compaction = compaction
       end
 
-      attr_reader :notes
+      attr_reader :notes, :ledger
 
       def call
         return compacted(:current) unless behind?
@@ -47,7 +55,7 @@ module Plastic
 
       def root = File.join(@home, "stores", @slug)
 
-      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))])
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
 
       def knowledge_file = File.join(root, Schema.file(:knowledge))
 
@@ -74,21 +82,30 @@ module Plastic
 
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
-        data = DATA_STEPS.select { |version, _step| pending?(version) }.values
-        migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
+        data = DATA_STEPS.select { |version, _step| pending?(version) }
+        migrating = Database::ConnectionPool.for(knowledge_file, attach: attachments)
         with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
-      rescue SQLite3::Exception, SystemCallError
+        Database::ConnectionPool.forget_created(File.join(root, LegacyKeep::FILE))
+      rescue SQLite3::Exception, Database::Error, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
       end
 
+      # legacy.db is attached only while a pending migration keeps what it removes, so no other run makes the file.
+      def attachments = Database::Store.attachments(knowledge_file).merge(LegacyKeep.attachment(root, pending))
+
       def migrate_rows(migrating, data)
-        SchemaMigrator.new(migrating, :store).call
-        data.each { |step| step.new(migrating, root, @selection).call.line(@slug)&.then { |line| @notes << line } }
+        keep = LegacyKeep.new(migrating)
+        SchemaMigrator.new(migrating, :store, before: keep, released: @released).call
+        data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
+        @ledger = keep.entries
       end
 
-      def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)
+      # Every store version when the knowledge file is missing, else the versions it lacks.
+      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store, released: @released).pending : MIGRATIONS.versions(:store) - (MIGRATIONS.held(:store) - @released)
+
+      def pending?(version) = pending.include?(version)
 
       # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
       def baseline_pending? = pending?(MIGRATIONS.baseline(:store))

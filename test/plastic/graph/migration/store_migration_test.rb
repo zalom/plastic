@@ -14,7 +14,7 @@ module StoreMigrationRuns
   NOW = Time.utc(2026, 1, 1)
   SELECTION = Plastic::Graph::Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [])
 
-  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION).call
+  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
 
   def migrated_home(**options) = beta_2_home(**options).tap { |home| migrate(home) }
 
@@ -196,7 +196,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home
     plant(home, trigger)
     before = [state(home), rows_digest(home)]
-    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call
+    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
     [home, before, report]
   end
 
@@ -220,7 +220,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home(older: true)
     before = beta_2_files(home)
 
-    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call }
+    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call }
 
     assert_includes error.message, "beta.2"
     assert_equal before, beta_2_files(home)
@@ -242,6 +242,7 @@ class AlphaStoreMigrationTest < Plastic::TestCase
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
     home
   end
@@ -268,11 +269,13 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     INSERT INTO document_revisions VALUES ('sha', '1', 'intent.md', 'old text', 'then', 'origin');
   SQL
 
-  # A store the previous release wrote: every version before the drop, and a document_revisions table with a row.
+  # A store the previous release wrote: every version before the drop, and a document_revisions table with a row. Its files
+  # were made by an earlier process, so this one forgets that it made them.
   def previous_home
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
       database.execute("DELETE FROM schema_migrations WHERE version = ?", [DROP])
@@ -327,6 +330,54 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     assert_equal ["it could not be migrated (the kept file ../outside.md leads outside the store folder)", [["document_revisions"]], [[1]]],
       [report.failed.fetch("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), knowledge(home, "SELECT count(*) FROM sqlar")]
   end
+
+  def legacy_file(home) = store_path(home, "legacy.db")
+
+  def legacy(home, sql) = read_file(legacy_file(home), sql)
+
+  def test_a_store_of_the_previous_release_keeps_every_row_of_document_revisions_in_legacy_db_in_its_old_shape
+    home = previous_home
+    before = knowledge(home, "SELECT * FROM document_revisions")
+    shape = knowledge(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions')")
+    migrate(home)
+
+    assert_equal [before, shape], [legacy(home, "SELECT * FROM document_revisions_#{DROP}"), legacy(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions_#{DROP}')")]
+  end
+
+  def test_a_store_of_the_previous_release_keeps_each_removed_sqlar_row_with_its_bytes_and_no_row_it_keeps
+    home = previous_home
+    keep(home, "originals/roadmaps/plan.md", "old roadmap")
+    keep(home, "store/1--alpha/resources/tmp/scratch.md", "old scratch")
+    File.join(store_root(home), "store/1--alpha/resources/tmp/scratch.md").then { |path| FileUtils.mkdir_p(File.dirname(path)).then { File.write(path, "new scratch") } }
+    migrate(home)
+
+    assert_equal [[["originals/roadmaps/plan.md", "old roadmap"]], [["store/1--alpha/resources/tmp/scratch.md"]]],
+      [legacy(home, "SELECT name, data FROM sqlar_#{DROP}"), knowledge(home, "SELECT name FROM sqlar")]
+  end
+
+  def test_a_store_whose_cleanup_is_refused_makes_no_legacy_db
+    home = previous_home
+    keep(home, "../outside.md", "outside")
+    migrate(home)
+
+    refute_path_exists legacy_file(home)
+  end
+
+  def test_a_store_whose_legacy_db_cannot_be_made_stays_behind_with_its_table
+    home = previous_home
+    FileUtils.mkdir_p(legacy_file(home))
+    report = migrate(home)
+
+    assert_equal [false, [["document_revisions"]]], [report.migrated.include?("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'")]
+  end
+
+  def test_a_current_store_makes_no_legacy_db
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+    migrate(home)
+
+    refute_path_exists legacy_file(home)
+  end
 end
 
 class StoreMigrationCompactionTest < Plastic::TestCase
@@ -336,7 +387,7 @@ class StoreMigrationCompactionTest < Plastic::TestCase
   FULL_DISK = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
   FAILED = "compact: alpha was not compacted (database or disk is full); run plastic update to try again"
 
-  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, selection: SELECTION, compaction:)
+  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, run: Plastic::Graph::StoreMigration::Run.new(selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)), compaction:)
 
   def vacuum_modes(home) = FILES.map { |name| SQLite3::Database.open(store_path(home, name)) { |database| database.get_first_value("PRAGMA auto_vacuum") } }
 
@@ -386,5 +437,77 @@ class StoreMigrationCompactionTest < Plastic::TestCase
     run = migration(without_vacuum(current_home), compaction: FULL_DISK)
 
     assert_equal [:current, [FAILED]], [run.call, run.notes]
+  end
+end
+
+class StoreMigrationCreatedFilesTest < Plastic::TestCase
+  include PreviousStore
+
+  Pool = Plastic::Graph::Database::ConnectionPool
+
+  def teardown
+    Pool.created.clear
+    super
+  end
+
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call
+
+  def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
+    home = previous_home
+    Pool.created.clear
+    migrate(home)
+    Pool.release(home)
+    Pool.remove_created(alpha_file(home, ""))
+
+    assert_equal [false, ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
+  end
+end
+
+class StoreMigrationLegacyRollbackTest < Plastic::TestCase
+  include PreviousStore
+
+  LATER = <<~SQL
+    DELETE FROM schema_migrations WHERE version = '#{PreviousStore::DROP}';
+    CREATE TABLE document_revisions("sha256" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "path" TEXT NOT NULL, "body" TEXT NOT NULL, "created_at" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("sha256", "intent_id", "path", "origin_id"));
+    INSERT INTO document_revisions VALUES ('sha2', '1', 'intent.md', 'new text', 'now', 'origin');
+    INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES ('originals/roadmaps/later.md', 420, 0, 0, CAST('later roadmap' AS BLOB), 'o');
+    CREATE TRIGGER refuse_delete BEFORE DELETE ON sqlar BEGIN SELECT RAISE(ABORT, 'refused'); END;
+  SQL
+
+  # A store whose legacy.db holds the rows of a first run, put back before the drop with new rows, and a cleanup that fails.
+  def failing_second_run
+    home = migrated_previous_home
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(LATER) }
+    [home, migrate_store(home)]
+  end
+
+  def test_a_failed_run_into_a_legacy_db_that_holds_rows_leaves_only_the_old_rows_and_the_store_behind
+    home, report = failing_second_run
+
+    assert_equal ["it could not be migrated (refused)", [["sha"]], [[ROADMAP]], [["sha2"]], false],
+      [report.failed.fetch("alpha"), alpha_rows(home, "legacy.db", "SELECT sha256 FROM document_revisions_#{DROP}"), alpha_rows(home, "legacy.db", "SELECT name FROM sqlar_#{DROP}"),
+        alpha_rows(home, "knowledge_graph.db", "SELECT sha256 FROM document_revisions"), recorded(home).include?(DROP)]
+  end
+end
+
+class StoreMigrationSwitchTest < Plastic::TestCase
+  include PreviousStore
+
+  def migrate(home, released) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call.tap { forget(home) }
+
+  def revisions_table(home) = alpha_rows(home, "knowledge_graph.db", "SELECT name FROM sqlite_master WHERE name = 'document_revisions'").flatten
+
+  def test_while_the_switch_is_off_a_store_that_lacks_only_the_drop_keeps_its_table_and_makes_no_legacy_db
+    home = previous_home
+    report = migrate(home, [])
+
+    assert_equal [[], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
+  end
+
+  def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
+    home = previous_home
+    report = migrate(home, [DROP])
+
+    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
   end
 end

@@ -18,6 +18,8 @@ module Plastic
       def store = Wiring.store(home, clock:)
 
       def selection = Wiring.selection_of(config)
+
+      def released = Wiring.released_of(config)
     end
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
@@ -36,6 +38,9 @@ module Plastic
     def self.selection_of(settings)
       Graph::Knowledge::SyncSelection.new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"))
     end
+
+    # The held migrations whose switch the settings turn on, such as migrate.drop_document_revisions.
+    def self.released_of(settings) = Graph::MigrationList::HELD.select { |_version, key| settings.flag(key.split("."), default: false) }.keys
 
     def self.sync(home) = Graph::Knowledge::SyncSettings.new(selection: selection(home), remove_after_import: config(home).flag(REMOVE_AFTER_IMPORT, default: false))
 

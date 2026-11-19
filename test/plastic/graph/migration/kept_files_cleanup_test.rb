@@ -34,7 +34,12 @@ module KeptFilesCleanupCases
 
   def selection(references: false) = SyncSelection.new(types: %w[md html], references:, asked: [])
 
-  def clean(references: false, **options) = Cleanup.new(connection, root, selection(references:), **options).call
+  # The names of the rows the cleanup asked to keep, read with its own condition just before its delete.
+  def kept_names = (@kept_names ||= [])
+
+  def keep_step = ->(table, where, values) { kept_names.concat(connection.execute("SELECT name FROM main.#{table} WHERE #{where}", values).map { |row| row.fetch("name") }) }
+
+  def clean(references: false, **options) = Cleanup.new(connection, root, selection(references:), keep: keep_step, **options).call
 
   def names = connection.execute("SELECT name FROM sqlar ORDER BY name").map { |row| row.fetch("name") }
 
@@ -140,6 +145,21 @@ class KeptFilesCleanupTest < Plastic::TestCase
 
     assert_equal ["the kept file ../outside.md leads outside the store folder", [ROADMAP, "../outside.md"].sort, false, false],
       [error.message, names, File.exist?(File.join(root, "..", "outside.md")), File.exist?(on_disk(ROADMAP))]
+  end
+
+  def test_a_cleanup_keeps_each_row_it_removes_just_before_the_delete_and_no_row_it_leaves
+    [REPORT, TMP, ROADMAP].each { |name| keep(name) }
+    put_on_disk(TMP, "changed")
+    clean
+
+    assert_equal [[ROADMAP], [REPORT, TMP]], [kept_names, names]
+  end
+
+  def test_a_refused_cleanup_keeps_nothing
+    keep("../outside.md", "outside")
+    assert_raises(Cleanup::Refused) { clean }
+
+    assert_empty kept_names
   end
 
   def test_a_cleanup_answers_the_number_of_rows_it_removed_and_the_rows_it_kept
@@ -272,7 +292,7 @@ class KeptFilesLinkTest < Plastic::TestCase
     keep(ROADMAP, "old roadmap", intent_id: nil)
     linked_root = File.join(outside, "alpha")
     File.symlink(root, linked_root)
-    Cleanup.new(connection, linked_root, selection).call
+    Cleanup.new(connection, linked_root, selection, keep: keep_step).call
 
     assert_equal [[], "old roadmap"], [names, File.read(on_disk(ROADMAP))]
   end

@@ -15,6 +15,7 @@ module Plastic
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions],
         "settings" => %w[setting settings], "chat_messages" => ["chat message", "chat messages"],
+        "store_migrations" => ["store migration", "store migrations"],
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
         "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],

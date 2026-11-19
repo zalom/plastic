@@ -27,7 +27,8 @@ module OldLayoutHomes
     home
   end
 
-  def database_files(home) = Dir.glob(File.join(home, "{local.db,plastic.db,stores/*/*.db}"))
+  # The live database files of the home. The legacy.db a migration makes holds only the rows it removed, and a new home has none.
+  def database_files(home) = Dir.glob(File.join(home, "{local.db,plastic.db,stores/*/*.db}")).reject { |path| File.basename(path) == "legacy.db" }
 
   # The versions each database file records, nil for a file with no schema_migrations table.
   def recorded_by_file(home) = database_files(home).to_h { |path| [path, recorded_versions(path)] }

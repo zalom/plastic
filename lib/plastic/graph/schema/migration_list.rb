@@ -11,6 +11,9 @@ module Plastic
       FOLDER = File.expand_path("../db/migrate", __dir__)
       VERSION_DIGITS = 14
       ALPHA_STAMP = 1
+      # The migrations held behind a switch, by version, with the config key that releases each. A held version runs
+      # only once its switch is on, and a database that records it is still current. Docs: docs/contributing/MIGRATIONS.md.
+      HELD = { "20261119000000" => "migrate.drop_document_revisions" }.freeze
 
       def self.read(folder)
         new(Dir.glob(File.join(folder, "*", "*.sql")).map { |path| migration_at(path) })
@@ -31,6 +34,9 @@ module Plastic
       def versions(kind) = of(kind).map(&:version)
 
       def baseline(kind) = versions(kind).first
+
+      # The versions of the kind `kind` held behind a switch.
+      def held(kind) = versions(kind) & HELD.keys
 
       def newest(kind) = versions(kind).last
 

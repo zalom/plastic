@@ -12,6 +12,8 @@ class SchemaStateTest < Plastic::TestCase
   LATER = "20270101000000"
   ALL = Plastic::Graph::MIGRATIONS.versions(:store)
   NEWEST = ALL.last
+  # The migration held behind the switch migrate.drop_document_revisions.
+  HELD = "20261119000000"
 
   # Counts the statements a reader sends, so a test can tell how many queries a check takes.
   class Counting < SimpleDelegator
@@ -46,7 +48,7 @@ class SchemaStateTest < Plastic::TestCase
 
   def longer = Plastic::Graph::MIGRATIONS.with(SchemaMigration.new(kind: :store, version: LATER, path: "/nowhere.sql"))
 
-  def state(migrations: Plastic::Graph::MIGRATIONS) = SchemaState.new(@database, :store, migrations:).call
+  def state(migrations: Plastic::Graph::MIGRATIONS, released: [HELD]) = SchemaState.new(@database, :store, migrations:, released:).call
 
   def summary(reading) = [reading.name, reading.pending, reading.unknown, reading.number]
 
@@ -77,6 +79,30 @@ class SchemaStateTest < Plastic::TestCase
     record_versions(@path, ALL)
 
     assert_equal [:behind, [LATER], [], NEWEST.to_i], summary(state(migrations: longer))
+  end
+
+  def test_a_file_that_lacks_only_a_held_version_reads_current_while_the_switch_of_that_version_is_off
+    record_versions(@path, ALL - [HELD])
+
+    assert_equal [:current, [], []], summary(state(released: [])).first(3)
+  end
+
+  def test_a_file_that_lacks_a_held_version_reads_behind_once_the_switch_of_that_version_is_on
+    record_versions(@path, ALL - [HELD])
+
+    assert_equal [:behind, [HELD], []], summary(state(released: [HELD])).first(3)
+  end
+
+  def test_a_file_that_records_a_held_version_reads_current_while_the_switch_is_off
+    record_versions(@path, ALL)
+
+    assert_equal [:current, [], []], summary(state(released: [])).first(3)
+  end
+
+  def test_a_beta_2_file_leaves_a_held_version_out_of_its_pending_versions_while_the_switch_is_off
+    with_tables(0)
+
+    assert_equal ALL - [HELD], state(released: []).pending
   end
 
   def test_a_file_that_records_an_unknown_version_reads_ahead_and_names_it

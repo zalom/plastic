@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "home_migration"
+require_relative "migration_ledger"
+require_relative "migration_reason"
 require_relative "store_migration"
 
 module Plastic
   module Graph
     # Brings the databases of a home to the newest version of their sequences. The install and the update run it, and
-    # nothing else does. A store that stays behind does not stop the run: the others go on.
+    # nothing else does. A store that stays behind does not stop the run: the others go on. Each migration that ran on a
+    # store adds an up row to the ledger in plastic.db, once the home is current.
     class SchemaRunner
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason; `notes` holds
       # the lines the migrations of the stores report.
@@ -25,22 +28,47 @@ module Plastic
       end
 
       # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of
-      # the machine, which says which kept files a store keeps.
-      def initialize(home:, now:, selection:, only: nil)
+      # the machine, which says which kept files a store keeps. `released` names the held migrations whose switch is on
+      # in the settings of the home.
+      def initialize(home:, now:, selection:, only: nil, released: [])
         @home = home
         @only = only
         @now = now
-        @selection = selection
+        @run = StoreMigration::Run.new(selection:, released:)
       end
 
       def call
-        migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection)] }
+        migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, run: @run)] }
         results = migrations.transform_values(&:call)
         results["home"] = HomeMigration.new(@home, @now).call
-        Report.of(results, migrations.values.flat_map(&:notes))
+        Report.of(results, migrations.values.flat_map(&:notes) + ledger_notes(migrations.select { |slug, _| results[slug] == :migrated }, results["home"]))
       end
 
       private
+
+      # Records the up rows of the stores that migrated, or answers the line that says which stores the ledger lacks.
+      def ledger_notes(migrated, home)
+        return [] if migrated.empty?
+        return ["migrate: plastic.db stays behind, so its ledger does not record the migrations of #{migrated.keys.join(", ")}"] if home.is_a?(String)
+
+        written = []
+        reason = MigrationLedger.write(@home, @now) { |ledger| migrated.each { |slug, migration| written << ups(ledger, slug, migration) } }
+        reason ? [ledger_gap(migrated.keys, written, reason)] : []
+      end
+
+      # Writes the up rows of one store and answers its slug.
+      def ups(ledger, slug, migration)
+        ledger.ups(slug, migration.ledger)
+        slug
+      end
+
+      # The note of a ledger write that failed: the stores whose up rows it wrote, and those whose rows it lacks.
+      def ledger_gap(stores, written, reason)
+        lacking = (stores - written).join(", ")
+        return "migrate: the ledger in plastic.db does not record the migrations of #{lacking} (#{reason})" if written.empty?
+
+        "migrate: the ledger in plastic.db records the migrations of #{written.join(", ")} but not those of #{lacking} (#{reason})"
+      end
 
       def store_slugs
         folder = File.join(@home, "stores")
