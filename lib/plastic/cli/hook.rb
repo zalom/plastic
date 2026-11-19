@@ -32,6 +32,7 @@ module Plastic
       def answer
         return help if argv.intersect?(%w[--help -h])
 
+        back_up_the_day
         print_reply(respond(event))
       rescue OptionParser::ParseError => error
         refuse_option(error)

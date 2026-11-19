@@ -3,6 +3,7 @@
 require "forwardable"
 require "optparse"
 require_relative "command/environment"
+require_relative "day_backup"
 require_relative "wiring"
 require_relative "command/help"
 require_relative "command/invocation"
@@ -63,6 +64,7 @@ module Plastic
 
       def answer
         check_scope
+        back_up_the_day
         call_and_renew
         flush.exit_code
       rescue Scope::BrokenProjects => error
@@ -103,6 +105,9 @@ module Plastic
       def tool = self.class
 
       def settlement = Settlement.new(output, usage_line, @workspace)
+
+      # The start-of-day backups the call takes first, unless it is a dry run.
+      def back_up_the_day = (DayBackup.new(environment).take(:begin_day) unless parsed[:dry_run])
 
       # A named project must exist before any work runs.
       def check_scope = @call.project_named? && scope.slug
