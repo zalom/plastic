@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/backup/daily"
 
 # The two backups of a day: the first call of the day takes the start-of-day
 # backup of every store, and each session end after it replaces the day's
@@ -16,7 +17,7 @@ class GraphBackupDailyTest < Plastic::TestCase
   NOON = Time.new(2026, 1, 2, 12, 0, 0, "+01:00")
   EVENING = Time.new(2026, 1, 2, 18, 0, 0, "+01:00")
 
-  def daily(home, now, session_end: false) = Daily.new(home:, now:).call(session_end:)
+  def daily(home, now, session_end: false) = Daily.new(home:, now:).then { |day| session_end ? day.end_session : day.begin_day }
 
   def backed_up_yesterday = fresh_home.tap { |home| %w[alpha beta].each { |slug| backup_at(home, YESTERDAY, slug:) } }
 
