@@ -118,6 +118,25 @@ class GraphBackupDailyTest < Plastic::TestCase
     assert_equal [[["alpha", true]], ["start of day"]], [failures.map { |failure| [failure.slug, failure.reason.include?("work_graph")] }, backup_reasons(home, "beta")]
   end
 
+  def test_a_daily_backup_purges_the_backups_older_than_a_day
+    home = fresh_home
+    backup_at(home, MORNING - (30 * 3600))
+    daily(home, MORNING)
+
+    assert_equal [stamp(MORNING)], folder_names(home)
+  end
+end
+
+# A home or a store folder with no store database takes no daily backup.
+class GraphBackupDailyNothingTest < Plastic::TestCase
+  include BackupHomes
+
+  Daily = Plastic::Graph::Backup::Daily
+
+  MORNING = Time.new(2026, 1, 2, 9, 0, 0, "+01:00")
+
+  def daily(home, now, session_end: false) = Daily.new(home:, now:).then { |day| session_end ? day.end_session : day.begin_day }
+
   def test_a_store_folder_with_no_database_takes_none
     home = fresh_home
     FileUtils.mkdir_p(File.join(home, "stores", "empty"))
@@ -125,11 +144,14 @@ class GraphBackupDailyTest < Plastic::TestCase
     assert_equal [[], []], [daily(home, MORNING), folder_names(home, "empty")]
   end
 
-  def test_a_daily_backup_purges_the_backups_older_than_a_day
+  def test_a_session_end_in_a_store_folder_with_no_database_takes_none
     home = fresh_home
-    backup_at(home, MORNING - (30 * 3600))
-    daily(home, MORNING)
+    FileUtils.mkdir_p(File.join(home, "stores", "empty"))
 
-    assert_equal [stamp(MORNING)], folder_names(home)
+    assert_equal [[], []], [daily(home, MORNING, session_end: true), folder_names(home, "empty")]
+  end
+
+  def test_a_home_with_no_stores_folder_takes_none
+    assert_empty daily(Dir.mktmpdir, MORNING)
   end
 end
