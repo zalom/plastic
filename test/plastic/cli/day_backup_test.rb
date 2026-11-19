@@ -102,4 +102,28 @@ class CLIDayBackupTest < Plastic::TestCase
     assert_match(/\Abackup: the daily backups were not taken \(.+\); the call goes on\n\z/, result.err)
     refute_nil Plastic::Graph.open(home:, store: "alpha").retrieval.session("s-1").ended_at
   end
+
+  FRIDAY_AFTERNOON = Time.new(2026, 1, 2, 16, 0, 0, "+01:00")
+  FRIDAY_EVENING = Time.new(2026, 1, 2, 17, 0, 0, "+01:00")
+  MONDAY_MORNING = Time.new(2026, 1, 5, 9, 0, 0, "+01:00")
+
+  # A store whose last backups are from Friday, with nothing run since.
+  def weekend_home = daily_home.tap { |home| [FRIDAY_AFTERNOON, FRIDAY_EVENING].each { |time| backup_at(home, time) } }
+
+  def monday(home, *argv) = plastic(*argv, env: env_for(home), table: Plastic::CLI::TABLE, clock: Clock.new(MONDAY_MORNING))
+
+  def test_a_restore_after_a_weekend_finds_the_backup_it_names
+    home = weekend_home
+    result = monday(home, "backup", "restore", "--store", "alpha", "--timestamp", stamp(FRIDAY_AFTERNOON))
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal [nil, nil, "backup restore"], backup_reasons(home)
+  end
+
+  def test_a_backup_list_takes_no_daily_backup_and_purges_nothing
+    home = weekend_home
+    monday(home, "backup", "list", "--store", "alpha")
+
+    assert_equal [stamp(FRIDAY_AFTERNOON), stamp(FRIDAY_EVENING)], folder_names(home)
+  end
 end
