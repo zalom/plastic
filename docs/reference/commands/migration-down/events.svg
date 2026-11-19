@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 401" width="834" height="401" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 417" width="834" height="417" role="img" xml:space="preserve">
 <title>The events of one call of plastic migration down, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -108,18 +108,19 @@
 <text x="44" y="252" class="badge-t" text-anchor="middle">3</text>
 <text x="64" y="251" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="271" class="t" text-anchor="start">Say what was put back.</text>
-<path d="M 424 270 L 432 270 L 432 276 L 480 276" class="wire-end"/>
-<path d="M 472 271 L 480 276 L 472 281 Z" class="head"/>
-<rect x="480" y="229" width="330" height="94" rx="6" class="stop-end"/>
+<path d="M 424 270 L 432 270 L 432 284 L 480 284" class="wire-end"/>
+<path d="M 472 279 L 480 284 L 472 289 Z" class="head"/>
+<rect x="480" y="229" width="330" height="110" rx="6" class="stop-end"/>
 <text x="492" y="247" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="265" class="t" text-anchor="start">&lt;store&gt; has the layout of the release before</text>
-<text x="492" y="281" class="t" text-anchor="start">migration &lt;version&gt;, which plastic rollback</text>
-<text x="492" y="297" class="t" text-anchor="start">switches back to.</text>
-<text x="492" y="313" class="t" text-anchor="start">next: plastic rollback</text>
-<rect x="24" y="353" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="365" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="353" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="160" y="365" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="278" y="353" width="14" height="14" rx="3" class="stop-end"/>
-<text x="298" y="365" class="k" text-anchor="start">Ends</text>
+<text x="492" y="265" class="t" text-anchor="start">&lt;store&gt; no longer records migration &lt;version&gt;,</text>
+<text x="492" y="281" class="t" text-anchor="start">and plastic update migrates it up again; a</text>
+<text x="492" y="297" class="t" text-anchor="start">down undoes one store, so an older release</text>
+<text x="492" y="313" class="t" text-anchor="start">still refuses plastic.db and the other stores.</text>
+<text x="492" y="329" class="t" text-anchor="start">next: plastic migration list --store &lt;store&gt;</text>
+<rect x="24" y="369" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="381" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="369" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="160" y="381" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="278" y="369" width="14" height="14" rx="3" class="stop-end"/>
+<text x="298" y="381" class="k" text-anchor="start">Ends</text>
 </svg>

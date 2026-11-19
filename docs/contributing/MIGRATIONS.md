@@ -108,7 +108,7 @@ one note says that the ledger does not record them.
 | Command | What it does |
 | ------- | ------------ |
 | `plastic migration list --store SLUG` | Prints the ledger rows of the store and what a down would undo now. It changes nothing and offers no next command. |
-| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic rollback`. |
+| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic migration list --store SLUG`. |
 | `plastic migration purge VERSION --store SLUG` | Removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
 
 A down refuses with exit 3 and changes nothing in these cases:
@@ -121,5 +121,8 @@ A down refuses with exit 3 and changes nothing in these cases:
 A failed backup stops the down with exit 1 before it changes anything. After a down, the store
 has the layout of the release before the migration, and `plastic update` migrates it up again.
 A down undoes only the newest store migration. To go back further, restore a backup.
+
+A down undoes one store, not the install. `plastic.db` and the other stores keep their
+versions, so an older release still refuses them, and the down never offers `plastic rollback`.
 
 A purge of a version that keeps no rows of the store is a usage error, exit 2.

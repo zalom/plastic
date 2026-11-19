@@ -49,8 +49,8 @@ module Plastic
             context.print("down: #{context.store} no longer records migration #{context.version}")
           end
 
-          outcome :done, offers: "plastic rollback",
-            because: "%{store} has the layout of the release before migration %{version}, which plastic rollback switches back to"
+          outcome :done, offers: "plastic migration list --store %{store}",
+            because: "%{store} no longer records migration %{version}, and plastic update migrates it up again; a down undoes one store, so an older release still refuses plastic.db and the other stores"
         end
       end
     end
