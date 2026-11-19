@@ -80,6 +80,7 @@ module Plastic
         data = DATA_STEPS.select { |version, _step| pending?(version) }
         migrating = Database::ConnectionPool.for(knowledge_file, attach: attachments)
         with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
+        Database::ConnectionPool.forget_created(File.join(root, LegacyKeep::FILE))
       rescue SQLite3::Exception, Database::Error, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))

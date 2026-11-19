@@ -371,19 +371,6 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     assert_equal [false, [["document_revisions"]]], [report.migrated.include?("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'")]
   end
 
-  def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
-    home = previous_home
-    Plastic::Graph::Database::ConnectionPool.created.clear
-    migrate(home)
-    Plastic::Graph::Database::ConnectionPool.release(store_root(home))
-    Plastic::Graph::Database::ConnectionPool.remove_created(File.join(store_root(home), ""))
-
-    assert_equal [false, ["document_revisions_#{DROP}", "sqlar_#{DROP}"]],
-      [Plastic::Graph::Database::ConnectionPool.created.include?(File.expand_path(legacy_file(home))), legacy(home, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten]
-  ensure
-    Plastic::Graph::Database::ConnectionPool.created.clear
-  end
-
   def test_a_current_store_makes_no_legacy_db
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
@@ -450,5 +437,28 @@ class StoreMigrationCompactionTest < Plastic::TestCase
     run = migration(without_vacuum(current_home), compaction: FULL_DISK)
 
     assert_equal [:current, [FAILED]], [run.call, run.notes]
+  end
+end
+
+class StoreMigrationCreatedFilesTest < Plastic::TestCase
+  include PreviousStore
+
+  Pool = Plastic::Graph::Database::ConnectionPool
+
+  def teardown
+    Pool.created.clear
+    super
+  end
+
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+
+  def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
+    home = previous_home
+    Pool.created.clear
+    migrate(home)
+    Pool.release(home)
+    Pool.remove_created(alpha_file(home, ""))
+
+    assert_equal [false, ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
   end
 end
