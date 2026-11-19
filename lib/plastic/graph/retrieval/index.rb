@@ -5,9 +5,8 @@ require_relative "evidence/integrity_records"
 module Plastic
   module Graph
     module Retrieval
-      # Rebuilds the derived passages and search entries in the retrieval file from the documents and revisions of knowledge.
+      # Rebuilds the derived passages and search entries in the retrieval file from the documents of knowledge.
       class Index
-        REVISIONS_SQL = "SELECT intent_id, path, body, sha256 FROM document_revisions WHERE origin_id = :origin"
         DOCUMENTS_SQL = "SELECT intent_id, path, body, updated_at FROM documents WHERE origin_id = :origin"
         PASSAGE_SQL = "INSERT OR IGNORE INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) " \
                       "VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)"
@@ -27,13 +26,11 @@ module Plastic
         private
 
         def replace(intent_id)
-          inserts = passage_rows(intent_id).map { |row| [PASSAGE_SQL, row] } + entry_rows(intent_id).map { |row| [ENTRY_SQL, row] }
+          documents = read(DOCUMENTS_SQL, intent_id).map { |row| Evidence::IntegrityDocument.from_row(row) }
+          inserts = documents.flat_map { |document| document.passage_rows(@origin_id).map { |row| [PASSAGE_SQL, row] } } +
+            documents.flat_map { |document| document.fts_rows(@origin_id).map { |row| [ENTRY_SQL, row] } }
           @store.rebuilding { |batch| rebuild_into(batch, intent_id, inserts) }
         end
-
-        def passage_rows(intent_id) = read(REVISIONS_SQL, intent_id).flat_map { |row| Evidence::IntegrityRevision.from_row(row).passage_rows(@origin_id) }
-
-        def entry_rows(intent_id) = read(DOCUMENTS_SQL, intent_id).flat_map { |row| Evidence::IntegrityDocument.from_row(row).fts_rows(@origin_id) }
 
         def rebuild_into(batch, intent_id, inserts)
           clear(batch, intent_id)

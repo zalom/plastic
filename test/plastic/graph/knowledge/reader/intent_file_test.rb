@@ -46,7 +46,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal "# Notes\n", retrieval.documents("1").find { |document| document.path == "notes.md" }.body
   end
 
-  def test_a_document_write_keeps_an_immutable_revision_head_passage_and_fts_row
+  def test_a_document_write_keeps_a_head_passage_and_fts_row
     read_in("notes.md", "# Retrieval\n\nIndexed evidence\n")
     reindex
 

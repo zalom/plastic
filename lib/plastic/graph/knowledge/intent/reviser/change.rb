@@ -7,12 +7,11 @@ module Plastic
     module Knowledge
       class Intent
         class Reviser
-          # One revise of one intent: the file row it starts from, the qualified
-          # reference of that row's revision, and the new What and Why.
-          Change = Data.define(:intent, :document, :history, :line, :why) do
+          # One revise of one intent: the file row it starts from and the new What and Why.
+          Change = Data.define(:intent, :document, :line, :why) do
             def intent_id = intent.intent_id
 
-            def title_text = "title: #{line}"
+            def title_text = ["title: #{line}", "what was: #{intent.title}", why && "why was: #{old_why}"].compact.join("; ")
 
             def log_fields = { path: document.path, body: }
 

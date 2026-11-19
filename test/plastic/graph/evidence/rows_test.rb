@@ -12,11 +12,11 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
 
   def document = Plastic::Graph::Retrieval::Evidence::Document.new("1", "plan.md", "Body\n", now: STAMP)
 
-  def test_the_rows_are_written_canonical_then_immutable_then_current
+  def test_the_rows_are_written_canonical_then_current
     batch = Recording.new([])
     Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write
 
-    assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", :document_heads], batch.steps
+    assert_equal %i[documents document_heads], batch.steps
   end
 
   def test_the_rows_write_no_passage_themselves
@@ -45,7 +45,7 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
 
     reindex
 
-    assert_equal [1], row_counts(store_database, %w[documents document_revisions document_heads])
+    assert_equal [1], row_counts(store_database, %w[documents document_heads])
     assert_equal [1], row_counts(store_database, %w[document_passages document_fts])
   end
 

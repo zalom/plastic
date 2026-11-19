@@ -9,7 +9,7 @@ module Plastic
   module Doctor
     # Whether the search rows of one store match its passages. It opens the
     # knowledge database only when the file exists, rebuilds the rows that
-    # are out of step from the immutable evidence, and makes no database.
+    # are out of step from the current documents, and makes no database.
     class SearchIndex
       OPEN = ->(home, slug) { Graph.open(home:, store: slug).retrieval }
 
@@ -37,11 +37,7 @@ module Plastic
       attr_reader :home, :slug, :opener
 
       def judged(retrieval)
-        report = retrieval.search_index_report
-        lost = report.fetch(:missing)
-        return lost_row(lost) unless lost.empty?
-
-        report.fetch(:repairable) ? mended(retrieval) : row("ok, in step")
+        retrieval.search_index_report.fetch(:repairable) ? mended(retrieval) : row("ok, in step")
       end
 
       def mended(retrieval)
@@ -65,12 +61,6 @@ module Plastic
         return row("not checked, the store cannot be written", "make #{folder} writable, then run plastic doctor again") if error.message.match?(/readonly/i)
 
         row("not checked, the database is held by another process", "stop the process that holds #{knowledge}, then run plastic doctor again")
-      end
-
-      def lost_row(lost)
-        count = lost.size
-        row("the evidence of #{count} #{(count == 1) ? "document is" : "documents are"} lost; no rebuild brings it back",
-          "plastic backup list --store #{slug}")
       end
 
       def row(value, repair = nil) = Check.new("search index #{slug}:", value, repair)

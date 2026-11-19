@@ -42,7 +42,7 @@ so they are never versioned. The files printed from them are.
 | Database | Tables |
 | -------- | ------ |
 | `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
-| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
+| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
 
 The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
@@ -127,7 +127,7 @@ it reads every database and writes nothing. The commands below reach them throug
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
 | Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
-| Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
+| Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
 ![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)

@@ -26,13 +26,13 @@ class DoctorSearchIndexTest < Plastic::TestCase
   end
 
   def test_a_store_that_cannot_be_written_and_is_out_of_step_fails_as_not_rebuilt
-    retrieval = Retrieval.new({ repairable: true, missing: [] }, Plastic::Graph::Database::Error.new("knowledge_graph.db: attempt to write a readonly database"))
+    retrieval = Retrieval.new({ repairable: true }, Plastic::Graph::Database::Error.new("knowledge_graph.db: attempt to write a readonly database"))
 
     assert_equal "out of step, not rebuilt, the store cannot be written", check(retrieval).value
   end
 
   def test_a_store_that_cannot_be_written_and_matches_says_in_step
-    retrieval = Retrieval.new({ repairable: false, missing: [] }, Plastic::Graph::Database::Error.new("readonly"))
+    retrieval = Retrieval.new({ repairable: false }, Plastic::Graph::Database::Error.new("readonly"))
 
     assert_equal ["ok, in step", nil], check(retrieval).then { |row| [row.value, row.repair] }
   end
@@ -45,7 +45,7 @@ class DoctorSearchIndexTest < Plastic::TestCase
   end
 
   def test_a_repair_that_fails_for_another_reason_is_raised
-    retrieval = Retrieval.new({ repairable: true, missing: [] }, Plastic::Graph::Database::Error.new("knowledge_graph.db: disk image is malformed"))
+    retrieval = Retrieval.new({ repairable: true }, Plastic::Graph::Database::Error.new("knowledge_graph.db: disk image is malformed"))
 
     assert_raises(Plastic::Graph::Database::Error) { check(retrieval) }
   end
@@ -54,14 +54,6 @@ class DoctorSearchIndexTest < Plastic::TestCase
     broken = Class.new { def search_index_report = raise(Plastic::Graph::Database::Error, "knowledge_graph.db: disk image is malformed") }.new
 
     assert_raises(Plastic::Graph::Database::Error) { check(broken) }
-  end
-
-  def test_one_lost_document_is_named_in_the_singular
-    assert_equal "the evidence of 1 document is lost; no rebuild brings it back", check(Retrieval.new({ repairable: false, missing: ["plan.md"] })).value
-  end
-
-  def test_two_lost_documents_are_named_in_the_plural
-    assert_equal "the evidence of 2 documents are lost; no rebuild brings it back", check(Retrieval.new({ repairable: false, missing: %w[a.md b.md] })).value
   end
 
   def test_a_store_folder_with_files_and_no_database_says_so

@@ -26,7 +26,7 @@ class RetrievalMaintenanceTest < Plastic::TestCase
   def test_repair_rebuilds_a_lost_search_row_and_reports_the_repaired_state
     store_database.transaction { |batch| batch.add("DELETE FROM document_fts") }
 
-    assert_equal({ repairable: false, missing: [] }, maintenance.repair)
+    assert_equal({ repairable: false }, maintenance.repair)
     refute_empty store_database.rows("SELECT 1 FROM document_fts")
   end
 end

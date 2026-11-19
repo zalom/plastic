@@ -18,7 +18,7 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
   def drop(table) = store_database.transaction { |batch| batch.add("DELETE FROM #{table}") }
 
   def test_whole_evidence_reports_nothing_to_repair
-    assert_equal({ repairable: false, missing: [] }, integrity.report)
+    assert_equal({ repairable: false }, integrity.report)
   end
 
   def test_a_lost_search_row_reports_repairable
@@ -34,10 +34,10 @@ class RetrievalEvidenceIntegrityTest < Plastic::TestCase
     assert_equal [false, 1], [integrity.report.fetch(:repairable), @calls]
   end
 
-  def test_a_document_with_no_revision_cannot_be_repaired
-    drop("document_revisions")
+  def test_repair_builds_the_passages_of_an_edited_body_from_the_current_text
+    store_database.transaction { |batch| batch.add("UPDATE documents SET body = :body", body: "Edited evidence\n") }
+    integrity.repair
 
-    error = assert_raises(Integrity::EvidenceLost) { integrity.repair }
-    assert_equal "1:plan.md has no immutable revision", error.message
+    assert_equal [false, ["Edited evidence\n"]], [integrity.report.fetch(:repairable), store_database.rows("SELECT body FROM document_passages").map { |row| row.fetch("body") }]
   end
 end

@@ -31,7 +31,7 @@ module Plastic
 
         def search_current(terms, limit: 20) = @maintenance.search(terms, limit:)
 
-        # Rebuilds only derived rows from immutable evidence.
+        # Rebuilds only the derived rows from the current documents.
         def repair = @maintenance.repair
         # Rebuilds the passages and search entries of one intent, or of every intent when none is named.
         def reindex(intent_id = nil) = @maintenance.reindex(intent_id)

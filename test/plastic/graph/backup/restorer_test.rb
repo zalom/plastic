@@ -224,6 +224,19 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
     Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home: @backup_home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
   end
 
+  # A restorer that reads no claim from the store, so the store may record an earlier version.
+  def baseline_restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home: @backup_home, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0))
+  end
+
+  # Leaves the live knowledge database recording the baseline and no later version.
+  def keep_only_the_baseline
+    SQLite3::Database.open(store_file(@backup_home, "knowledge_graph")) do |database|
+      database.execute("DELETE FROM schema_migrations WHERE version > ?", [Plastic::Graph::MIGRATIONS.baseline(:store)])
+    end
+  end
+
   def test_a_listed_database_is_not_refused_when_the_store_holds_no_knowledge_database
     File.delete(store_file(@backup_home, "knowledge_graph"))
 
@@ -232,8 +245,10 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
 
   def test_a_listed_database_from_a_backup_an_alpha_build_stamped_1_is_not_refused_in_a_store_at_the_baseline
     Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 1)
+    checked = baseline_restorer
+    keep_only_the_baseline
 
-    assert_nil restorer.refusal(STAMP, databases: %w[knowledge_graph])
+    assert_nil checked.refusal(STAMP, databases: %w[knowledge_graph])
   end
 end
 

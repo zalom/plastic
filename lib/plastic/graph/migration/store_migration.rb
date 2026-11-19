@@ -6,6 +6,7 @@ require_relative "../schema/gate"
 require_relative "../schema/migrator"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
+require_relative "kept_files_cleanup"
 require_relative "migration_reason"
 require_relative "store_age"
 require_relative "store_compaction"
@@ -14,21 +15,28 @@ module Plastic
   module Graph
     # Brings the files of one store to the newest version. A store behind is backed up first, whatever the age of its
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
-    # stayed behind.
+    # stayed behind. `notes` holds the lines its data steps and its compaction report. The migration that keeps in sqlar
+    # only the files a sync reads takes the sync `selection` of the machine.
     class StoreMigration
       REFERENCES = "references.db"
+      # The data steps by the version they belong to. Each runs once, while its version is pending.
+      DATA_STEPS = { "20261119000000" => KeptFilesCleanup }.freeze
 
-      def initialize(home, slug, now, compaction: StoreCompaction)
+      def initialize(home, slug, now, selection:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
+        @selection = selection
+        @notes = []
         @compaction = compaction
       end
 
-      def call
-        return :current unless behind?
+      attr_reader :notes
 
-        StoreAge.call(root) if baseline_pending?
+      def call
+        return compacted(:current) unless behind?
+
+        StoreAge.call(root) if pending?(MIGRATIONS.baseline(:store))
         reason = backup_failure
         reason ? "its backup failed (#{reason})" : migrate_files
       rescue SQLite3::Exception, Database::Error, SystemCallError => error
@@ -51,21 +59,39 @@ module Plastic
         run_migration
         retire_references
         release
-        @compaction.call(@home, @slug)
-        :migrated
+        compacted(:migrated)
       end
 
+      # Compacts the store while a file of it is not on incremental auto vacuum, so any run tries a failed compaction
+      # again. A failure is its own note, since the migration before it holds.
+      def compacted(state)
+        @compaction.call(@home, @slug) if StoreCompaction.due?(root)
+        state
+      rescue SQLite3::Exception, Database::Error, SystemCallError => error
+        @notes << "compact: #{@slug} was not compacted (#{MigrationReason.of(error)}); run plastic update to try again"
+        state
+      end
+
+      # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
+        data = DATA_STEPS.select { |version, _step| pending?(version) }.values
         migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
-        with_references(migrating) { SchemaMigrator.new(migrating, :store).call }
+        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
       rescue SQLite3::Exception, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
       end
 
+      def migrate_rows(migrating, data)
+        SchemaMigrator.new(migrating, :store).call
+        data.each { |step| step.new(migrating, root, @selection).call.line(@slug)&.then { |line| @notes << line } }
+      end
+
+      def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)
+
       # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
-      def baseline_pending? = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(MIGRATIONS.baseline(:store))
+      def baseline_pending? = pending?(MIGRATIONS.baseline(:store))
 
       # Attaches the references file while the baseline runs, the one migration that reads it.
       def with_references(migrating)

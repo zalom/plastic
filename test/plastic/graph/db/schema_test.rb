@@ -32,7 +32,6 @@ class DbSchemaTest < Plastic::TestCase
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",
     sqlar: "e009afa1c7e455192a87f15934d1082e9f304b49ceffeab8aece9948142713b1",
     printed: "eeb9e475e607f232e6c325c72d9de74debf78a53fa16b1bffd8839ba597c40be",
-    document_revisions: "3db553065bcfd4d055ff29aa476136e9d9bb74905dd82a03cd72ecc4c9a489a7",
     document_heads: "b87ad04e374493805bac7cc34d9b53cb5293bcef0ec5303a4dafc439047c33b6",
     document_passages: "0c8ed03255aace08648603941623217e717b8a1942850c648e7289c3356adb57",
     retrieval_contexts: "6cf8985de162e5b6d0bb9518022145d4f1e29fded841fccc78e77886a03419d8",
@@ -49,7 +48,7 @@ class DbSchemaTest < Plastic::TestCase
       local: ["plastic.db", %i[command_runs sessions settings printed chat_messages]],
       work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
-        document_revisions document_heads retrieval_contexts retrieval_discoveries
+        document_heads retrieval_contexts retrieval_discoveries
         rulings links printed sqlar]],
       retrieval: ["retrieval_graph.db", %i[document_passages document_fts]]
     }, Schema.databases)
@@ -74,7 +73,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261117000000", ""], [status.success?, out, err]
+    assert_equal [true, "20261119000000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

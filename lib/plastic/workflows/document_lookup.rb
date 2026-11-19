@@ -3,6 +3,7 @@
 require_relative "../errors"
 require_relative "../scope"
 require_relative "../graph"
+require_relative "../graph/retrieval/address"
 require_relative "../graph/retrieval/maintained_store"
 require_relative "../graph/retrieval_graph"
 require_relative "../graph/retrieval_source"
@@ -20,10 +21,13 @@ module Plastic
 
       def fetch(reference) = retrieval_for(reference).fetch_reference(reference)
 
+      # A pinned reference whose text has changed since reads the current text, and the answer names the old reference
+      # as changed_since, the way context freshness reports a stale reference and goes on.
       def selected(reference, passage)
-        return fetch(reference) unless passage
-
-        retrieval_for(reference).fetch_passage(reference, position(passage))
+        retrieval = retrieval_for(reference)
+        current = reference.sub(Graph::Retrieval::Address::PIN, "")
+        document = passage ? retrieval.fetch_passage(current, position(passage)) : retrieval.fetch_reference(current)
+        (current == reference || document.fetch(:uri) == reference) ? document : document.merge(changed_since: reference)
       end
 
       private

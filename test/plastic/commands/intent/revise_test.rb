@@ -12,17 +12,17 @@ class IntentReviseTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions = store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
+  def what_in_file = body[/^## Intent\n\n(.+)$/, 1]
 
   def set_status(status) = store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
-  def test_a_revise_changes_the_title_row_and_writes_a_second_revision
+  def test_a_revise_changes_the_title_row_and_the_text_of_the_intent_file
     open_intent
 
     result = call("1", "Beta, after grilling")
 
     assert_equal 0, result.code, result.err
-    assert_equal ["Beta, after grilling", 2], [retrieval.intent("1").title, revisions]
+    assert_equal ["Beta, after grilling"] * 2, [retrieval.intent("1").title, what_in_file]
     refute_includes result.out, "plastic sync down"
   end
 
@@ -35,21 +35,13 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes body, "## Context\n\nThe owner moved the goal\n"
   end
 
-  def test_the_old_revision_still_reads_back_by_its_printed_reference
-    open_intent
-
-    result = call("1", "Beta, after grilling")
-
-    assert_includes retrieval.fetch_reference(result.out[%r{history: (plastic://\S+)}, 1]).fetch(:body), "## Intent\n\nAlpha\n"
-  end
-
   def test_a_dry_run_prints_both_whats_and_writes_no_row
     open_intent
 
     result = call("1", "Beta, after grilling", "--dry-run")
 
     assert_call result, code: 0, out: ["what was: Alpha\nwhat: Beta, after grilling\n", "next: plastic intent revise 1 Beta,\\ after\\ grilling\n"]
-    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
+    assert_equal ["Alpha"] * 2, [retrieval.intent("1").title, what_in_file]
   end
 
   def test_a_dry_run_prints_the_old_why_or_none
@@ -70,7 +62,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal [1, true], [result.code, result.err.include?("intent 1 is done")]
     assert_match(/^next: plastic next/, result.out)
-    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
+    assert_equal ["Alpha"] * 2, [retrieval.intent("1").title, what_in_file]
   end
 
   def test_a_parked_intent_is_revised
@@ -95,7 +87,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_includes result.err, "missing LINE"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_a_line_with_a_line_break_fails_with_exit_1
@@ -115,7 +107,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "nothing to change"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_a_hand_edited_intent_file_fails_with_no_row_written
@@ -126,7 +118,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "changed since its last print on this home"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_an_intent_with_no_file_row_fails_with_exit_1
@@ -147,6 +139,28 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_empty plan.conflicts
     refute_includes plan.entries_for(:print).map(&:path), "store/1--alpha/#{FILE}"
+  end
+end
+
+# What a revise keeps of the text it replaces: no history reference, and the old What and Why in its work log line.
+class IntentReviseHistoryTest < Plastic::TestCase
+  def call(*args) = plastic("intent", "revise", *args, table: Plastic::CLI::TABLE)
+
+  def test_a_revise_prints_the_new_revision_and_no_history_line
+    open_intent
+
+    result = call("1", "Beta, after grilling")
+
+    assert_match(%r{^revision: plastic://\S+$}, result.out)
+    refute_includes result.out, "history:"
+  end
+
+  def test_the_work_log_line_of_a_revise_holds_the_old_what_and_why
+    open_intent
+
+    call("1", "Beta", "--why", "The owner moved the goal")
+
+    assert_equal "title: Beta; what was: Alpha; why was: none", retrieval.structure.work_log("1").last.to_h.fetch(:text)
   end
 end
 

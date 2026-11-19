@@ -74,7 +74,7 @@ module Plastic
         "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
       },
       "document" => {
-        "document get" => ["Commands::Document::Get", "Fetch one current or revision-qualified document"],
+        "document get" => ["Commands::Document::Get", "Fetch the current text of one document; an older pinned reference is named as changed"],
         "document batch" => ["Commands::Document::Batch", "Fetch qualified documents in request order"]
       },
       "architecture" => {

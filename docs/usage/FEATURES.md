@@ -66,10 +66,10 @@ refuses one without the go-ahead.
 | ------- | ------ |
 | `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
-| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. The earlier text stays as a revision. |
+| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. |
 
-`intent revise` writes the intent file as a new revision and keeps the old one, so the old
-What and Why read back with `plastic document get`. A done or abandoned intent refuses with
+`intent revise` writes the new What and Why into the intent file, and its work log line keeps
+the old What and Why. A done or abandoned intent refuses with
 exit 3.
 
 ## Preview a change with --dry-run

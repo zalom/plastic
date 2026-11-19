@@ -8,7 +8,7 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Writes one immutable text revision and its current head. The passages and search entries are built apart.
+        # Writes the current text of one document and its head. The passages and search entries are built apart.
         class Writer
           def initialize(database, origin_id, clock:)
             @database = database

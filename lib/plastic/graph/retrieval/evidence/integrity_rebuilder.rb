@@ -6,7 +6,7 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Rebuilds the document heads from verified immutable evidence.
+        # Rebuilds the document heads from the current documents.
         class IntegrityRebuilder
           def initialize(origin_id) = @origin_id = origin_id
 

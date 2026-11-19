@@ -34,6 +34,12 @@ class WiringTest < Plastic::TestCase
     assert_includes read_by(Plastic::Wiring.selection(@plastic_home)), "resources/references/paper.pdf"
   end
 
+  def test_the_settings_answer_the_selection_of_the_sync_settings_of_the_home
+    seed_config(@plastic_home, "global:\n  sync:\n    types: [png]\n    references: true\n")
+
+    assert_equal %w[spec.md resources/output/files/shot.png resources/references/paper.pdf], read_by(Plastic::Wiring.settings(@plastic_home).selection)
+  end
+
   def test_the_asked_setting_is_carried_to_the_selection
     seed_config(@plastic_home, "global:\n  sync:\n    asked: [pdf]\n")
 

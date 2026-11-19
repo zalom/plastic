@@ -16,6 +16,8 @@ module Plastic
       def config(harness: nil) = Wiring.config(home, harness:, clock:)
 
       def store = Wiring.store(home, clock:)
+
+      def selection = Wiring.selection_of(config)
     end
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
@@ -29,8 +31,9 @@ module Plastic
 
     def self.rows(home) = Config::Rows.new(settings_database(home))
 
-    def self.selection(home)
-      settings = config(home)
+    def self.selection(home) = selection_of(config(home))
+
+    def self.selection_of(settings)
       Graph::Knowledge::SyncSelection.new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"))
     end
 
