@@ -18,7 +18,8 @@ module Plastic
     # stayed behind. The migration that keeps in sqlar only the files a sync reads takes the sync `selection` of the machine.
     class StoreMigration
       REFERENCES = "references.db"
-      KEPT_FILES = "20261119000000"
+      # The data steps by the version they belong to. Each runs once, while its version is pending.
+      DATA_STEPS = { "20261119000000" => KeptFilesCleanup }.freeze
 
       def initialize(home, slug, now, selection:, compaction: StoreCompaction)
         @home = home
@@ -58,22 +59,20 @@ module Plastic
         :migrated
       end
 
-      # The kept files are cleaned in the transaction of the migration, after the baseline has made sqlar.
+      # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
-        steps = migration_steps
+        data = DATA_STEPS.select { |version, _step| pending?(version) }.values
         migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
-        with_references(migrating) { migrating.atomically { steps.each { |step| step.call(migrating) } } }
+        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
       rescue SQLite3::Exception, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
       end
 
-      def migration_steps
-        migrate = ->(connection) { SchemaMigrator.new(connection, :store).call }
-        return [migrate] unless pending?(KEPT_FILES)
-
-        [migrate, ->(connection) { KeptFilesCleanup.new(connection, root, @selection).call }]
+      def migrate_rows(migrating, data)
+        SchemaMigrator.new(migrating, :store).call
+        data.each { |step| step.new(migrating, root, @selection).call }
       end
 
       def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)
