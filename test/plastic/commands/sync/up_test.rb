@@ -430,9 +430,11 @@ class SyncUpUnreadRowsTest < Plastic::TestCase
 
   def test_a_sync_up_removes_every_row_of_a_path_the_sync_no_longer_reads
     left_the_selection
+    store_graphs.retrieval.reindex
+    before = rows_of_the_page.map(&:positive?)
     sync
 
-    assert_equal [[0] * 5, true], [rows_of_the_page, File.file?(folder.path("store/2--beta/#{PAGE}"))]
+    assert_equal [[true] * 5, [0] * 5, true], [before, rows_of_the_page, File.file?(folder.path("store/2--beta/#{PAGE}"))]
   end
 
   def test_a_sync_down_after_the_removal_prints_nothing_at_that_path

@@ -4,6 +4,7 @@ require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
 require_relative "../../../test_helpers/schema_versions"
 require_relative "../../../../lib/plastic/graph/migration/runner"
+require_relative "../../../../lib/plastic/graph/migration/migration_down"
 require_relative "../../../../lib/plastic/graph/knowledge/sync_selection"
 
 module StoreMigrationRuns
@@ -603,6 +604,19 @@ class ReportRowsMigrationTest < Plastic::TestCase
     open_alpha(@home, "work_graph.db") do |database|
       database.execute("INSERT INTO work_log (intent_id, position, kind, path, origin_id) VALUES ('1', 1, 'reported', ?, 'other')", [LOOSE])
     end
+    migrate(@home)
+
+    assert_includes paths("knowledge_graph.db", "SELECT path FROM documents"), LOOSE
+  end
+
+  def test_a_second_up_after_a_down_keeps_a_report_recorded_in_between
+    @home = synced_home
+    migrate(@home)
+    open_alpha(@home, "knowledge_graph.db") { |database| document_rows(database, LOOSE, FILES.fetch(LOOSE)) }
+    open_alpha(@home, "work_graph.db") do |database|
+      database.execute("INSERT INTO work_log (intent_id, position, kind, path, origin_id) VALUES ('1', 1, 'reported', ?, 'o')", [LOOSE])
+    end
+    past_reports(@home).then { forget(@home) }
     migrate(@home)
 
     assert_includes paths("knowledge_graph.db", "SELECT path FROM documents"), LOOSE
