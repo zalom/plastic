@@ -255,12 +255,49 @@ class AlphaStoreMigrationTest < Plastic::TestCase
 
   def without_versions(home) = layouts_of(store_root(home)).transform_values { |tables| tables.except("schema_migrations") }
 
-  def test_an_alpha_store_at_stamp_1_gets_the_baseline_row_and_keeps_its_layout
+  def test_an_alpha_store_at_stamp_1_records_every_version_and_keeps_its_layout
     home = alpha_home
     before = without_versions(home)
     report = migrate(home)
 
-    assert_equal [["alpha"], [Plastic::Graph::MIGRATIONS.baseline(:store)]], [report.migrated, recorded_versions(store_path(home, "knowledge_graph.db"))]
+    assert_equal [["alpha"], Plastic::Graph::MIGRATIONS.versions(:store)], [report.migrated, recorded_versions(store_path(home, "knowledge_graph.db"))]
     assert_equal before, without_versions(home)
+  end
+end
+
+class PreviousStoreMigrationTest < Plastic::TestCase
+  include StoreMigrationRuns
+
+  DROP = "20261119000000"
+  REVISIONS = <<~SQL
+    CREATE TABLE document_revisions("sha256" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "path" TEXT NOT NULL, "body" TEXT NOT NULL,
+      "created_at" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("sha256", "intent_id", "path", "origin_id"));
+    INSERT INTO document_revisions VALUES ('sha', '1', 'intent.md', 'old text', 'then', 'origin');
+  SQL
+
+  # A store the previous release wrote: every version before the drop, and a document_revisions table with a row.
+  def previous_home
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+    Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
+      database.execute_batch(REVISIONS)
+      database.execute("DELETE FROM schema_migrations WHERE version = ?", [DROP])
+    end
+    home
+  end
+
+  def test_a_store_of_the_previous_release_loses_document_revisions_and_matches_a_new_store
+    home = previous_home
+    migrate(home)
+
+    assert_equal [[], fresh_layouts], [knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), layouts_of(store_root(home))]
+  end
+
+  def test_a_store_of_the_previous_release_records_the_drop
+    home = previous_home
+    migrate(home)
+
+    assert_includes recorded_versions(store_path(home, "knowledge_graph.db")), DROP
   end
 end
