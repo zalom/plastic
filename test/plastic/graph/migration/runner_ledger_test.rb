@@ -29,7 +29,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     home = old_home
     run_runner(home)
 
-    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 1]],
+    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 1], ["alpha", "20261119180000", "up", "2026-11-16T12:00:00Z", 1]],
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 

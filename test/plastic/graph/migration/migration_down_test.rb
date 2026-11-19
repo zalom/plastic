@@ -13,8 +13,6 @@ class GraphMigrationDownTest < Plastic::TestCase
 
   def down(home, **options) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW, **options)
 
-  def migrated_to_drop = past_reports(migrated_previous_home)
-
   def layout(home) = %w[knowledge_graph.db work_graph.db retrieval_graph.db].to_h { |name| [name, alpha_rows(home, name, TABLES)] }
 
   def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
@@ -25,7 +23,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
-    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}); run plastic update first",
+    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000); run plastic update first",
       down(beta_2_home).refusal
   end
 
@@ -98,12 +96,14 @@ class GraphMigrationDownTest < Plastic::TestCase
 
   def test_the_report_migration_goes_down_by_removing_its_version_alone
     home = migrated_previous_home
-    before = [layout(home), contents(home, "knowledge_graph.db").except("schema_migrations"), contents(home, "legacy.db")]
+    before = untouched(home)
     undone = down(home).call
 
     assert_equal [REPORTS, {}, false, true], [undone.version, undone.moved, recorded(home).include?(REPORTS), recorded(home).include?(DROP)]
-    assert_equal before, [layout(home), contents(home, "knowledge_graph.db").except("schema_migrations"), contents(home, "legacy.db")]
+    assert_equal before, untouched(home)
   end
+
+  def untouched(home) = [layout(home), contents(home, "knowledge_graph.db").except("schema_migrations"), contents(home, "legacy.db")]
 
   def test_the_report_migration_has_no_refusal
     assert_nil down(migrated_previous_home).refusal

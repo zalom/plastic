@@ -41,6 +41,9 @@ module PreviousStore
   # Undoes the report migration, the newest, so the next down undoes the drop.
   def past_reports(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
+  # A migrated store whose report migration went down, so the drop is the newest migration it records.
+  def migrated_to_drop = past_reports(migrated_previous_home)
+
   def forget(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
     Plastic::Graph::Database::ConnectionPool.created.clear

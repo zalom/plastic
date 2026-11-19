@@ -12,6 +12,9 @@ module Plastic
       FILE = "legacy.db"
       # The versions that keep what they remove, so a down can undo them.
       KEEPS = %w[20261119000000].freeze
+      # The versions that keep nothing and that a down undoes by removing the version alone, since a sync up reads back
+      # every row they drop that the rules still read.
+      ALONE = %w[20261119180000].freeze
       # The rows of the tables a version drops that a down cannot rebuild, kept before its SQL runs.
       DROPPED = { "20261119000000" => EarlierRevisions }.freeze
 
@@ -45,7 +48,7 @@ module Plastic
       def at(version) = ->(table, where, values) { rows(version, table, where, values) }
 
       # Each migration that ran, in order.
-      def entries = @kept.map { |version, kept| Entry.new(version:, kept:, undoable: KEEPS.include?(version)) }
+      def entries = @kept.map { |version, kept| Entry.new(version:, kept:, undoable: KEEPS.include?(version) || ALONE.include?(version)) }
     end
   end
 end

@@ -259,7 +259,7 @@ class AlphaStoreMigrationTest < Plastic::TestCase
   end
 end
 
-class PreviousStoreMigrationTest < Plastic::TestCase
+module PreviousReleaseStore
   include StoreMigrationRuns
 
   DROP = "20261119000000"
@@ -283,6 +283,16 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     home
   end
 
+  def keep(home, name, data)
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
+      database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, ?, 'o')", [name, SQLite3::Blob.new(data)])
+    end
+  end
+end
+
+class PreviousStoreMigrationTest < Plastic::TestCase
+  include PreviousReleaseStore
+
   def test_a_store_of_the_previous_release_loses_document_revisions_and_matches_a_new_store
     home = previous_home
     migrate(home)
@@ -295,12 +305,6 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     migrate(home)
 
     assert_includes recorded_versions(store_path(home, "knowledge_graph.db")), DROP
-  end
-
-  def keep(home, name, data)
-    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
-      database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, ?, 'o')", [name, SQLite3::Blob.new(data)])
-    end
   end
 
   def test_a_store_of_the_previous_release_prints_back_a_file_only_its_kept_row_held_and_removes_the_row
@@ -330,6 +334,10 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     assert_equal ["it could not be migrated (the kept file ../outside.md leads outside the store folder)", [["document_revisions"]], [[1]]],
       [report.failed.fetch("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), knowledge(home, "SELECT count(*) FROM sqlar")]
   end
+end
+
+class PreviousStoreLegacyKeepTest < Plastic::TestCase
+  include PreviousReleaseStore
 
   def legacy_file(home) = store_path(home, "legacy.db")
 
@@ -517,11 +525,11 @@ class StoreMigrationSwitchTest < Plastic::TestCase
 
   def revisions_table(home) = alpha_rows(home, "knowledge_graph.db", "SELECT name FROM sqlite_master WHERE name = 'document_revisions'").flatten
 
-  def test_while_the_switch_is_off_a_store_that_lacks_only_the_drop_keeps_its_table_and_makes_no_legacy_db
+  def test_while_the_switch_is_off_a_store_runs_only_the_report_migration_keeps_its_table_and_makes_no_legacy_db
     home = previous_home
     report = migrate(home, [])
 
-    assert_equal [[], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
+    assert_equal [["alpha"], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
   end
 
   def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
@@ -548,23 +556,34 @@ class ReportRowsMigrationTest < Plastic::TestCase
   # A store the previous release synced: every report read into rows, as the sync read them by type.
   def synced_home
     home = previous_home
-    store = alpha_file(home, "")
-    FILES.each { |rel, text| FileUtils.mkdir_p(File.dirname(File.join(store, DIR, rel))).then { File.write(File.join(store, DIR, rel), text) } }
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
-      database.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES (\x271\x27, \x27o\x27, \x27alpha\x27, \x27Alpha\x27, \x27open\x27)")
-      FILES.each do |rel, text|
-        database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27then\x27, \x27o\x27)", [rel, text])
-        database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27then\x27, \x27o\x27)", [rel, Digest::SHA256.hexdigest(text)])
-      end
-    end
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
-      FILES.each_key { |rel| database.execute("INSERT INTO printed (path, sha256, at) VALUES (?, \x27s\x27, \x27then\x27)", ["#{DIR}/#{rel}"]) }
-    end
-    SQLite3::Database.open(alpha_file(home, "retrieval_graph.db")) do |database|
-      FILES.each_key { |rel| database.execute("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (\x27b\x27, \x271\x27, ?, \x27s\x27, 0, \x27o\x27)", [rel]) }
+    FILES.each { |rel, text| write_file(home, rel, text) }
+    knowledge_rows(home)
+    open_alpha(home, "retrieval_graph.db") do |database|
+      FILES.each_key { |rel| database.execute("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES ('b', '1', ?, 's', 0, 'o')", [rel]) }
     end
     home
   end
+
+  def write_file(home, rel, text)
+    path = File.join(alpha_file(home, ""), DIR, rel)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, text)
+  end
+
+  def knowledge_rows(home)
+    open_alpha(home, "knowledge_graph.db") do |database|
+      database.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('1', 'o', 'alpha', 'Alpha', 'open')")
+      FILES.each { |rel, text| document_rows(database, rel, text) }
+    end
+  end
+
+  def document_rows(database, rel, text)
+    database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', ?, ?, 'then', 'o')", [rel, text])
+    database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES ('1', ?, ?, 'then', 'o')", [rel, Digest::SHA256.hexdigest(text)])
+    database.execute("INSERT INTO printed (path, sha256, at, origin_id) VALUES (?, 's', 'then', 'o')", ["#{DIR}/#{rel}"])
+  end
+
+  def open_alpha(home, name, &) = SQLite3::Database.open(alpha_file(home, name), &)
 
   def paths(name, sql) = alpha_rows(@home, name, sql).flatten.sort
 
@@ -573,6 +592,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
     migrate(@home)
 
     kept = [LOOSE, MANDATORY, "resources/output/files/data.html", "spec.md"] - [LOOSE]
+
     assert_equal [kept.sort, kept.sort, kept.map { |rel| "#{DIR}/#{rel}" }.sort, kept.sort],
       [paths("knowledge_graph.db", "SELECT path FROM documents"), paths("knowledge_graph.db", "SELECT path FROM document_heads"),
         paths("knowledge_graph.db", "SELECT path FROM printed WHERE path LIKE \x27store/%\x27"), paths("retrieval_graph.db", "SELECT path FROM document_fts")]
