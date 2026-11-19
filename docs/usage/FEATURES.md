@@ -169,8 +169,9 @@ are outside the resources layout`, with the repair `plastic resources sort --sto
 
 A migration that removes data keeps it in `legacy.db` in the store folder, in the same
 transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
-migration that drops `document_revisions` runs only once `migrate.drop_document_revisions` is on;
-the switch is off by default.
+migration that drops `document_revisions`, and the one that trims what it kept in `legacy.db` to
+what a down needs, run only once `migrate.drop_document_revisions` is on; the switch is off by
+default.
 
 | Command | What it does |
 | ------- | ------------ |

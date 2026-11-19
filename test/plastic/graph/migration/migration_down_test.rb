@@ -35,7 +35,7 @@ class GraphMigrationDownTest < Plastic::TestCase
     home = previous_home
     before = layout(home).fetch("knowledge_graph.db")
     migrate_store(home)
-    past_reports(home)
+    back_to_drop(home)
     down(home).call
 
     assert_equal before, layout(home).fetch("knowledge_graph.db")
@@ -52,7 +52,7 @@ class GraphMigrationDownTest < Plastic::TestCase
     before = [layout(home), contents(home, "knowledge_graph.db"), contents(home, "legacy.db")]
     down(home).call
     migrate_store(home)
-    past_reports(home)
+    back_to_drop(home)
 
     assert_equal before, [layout(home), contents(home, "knowledge_graph.db"), contents(home, "legacy.db")]
   end
@@ -94,8 +94,11 @@ class GraphMigrationDownTest < Plastic::TestCase
     assert_equal "migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back", down(previous_home).refusal
   end
 
+  # A migrated store whose trim went down, so the report migration is the newest it records.
+  def past_trim = migrated_previous_home.tap { |home| down(home).call }
+
   def test_the_report_migration_goes_down_by_removing_its_version_alone
-    home = migrated_previous_home
+    home = past_trim
     before = untouched(home)
     undone = down(home).call
 
@@ -106,7 +109,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   def untouched(home) = [layout(home), contents(home, "knowledge_graph.db").except("schema_migrations"), contents(home, "legacy.db")]
 
   def test_the_report_migration_has_no_refusal
-    assert_nil down(migrated_previous_home).refusal
+    assert_nil down(past_trim).refusal
   end
 
   # A store of the previous release with a current revision beside the earlier one, and a revision of a path the sync never reads.
@@ -123,7 +126,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   def test_a_down_after_the_smaller_keep_restores_the_same_revision_rows_of_the_paths_the_sync_reads
     home = with_current_revision(previous_home)
     migrate_store(home)
-    past_reports(home)
+    back_to_drop(home)
     down(home).call
 
     assert_equal [["cur", "1", "intent.md", "new text", "now", "origin"], ["sha", "1", "intent.md", "old text", "then", "origin"]], revisions(home).sort

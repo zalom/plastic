@@ -112,6 +112,6 @@ class WiringTest < Plastic::TestCase
   def test_the_switch_of_a_held_migration_releases_it
     seed_config(@plastic_home, "global:\n  migrate:\n    drop_document_revisions: true\n")
 
-    assert_equal %w[20261119000000], Plastic::Wiring.settings(@plastic_home).released
+    assert_equal %w[20261119000000 20261119190000], Plastic::Wiring.settings(@plastic_home).released
   end
 end

@@ -10,6 +10,7 @@ require "fileutils"
 module PreviousStore
   DROP = "20261119000000"
   REPORTS = "20261119180000"
+  TRIM = "20261119190000"
   ROADMAP = "originals/roadmaps/plan.md"
   MIGRATED_AT = Time.utc(2026, 11, 19, 12, 0, 0)
   REVISIONS = <<~SQL
@@ -27,7 +28,7 @@ module PreviousStore
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?)", [DROP, REPORTS])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?)", [DROP, REPORTS, TRIM])
     end
     home
   end
@@ -35,14 +36,14 @@ module PreviousStore
   def migrated_previous_home = previous_home.tap { |home| migrate_store(home) }
 
   def migrate_store(home, now: MIGRATED_AT)
-    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call.tap { forget(home) }
+    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
   end
 
-  # Undoes the report migration, the newest, so the next down undoes the drop.
-  def past_reports(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
+  # Undoes the trim and the report migration, the two newest, so the next down undoes the drop.
+  def back_to_drop(home) = home.tap { 2.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # A migrated store whose report migration went down, so the drop is the newest migration it records.
-  def migrated_to_drop = past_reports(migrated_previous_home)
+  # A migrated store whose trim and report migration went down, so the drop is the newest migration it records.
+  def migrated_to_drop = back_to_drop(migrated_previous_home)
 
   def forget(home)
     Plastic::Graph::Database::ConnectionPool.release(home)

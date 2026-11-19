@@ -279,7 +279,7 @@ module PreviousReleaseStore
     Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version = ?", [DROP])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?)", [DROP, PreviousStore::TRIM])
     end
     home
   end
@@ -479,7 +479,7 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     super
   end
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call
 
   def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
     home = previous_home
@@ -535,7 +535,7 @@ class StoreMigrationSwitchTest < Plastic::TestCase
 
   def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
     home = previous_home
-    report = migrate(home, [DROP])
+    report = migrate(home, Plastic::Graph::MigrationList::HELD.keys)
 
     assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
   end
@@ -552,7 +552,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
 
   def selection = Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [], reports: Knowledge::Reports.new(mandatory: %w[summary.md]))
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection:, released: [DROP]).call.tap { forget(home) }
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection:, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
 
   # A store the previous release synced: every report read into rows, as the sync read them by type.
   def synced_home
@@ -616,7 +616,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
     open_alpha(@home, "work_graph.db") do |database|
       database.execute("INSERT INTO work_log (intent_id, position, kind, path, origin_id) VALUES ('1', 1, 'reported', ?, 'o')", [LOOSE])
     end
-    past_reports(@home).then { forget(@home) }
+    back_to_drop(@home).then { forget(@home) }
     migrate(@home)
 
     assert_includes paths("knowledge_graph.db", "SELECT path FROM documents"), LOOSE

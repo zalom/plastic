@@ -88,14 +88,22 @@ commits.
   keep what they remove. `LegacyKeep::WHOLE` lists the tables such a version drops, kept whole
   just before its SQL runs. A data step gets a `keep:` callable and keeps each row before it
   deletes it.
-- The store migration attaches `legacy.db` only while a version of `KEEPS` is pending, so no
-  other run makes the file.
+- The store migration attaches `legacy.db` only while a version of `KEEPS` or `TRIMS` is pending,
+  so no other run makes the file.
 - A backup copies `legacy.db` when the store has one, and a restore puts it back.
 
 A migration whose removed rows a sync up reads back keeps nothing. `LegacyKeep::ALONE` lists
 such versions, and a down of one removes its version alone. Migration `20261119180000` drops the
 rows of every report that `reports.mandatory` does not name and is in `ALONE`: the files stay on
 disk, and a report recorded later gets its rows back on the next sync up.
+
+A migration can also trim what an earlier migration kept. `LegacyKeep::TRIMS` lists such
+versions. Migration `20261119190000` trims what `20261119000000` kept to what a down needs: the
+earlier texts of the paths the sync reads. It drops each kept `sqlar` row, since each one has a
+verified copy on disk or in an archive, and each kept revision that a down rebuilds from the
+current documents or that no sync reads. Every store then holds the same legacy rows, whichever
+release ran the drop. It is in `ALONE` too: its down removes the version alone, and a down of
+`20261119000000` after it puts the trimmed keep back.
 
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
@@ -105,7 +113,8 @@ To add a migration that removes data, add its version to `KEEPS`, list the table
 A migration that changes stored data ships behind a config switch that is off by default, as
 `docs/release-lines.md` says. `MigrationList::HELD` in
 `lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
-`20261119000000` is held behind `migrate.drop_document_revisions`.
+`20261119000000` and its trim `20261119190000` are held behind `migrate.drop_document_revisions`,
+so the two run in the same `plastic update`.
 
 - While the switch is off, a run leaves the held version out of the pending ones. A store that
   lacks only that version is current, so every command opens it and `plastic update` leaves it.

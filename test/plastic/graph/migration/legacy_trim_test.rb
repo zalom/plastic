@@ -7,7 +7,6 @@ require_relative "../../../../lib/plastic/graph/migration/migration_purge"
 class GraphLegacyTrimTest < Plastic::TestCase
   include PreviousStore
 
-  TRIM = "20261119190000"
   NOW = Time.utc(2026, 11, 19, 13, 0, 0)
   REVISIONS = "SELECT sha256 FROM document_revisions_#{PreviousStore::DROP} ORDER BY sha256".freeze
 
