@@ -84,6 +84,7 @@ class CLIDayBackupTest < Plastic::TestCase
     assert_match(/\Abackup: alpha was not backed up \(.+\); the call goes on\n/, result.err)
     assert_equal [["start of day"]], [backup_reasons(home, "beta")]
   end
+
   def test_a_daily_backup_that_cannot_list_the_stores_prints_one_line_and_the_command_goes_on
     home = daily_home
     result = with_unreadable_stores(home) { call(home, "version") }
