@@ -5,6 +5,11 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.4
+
+- Every reader takes a document's current text from `documents`. A revise keeps the old What and Why in its work log line and prints no `history:` line. `document get` of a reference pinned to a replaced text prints the current text and names the old reference as `changed_since`. Every store file moves to incremental auto vacuum, and a store write gives its free pages back to the disk in the same transaction.
+- A migration keeps what it removes. Before a migration drops a table or deletes rows, it copies them, in their old shape, into `legacy.db` in the store folder, in the same transaction as the change. The `store_migrations` table in `plastic.db` records which migration ran on which store, when, what it kept, and whether it can be undone. `plastic migration list --store SLUG` shows the store's version, what its `legacy.db` holds, and that history. `plastic migration down --store SLUG` backs the store up, puts the kept rows of the newest migration back, and refuses with exit 3 when a row it would overwrite changed since. `plastic migration purge --store SLUG` backs the store up and deletes the kept rows. Backups copy `legacy.db`, and restores put it back.
+- Migration `20261119000000` drops the `document_revisions` table, which holds the earlier texts of documents, and removes from `sqlar` the files that the sync rules do not read, when a checked copy of their bytes exists on disk. It waits behind `migrate.drop_document_revisions`, off by default. Run `plastic config set migrate.drop_document_revisions true`, then `plastic update`, to run it.
 - `backup.daily`, off by default, keeps 24 hours of backups for each store. The first command or hook of the day takes the start-of-day backup of every store, and each session end after it replaces the day's end-of-day backup. The backup every 12 hours and the backup before a command that can lose data stay, and a store always keeps its newest backup. `plastic backup list` and `plastic backup restore` take no daily backup, so they find the backups as they are. No backup holds the search database `retrieval_graph.db`.
 
 ## 3.0.0-beta.3
