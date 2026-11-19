@@ -19,9 +19,11 @@ module Plastic
 
           def self.graphs(context) = Plastic::Graph::Graphs.new(work: context.work, retrieval: context.retrieval, databases: { store: context.database(:store) })
 
+          def self.reports(context) = context.settings.selection.reports
+
           step "sort the files", done: ->(context) { !context.sorted.nil? },
             changes: { store: "Files move into the resources layout and the links that point at them are rewritten" } do |context|
-            context[:sorted] = Plastic::Graph::Knowledge::Resources::Sort.new(folder(context), graphs(context)).call
+            context[:sorted] = Plastic::Graph::Knowledge::Resources::Sort.new(folder(context), graphs(context), reports: reports(context)).call
           end
 
           read "say what was sorted" do |context|

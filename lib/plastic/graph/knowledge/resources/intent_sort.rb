@@ -5,13 +5,15 @@ require_relative "known_files"
 require_relative "link_rewrite"
 require_relative "move"
 require_relative "../legacy_path"
+require_relative "../reports"
 
 module Plastic
   module Graph
     module Knowledge
       module Resources
         # The sort of one intent folder: the files that move, and the text of the files whose links change.
-        # Paths are relative to the store folder.
+        # Paths are relative to the store folder. Given the store's `reports`, a file of resources/output/reports/ that is
+        # neither recorded nor mandatory moves to resources/tmp/; with none, the reports folder is left as it is.
         class IntentSort
           Rewrite = Data.define(:path, :text, :was) do
             def undo(folder) = (folder.write(path, was) if folder.exist?(path))
@@ -28,13 +30,17 @@ module Plastic
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
 
-          def initialize(folder, dir, moved)
+          def initialize(folder, dir, moved, reports = nil)
             @folder = folder
             @dir = dir
             @moved = moved
+            @reports = reports
           end
 
           def moves = destinations.map { |from, to| Move.new("#{@dir}/#{from}", "#{@dir}/#{to}") }
+
+          # The moves of the reports that are neither recorded nor mandatory.
+          def unasked = moves.select { |move| Knowledge::Reports.report?(move.inside_from) }
 
           def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @moved.call) }
 
@@ -46,7 +52,15 @@ module Plastic
 
           def files = (@files ||= Dir.glob("**/*", File::FNM_DOTMATCH, base: @folder.path(@dir)).select { |rel| @folder.exist?("#{@dir}/#{rel}") }.sort)
 
-          def destinations = (@destinations ||= files.to_h { |rel| [rel, Classification.destination(rel)] }.compact)
+          def destinations = (@destinations ||= files.to_h { |rel| [rel, Classification.destination(rel) || unasked_destination(rel)] }.compact)
+
+          def unasked_destination(rel)
+            return unless @reports && Knowledge::Reports.report?(rel) && !@reports.include?(intent_id, rel)
+
+            "resources/tmp/#{rel.delete_prefix(Knowledge::Reports::FOLDER)}"
+          end
+
+          def intent_id = @dir[%r{\Astore/([^/]*)--}, 1]
 
           def rewriter = (@rewriter ||= LinkRewrite.new(@moved.call, KnownFiles.new(@folder)))
 

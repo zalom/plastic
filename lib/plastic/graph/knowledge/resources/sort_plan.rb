@@ -8,10 +8,14 @@ module Plastic
     module Knowledge
       module Resources
         # What sorting one store folder into the resources layout would do: the moves, the files whose links
-        # change and the links it leaves. It reads the folder and writes nothing.
+        # change and the links it leaves. It reads the folder and writes nothing. Given the store's `reports`, it also moves
+        # each report that is neither recorded nor mandatory to resources/tmp/ and names it.
         class SortPlan
-          def initialize(folder)
+          UNASKED = "neither recorded nor mandatory"
+
+          def initialize(folder, reports: nil)
             @folder = folder
+            @reports = reports
           end
 
           # Refused when a target holds other bytes than the file that would move onto it.
@@ -28,8 +32,11 @@ module Plastic
 
           def changed = intents.flat_map(&:changed)
 
+          # One line for each report the sort moves out of resources/output/reports/.
+          def unasked = intents.flat_map(&:unasked).map { |move| "moved #{move.from} to #{move.to}: #{UNASKED}" }
+
           # The lines a sort of `count` files prints: the count, the links it changed and the links it left.
-          def report(count) = ["sorted: #{count} files moved", *changed.map { |link| "link changed #{link}" }, *unresolved.map { |link| "link left as it is #{link}" }]
+          def report(count) = ["sorted: #{count} files moved", *unasked, *changed.map { |link| "link changed #{link}" }, *unresolved.map { |link| "link left as it is #{link}" }]
 
           private
 
@@ -38,7 +45,7 @@ module Plastic
             raise Refused, conflicting.refusal if conflicting
           end
 
-          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, method(:moved)) })
+          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, method(:moved), @reports) })
         end
       end
     end

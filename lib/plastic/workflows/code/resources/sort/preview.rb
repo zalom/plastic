@@ -17,8 +17,11 @@ module Plastic
             read "preview the sort" do |context|
               next unless context.dry_run
 
-              plan = Plastic::Graph::Knowledge::Resources::SortPlan.new(Code::Resources::Sort.folder(context))
+              reports = Code::Resources::Sort.reports(context).recorded_from(context.database(:store))
+
+              plan = Plastic::Graph::Knowledge::Resources::SortPlan.new(Code::Resources::Sort.folder(context), reports:)
               plan.moves.each { |move| context.print("preview: move #{move.from} -> #{move.to}") }
+              plan.unasked.each { |line| context.print("preview: #{line}") }
               plan.changed.each { |link| context.print("preview: link would change #{link}") }
               plan.unresolved.each { |link| context.print("preview: link left as it is #{link}") }
               context.print("preview complete; the original store was not changed")

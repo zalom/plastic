@@ -11,16 +11,19 @@ module Plastic
         # Sorts the files of a store into the resources layout. The rows move first, then the files, then the
         # files with changed links are written and a sync up reads the result. A file that holds the bytes of its
         # target is deleted with its rows instead of moved. A failure before the sync up puts the files, the rows
-        # and the texts back and raises; a sort with nothing to move still runs the sync up when files changed.
+        # and the texts back and raises; a sort with nothing to move still runs the sync up when files changed. The
+        # mandatory names of `reports` and the reports the store recorded stay in resources/output/reports/; every other
+        # report moves to resources/tmp/ and is named.
         class Sort
-          def initialize(folder, graphs, rename: File.method(:rename))
+          def initialize(folder, graphs, reports: Reports.none, rename: File.method(:rename))
             @folder = folder
             @graphs = graphs
+            @reports = reports.recorded_from(graphs.databases.fetch(:store))
             @rename = rename
           end
 
           def call
-            plan = SortPlan.new(@folder)
+            plan = SortPlan.new(@folder, reports: @reports)
             return repair if plan.empty?
 
             merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
