@@ -53,7 +53,7 @@ module Plastic
         def read_up(plan)
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
           ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
-          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths)
+          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths) + plan.unread.remove(@databases.fetch(:store))
           printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
           lines
         end

@@ -400,21 +400,22 @@ class SyncUpSelectionTest < Plastic::TestCase
     store_graphs.databases.fetch(:store).transaction { |batch| batch.add("DELETE FROM work_log WHERE kind = :kind", kind: "reported") }
   end
 
-  def row_count(sql) = store_graphs.databases.fetch(:store).read(sql, path: PAGE, printed: "store/2--beta/#{PAGE}").first.values.first
+  def row_count(sql) = store_graphs.databases.fetch(:store).rows(sql, path: PAGE, printed: "store/2--beta/#{PAGE}").first.values.first
 
   def rows_of_the_page
     ["SELECT count(*) FROM main.documents WHERE path = :path", "SELECT count(*) FROM main.document_heads WHERE path = :path",
-      "SELECT count(*) FROM work.printed WHERE path = :printed", "SELECT count(*) FROM retrieval.document_passages WHERE path = :path",
+      "SELECT count(*) FROM main.printed WHERE path = :printed", "SELECT count(*) FROM retrieval.document_passages WHERE path = :path",
       "SELECT count(*) FROM retrieval.document_fts WHERE path = :path"].map { |sql| row_count(sql) }
   end
 
-  def test_the_preview_names_the_rows_of_a_path_the_sync_no_longer_reads
+  # The dry run prints the lines of this same plan, applied to its copy of the store.
+  def test_the_plan_counts_and_names_the_rows_of_a_path_the_sync_no_longer_reads
     left_the_selection
-    preview = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
+    work = store_graphs.work
+    plan = work.sync_plan(:up, {})
 
-    assert_equal 0, preview.code
-    assert_includes preview.out, "removed the rows of store/2--beta/#{PAGE}: the sync no longer reads it"
-    assert_includes documents, PAGE
+    assert_equal [1, ["removed the rows of store/2--beta/#{PAGE}: the sync no longer reads it"]],
+      [plan.pending, work.sync_apply(plan).grep(/removed the rows/)]
   end
 
   def test_a_sync_up_removes_every_row_of_a_path_the_sync_no_longer_reads

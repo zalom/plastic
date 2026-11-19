@@ -557,7 +557,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
         database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27then\x27, \x27o\x27)", [rel, Digest::SHA256.hexdigest(text)])
       end
     end
-    SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       FILES.each_key { |rel| database.execute("INSERT INTO printed (path, sha256, at) VALUES (?, \x27s\x27, \x27then\x27)", ["#{DIR}/#{rel}"]) }
     end
     SQLite3::Database.open(alpha_file(home, "retrieval_graph.db")) do |database|
@@ -575,7 +575,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
     kept = [LOOSE, MANDATORY, "resources/output/files/data.html", "spec.md"] - [LOOSE]
     assert_equal [kept.sort, kept.sort, kept.map { |rel| "#{DIR}/#{rel}" }.sort, kept.sort],
       [paths("knowledge_graph.db", "SELECT path FROM documents"), paths("knowledge_graph.db", "SELECT path FROM document_heads"),
-        paths("work_graph.db", "SELECT path FROM printed WHERE path LIKE \x27store/%\x27"), paths("retrieval_graph.db", "SELECT path FROM document_fts")]
+        paths("knowledge_graph.db", "SELECT path FROM printed WHERE path LIKE \x27store/%\x27"), paths("retrieval_graph.db", "SELECT path FROM document_fts")]
   end
 
   def test_the_report_migration_leaves_the_files_on_disk
