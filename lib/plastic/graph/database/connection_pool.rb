@@ -54,6 +54,11 @@ module Plastic
         # Runs the block in one transaction that takes no lock until its first write.
         def deferred(&) = transaction_active? ? savepoint(&) : deferring(&)
 
+        # Gives the free pages of the schema's file back to the disk. A file with none is left alone, since the pragma takes its write lock.
+        def give_back_free_pages(schema)
+          execute("PRAGMA #{schema}.incremental_vacuum") if get_first_value("PRAGMA #{schema}.freelist_count").positive?
+        end
+
         private
 
         def attached = (@attached ||= [])
