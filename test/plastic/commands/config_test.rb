@@ -40,6 +40,10 @@ class ConfigCommandTest < Plastic::TestCase
     assert_includes config.out, "[ ] statusline"
   end
 
+  def test_the_daily_backups_are_listed_off_by_default
+    assert_includes config.out, "[ ] backup.daily"
+  end
+
   def test_with_no_terminal_the_next_step_asks_the_person
     assert_includes config.out, "next: plastic config <answer>"
   end

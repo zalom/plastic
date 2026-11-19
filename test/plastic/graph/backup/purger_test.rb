@@ -52,4 +52,29 @@ class GraphBackupPurgerExpiryTest < Plastic::TestCase
 
     assert_equal %w[20260104120000 20260106120000], purger(home).expired(now: NOW)
   end
+
+  def daily(home) = Backup::Purger.new(File.join(home, "stores", "alpha"), retention: Backup::Purger::DAILY_RETENTION)
+
+  def test_under_the_daily_retention_a_backup_older_than_a_day_expires_and_a_newer_one_stays
+    home = fresh_home
+    write(home, NOW - (25 * 3600))
+    write(home, NOW - (23 * 3600))
+
+    assert_equal ["20260109110000"], daily(home).expired(now: NOW)
+  end
+
+  def test_under_the_daily_retention_the_newest_migration_backup_is_kept
+    home = fresh_home
+    write(home, NOW - (2 * 86_400), reason: "migration")
+    write(home, NOW - (26 * 3600))
+
+    assert_equal ["20260109100000"], daily(home).expired(now: NOW)
+  end
+
+  def test_under_the_default_retention_a_backup_two_days_old_stays
+    home = fresh_home
+    write(home, NOW - (2 * 86_400))
+
+    assert_empty purger(home).expired(now: NOW)
+  end
 end

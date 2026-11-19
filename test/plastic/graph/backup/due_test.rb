@@ -109,4 +109,13 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
 
     assert_equal [:unchanged, [stamp(SEEDED)]], [result.status, folder_names(home)]
   end
+
+  def test_with_daily_backups_a_backup_taken_removes_the_folders_older_than_a_day
+    home = stale_home
+    add_intent(home)
+    later = SEEDED + (25 * 3600)
+    Due.new(home:, slug: "alpha", now: later, daily: true).call("sync up")
+
+    assert_equal [stamp(later)], folder_names(home)
+  end
 end
