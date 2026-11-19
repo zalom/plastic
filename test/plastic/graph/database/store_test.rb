@@ -38,4 +38,12 @@ class DatabaseStoreTest < Plastic::TestCase
 
     assert_equal [0, true], [free_pages("retrieval"), free_pages("knowledge").positive?]
   end
+
+  def test_a_rebuild_that_writes_nothing_leaves_the_free_pages_of_retrieval
+    fill_retrieval
+    SQLite3::Database.open(file("retrieval")) { |database| database.execute("DELETE FROM document_passages") }
+    store.rebuilding { |_batch| nil }
+
+    assert_predicate free_pages("retrieval"), :positive?
+  end
 end
