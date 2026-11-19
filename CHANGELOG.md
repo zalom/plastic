@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `backup.daily`, off by default, keeps 24 hours of backups for each store. The first command or hook of the day takes the start-of-day backup of every store, and each session end after it replaces the day's end-of-day backup. The backup every 12 hours and the backup before a command that can lose data stay, and a store always keeps its newest backup. No backup holds the search database `retrieval_graph.db`.
+
 ## 3.0.0-beta.3
 
 - Databases migrate the Rails way. Each migration is a SQL file named by its UTC time under `lib/plastic/graph/db/migrate/`, and each database records the migrations it has applied in a `schema_migrations` table. A migration runs once, and the pending migrations of a run commit in one transaction. A fresh database is built from `db/schema.rb` and records every migration with none run. A file that records a migration this code does not know is refused. The change gate refuses an edit to a merged migration and a new one that sorts before the newest on the base branch. A backup at an earlier known version restores and migrates forward.

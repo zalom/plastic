@@ -9,7 +9,7 @@ module Plastic
     # SessionEnd: sets the session's end time and the reason the event names.
     # With backup.daily on, it takes the end-of-day backup of every store first.
     class End < CLI::Hook
-      changes(local: "The end time and the reason are written to the session row")
+      changes(local: "The end time and the reason are written to the session row", backups: "With backup.daily on, every store takes its end-of-day backup, which replaces the earlier one of the day")
 
       def respond(event)
         return no_session unless session_id

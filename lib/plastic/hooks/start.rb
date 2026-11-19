@@ -18,7 +18,7 @@ module Plastic
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no command run.
     class Start < CLI::Hook
-      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than twelve hours")
+      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept", backups: "The current and the global store take a backup when the newest is older than 12 hours. With backup.daily on, every store takes its start-of-day backup on the first call of the day")
 
       def initialize(argv, health: method(:failing_checks), **rest)
         super(argv, **rest)

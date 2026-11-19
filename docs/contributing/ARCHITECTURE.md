@@ -340,7 +340,13 @@ minutes takes none. A backup runs by itself when the newest is older than 12 hou
 session start for the current and the global store, before `intent archive`, `sync up`,
 `sync down` and `backup restore`, and at `intent end`. Each automatic backup that was taken
 is followed by the purge of the folders older than three days; the purge keeps the newest
-done backup and the newest backup the runner took before a migration. The writer records the
+done backup and the newest backup the runner took before a migration. With `backup.daily` on,
+the purge keeps one day instead of three, and `CLI::DayBackup` runs from every command and hook
+before its work, except help and a dry run. The first call of the day takes the start-of-day
+backup of every store, changed or not, and each session end after it takes an end-of-day
+backup, unless the day's end-of-day backup holds the store as it is, and then deletes the
+day's earlier end-of-day backup. A store that fails prints one line and the call goes on. No
+backup holds `retrieval_graph.db`, which `plastic doctor` rebuilds. The writer records the
 verdict of each live check in `backups/last-check.yml`, and `plastic doctor` prints it beside
 each store's backup age; a failed check is a finding that names `plastic backup --store SLUG`.
 A backup at version 0 is checked against the tables of beta.2, and a backup at the newest
