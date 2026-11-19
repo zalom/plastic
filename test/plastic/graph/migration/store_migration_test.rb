@@ -327,6 +327,54 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     assert_equal ["it could not be migrated (the kept file ../outside.md leads outside the store folder)", [["document_revisions"]], [[1]]],
       [report.failed.fetch("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), knowledge(home, "SELECT count(*) FROM sqlar")]
   end
+
+  def legacy_file(home) = store_path(home, "legacy.db")
+
+  def legacy(home, sql) = read_file(legacy_file(home), sql)
+
+  def test_a_store_of_the_previous_release_keeps_every_row_of_document_revisions_in_legacy_db_in_its_old_shape
+    home = previous_home
+    before = knowledge(home, "SELECT * FROM document_revisions")
+    shape = knowledge(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions')")
+    migrate(home)
+
+    assert_equal [before, shape], [legacy(home, "SELECT * FROM document_revisions_#{DROP}"), legacy(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions_#{DROP}')")]
+  end
+
+  def test_a_store_of_the_previous_release_keeps_each_removed_sqlar_row_with_its_bytes_and_no_row_it_keeps
+    home = previous_home
+    keep(home, "originals/roadmaps/plan.md", "old roadmap")
+    keep(home, "store/1--alpha/resources/tmp/scratch.md", "old scratch")
+    File.join(store_root(home), "store/1--alpha/resources/tmp/scratch.md").then { |path| FileUtils.mkdir_p(File.dirname(path)).then { File.write(path, "new scratch") } }
+    migrate(home)
+
+    assert_equal [[["originals/roadmaps/plan.md", "old roadmap"]], [["store/1--alpha/resources/tmp/scratch.md"]]],
+      [legacy(home, "SELECT name, data FROM sqlar_#{DROP}"), knowledge(home, "SELECT name FROM sqlar")]
+  end
+
+  def test_a_store_whose_cleanup_is_refused_makes_no_legacy_db
+    home = previous_home
+    keep(home, "../outside.md", "outside")
+    migrate(home)
+
+    refute File.exist?(legacy_file(home))
+  end
+
+  def test_a_store_whose_legacy_db_cannot_be_made_stays_behind_with_its_table
+    home = previous_home
+    FileUtils.mkdir_p(legacy_file(home))
+    report = migrate(home)
+
+    assert_equal [false, [["document_revisions"]]], [report.migrated.include?("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'")]
+  end
+
+  def test_a_current_store_makes_no_legacy_db
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+    migrate(home)
+
+    refute File.exist?(legacy_file(home))
+  end
 end
 
 class StoreMigrationCompactionTest < Plastic::TestCase
