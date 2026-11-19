@@ -46,7 +46,7 @@ class MigrationPurgeTest < Plastic::TestCase
     refuse_ledger(home, "purge")
     result = purge(home, DROP, "--store", "alpha")
 
-    assert_equal [0, [], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (refused)"]],
+    assert_equal [0, [], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (plastic.db: refused)"]],
       [result.code, legacy_tables(home), result.err.lines.map(&:chomp)]
   end
 

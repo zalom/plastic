@@ -12,6 +12,9 @@ module Plastic
       # The migration keeps no rows of the store in legacy.db.
       class Nothing < Database::Error; end
 
+      # The rows a purge removed, by table, and why the ledger lacks its row when the write failed.
+      Purged = Data.define(:moved, :ledger_gap)
+
       def initialize(home, slug, now)
         @home = home
         @slug = slug
@@ -19,11 +22,10 @@ module Plastic
         @store = LegacyStore.new(home, slug)
       end
 
-      # The rows it removed, by table.
+      # The rows it removed, by table, and the reason the ledger lacks its purge row, or nil.
       def call(version)
         moved = removed(version)
-        MigrationLedger.new(Database.open_local(@home).fetch(:local), @now).record(@slug, "purge", version, moved:, undoable: false)
-        moved
+        Purged.new(moved:, ledger_gap: MigrationLedger.write(@home, @now) { |ledger| ledger.record(@slug, "purge", version, moved:, undoable: false) })
       ensure
         @store.release
       end

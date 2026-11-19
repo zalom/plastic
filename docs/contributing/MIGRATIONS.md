@@ -103,6 +103,12 @@ or purge of a migration on a store, with the time, the rows the event moved into
 stays the truth of its version. When `plastic.db` stays behind, the stores still migrate, and
 one note says that the ledger does not record them.
 
+The ledger row is written after the store change commits. When that write fails, the change
+stays and the command exits 0. A down or a purge prints one line on standard error that names
+what it did and the row the ledger lacks. The note of a migration names the stores whose rows
+it wrote and the stores whose rows the ledger lacks. The up rows of one store are written in one
+transaction, so the ledger holds all of them or none.
+
 ## Undo the newest migration
 
 | Command | What it does |

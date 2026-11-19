@@ -45,18 +45,28 @@ module Plastic
 
       private
 
-      # Records the up rows of the stores that migrated, or answers the line that says why the ledger holds none.
+      # Records the up rows of the stores that migrated, or answers the line that says which stores the ledger lacks.
       def ledger_notes(migrated, home)
         return [] if migrated.empty?
+        return ["migrate: plastic.db stays behind, so its ledger does not record the migrations of #{migrated.keys.join(", ")}"] if home.is_a?(String)
 
-        stores = migrated.keys.join(", ")
-        return ["migrate: plastic.db stays behind, so its ledger does not record the migrations of #{stores}"] if home.is_a?(String)
+        written = []
+        reason = MigrationLedger.write(@home, @now) { |ledger| migrated.each { |slug, migration| written << ups(ledger, slug, migration) } }
+        reason ? [ledger_gap(migrated.keys, written, reason)] : []
+      end
 
-        ledger = MigrationLedger.new(Database.open_local(@home).fetch(:local), @now)
-        migrated.each { |slug, migration| ledger.ups(slug, migration.ledger) }
-        []
-      rescue SQLite3::Exception, Database::Error, SystemCallError => error
-        ["migrate: the ledger in plastic.db does not record the migrations of #{stores} (#{MigrationReason.of(error)})"]
+      # Writes the up rows of one store and answers its slug.
+      def ups(ledger, slug, migration)
+        ledger.ups(slug, migration.ledger)
+        slug
+      end
+
+      # The note of a ledger write that failed: the stores whose up rows it wrote, and those whose rows it lacks.
+      def ledger_gap(stores, written, reason)
+        lacking = (stores - written).join(", ")
+        return "migrate: the ledger in plastic.db does not record the migrations of #{lacking} (#{reason})" if written.empty?
+
+        "migrate: the ledger in plastic.db records the migrations of #{written.join(", ")} but not those of #{lacking} (#{reason})"
       end
 
       def store_slugs

@@ -93,7 +93,7 @@ class MigrationDownTest < Plastic::TestCase
     refuse_ledger(home, "down")
     result = down(home, "--store", "alpha")
 
-    assert_equal [0, false, ["down: alpha no longer records migration #{DROP}, but the ledger in plastic.db has no down row for it (refused)"]],
+    assert_equal [0, false, ["down: alpha no longer records migration #{DROP}, but the ledger in plastic.db has no down row for it (plastic.db: refused)"]],
       [result.code, recorded(home).include?(DROP), result.err.lines.map(&:chomp)]
   end
 

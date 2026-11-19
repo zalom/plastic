@@ -31,7 +31,7 @@ module Plastic
       private_constant :Trial
 
       # The version a down removed, the rows it put back by table, the rows it built by table, and the backup it took first.
-      Undone = Data.define(:version, :moved, :built, :backup)
+      Undone = Data.define(:version, :moved, :built, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
       REBUILDS = { "20261119000000" => RevisionRows }.freeze
@@ -67,8 +67,8 @@ module Plastic
         check
         backup = backed_up
         moved, built = undo
-        MigrationLedger.new(Database.open_local(@home).fetch(:local), @now).record(@slug, "down", version, moved:, undoable: false)
-        Undone.new(version:, moved:, built:, backup:)
+        ledger_gap = MigrationLedger.write(@home, @now) { |ledger| ledger.record(@slug, "down", version, moved:, undoable: false) }
+        Undone.new(version:, moved:, built:, backup:, ledger_gap:)
       ensure
         @store.release
       end

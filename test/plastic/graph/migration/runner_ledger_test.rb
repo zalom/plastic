@@ -67,7 +67,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     SQLite3::Database.open(File.join(home, "plastic.db")) { |db| db.execute("CREATE TRIGGER refuse BEFORE INSERT ON store_migrations WHEN NEW.store = 'beta' BEGIN SELECT RAISE(ABORT, 'refused'); END") }
     report = migrate_store(home)
 
-    assert_equal [["migrate: the ledger in plastic.db records the migrations of alpha but not those of beta (refused)"], ["alpha"]],
+    assert_equal [["migrate: the ledger in plastic.db records the migrations of alpha but not those of beta (plastic.db: refused)"], ["alpha"]],
       [report.notes, ledger(home).map(&:first).uniq]
   end
 

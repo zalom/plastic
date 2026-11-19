@@ -14,7 +14,7 @@ module Plastic
           clear_declarations
           summary "Puts back the rows the newest migration of one store kept in legacy.db and removes its version, after a backup."
 
-          sets :refusal, :version, :moved, :built, :backup
+          sets :refusal, :version, :moved, :built, :backup, :ledger_gap
 
           # How a down that fails after the check stops the call: a failed backup is exit 1, a refusal exit 3.
           STOPS = { Plastic::Graph::MigrationDown::BackupFailed => Failed, Plastic::Graph::MigrationDown::Refused => Refused,
@@ -23,11 +23,7 @@ module Plastic
           def self.down(context) = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
 
           def self.undo(context)
-            undone = down(context).call
-            context[:version] = undone.version
-            context[:moved] = undone.moved
-            context[:built] = undone.built
-            context[:backup] = undone.backup
+            down(context).call.to_h.each { |name, value| context[name] = value }
           rescue *STOPS.keys => error
             raise STOPS.fetch(error.class), error.message
           end
@@ -49,6 +45,7 @@ module Plastic
             context.print("down: put back #{Migration.counted(context.moved)} from legacy.db")
             context.print("down: #{context.store} no longer records migration #{context.version}")
             context.print("down: built #{Migration.counted(context.built)} from the current documents") unless context.built.empty?
+            context.warn("down: #{context.store} no longer records migration #{context.version}, but the ledger in plastic.db has no down row for it (#{context.ledger_gap})") if context.ledger_gap
           end
 
           outcome :done, offers: "plastic migration list --store %{store}",

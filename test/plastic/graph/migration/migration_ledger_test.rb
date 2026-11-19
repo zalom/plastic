@@ -46,7 +46,7 @@ class MigrationLedgerTest < Plastic::TestCase
   def test_a_write_that_fails_answers_its_reason_and_raises_nothing
     trigger("CREATE TRIGGER refuse BEFORE INSERT ON store_migrations BEGIN SELECT RAISE(ABORT, 'refused'); END")
 
-    assert_equal "refused", Ledger.write(@plastic_home, NOW) { |ledger| ledger.record("alpha", "down", "20261119000000", moved: {}, undoable: false) }
+    assert_equal "plastic.db: refused", Ledger.write(@plastic_home, NOW) { |ledger| ledger.record("alpha", "down", "20261119000000", moved: {}, undoable: false) }
   end
 
   def test_a_write_that_succeeds_answers_nil

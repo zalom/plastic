@@ -51,6 +51,9 @@ module Plastic
     # A labelled value the call reports as a row, such as the passages a search found.
     def row(label, value) = tap { @printed.row(label, value) }
 
+    # A line the call writes to standard error, such as a ledger write that failed after the change committed.
+    def warn(line) = tap { @printed.warning(line) }
+
     def fill(template) = @facts.fill(template)
 
     private
