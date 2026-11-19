@@ -7,7 +7,7 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Classifies and extracts text before retrieval stores immutable evidence.
+        # Classifies and extracts text before retrieval stores the evidence.
         module Text
           # Holds extracted text and the original source line for each character.
           Extraction = Data.define(:body, :lines)

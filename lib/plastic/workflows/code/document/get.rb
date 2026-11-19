@@ -8,7 +8,7 @@ module Plastic
   module Workflows
     module Code
       module Document
-        # Fetches one current or immutable document, or one bounded passage of it.
+        # Fetches the current text of one document, or one bounded passage of it.
         class Get < CodeWorkflow
           clear_declarations
 

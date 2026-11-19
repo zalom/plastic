@@ -9,12 +9,8 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Diagnoses and rebuilds rows that can be derived from immutable evidence.
+        # Diagnoses and rebuilds the rows that are derived from the current documents.
         class Integrity
-          # Raised when a current document has no immutable revision.
-          class EvidenceLost < StandardError
-            def self.from(entries) = new(entries.join("; "))
-          end
           # Holds the collaborators that read, assess, and rebuild derived rows.
           Components = Data.define(:snapshot, :audit, :rebuilder)
 
@@ -47,14 +43,8 @@ module Plastic
           def repair_snapshot(batch, connection)
             @before_rebuild.call
             report, snapshot = current_report(connection)
-            reject_missing(report)
             components.rebuilder.rebuild(batch, snapshot)
             report
-          end
-
-          def reject_missing(report)
-            missing = report.fetch(:missing)
-            raise EvidenceLost.from(missing) unless missing.empty?
           end
         end
       end

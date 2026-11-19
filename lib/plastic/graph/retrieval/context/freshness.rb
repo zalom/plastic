@@ -24,14 +24,6 @@ module Plastic
           def evidence_state(document, reference)
             Retrieval::Context::Evidence.new(document:, reference:, retrieval: source.retrieval(reference)).state
           rescue RetrievalGraph::MissingReference
-            missing_or_stale(reference)
-          end
-
-          def missing_or_stale(reference)
-            retrieval = source.retrieval(reference)
-            retrieval.fetch_reference(reference)
-            { "uri" => reference, "state" => "stale" }
-          rescue RetrievalGraph::MissingReference
             { "uri" => reference, "state" => "missing" }
           end
         end

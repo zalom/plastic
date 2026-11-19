@@ -5,7 +5,8 @@ require_relative "errors"
 module Plastic
   module Graph
     module Retrieval
-      # Reads immutable document revisions and their passages from one origin.
+      # Reads the current text of each document, and its passages, from one origin. A pinned reference reads back
+      # only while it names the current text.
       class DocumentReader
         def initialize(store, origin_id)
           @store = store
@@ -41,12 +42,8 @@ module Plastic
 
         def document_row(fields)
           revision = fields[:revision] || fields[:sha256]
-          revision ? revision_row(fields, revision) : current_row(fields)
-        end
-
-        def revision_row(fields, revision)
-          store.row("SELECT body, sha256 FROM document_revisions WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND origin_id = :origin",
-            intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), sha256: revision, origin: origin_id)
+          row = current_row(fields)
+          row if row && (revision.nil? || row.fetch("sha256") == revision)
         end
 
         def current_row(fields)
