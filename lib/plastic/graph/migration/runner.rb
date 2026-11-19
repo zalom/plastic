@@ -8,14 +8,20 @@ module Plastic
     # Brings the databases of a home to the newest version of their sequences. The install and the update run it, and
     # nothing else does. A store that stays behind does not stop the run: the others go on.
     class SchemaRunner
-      # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason.
-      Report = Data.define(:migrated, :failed) do
-        def self.of(results)
+      # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason; `notes` holds
+      # the lines the migrations of the stores report.
+      Report = Data.define(:migrated, :failed, :notes) do
+        def self.of(results, notes = [])
           grouped = results.group_by { |_slug, outcome| outcome.is_a?(String) ? :failed : outcome }
-          new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h)
+          new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h, notes:)
         end
 
+        def initialize(migrated:, failed:, notes: []) = super
+
         def behind_lines = failed.map { |store, reason| "migrate: #{store} stays behind because #{reason}; fix the cause and run plastic update" }
+
+        # Every line a person reads: the stores that stayed behind, then the notes.
+        def lines = behind_lines + notes
       end
 
       # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of
@@ -28,9 +34,10 @@ module Plastic
       end
 
       def call
-        results = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection).call] }
+        migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection)] }
+        results = migrations.transform_values(&:call)
         results["home"] = HomeMigration.new(@home, @now).call
-        Report.of(results)
+        Report.of(results, migrations.values.flat_map(&:notes))
       end
 
       private

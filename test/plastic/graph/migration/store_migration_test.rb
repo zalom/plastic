@@ -319,17 +319,17 @@ class PreviousStoreMigrationTest < Plastic::TestCase
   end
 
   def test_a_store_that_keeps_a_row_with_no_verified_copy_reports_it_on_one_line
-  home = previous_home
-  name = "store/1--alpha/resources/tmp/scratch.md"
-  keep(home, name, "old scratch")
-  FileUtils.mkdir_p(File.dirname(File.join(store_root(home), name)))
-  File.write(File.join(store_root(home), name), "new scratch")
-  report = migrate(home)
+    home = previous_home
+    name = "store/1--alpha/resources/tmp/scratch.md"
+    keep(home, name, "old scratch")
+    FileUtils.mkdir_p(File.dirname(File.join(store_root(home), name)))
+    File.write(File.join(store_root(home), name), "new scratch")
+    report = migrate(home)
 
-  assert_equal [["alpha"], ["migrate: alpha keeps these rows in sqlar, as no verified copy of them is elsewhere: #{name} (the file on disk differs)"]], [report.migrated, report.notes]
-end
+    assert_equal [["alpha"], ["migrate: alpha keeps these rows in sqlar, as no verified copy of them is elsewhere: #{name} (the file on disk differs)"]], [report.migrated, report.notes]
+  end
 
-def test_a_store_whose_cleanup_is_refused_stays_behind_with_its_table_and_its_rows
+  def test_a_store_whose_cleanup_is_refused_stays_behind_with_its_table_and_its_rows
     home = previous_home
     keep(home, "../outside.md", "outside")
     report = migrate(home)

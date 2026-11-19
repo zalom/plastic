@@ -1,40 +1,32 @@
 # frozen_string_literal: true
 
-require "fileutils"
 require "json"
 require_relative "../database"
 require_relative "../knowledge/sync_selection"
+require_relative "kept_file"
+require_relative "kept_file_copy"
 
 module Plastic
   module Graph
-    # Keeps in sqlar only the files that a sync of this machine reads. Every other row goes, and a row whose file is gone
-    # from the store folder is printed back to its path first, unless its intent is archived, because the archive holds
-    # that file. It runs in the transaction of the migration, so a refusal takes the migration back with it.
+    # Keeps in sqlar only the files that a sync of this machine reads. Every other row goes only when a verified copy of
+    # its bytes is elsewhere: the file on disk or the archive of its intent, with the same SHA-256. A row whose file is
+    # gone is printed back to its path first. Any other row stays and is reported. It runs in the transaction of the
+    # migration, so a refusal takes the migration back with it.
     class KeptFilesCleanup
       # A row names a path outside the store folder.
       class Refused < Database::Error; end
 
-      ROWS = "SELECT name, data, intent_id FROM main.sqlar ORDER BY name"
-      ARCHIVED = "SELECT DISTINCT intent_id FROM main.archives WHERE restored_at IS NULL"
-      DELETE = "DELETE FROM main.sqlar WHERE name IN (SELECT value FROM json_each(?))"
+      # The number of rows it removed, and each row it kept for want of a verified copy, with the reason.
+      Result = Data.define(:removed, :kept) do
+        def line(slug)
+          return if kept.empty?
 
-      # One row of sqlar: the path it names in the store folder, its bytes and its intent.
-      Row = Data.define(:name, :data, :intent_id) do
-        def self.from(row) = new(name: row.fetch("name"), data: row.fetch("data"), intent_id: row.fetch("intent_id"))
-
-        def path(root) = File.expand_path(name, root)
-
-        def inside?(root) = path(root).start_with?(File.join(root, ""))
-
-        # Writes the bytes to the path, unless a file is there or the archive of its intent holds it.
-        def print_back(root, archived)
-          file = path(root)
-          return if File.exist?(file) || archived.include?(intent_id)
-
-          FileUtils.mkdir_p(File.dirname(file))
-          File.binwrite(file, data.to_s)
+          "migrate: #{slug} keeps these rows in sqlar, as no verified copy of them is elsewhere: #{kept.map { |name, reason| "#{name} (#{reason})" }.join(", ")}"
         end
       end
+
+      ROWS = "SELECT name, data, intent_id, origin_id FROM main.sqlar ORDER BY name"
+      DELETE = "DELETE FROM main.sqlar WHERE name IN (SELECT value FROM json_each(?))"
 
       def initialize(connection, root, selection)
         @connection = connection
@@ -42,27 +34,25 @@ module Plastic
         @selection = selection
       end
 
-      # Answers the number of rows it removed.
       def call
-        rows = removed
-        refuse_outside(rows)
-        rows.each { |row| row.print_back(@root, archived) }
-        @connection.execute(DELETE, [JSON.generate(rows.map(&:name))])
-        rows.size
+        files = removed
+        refuse_outside(files)
+        copies = KeptFileCopy.new(@connection, @root)
+        gone, kept = files.to_h { |file| [file.name, copies.missing(file)] }.partition { |_name, reason| reason.nil? }
+        @connection.execute(DELETE, [JSON.generate(gone.map(&:first))])
+        Result.new(removed: gone.size, kept: kept.to_h)
       end
 
       private
 
-      def removed = @connection.read(ROWS).map { |row| Row.from(row) }.reject { |row| kept?(row.name) }
+      def removed = @connection.read(ROWS).map { |row| KeptFile.from(row) }.reject { |file| kept?(file.in_intent) }
 
-      def kept?(name) = name[Knowledge::SyncSelection::INTENT_FILE, 1]&.then { |rel| @selection.read?(rel) }
+      def kept?(rel) = rel && @selection.read?(rel)
 
-      def refuse_outside(rows)
-        outside = rows.find { |row| !row.inside?(@root) }
+      def refuse_outside(files)
+        outside = files.find { |file| !file.inside?(@root) }
         raise Refused, "the kept file #{outside.name} leads outside the store folder" if outside
       end
-
-      def archived = (@archived ||= @connection.read(ARCHIVED).map { |row| row.fetch("intent_id") })
     end
   end
 end

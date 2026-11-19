@@ -15,7 +15,8 @@ module Plastic
   module Graph
     # Brings the files of one store to the newest version. A store behind is backed up first, whatever the age of its
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
-    # stayed behind. The migration that keeps in sqlar only the files a sync reads takes the sync `selection` of the machine.
+    # stayed behind. `notes` holds the lines its data steps and its compaction report. The migration that keeps in sqlar
+    # only the files a sync reads takes the sync `selection` of the machine.
     class StoreMigration
       REFERENCES = "references.db"
       # The data steps by the version they belong to. Each runs once, while its version is pending.
@@ -26,8 +27,11 @@ module Plastic
         @slug = slug
         @now = now
         @selection = selection
+        @notes = []
         @compaction = compaction
       end
+
+      attr_reader :notes
 
       def call
         return :current unless behind?
@@ -72,7 +76,7 @@ module Plastic
 
       def migrate_rows(migrating, data)
         SchemaMigrator.new(migrating, :store).call
-        data.each { |step| step.new(migrating, root, @selection).call }
+        data.each { |step| step.new(migrating, root, @selection).call.line(@slug)&.then { |line| @notes << line } }
       end
 
       def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)

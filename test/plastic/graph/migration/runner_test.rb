@@ -27,11 +27,11 @@ class SchemaRunnerTest < Plastic::TestCase
     assert_empty Runner::Report.new(migrated: ["alpha"], failed: {}).behind_lines
   end
 
-def test_the_lines_of_a_report_are_the_stores_behind_and_then_the_notes
-  report = Runner::Report.new(migrated: ["beta"], failed: { "alpha" => "it is locked" }, notes: ["migrate: beta keeps a row"])
+  def test_the_lines_of_a_report_are_the_stores_behind_and_then_the_notes
+    report = Runner::Report.new(migrated: ["beta"], failed: { "alpha" => "it is locked" }, notes: ["migrate: beta keeps a row"])
 
-  assert_equal ["migrate: alpha stays behind because it is locked; fix the cause and run plastic update", "migrate: beta keeps a row"], report.lines
-end
+    assert_equal ["migrate: alpha stays behind because it is locked; fix the cause and run plastic update", "migrate: beta keeps a row"], report.lines
+  end
 
   def test_an_old_layout_home_migrated_through_every_migration_has_the_layout_of_a_new_database
     home = old_home
