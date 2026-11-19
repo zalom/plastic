@@ -4,6 +4,7 @@ require_relative "../../../test_helper"
 require_relative "../../../test_helpers/beta_2_store"
 require_relative "../../../test_helpers/schema_versions"
 require_relative "../../../../lib/plastic/graph/migration/runner"
+require_relative "../../../../lib/plastic/graph/knowledge/sync_selection"
 
 module StoreMigrationRuns
   include Beta2Store
@@ -11,8 +12,9 @@ module StoreMigrationRuns
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 1, 1)
+  SELECTION = Plastic::Graph::Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [])
 
-  def migrate(home) = Runner.new(home:, now: NOW).call
+  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION).call
 
   def migrated_home(**options) = beta_2_home(**options).tap { |home| migrate(home) }
 
@@ -167,7 +169,7 @@ class PartialStoreMigrationTest < Plastic::TestCase
     home = beta_2_home
     File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
     full_disk = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
-    answer = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, compaction: full_disk).call
+    answer = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, selection: SELECTION, compaction: full_disk).call
 
     assert_equal "it could not be migrated (database or disk is full)", answer
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
@@ -299,5 +301,28 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     migrate(home)
 
     assert_includes recorded_versions(store_path(home, "knowledge_graph.db")), DROP
+  end
+
+  def keep(home, name, data)
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
+      database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, ?, 'o')", [name, SQLite3::Blob.new(data)])
+    end
+  end
+
+  def test_a_store_of_the_previous_release_prints_back_a_file_only_its_kept_row_held_and_removes_the_row
+    home = previous_home
+    keep(home, "originals/roadmaps/plan.md", "old roadmap")
+    migrate(home)
+
+    assert_equal ["old roadmap", [[0]]], [File.read(File.join(store_root(home), "originals/roadmaps/plan.md")), knowledge(home, "SELECT count(*) FROM sqlar")]
+  end
+
+  def test_a_store_whose_cleanup_is_refused_stays_behind_with_its_table_and_its_rows
+    home = previous_home
+    keep(home, "../outside.md", "outside")
+    report = migrate(home)
+
+    assert_equal ["it could not be migrated (the kept file ../outside.md leads outside the store folder)", [["document_revisions"]], [[1]]],
+      [report.failed.fetch("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), knowledge(home, "SELECT count(*) FROM sqlar")]
   end
 end

@@ -8,6 +8,23 @@ class KnowledgeSyncSelectionTest < Plastic::TestCase
 
   def selection(types: %w[md html], references: false, asked: []) = SyncSelection.new(types:, references:, asked:)
 
+  # Answers the settings a selection reads, as a Config does.
+  Settings = Data.define(:types, :references) do
+    def list(key) = (key == "sync.types") ? types : []
+
+    def flag(_path, default:) = references.nil? ? default : references
+  end
+
+  def test_a_selection_of_the_settings_reads_their_types_and_their_references_setting
+    selected = SyncSelection.of(Settings.new(types: %w[png], references: true))
+
+    assert_equal [true, true, false], %w[resources/output/files/shot.png resources/references/paper.pdf resources/output/reports/page.md].map { |rel| selected.read?(rel) }
+  end
+
+  def test_a_selection_of_settings_with_no_references_value_reads_no_references
+    refute SyncSelection.of(Settings.new(types: %w[md], references: nil)).read?("resources/references/paper.pdf")
+  end
+
   def test_reads_markdown_and_html_in_output_reports_by_default
     selected = selection
 

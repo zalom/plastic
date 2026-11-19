@@ -7,6 +7,7 @@ class UpdatePlasticTest < Plastic::TestCase
   include InstallerHelper
   include BackupHomes
   include OldLayoutHomes
+  include ConfigHomes
 
   def update(env: {}, **options)
     facts = { channel: nil }.merge(options)
@@ -40,6 +41,31 @@ class UpdatePlasticTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(home)
 
     assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
+  end
+
+  PAPER = "store/1--a/resources/references/paper.pdf"
+
+  def alpha_knowledge(home) = File.join(home, "stores", "alpha", "knowledge_graph.db")
+
+  # A home that reads references, whose alpha store lacks the newest version and keeps the file PAPER.
+  def home_reading_references
+    home = fresh_home
+    seed_config(home, "global:\n  sync:\n    references: true\n")
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    SQLite3::Database.open(alpha_knowledge(home)) do |database|
+      database.execute("DELETE FROM schema_migrations WHERE version = ?", [Plastic::Graph::MIGRATIONS.newest(:store)])
+      database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, x'00', 'o')", [PAPER])
+    end
+    home
+  end
+
+  def test_an_update_keeps_a_kept_file_the_sync_settings_of_the_machine_read
+    home = home_reading_references
+    run_workflow(Plastic::Workflows::Code::Update, channel: nil,
+      harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share), settings: Plastic::Wiring.settings(home)))
+    Plastic::Graph::Database::ConnectionPool.release(home)
+
+    assert_equal [[PAPER]], SQLite3::Database.open(alpha_knowledge(home)) { |database| database.execute("SELECT name FROM sqlar") }
   end
 
   def test_a_newer_package_is_synced_into_the_home
