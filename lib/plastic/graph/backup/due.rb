@@ -24,12 +24,11 @@ module Plastic
         # :taken, :unchanged, :fresh, :missing or :failed, the backup row when one was written, and the reason when it failed.
         Result = Data.define(:status, :row, :reason)
 
-        def initialize(home:, slug:, now:, daily: false)
-          @home = home
+        def initialize(home:, slug:, now:, retention: Purger::RETENTION)
           @root = File.join(home, "stores", slug)
           @slug = slug
           @now = now
-          @daily = daily
+          @retention = retention
         end
 
         def call(reason)
@@ -46,7 +45,7 @@ module Plastic
         private
 
         def purge
-          Purger.new(@root, retention: Purger.retention(daily: @daily)).sweep(now: @now)
+          Purger.new(@root, retention: @retention).sweep(now: @now)
         end
 
         def stale?

@@ -37,9 +37,9 @@ module Plastic
 
       def back_up_stores
         home = scope.plastic_home
-        daily = Wiring.daily_backups?(home)
+        retention = Wiring.backup_retention(home)
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|
-          Graph::Backup::Due.new(home:, slug:, now: environment.now, daily:).call("session start")
+          Graph::Backup::Due.new(home:, slug:, now: environment.now, retention:).call("session start")
         end
       end
 

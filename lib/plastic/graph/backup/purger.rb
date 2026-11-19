@@ -15,9 +15,6 @@ module Plastic
         RETENTION = 3 * 24 * 60 * 60
         DAILY_RETENTION = 24 * 60 * 60
 
-        # The retention of the backups: one day under the daily backups, else three days.
-        def self.retention(daily:) = daily ? DAILY_RETENTION : RETENTION
-
         def initialize(store_root, retention: RETENTION)
           @folders = Folders.new(store_root)
           @retention = retention
