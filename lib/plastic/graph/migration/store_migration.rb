@@ -7,6 +7,7 @@ require_relative "../schema/migrator"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
 require_relative "kept_files_cleanup"
+require_relative "legacy_keep"
 require_relative "migration_reason"
 require_relative "store_age"
 require_relative "store_compaction"
@@ -16,7 +17,8 @@ module Plastic
     # Brings the files of one store to the newest version. A store behind is backed up first, whatever the age of its
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
     # stayed behind. `notes` holds the lines its data steps and its compaction report. The migration that keeps in sqlar
-    # only the files a sync reads takes the sync `selection` of the machine.
+    # only the files a sync reads takes the sync `selection` of the machine. What a migration removes is kept in legacy.db
+    # in the same transaction, and `ledger` holds an entry for each migration that ran.
     class StoreMigration
       REFERENCES = "references.db"
       # The data steps by the version they belong to. Each runs once, while its version is pending.
@@ -28,10 +30,11 @@ module Plastic
         @now = now
         @selection = selection
         @notes = []
+        @ledger = []
         @compaction = compaction
       end
 
-      attr_reader :notes
+      attr_reader :notes, :ledger
 
       def call
         return compacted(:current) unless behind?
@@ -74,18 +77,28 @@ module Plastic
 
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
-        data = DATA_STEPS.select { |version, _step| pending?(version) }.values
-        migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
+        data = DATA_STEPS.select { |version, _step| pending?(version) }
+        migrating = Database::ConnectionPool.for(knowledge_file, attach: attachments)
         with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
-      rescue SQLite3::Exception, SystemCallError
+      rescue SQLite3::Exception, Database::Error, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
       end
 
+      # legacy.db is attached only while a pending migration keeps what it removes, so no other run makes the file.
+      def attachments
+        files = Database::Store.attachments(knowledge_file)
+        return files unless LegacyKeep::KEEPS.any? { |version| pending?(version) }
+
+        files.merge(legacy: File.join(root, LegacyKeep::FILE))
+      end
+
       def migrate_rows(migrating, data)
-        SchemaMigrator.new(migrating, :store).call
-        data.each { |step| step.new(migrating, root, @selection).call.line(@slug)&.then { |line| @notes << line } }
+        keep = LegacyKeep.new(migrating)
+        SchemaMigrator.new(migrating, :store, before: keep).call
+        data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
+        @ledger = keep.entries
       end
 
       def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)

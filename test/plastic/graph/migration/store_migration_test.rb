@@ -242,6 +242,7 @@ class AlphaStoreMigrationTest < Plastic::TestCase
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
     home
   end
@@ -268,11 +269,13 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     INSERT INTO document_revisions VALUES ('sha', '1', 'intent.md', 'old text', 'then', 'origin');
   SQL
 
-  # A store the previous release wrote: every version before the drop, and a document_revisions table with a row.
+  # A store the previous release wrote: every version before the drop, and a document_revisions table with a row. Its files
+  # were made by an earlier process, so this one forgets that it made them.
   def previous_home
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
       database.execute("DELETE FROM schema_migrations WHERE version = ?", [DROP])
@@ -357,7 +360,7 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     keep(home, "../outside.md", "outside")
     migrate(home)
 
-    refute File.exist?(legacy_file(home))
+    refute_path_exists legacy_file(home)
   end
 
   def test_a_store_whose_legacy_db_cannot_be_made_stays_behind_with_its_table
@@ -373,7 +376,7 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     Plastic::Graph.create(home:, store: "alpha")
     migrate(home)
 
-    refute File.exist?(legacy_file(home))
+    refute_path_exists legacy_file(home)
   end
 end
 

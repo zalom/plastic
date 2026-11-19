@@ -16,10 +16,12 @@ module Plastic
         versions.each { |version| connection.execute(INSERT, [version]) }
       end
 
-      def initialize(connection, kind, migrations: MIGRATIONS)
+      # The `before` step runs with the version of each pending migration just before its SQL, in the same transaction.
+      def initialize(connection, kind, migrations: MIGRATIONS, before: ->(_version) {})
         @connection = connection
         @kind = kind
         @migrations = migrations
+        @before = before
       end
 
       def call
@@ -42,8 +44,10 @@ module Plastic
       end
 
       def migrate(migration)
+        version = migration.version
+        @before.call(version)
         @connection.execute_batch(migration.sql)
-        @connection.execute(INSERT, [migration.version])
+        @connection.execute(INSERT, [version])
       end
     end
   end
