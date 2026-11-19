@@ -4,12 +4,12 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/graph/knowledge/archive/writer"
 
 class KnowledgeArchiveOperationTest < Plastic::TestCase
-  Steps = Struct.new(:answer, :taken) do
+  Steps = Struct.new(:answer, :calls) do
     def problem(_intent) = answer
 
-    def capture(intent) = taken << [:capture, intent.intent_id]
+    def capture(intent) = calls << [:capture, intent.intent_id]
 
-    def call(intent) = taken << [:complete, intent.intent_id]
+    def call(intent) = calls << [:complete, intent.intent_id]
   end
 
   def setup
@@ -19,7 +19,7 @@ class KnowledgeArchiveOperationTest < Plastic::TestCase
 
   def run_with(answer)
     steps = Steps.new(answer, [])
-    [Plastic::Graph::Knowledge::Archive::Operation.new(retrieval, steps, steps, steps).call(@intent_id || "1"), steps.taken]
+    [Plastic::Graph::Knowledge::Archive::Operation.new(retrieval, steps, steps, steps).call(@intent_id || "1"), steps.calls]
   end
 
   def test_an_allowed_intent_is_captured_then_completed

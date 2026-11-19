@@ -41,7 +41,7 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :intent, :problem, :moved, :taken
+        sets :intent, :problem, :moved, :held_elsewhere
         intent_steps
         move_steps(verb, shape)
         result_steps(shape)
@@ -57,7 +57,7 @@ module Plastic
         step(shape.fetch(:step), done: method(:tried?), changes: { work: CHANGES.fetch(verb) }) { |context| run_move(context, verb, shape) }
         gate "%{problem}", stops: :refusal,
           words: "another session took the claim of the node after it lapsed",
-          pass: ->(context) { !context.taken }
+          pass: ->(context) { !context.held_elsewhere }
         gate "%{problem}", stops: :failure,
           words: "the node is not in the intent, or its state does not allow this move",
           pass: method(:moved?)
@@ -84,7 +84,7 @@ module Plastic
 
       def self.settle(context, moved, state)
         context[:problem] = moved ? nil : refusal(context, state)
-        context[:taken] = !moved && taken?(context)
+        context[:held_elsewhere] = !moved && held_elsewhere?(context)
         context[:moved] = !context.problem
       end
 
@@ -92,7 +92,7 @@ module Plastic
 
       def self.files(context, verb) = RESULT_VERBS.include?(verb) ? { files: context.files } : {}
 
-      def self.taken?(context)
+      def self.held_elsewhere?(context)
         node = context.retrieval.node(context.intent_id, context.id)
         session = context.session
         return false if node.nil? || session.nil?
@@ -124,7 +124,7 @@ module Plastic
         node = context.retrieval.node(intent_id, id)
         return "no node #{id} in intent #{intent_id}" unless node
 
-        taken?(context) ? "node #{id} is held by session #{node.claimed_by || finisher_of(context, node)}; its claim was taken" : node.refusal(state)
+        held_elsewhere?(context) ? "node #{id} is held by session #{node.claimed_by || finisher_of(context, node)}; its claim was taken" : node.refusal(state)
       end
     end
   end

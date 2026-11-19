@@ -83,14 +83,14 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
     Plastic::Graph::Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now:, reason: "migration").call
   end
 
-  def taken_after_four_days(home)
+  def back_up_after_four_days(home)
     add_intent(home)
     Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("sync up")
   end
 
   def test_a_backup_taken_removes_the_folders_older_than_three_days_with_their_rows
     home = stale_home
-    taken_after_four_days(home)
+    back_up_after_four_days(home)
 
     assert_equal [stamp(FOUR_DAYS_LATER)], folder_names(home)
   end
@@ -98,7 +98,7 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
   def test_the_newest_migration_backup_stays_until_a_newer_one_is_taken
     home = stale_home
     migration_backup(home, SEEDED + 3600)
-    taken_after_four_days(home)
+    back_up_after_four_days(home)
 
     assert_equal [stamp(SEEDED + 3600), stamp(FOUR_DAYS_LATER)], folder_names(home)
   end
