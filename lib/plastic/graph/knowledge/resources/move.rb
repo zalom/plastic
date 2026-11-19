@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "../sync_selection"
 
 module Plastic
   module Graph
@@ -12,7 +13,7 @@ module Plastic
 
           def self.inside(path) = path[%r{\Astore/[^/]*--[^/]*/(.+)\z}, 1]
 
-          def intent_id = from[%r{\Astore/([^/]*)--}, 1]
+          def intent_id = SyncSelection.intent_of(from)
 
           def inside_from = Move.inside(from)
 

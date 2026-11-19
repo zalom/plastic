@@ -12,8 +12,9 @@ class SchemaStateTest < Plastic::TestCase
   LATER = "20270101000000"
   ALL = Plastic::Graph::MIGRATIONS.versions(:store)
   NEWEST = ALL.last
-  # The migration held behind the switch migrate.drop_document_revisions.
+  # The drop held behind the switch migrate.drop_document_revisions, and every version that switch holds.
   HELD = "20261119000000"
+  RELEASED = Plastic::Graph::MigrationList::HELD.keys
 
   # Counts the statements a reader sends, so a test can tell how many queries a check takes.
   class Counting < SimpleDelegator
@@ -48,7 +49,7 @@ class SchemaStateTest < Plastic::TestCase
 
   def longer = Plastic::Graph::MIGRATIONS.with(SchemaMigration.new(kind: :store, version: LATER, path: "/nowhere.sql"))
 
-  def state(migrations: Plastic::Graph::MIGRATIONS, released: [HELD]) = SchemaState.new(@database, :store, migrations:, released:).call
+  def state(migrations: Plastic::Graph::MIGRATIONS, released: RELEASED) = SchemaState.new(@database, :store, migrations:, released:).call
 
   def summary(reading) = [reading.name, reading.pending, reading.unknown, reading.number]
 
@@ -102,7 +103,7 @@ class SchemaStateTest < Plastic::TestCase
   def test_a_beta_2_file_leaves_a_held_version_out_of_its_pending_versions_while_the_switch_is_off
     with_tables(0)
 
-    assert_equal ALL - [HELD], state(released: []).pending
+    assert_equal ALL - RELEASED, state(released: []).pending
   end
 
   def test_a_file_that_records_an_unknown_version_reads_ahead_and_names_it

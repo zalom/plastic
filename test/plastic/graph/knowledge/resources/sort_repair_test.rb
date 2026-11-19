@@ -22,7 +22,7 @@ class ResourcesSortRepairTest < Plastic::TestCase
     write_old_layout
   end
 
-  TARGET = "resources/output/reports/reviews/r1.md"
+  TARGET = "resources/tmp/reviews/r1.md"
 
   def hold_same_target
     FileUtils.mkdir_p(File.dirname(File.join(store_root, INTENT, TARGET)))
@@ -30,11 +30,11 @@ class ResourcesSortRepairTest < Plastic::TestCase
     hold_rows(TARGET, OLD_FILES.fetch("reviews/r1.md"))
   end
 
-  def test_a_move_onto_the_same_bytes_deletes_the_source_and_its_rows_and_keeps_the_target
+  def test_a_move_onto_the_same_bytes_deletes_the_source_and_its_rows_and_keeps_the_target_file
     hold_same_target
     sort
 
-    assert_equal [false, true, true], [File.file?(File.join(store_root, INTENT, "reviews/r1.md")), File.file?(File.join(store_root, INTENT, TARGET)), row_paths("documents").include?(TARGET)]
+    assert_equal [false, true], [File.file?(File.join(store_root, INTENT, "reviews/r1.md")), File.file?(File.join(store_root, INTENT, TARGET))]
     refute_includes row_paths("documents"), "reviews/r1.md"
   end
 
@@ -58,7 +58,7 @@ class ResourcesSortRepairTest < Plastic::TestCase
     failures = [Errno::EIO]
     folder.tap do |found|
       found.define_singleton_method(:write) do |rel, bytes|
-        raise failures.shift, rel if rel.end_with?("resources/output/reports/notes.md") && failures.any?
+        raise failures.shift, rel if rel.end_with?("resources/tmp/notes.md") && failures.any?
 
         super(rel, bytes)
       end

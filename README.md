@@ -379,9 +379,12 @@ harnesses:
 
 A sync always reads the Markdown notes and the graph of each intent. Under `resources/`, it reads
 `output/reports` and `output/files` by file type, Markdown and HTML unless `sync.types` names others,
+in `output/reports` only a report the owner asked for, recorded with `plastic intent report ID PATH
+--asked WORDS`, or one that `reports.mandatory` names,
 the `references` folder when `sync.references` is on, and never `tmp`. A file of a type not yet
 named is skipped once, with one line that gives the `plastic config set sync.types` command to
-include it. `plastic init` offers images and videos picked.
+include it. `plastic init` offers images and videos picked. Tool output, packets, plans and notes go to
+`resources/tmp`, and copies of outside material go to `resources/references`.
 
 With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
 Plastic command or hook of the day copies the databases of every store as the start-of-day

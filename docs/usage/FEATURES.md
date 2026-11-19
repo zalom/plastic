@@ -169,8 +169,9 @@ are outside the resources layout`, with the repair `plastic resources sort --sto
 
 A migration that removes data keeps it in `legacy.db` in the store folder, in the same
 transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
-migration that drops `document_revisions` runs only once `migrate.drop_document_revisions` is on;
-the switch is off by default.
+migration that drops `document_revisions`, and the one that trims what it kept in `legacy.db` to
+what a down needs, run only once `migrate.drop_document_revisions` is on; the switch is off by
+default.
 
 | Command | What it does |
 | ------- | ------------ |
@@ -185,10 +186,17 @@ the migration. `plastic update` migrates the store up again after a down.
 ## The resources layout
 
 An intent folder keeps its notes in the root and its other files under `resources/`:
-`resources/output/reports/` for Markdown and HTML, `resources/output/files/` for every other
-output, `resources/references/` for what the agent read, and `resources/tmp/` for state that
-no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
-more types through the setting `sync.types`. `resources/references/` is read only when its
+`resources/output/reports/` for the reports the owner asked for and the reports the config makes
+mandatory, `resources/output/files/` for every other output, `resources/references/` for copies
+of outside material, and `resources/tmp/` for tool output, packets, plans, notes and other state
+that no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
+more types through the setting `sync.types`. In `resources/output/reports/` it reads only a
+report that `plastic intent report ID PATH --asked WORDS` recorded or that the setting
+`reports.mandatory` names; every other file there stays on disk with no row. The command records
+a report only when the words appear in an owner message of the store, the intent or the session,
+and exits 3 otherwise. A mandatory report needs no `--asked`. Each recorded report gets one line
+under `## Reports` in outcome.md. When a sync up no longer reads a path, it removes the rows of that
+path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
 
@@ -196,8 +204,10 @@ so in one line and records the type once in `sync.asked`.
 layout. It moves the rows with the files, rewrites the relative links that point at a moved
 file, and runs a sync up. A link that named no file before the move is left as it is. Both the
 run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
-also lists every move and changes nothing. A file directly under `resources/output/` moves into
-`reports/` or `files/` by its type. A target that holds other bytes than
+also lists every move and changes nothing. A loose Markdown or HTML file moves to `resources/tmp/`, and a
+file directly under `resources/output/` of another type moves to `files/`. A file in
+`resources/output/reports/` that is neither recorded nor mandatory is named and moved to
+`resources/tmp/`. A target that holds other bytes than
 the file that would move onto it stops the call with exit 3 and names the target. A second run
 finds nothing to move and says `sorted: nothing to move`.
 

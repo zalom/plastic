@@ -9,6 +9,9 @@ module Plastic
       # intent folder it reads, and whether an import removes the files it read.
       SyncSettings = Data.define(:selection, :remove_after_import) do
         def self.none = new(selection: SyncSelection.none, remove_after_import: false)
+
+        # The same settings, with the recorded reports read from the store `database`.
+        def for_store(database) = with(selection: selection.for_store(database))
       end
     end
   end

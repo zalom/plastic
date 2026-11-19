@@ -15,10 +15,11 @@ module Plastic
   module Graph
     # Undoes the newest migration of one current store. It backs the store up, puts the rows the migration kept in
     # legacy.db back into the live tables in their old shape, drops them from legacy.db and removes the version from the
-    # store, all in one transaction. In it, a version of REBUILDS also builds the rows the older code expects, such as a revision
-    # row for each current document. It adds a down row to the ledger in plastic.db. It refuses a store that is not
-    # current, a migration that kept nothing, kept rows that are gone, and a live row that changed after the migration
-    # kept it. Docs: docs/contributing/MIGRATIONS.md.
+    # store, all in one transaction. In it, a version of REBUILDS also builds the rows the older code expects, such as a
+    # revision row for each current document. A version of LegacyKeep::ALONE kept nothing, so its down removes the version
+    # alone. It adds a down row to the ledger in plastic.db. It refuses a store that lacks a migration older than its
+    # newest, a migration that kept nothing, kept rows that are gone, and a live row that changed after the migration
+    # kept it. A store an earlier down took back can go down again, one migration at a time. Docs: docs/contributing/MIGRATIONS.md.
     class MigrationDown
       # The store cannot go down; the message says why and what to do instead.
       class Refused < Database::Error; end
@@ -76,10 +77,14 @@ module Plastic
 
       def connection = @store.connection
 
-      def tables = @store.tables(version)
+      def tables = alone? ? [] : @store.tables(version)
+
+      def alone? = LegacyKeep::ALONE.include?(version)
 
       def check
         current
+        return if alone?
+
         raise Refused, "migration #{version} kept nothing in legacy.db, so #{UNDO}" unless @keeps.include?(version)
         raise Refused, "the legacy rows of migration #{version} are not in legacy.db, so #{UNDO}" if tables.empty?
 
@@ -89,9 +94,10 @@ module Plastic
       def current
         state = SchemaState.of_file(@store.knowledge_file, :store)
         raise Refused, "#{@slug} records migrations newer than this release (#{state.unknown.join(", ")}); run plastic update" if state.ahead?
-        return if state.current?
+        older = state.pending.select { |pending| state.number.zero? || pending.to_i < state.number }
+        return if older.empty?
 
-        raise Refused, "#{@slug} has not run every migration of this release (#{state.pending.join(", ")}); run plastic update first"
+        raise Refused, "#{@slug} has not run every migration of this release (#{older.join(", ")}); run plastic update first"
       end
 
       # Restores every kept table in a transaction that rolls back, so a changed row refuses before anything changes.
