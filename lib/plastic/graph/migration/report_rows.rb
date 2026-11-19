@@ -2,13 +2,14 @@
 
 require "json"
 require_relative "../sql"
+require_relative "../knowledge/sync_selection"
 
 module Plastic
   module Graph
-    # Drops the rows of every report that the setting reports.mandatory does not name: documents, document_heads,
-    # printed and the search rows. The files stay on disk, so a later plastic intent report brings a row back. A report
-    # of an earlier intent predates the owner messages, so none of them counts as recorded. It keeps nothing in
-    # legacy.db, since a sync up reads a recorded or mandatory report back; a down removes its version alone.
+    # Drops the rows of every report that is neither recorded nor mandatory, the rule the sync reads by: documents,
+    # document_heads, printed and the search rows. The files stay on disk, so a later plastic intent report brings a row
+    # back. It keeps nothing in legacy.db, since a sync up reads a recorded or mandatory report back; a down removes its
+    # version alone.
     class ReportRows
       # The number of reports whose rows it dropped.
       Result = Data.define(:removed) do
@@ -30,10 +31,15 @@ module Plastic
         "DELETE FROM retrieval.document_fts WHERE (intent_id, path) IN (#{PAIRS})"
       ].freeze
 
+      # The recorded reports of the work log, read through the migration's connection.
+      WorkLog = Data.define(:connection) do
+        def rows(sql) = connection.read(sql)
+      end
+
       # `keep` is the keep of the data step; this step keeps nothing in legacy.db.
       def initialize(connection, _root, selection, keep:)
         @connection = connection
-        @reports = selection.reports
+        @reports = selection.reports.recorded_from(WorkLog.new(connection))
         @keep = keep
       end
 
@@ -46,13 +52,16 @@ module Plastic
 
       private
 
-      # The intent and path of each report row that is not mandatory.
-      def dropped = @connection.read(REPORTS).map { |row| row.values_at("intent_id", "path") }.reject { |_intent_id, path| mandatory?(path) }
+      # The intent and path of each report row that is neither recorded nor mandatory.
+      def dropped = (@dropped ||= @connection.read(REPORTS).map { |row| row.values_at("intent_id", "path") }.reject { |intent_id, path| @reports.listed?(intent_id, path) })
 
-      # The printed path of each report that is not mandatory; a printed path starts with store/ and the intent folder.
-      def printed = @connection.read(PRINTED).map { |row| row.fetch("path") }.reject { |path| mandatory?(path.split("/", 3).last) }
+      # The printed path of each dropped report; a printed path is store/, the intent folder, then the path inside it.
+      def printed
+        dropped_pairs = dropped.to_set
+        @connection.read(PRINTED).map { |row| row.fetch("path") }.select { |path| dropped_pairs.include?(pair_of(path)) }
+      end
 
-      def mandatory?(rel) = @reports.mandatory?(rel)
+      def pair_of(printed) = [Knowledge::SyncSelection.intent_of(printed), printed.split("/", 3).last]
     end
   end
 end
