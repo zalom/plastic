@@ -220,7 +220,10 @@ class KeptFilesFolderTest < Plastic::TestCase
     assert_equal [[], "scratch"], [names, File.read(on_disk(TMP))]
   end
 
+  # The setup holds an intent row and its folder with no intent file, which a sync reads as broken, so this test goes without them.
   def test_a_sync_of_the_store_passes_after_a_cleanup_that_kept_a_row_of_a_gone_folder
+    connection.execute("DELETE FROM intents")
+    FileUtils.rm_rf(on_disk("store/1--alpha"))
     keep(RENAMED)
     clean
     Plastic::Graph::Database::ConnectionPool.release(root)
