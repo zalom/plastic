@@ -36,8 +36,10 @@ module Plastic
       def failing_checks(scope, harness) = Doctor.failing(scope, harness:, running: Workflows::Installation.running(scope), now: environment.now, store: Wiring.store(scope.plastic_home, clock: environment.clock))
 
       def back_up_stores
+        home = scope.plastic_home
+        daily = Wiring.daily_backups?(home)
         [scope.slug, Scope::GLOBAL].uniq.each do |slug|
-          Graph::Backup::Due.new(home: scope.plastic_home, slug:, now: environment.now).call("session start")
+          Graph::Backup::Due.new(home:, slug:, now: environment.now, daily:).call("session start")
         end
       end
 

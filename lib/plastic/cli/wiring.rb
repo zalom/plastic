@@ -18,6 +18,7 @@ module Plastic
     end
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
+    DAILY_BACKUPS = %w[backup daily].freeze
 
     def self.config(home, harness: nil, clock: Time) = Config.new(home, harness:, clock:, database: settings_database(home))
 
@@ -33,6 +34,9 @@ module Plastic
     end
 
     def self.sync(home) = Graph::Knowledge::SyncSettings.new(selection: selection(home), remove_after_import: config(home).flag(REMOVE_AFTER_IMPORT, default: false))
+
+    # Whether the home keeps 24 hours of backups, with a start-of-day and an end-of-day backup of every store.
+    def self.daily_backups?(home) = config(home).flag(DAILY_BACKUPS, default: false)
 
     def self.graphs(home:, store:, session: nil, clock: Time) = Graph.open(home:, store:, session:, clock:, sync: sync(home))
 
