@@ -48,6 +48,8 @@ module Plastic
       attr_reader :store
 
       def selection = Plastic::Wiring.selection_of(Values.new(@values, @written))
+
+      def released = Plastic::Wiring.released_of(Values.new(@values, @written))
     end
   end
 end

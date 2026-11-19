@@ -81,4 +81,8 @@ class GraphMigrationDownTest < Plastic::TestCase
 
     assert_equal({ "document_revisions" => 1 }, down(home).call.built)
   end
+
+  def test_a_store_whose_newest_recorded_migration_kept_nothing_is_refused_naming_that_migration
+    assert_equal "migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back", down(previous_home).refusal
+  end
 end

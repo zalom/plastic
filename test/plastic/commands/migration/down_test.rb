@@ -61,8 +61,8 @@ class MigrationDownTest < Plastic::TestCase
     assert_equal ["alpha", DROP, "down", '{"document_revisions":1,"sqlar":1}', 0], ledger_rows(home).last
   end
 
-  def test_a_store_behind_the_newest_version_is_refused_and_nothing_changes
-    assert_refused_unchanged previous_home, "run plastic update"
+  def test_a_store_whose_newest_recorded_migration_kept_nothing_is_refused_and_nothing_changes
+    assert_refused_unchanged previous_home, "migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db"
   end
 
   def test_a_store_whose_legacy_rows_were_purged_is_refused_and_nothing_changes

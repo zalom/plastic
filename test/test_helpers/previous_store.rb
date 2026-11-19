@@ -34,7 +34,7 @@ module PreviousStore
   def migrated_previous_home = previous_home.tap { |home| migrate_store(home) }
 
   def migrate_store(home, now: MIGRATED_AT)
-    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none).call.tap { forget(home) }
+    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call.tap { forget(home) }
   end
 
   def forget(home)

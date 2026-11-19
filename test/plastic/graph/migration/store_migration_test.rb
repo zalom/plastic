@@ -489,3 +489,25 @@ class StoreMigrationLegacyRollbackTest < Plastic::TestCase
         alpha_rows(home, "knowledge_graph.db", "SELECT sha256 FROM document_revisions"), recorded(home).include?(DROP)]
   end
 end
+
+class StoreMigrationSwitchTest < Plastic::TestCase
+  include PreviousStore
+
+  def migrate(home, released) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call.tap { forget(home) }
+
+  def revisions_table(home) = alpha_rows(home, "knowledge_graph.db", "SELECT name FROM sqlite_master WHERE name = 'document_revisions'").flatten
+
+  def test_while_the_switch_is_off_a_store_that_lacks_only_the_drop_keeps_its_table_and_makes_no_legacy_db
+    home = previous_home
+    report = migrate(home, [])
+
+    assert_equal [[], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
+  end
+
+  def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
+    home = previous_home
+    report = migrate(home, [DROP])
+
+    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+  end
+end
