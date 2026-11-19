@@ -77,7 +77,7 @@ class GraphBackupDayTest < Plastic::TestCase
   AFTER_MIDNIGHT = Time.new(2026, 1, 2, 0, 30, 0, "+01:00")
 
   # Rewrites a folder's status file without taken_at, as a backup written before it was recorded.
-  def drop_taken_at(home, name)
+  def forget_backup_time(home, name)
     path = File.join(backups_dir(home), name, "status.yml")
     File.write(path, YAML.safe_load_file(path).except("taken_at").to_yaml)
   end
@@ -85,7 +85,7 @@ class GraphBackupDayTest < Plastic::TestCase
   def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_in_the_clock_s_offset
     home = fresh_home
     day(home, AFTER_MIDNIGHT).begin_day
-    drop_taken_at(home, stamp(AFTER_MIDNIGHT))
+    forget_backup_time(home, stamp(AFTER_MIDNIGHT))
     day(home, MORNING).begin_day
 
     assert_equal ["start of day"], backup_reasons(home)
