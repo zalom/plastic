@@ -7,7 +7,7 @@ module Plastic
     module Migration
       # Prints the ledger rows of one registered store and what a down would undo now. It changes nothing.
       class List < Routine
-        include CLI::BackupStore
+        include CLI::MigrationStore
 
         opens_no_store
         skips_daily_backup

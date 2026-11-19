@@ -9,7 +9,7 @@ module Plastic
     module Migration
       # Undoes the newest migration of one registered store from the rows it kept in legacy.db, after a backup.
       class Down < Routine
-        include CLI::BackupStore
+        include CLI::MigrationStore
 
         opens_no_store
         skips_daily_backup

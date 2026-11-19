@@ -8,7 +8,7 @@ plastic migration down --store SLUG
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
-| `--store SLUG` | the registered project whose backups the call works on |  |
+| `--store SLUG` | the registered project whose store migrations the call works on |  |
 
 ## The events of one call, step by step
 

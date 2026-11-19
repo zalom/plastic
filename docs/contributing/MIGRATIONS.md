@@ -115,7 +115,7 @@ transaction, so the ledger holds all of them or none.
 | ------- | ------------ |
 | `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
 | `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic migration list --store SLUG`. |
-| `plastic migration purge VERSION --store SLUG` | Removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
+| `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
 
 A down refuses with exit 3 and changes nothing in these cases:
 

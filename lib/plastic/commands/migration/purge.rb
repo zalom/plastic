@@ -7,10 +7,11 @@ module Plastic
     module Migration
       # Removes the rows one migration of a registered store kept in legacy.db, so a down can no longer undo it.
       class Purge < Routine
-        include CLI::BackupStore
+        include CLI::MigrationStore
 
         opens_no_store
         skips_daily_backup
+        backs_up_first
 
         argument :version, label: "VERSION", text: "the migration whose kept rows go, by its version"
 
