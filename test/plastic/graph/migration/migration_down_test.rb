@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require "digest"
 require_relative "../../../../lib/plastic/graph/migration/migration_down"
 
 class GraphMigrationDownTest < Plastic::TestCase
@@ -46,5 +47,37 @@ class GraphMigrationDownTest < Plastic::TestCase
     migrate_store(home)
 
     assert_equal before, [layout(home), contents(home, "knowledge_graph.db"), contents(home, "legacy.db")]
+  end
+  # A document written after the migration, with its head, as the code after the drop writes it: no revision row.
+  def write_document(home, intent_id, path, body, sha = Digest::SHA256.hexdigest(body))
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
+      database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES (?, ?, ?, ?, ?)", [intent_id, path, body, "now", "origin"])
+      database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (?, ?, ?, ?, ?)", [intent_id, path, sha, "now", "origin"])
+    end
+  end
+
+  def revisions(home) = alpha_rows(home, "knowledge_graph.db", "SELECT * FROM document_revisions ORDER BY intent_id")
+
+  def test_a_down_gives_each_document_written_after_the_migration_its_revision_row
+    home = migrated_previous_home
+    write_document(home, "2", "spec.md", "new text")
+    down(home).call
+
+    assert_equal [["sha", "1", "intent.md", "old text", "then", "origin"], [Digest::SHA256.hexdigest("new text"), "2", "spec.md", "new text", "now", "origin"]], revisions(home)
+  end
+
+  def test_a_down_adds_no_revision_row_for_a_document_whose_kept_revision_came_back
+    home = migrated_previous_home
+    write_document(home, "1", "intent.md", "old text", "sha")
+    down(home).call
+
+    assert_equal [["sha", "1", "intent.md", "old text", "then", "origin"]], revisions(home)
+  end
+
+  def test_a_down_answers_the_revision_rows_it_built_by_table
+    home = migrated_previous_home
+    write_document(home, "2", "spec.md", "new text")
+
+    assert_equal({ "document_revisions" => 1 }, down(home).call.built)
   end
 end

@@ -42,7 +42,7 @@ class MigrationDownTest < Plastic::TestCase
     result = down(migrated_previous_home, "--store", "alpha")
 
     assert_call result, code: 0,
-      out: ["down: put back 1 row of document_revisions and 1 row of sqlar from legacy.db", "down: alpha no longer records migration #{DROP}", "next: plastic migration list --store alpha"]
+      out: ["down: put back 1 row of document_revisions and 1 row of sqlar from legacy.db", "down: alpha no longer records migration #{DROP}", "down: built 0 rows of document_revisions from the current documents", "next: plastic migration list --store alpha"]
     refute_includes result.out, "rollback"
   end
 
