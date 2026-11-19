@@ -14,7 +14,7 @@ module StoreMigrationRuns
   NOW = Time.utc(2026, 1, 1)
   SELECTION = Plastic::Graph::Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [])
 
-  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION).call
+  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
 
   def migrated_home(**options) = beta_2_home(**options).tap { |home| migrate(home) }
 
@@ -196,7 +196,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home
     plant(home, trigger)
     before = [state(home), rows_digest(home)]
-    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call
+    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
     [home, before, report]
   end
 
@@ -220,7 +220,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home(older: true)
     before = beta_2_files(home)
 
-    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call }
+    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call }
 
     assert_includes error.message, "beta.2"
     assert_equal before, beta_2_files(home)
@@ -387,7 +387,7 @@ class StoreMigrationCompactionTest < Plastic::TestCase
   FULL_DISK = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
   FAILED = "compact: alpha was not compacted (database or disk is full); run plastic update to try again"
 
-  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, selection: SELECTION, compaction:)
+  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, run: Plastic::Graph::StoreMigration::Run.new(selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)), compaction:)
 
   def vacuum_modes(home) = FILES.map { |name| SQLite3::Database.open(store_path(home, name)) { |database| database.get_first_value("PRAGMA auto_vacuum") } }
 
@@ -450,7 +450,7 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     super
   end
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call
 
   def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
     home = previous_home

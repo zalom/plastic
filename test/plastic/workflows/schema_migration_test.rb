@@ -9,7 +9,7 @@ class SchemaMigrationTest < Plastic::TestCase
   SWITCH = "migrate.drop_document_revisions"
 
   def bring_alpha_current(home, values)
-    harness = scoped_harness(env: { "PLASTIC_HOME" => home }, settings: Plastic::Workflows::FakeSettings.new(values:))
+    harness = scoped_harness(env: { "PLASTIC_HOME" => home }, settings: FakeSettings.new(values:))
     Plastic::Workflows::SchemaMigration.bring_current(call_context(harness:), slug: "alpha")
   end
 

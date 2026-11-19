@@ -12,7 +12,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
   DROP = "20261119000000"
 
-  def run_runner(home) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+  def run_runner(home) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call
 
   def old_home = old_layout(fresh_home)
 

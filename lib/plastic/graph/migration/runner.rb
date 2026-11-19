@@ -28,16 +28,17 @@ module Plastic
       end
 
       # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of
-      # the machine, which says which kept files a store keeps.
-      def initialize(home:, now:, selection:, only: nil)
+      # the machine, which says which kept files a store keeps. `released` names the held migrations whose switch is on
+      # in the settings of the home.
+      def initialize(home:, now:, selection:, only: nil, released: [])
         @home = home
         @only = only
         @now = now
-        @selection = selection
+        @run = StoreMigration::Run.new(selection:, released:)
       end
 
       def call
-        migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection)] }
+        migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, run: @run)] }
         results = migrations.transform_values(&:call)
         results["home"] = HomeMigration.new(@home, @now).call
         Report.of(results, migrations.values.flat_map(&:notes) + ledger_notes(migrations.select { |slug, _| results[slug] == :migrated }, results["home"]))

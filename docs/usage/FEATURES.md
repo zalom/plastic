@@ -168,7 +168,9 @@ are outside the resources layout`, with the repair `plastic resources sort --sto
 ## Undo a migration
 
 A migration that removes data keeps it in `legacy.db` in the store folder, in the same
-transaction, and the ledger in `plastic.db` records each migration that runs on a store.
+transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
+migration that drops `document_revisions` runs only once `migrate.drop_document_revisions` is on;
+the switch is off by default.
 
 | Command | What it does |
 | ------- | ------------ |
@@ -177,7 +179,7 @@ transaction, and the ledger in `plastic.db` records each migration that runs on 
 | `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
 
 A down exits 3 and changes nothing when the store is not at the newest version, when the newest
-migration kept nothing or its rows were purged, or when a row it would put back changed after
+migration the store records kept nothing or its rows were purged, or when a row it would put back changed after
 the migration. `plastic update` migrates the store up again after a down.
 
 ## The resources layout

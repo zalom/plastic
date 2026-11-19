@@ -24,11 +24,16 @@ module Plastic
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup }.freeze
 
-      def initialize(home, slug, now, selection:, compaction: StoreCompaction)
+      # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
+      # their switch, which the run applies.
+      Run = Data.define(:selection, :released)
+
+      def initialize(home, slug, now, run:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
-        @selection = selection
+        @selection = run.selection
+        @released = run.released
         @notes = []
         @ledger = []
         @compaction = compaction
@@ -50,7 +55,7 @@ module Plastic
 
       def root = File.join(@home, "stores", @slug)
 
-      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))])
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
 
       def knowledge_file = File.join(root, Schema.file(:knowledge))
 
@@ -92,13 +97,13 @@ module Plastic
 
       def migrate_rows(migrating, data)
         keep = LegacyKeep.new(migrating)
-        SchemaMigrator.new(migrating, :store, before: keep).call
+        SchemaMigrator.new(migrating, :store, before: keep, released: @released).call
         data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
         @ledger = keep.entries
       end
 
       # Every store version when the knowledge file is missing, else the versions it lacks.
-      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store).pending : MIGRATIONS.versions(:store)
+      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store, released: @released).pending : MIGRATIONS.versions(:store) - (MIGRATIONS.held(:store) - @released)
 
       def pending?(version) = pending.include?(version)
 

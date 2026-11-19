@@ -390,6 +390,11 @@ its newest backup, and `plastic backup list` and `plastic backup restore` take n
 they find the backups as they are. Plastic runs no background process for this, and
 `backup.daily` is off by default.
 
+`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
+table of each store. While it is off, `plastic update` leaves that table in place. Turn it on
+with `plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each
+store keeps the table in its `legacy.db` before the drop. The switch is off by default.
+
 ```bash
 plastic config list                         # Every key with its value
 plastic config set runner.stop_hook true    # Write a global key

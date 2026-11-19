@@ -6,11 +6,12 @@ require_relative "../../../test_helper"
 class SchemaRunnerTest < Plastic::TestCase
   include BackupHomes
   include OldLayoutHomes
+  include ConfigHomes
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
 
-  def run_runner(home, **options) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, **options).call
+  def run_runner(home, **options) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MIGRATIONS.held(:store), **options).call
 
   def old_home = old_layout(fresh_home)
 
@@ -100,6 +101,7 @@ class SchemaRunnerTest < Plastic::TestCase
     run_runner(home)
     migrated = store_digests(home).except("retrieval_graph.db")
     Plastic::Graph::Database::ConnectionPool.release(home)
+    seed_config(home, "global:\n  migrate:\n    drop_document_revisions: true\n")
     restore_call(home, "--store", "alpha", "--latest")
 
     assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], versions_in(home, "/alpha/knowledge_graph.db")

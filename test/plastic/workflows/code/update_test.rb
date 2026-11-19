@@ -9,6 +9,9 @@ class UpdatePlasticTest < Plastic::TestCase
   include OldLayoutHomes
   include ConfigHomes
 
+  # The store versions an update applies while every switch is off.
+  RUNNABLE = Plastic::Graph::MIGRATIONS.versions(:store) - Plastic::Graph::MIGRATIONS.held(:store)
+
   def update(env: {}, **options)
     facts = { channel: nil }.merge(options)
     run_workflow(Plastic::Workflows::Code::Update, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
@@ -27,20 +30,20 @@ class UpdatePlasticTest < Plastic::TestCase
 
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
 
-  def test_an_update_brings_an_old_layout_home_to_the_newest_layout_after_a_backup_of_each_store
+  def test_an_update_brings_an_old_layout_home_to_every_version_but_the_held_ones_after_a_backup_of_each_store
     home = old_layout(fresh_home)
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
 
-    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], store_versions(home)
+    assert_equal [RUNNABLE], store_versions(home)
     assert_equal [1, 1], %w[alpha beta].map { |slug| folder_names(home, slug).size }
   end
 
-  def test_an_update_moves_an_alpha_home_and_its_stores_from_stamp_1_to_current
+  def test_an_update_moves_an_alpha_home_and_its_stores_from_stamp_1_to_every_version_but_the_held_ones
     home = alpha_layout(fresh_home)
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
     Plastic::Graph::Database::ConnectionPool.release(home)
 
-    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), Plastic::Graph::MIGRATIONS.versions(:home)], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
+    assert_equal [RUNNABLE, Plastic::Graph::MIGRATIONS.versions(:home)], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
   end
 
   PAPER = "store/1--a/resources/references/paper.pdf"

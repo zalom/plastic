@@ -17,11 +17,13 @@ module Plastic
       end
 
       # The `before` step runs with the version of each pending migration just before its SQL, in the same transaction.
-      def initialize(connection, kind, migrations: MIGRATIONS, before: ->(_version) {})
+      # `released` names the held versions whose switch is on, so the run applies them.
+      def initialize(connection, kind, migrations: MIGRATIONS, before: ->(_version) {}, released: [])
         @connection = connection
         @kind = kind
         @migrations = migrations
         @before = before
+        @released = released
       end
 
       def call
@@ -36,7 +38,7 @@ module Plastic
 
       private
 
-      def reading = SchemaState.new(@connection, @kind, migrations: @migrations).call
+      def reading = SchemaState.new(@connection, @kind, migrations: @migrations, released: @released).call
 
       def apply(state)
         self.class.record(@connection, state.adopted)

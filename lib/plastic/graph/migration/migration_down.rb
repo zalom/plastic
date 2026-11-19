@@ -47,11 +47,10 @@ module Plastic
         @keeps = keeps
         @rebuilds = rebuilds
         @store = LegacyStore.new(home, slug)
-        @version = MIGRATIONS.versions(:store).last
       end
 
-      # The newest store migration of this release, the one a down undoes.
-      attr_reader :version
+      # The newest migration the store records, the one a down undoes.
+      def version = (@version ||= SchemaState.of_file(@store.knowledge_file, :store).number.to_s)
 
       # Why the store cannot go down, or nil when it can.
       def refusal

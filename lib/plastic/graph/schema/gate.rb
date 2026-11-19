@@ -16,11 +16,11 @@ module Plastic
       MAIN = "main"
 
       # True when the main file of a store lacks a version of this code, or is empty while another file holds tables.
-      def self.behind?(path, files)
+      def self.behind?(path, files, released: [])
         existing = [path, *files].select { |file| File.file?(file) }
         return false if existing.empty?
 
-        reading = main_reading(path)
+        reading = main_reading(path, released)
         return reading.behind? unless reading.empty?
 
         existing.any? { |file| holding_tables?(file) }
@@ -28,7 +28,7 @@ module Plastic
         false
       end
 
-      def self.main_reading(path) = File.file?(path) ? SchemaState.of_file(path, :store) : SchemaState::Reading.new(name: :empty, pending: [], unknown: [], adopted: [], number: 0)
+      def self.main_reading(path, released = []) = File.file?(path) ? SchemaState.of_file(path, :store, released:) : SchemaState::Reading.new(name: :empty, pending: [], unknown: [], adopted: [], number: 0)
 
       def self.holding_tables?(path) = SQLite3::Database.open(path, readonly: true) { |database| database.get_first_value("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").positive? }
 

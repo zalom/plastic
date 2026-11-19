@@ -95,6 +95,23 @@ commits.
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
 
+## Hold a migration behind a switch
+
+A migration that changes stored data ships behind a config switch that is off by default, as
+`docs/release-lines.md` says. `MigrationList::HELD` in
+`lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
+`20261119000000` is held behind `migrate.drop_document_revisions`.
+
+- While the switch is off, a run leaves the held version out of the pending ones. A store that
+  lacks only that version is current, so every command opens it and `plastic update` leaves it.
+- A store that records a held version is current too. A new store records every version, held
+  or not, because it is built from `schema.rb`.
+- Once the switch is on, `plastic update` runs the held version as it runs any other. The runner
+  takes the released versions from `Wiring::Settings#released`.
+
+To hold a new migration, add its version and its switch to `HELD`, and add the switch to
+`lib/plastic/config/defaults.rb`, off.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
@@ -114,7 +131,7 @@ transaction, so the ledger holds all of them or none.
 | Command | What it does |
 | ------- | ------------ |
 | `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
-| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic migration list --store SLUG`. |
+| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration the store records kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic migration list --store SLUG`. |
 | `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
 
 A down refuses with exit 3 and changes nothing in these cases:
@@ -130,7 +147,7 @@ In the same transaction, the down of migration `20261119000000` builds a `docume
 for each current document that has none, from `documents` and `document_heads`. The release
 before it then finds every document in its search, its reads by revision and its integrity audit.
 A migration that needs such rows on its down adds its version to `MigrationDown::REBUILDS`.
-A down undoes only the newest store migration. To go back further, restore a backup.
+A down undoes only the newest migration the store records. To go back further, restore a backup.
 
 A down undoes one store, not the install. `plastic.db` and the other stores keep their
 versions, so an older release still refuses them, and the down never offers `plastic rollback`.

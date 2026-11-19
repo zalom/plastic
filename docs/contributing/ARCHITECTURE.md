@@ -381,7 +381,8 @@ waited runs nothing. The pending migrations run in ascending order, and every on
 its row commit in one transaction, so a failure leaves the database as it was backed up.
 A migration that removes data keeps it in `legacy.db` in the same transaction, and the ledger in
 `plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
-newest store migration from those rows. `docs/contributing/MIGRATIONS.md` says how to add a
+newest migration the store records from those rows. A migration that changes stored data waits
+behind a config switch that is off by default, such as `migrate.drop_document_revisions`. `docs/contributing/MIGRATIONS.md` says how to add a
 migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,
