@@ -598,6 +598,16 @@ class ReportRowsMigrationTest < Plastic::TestCase
         paths("knowledge_graph.db", "SELECT path FROM printed WHERE path LIKE \x27store/%\x27"), paths("retrieval_graph.db", "SELECT path FROM document_fts")]
   end
 
+  def test_the_report_migration_keeps_the_rows_of_a_recorded_report
+    @home = synced_home
+    open_alpha(@home, "work_graph.db") do |database|
+      database.execute("INSERT INTO work_log (intent_id, position, kind, path, origin_id) VALUES ('1', 1, 'reported', ?, 'other')", [LOOSE])
+    end
+    migrate(@home)
+
+    assert_includes paths("knowledge_graph.db", "SELECT path FROM documents"), LOOSE
+  end
+
   def test_the_report_migration_leaves_the_files_on_disk
     @home = synced_home
     migrate(@home)
