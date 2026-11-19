@@ -11,7 +11,7 @@ class ResourcesReportSortTest < Plastic::TestCase
 
   Resources = Plastic::Graph::Knowledge::Resources
   FOLDER = "resources/output/reports"
-  PAGE = "<p><img src=\"page.svg\"> <a href=\"../../../reviews/r1.md\">review</a></p>\n"
+  PAGE = "<p><img src=\"page.svg\"> <a href=\"../../../reviews/r1.md\">review</a> <a href=\"https://example.com/\">web</a> <a href=\"../../../../2--beta/spec.md\">beta</a></p>\n"
 
   def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
 

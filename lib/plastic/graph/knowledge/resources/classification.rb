@@ -26,7 +26,9 @@ module Plastic
             reference(rel) || tmp_folder(rel) || by_type(rel.delete_prefix("resources/output/").delete_prefix("resources/"))
           end
 
-          def self.kept?(rel) = SyncSelection.note?(rel) || SORTED.any? { |folder| rel.start_with?(folder) } || File.basename(rel).match?(MACHINE)
+          def self.kept?(rel) = SyncSelection.note?(rel) || SORTED.any? { |folder| rel.start_with?(folder) } || machine?(rel)
+
+          def self.machine?(rel) = File.basename(rel).match?(MACHINE)
 
           def self.reference(rel)
             folder = REFERENCES.keys.find { |prefix| rel.start_with?(prefix) }
