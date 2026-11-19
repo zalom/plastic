@@ -71,6 +71,9 @@ class GraphBackupDayClockChangeTest < Plastic::TestCase
   # The summer time of Europe/Berlin in 2026, in UTC.
   BERLIN_SUMMER = (Time.utc(2026, 3, 29, 1)...Time.utc(2026, 10, 25, 1))
 
+  # The day before the clocks go forward and that day: a start, a late session end, a start, and a session end.
+  SPRING_DAYS = [[:begin_day, [2026, 3, 28, 9, 0]], [:end_session, [2026, 3, 28, 23, 30]], [:begin_day, [2026, 3, 29, 10, 0]], [:end_session, [2026, 3, 29, 18, 0]]].freeze
+
   # A wall-clock time in Europe/Berlin, with the offset that applied then; the hour the clocks go back reads as summer.
   def berlin(*day, hour, minute)
     summer = Time.new(*day, hour, minute, 0, "+02:00")
@@ -97,11 +100,7 @@ class GraphBackupDayClockChangeTest < Plastic::TestCase
 
   def test_an_end_of_day_backup_of_the_night_before_the_clocks_go_forward_is_not_replaced_as_that_day_s
     home = fresh_home
-    day(home, berlin(2026, 3, 28, 9, 0)).begin_day
-    day(home, berlin(2026, 3, 28, 23, 30)).end_session
-    day(home, berlin(2026, 3, 29, 10, 0)).begin_day
-    add_intent(home)
-    day(home, berlin(2026, 3, 29, 18, 0)).end_session
+    run_day(home, *SPRING_DAYS)
 
     assert_includes folder_names(home), stamp(berlin(2026, 3, 28, 23, 30))
   end
