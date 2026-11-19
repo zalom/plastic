@@ -62,7 +62,7 @@ class BackupTest < Plastic::TestCase
     home = fresh_home
     result = backup_call(home, "--store", "alpha", "--databases", "home")
 
-    assert_refused_with_usage result, %w[knowledge_graph references work_graph].join(", ")
+    assert_refused_with_usage result, %w[knowledge_graph legacy references work_graph].join(", ")
     assert_empty folder_names(home)
   end
 
