@@ -34,7 +34,7 @@ module Plastic
       attr_reader :notes
 
       def call
-        return :current unless behind?
+        return compacted(:current) unless behind?
 
         StoreAge.call(root) if pending?(MIGRATIONS.baseline(:store))
         reason = backup_failure
@@ -59,8 +59,17 @@ module Plastic
         run_migration
         retire_references
         release
-        @compaction.call(@home, @slug)
-        :migrated
+        compacted(:migrated)
+      end
+
+      # Compacts the store while a file of it is not on incremental auto vacuum, so any run tries a failed compaction
+      # again. A failure is its own note, since the migration before it holds.
+      def compacted(state)
+        @compaction.call(@home, @slug) if StoreCompaction.due?(root)
+        state
+      rescue SQLite3::Exception, Database::Error, SystemCallError => error
+        @notes << "compact: #{@slug} was not compacted (#{MigrationReason.of(error)}); run plastic update to try again"
+        state
       end
 
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
