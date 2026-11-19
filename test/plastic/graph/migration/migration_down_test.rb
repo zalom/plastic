@@ -6,6 +6,7 @@ require_relative "../../../../lib/plastic/graph/migration/migration_down"
 
 class GraphMigrationDownTest < Plastic::TestCase
   include PreviousStore
+  include Beta2Store
 
   NOW = Time.utc(2026, 11, 19, 13, 0, 0)
   TABLES = "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
@@ -19,6 +20,11 @@ class GraphMigrationDownTest < Plastic::TestCase
   def test_a_store_whose_newest_migration_kept_nothing_is_refused
     assert_equal "migration #{DROP} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back",
       down(migrated_previous_home, keeps: []).refusal
+  end
+
+  def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
+    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}); run plastic update first",
+      down(beta_2_home).refusal
   end
 
   def test_a_store_that_can_go_down_has_no_refusal
