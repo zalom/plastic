@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "home_migration"
+require_relative "migration_ledger"
+require_relative "migration_reason"
 require_relative "store_migration"
 
 module Plastic
   module Graph
     # Brings the databases of a home to the newest version of their sequences. The install and the update run it, and
-    # nothing else does. A store that stays behind does not stop the run: the others go on.
+    # nothing else does. A store that stays behind does not stop the run: the others go on. Each migration that ran on a
+    # store adds an up row to the ledger in plastic.db, once the home is current.
     class SchemaRunner
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason; `notes` holds
       # the lines the migrations of the stores report.
@@ -37,10 +40,24 @@ module Plastic
         migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection)] }
         results = migrations.transform_values(&:call)
         results["home"] = HomeMigration.new(@home, @now).call
-        Report.of(results, migrations.values.flat_map(&:notes))
+        Report.of(results, migrations.values.flat_map(&:notes) + ledger_notes(migrations.select { |slug, _| results[slug] == :migrated }, results["home"]))
       end
 
       private
+
+      # Records the up rows of the stores that migrated, or answers the line that says why the ledger holds none.
+      def ledger_notes(migrated, home)
+        return [] if migrated.empty?
+
+        stores = migrated.keys.join(", ")
+        return ["migrate: plastic.db stays behind, so its ledger does not record the migrations of #{stores}"] if home.is_a?(String)
+
+        ledger = MigrationLedger.new(Database.open_local(@home).fetch(:local), @now)
+        migrated.each { |slug, migration| ledger.ups(slug, migration.ledger) }
+        []
+      rescue SQLite3::Exception, Database::Error, SystemCallError => error
+        ["migrate: the ledger in plastic.db does not record the migrations of #{stores} (#{MigrationReason.of(error)})"]
+      end
 
       def store_slugs
         folder = File.join(@home, "stores")

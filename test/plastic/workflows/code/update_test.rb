@@ -40,7 +40,7 @@ class UpdatePlasticTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
     Plastic::Graph::Database::ConnectionPool.release(home)
 
-    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), Plastic::Graph::MIGRATIONS.versions(:home)], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
   end
 
   PAPER = "store/1--a/resources/references/paper.pdf"
