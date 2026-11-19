@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_17_000000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_19_000000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -155,10 +155,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :origin_id
   end
 
-  create_table :document_revisions, key: %i[sha256 intent_id path origin_id] do |t|
-    t.kept :sha256, :intent_id, :path, :body, :created_at, :origin_id
-  end
-
   create_table :document_heads, key: %i[intent_id path origin_id] do |t|
     t.kept :intent_id, :path, :sha256, :updated_at, :origin_id
   end
@@ -205,6 +201,6 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   database :local, "plastic.db", %i[command_runs sessions settings printed chat_messages]
   database :work, "work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]
   database :knowledge, "knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents
-    legacy_intents_data document_revisions document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar]
+    legacy_intents_data document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar]
   database :retrieval, "retrieval_graph.db", %i[document_passages document_fts]
 end

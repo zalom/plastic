@@ -39,7 +39,7 @@ class UpdatePlasticTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Update, channel: nil, harness: scoped_harness(env: env_for(home).merge("PLASTIC_SHARE" => share)))
     Plastic::Graph::Database::ConnectionPool.release(home)
 
-    assert_equal [[Plastic::Graph::MIGRATIONS.baseline(:store)], [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
+    assert_equal [Plastic::Graph::MIGRATIONS.versions(:store), [Plastic::Graph::MIGRATIONS.baseline(:home)]], [store_versions(home).flatten.uniq, recorded_versions(File.join(home, "plastic.db"))]
   end
 
   def test_a_newer_package_is_synced_into_the_home

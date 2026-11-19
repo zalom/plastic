@@ -10,6 +10,8 @@ class SchemaStateTest < Plastic::TestCase
   SchemaMigration = Plastic::Graph::SchemaMigration
   BASELINE = Plastic::Graph::MIGRATIONS.baseline(:store)
   LATER = "20270101000000"
+  ALL = Plastic::Graph::MIGRATIONS.versions(:store)
+  NEWEST = ALL.last
 
   # Counts the statements a reader sends, so a test can tell how many queries a check takes.
   class Counting < SimpleDelegator
@@ -62,23 +64,23 @@ class SchemaStateTest < Plastic::TestCase
   end
 
   def test_a_file_with_no_table_reads_empty_with_every_version_pending
-    assert_equal [:empty, [BASELINE], [], 0], summary(state)
+    assert_equal [:empty, ALL, [], 0], summary(state)
   end
 
   def test_a_file_that_records_every_version_reads_current_at_the_newest_version
-    record_versions(@path, [BASELINE])
+    record_versions(@path, ALL)
 
-    assert_equal [:current, [], [], BASELINE.to_i], summary(state)
+    assert_equal [:current, [], [], NEWEST.to_i], summary(state)
   end
 
   def test_a_file_that_lacks_a_known_version_reads_behind_and_names_it
-    record_versions(@path, [BASELINE])
+    record_versions(@path, ALL)
 
-    assert_equal [:behind, [LATER], [], BASELINE.to_i], summary(state(migrations: longer))
+    assert_equal [:behind, [LATER], [], NEWEST.to_i], summary(state(migrations: longer))
   end
 
   def test_a_file_that_records_an_unknown_version_reads_ahead_and_names_it
-    record_versions(@path, [BASELINE, UNKNOWN])
+    record_versions(@path, [*ALL, UNKNOWN])
 
     assert_equal [:ahead, [], [UNKNOWN], UNKNOWN.to_i], summary(state)
   end
@@ -86,13 +88,13 @@ class SchemaStateTest < Plastic::TestCase
   def test_a_beta_2_file_with_tables_and_stamp_0_reads_behind_with_every_version_pending
     with_tables(0)
 
-    assert_equal [:behind, [BASELINE, LATER], [], 0], summary(state(migrations: longer))
+    assert_equal [:behind, [*ALL, LATER], [], 0], summary(state(migrations: longer))
   end
 
   def test_an_alpha_file_at_stamp_1_reads_behind_with_every_version_after_the_baseline_pending
     with_tables(1)
 
-    assert_equal [:behind, [LATER], [], BASELINE.to_i], summary(state(migrations: longer))
+    assert_equal [:behind, [*ALL.drop(1), LATER], [], BASELINE.to_i], summary(state(migrations: longer))
   end
 
   def test_an_alpha_file_at_stamp_1_adopts_the_baseline
@@ -120,7 +122,7 @@ class SchemaStateTest < Plastic::TestCase
   end
 
   def test_the_check_of_a_current_file_is_one_query
-    record_versions(@path, [BASELINE])
+    record_versions(@path, ALL)
     counting = Counting.new(@database)
     SchemaState.new(counting, :store).call
 
@@ -128,7 +130,7 @@ class SchemaStateTest < Plastic::TestCase
   end
 
   def test_a_file_read_by_its_path_keeps_every_byte
-    record_versions(@path, [BASELINE])
+    record_versions(@path, ALL)
     before = File.binread(@path)
 
     assert_equal [:current, before], [SchemaState.of_file(@path, :store).name, File.binread(@path)]

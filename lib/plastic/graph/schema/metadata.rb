@@ -19,7 +19,6 @@ module Plastic
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
         "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
         "archive_entries" => ["archive entry", "archive entries"], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts],
-        "document_revisions" => ["document revision", "document revisions"],
         "document_heads" => ["document head", "document heads"], "document_passages" => ["passage", "passages"],
         "document_fts" => ["search entry", "search entries"]
       }.freeze

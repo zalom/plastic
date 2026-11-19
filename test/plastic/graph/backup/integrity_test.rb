@@ -64,7 +64,7 @@ class GraphBackupIntegrityTest < Plastic::TestCase
   def test_a_database_that_lacks_the_schema_tables_is_rejected
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     SQLite3::Database.new(path).tap { |database| database.execute("CREATE TABLE other (id INTEGER)") }.close
-    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: 1).call }
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph", version: Plastic::Graph::MIGRATIONS.newest(:store).to_i).call }
 
     assert_includes error.message, "lacks the tables"
   end
@@ -92,8 +92,8 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
     assert_includes error.message, "lacks the tables savepoints"
   end
 
-  def test_a_version_one_backup_of_the_beta_2_layout_is_rejected_for_the_tables_it_lacks
-    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 1).call }
+  def test_a_backup_of_the_beta_2_layout_at_the_newest_version_is_rejected_for_the_tables_it_lacks
+    error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: Plastic::Graph::MIGRATIONS.newest(:store).to_i).call }
 
     assert_includes error.message, "lacks the tables work_log"
   end
