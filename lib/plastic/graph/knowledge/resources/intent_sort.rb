@@ -55,7 +55,7 @@ module Plastic
           def destinations = (@destinations ||= files.to_h { |rel| [rel, Classification.destination(rel) || unasked_destination(rel)] }.compact)
 
           def unasked_destination(rel)
-            return unless @reports && Knowledge::Reports.report?(rel) && !@reports.include?(intent_id, rel)
+            return unless @reports && Knowledge::Reports.report?(rel) && !@reports.listed?(intent_id, rel)
 
             "resources/tmp/#{rel.delete_prefix(Knowledge::Reports::FOLDER)}"
           end

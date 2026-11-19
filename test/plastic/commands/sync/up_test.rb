@@ -283,15 +283,15 @@ class SyncUpGeneratedTest < Plastic::TestCase
   end
 end
 
-# Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
-class SyncUpSelectionTest < Plastic::TestCase
+# An intent folder, 2--beta, with one file of each kind, and the sync up and the rows read over it.
+module BetaFolder
   include ConfigHomes
 
   def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def setup
     super
-    page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{STAMP.to_json}\n---\n\n# 2 - Beta\n"
+    page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{Plastic::TestCase::STAMP.to_json}\n---\n\n# 2 - Beta\n"
     { "2--beta.md" => page, "spec.md" => "# Spec\n", "resources/output/files/shot.png" => "\x89PNG\x00".b,
       "resources/output/reports/page.html" => "<p>page</p>\n", "resources/references/notes.md" => "# Notes\n",
       "resources/tmp/scratch.md" => "# Scratch\n" }
@@ -302,6 +302,17 @@ class SyncUpSelectionTest < Plastic::TestCase
 
   def documents = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
 
+  def record_report(rel)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.put(:work_log, { intent_id: "2", position: 1, at: Plastic::TestCase::STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: rel, sha256: "", text: "the page" })
+    end
+  end
+end
+
+# Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
+class SyncUpSelectionTest < Plastic::TestCase
+  include BetaFolder
+
   def asked = Plastic::Wiring.config(@plastic_home).list("sync.asked")
 
   def test_a_sync_with_no_setting_reads_the_notes_and_leaves_the_other_files_on_disk
@@ -310,12 +321,6 @@ class SyncUpSelectionTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
     assert_equal [%w[2--beta.md spec.md], []], [documents, kept]
     assert_path_exists folder.path("store/2--beta/resources/references/notes.md")
-  end
-
-  def record_report(rel)
-    store_graphs.databases.fetch(:store).transaction do |batch|
-      batch.put(:work_log, { intent_id: "2", position: 1, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: rel, sha256: "", text: "the page" })
-    end
   end
 
   def test_an_unrecorded_report_stays_on_disk_with_no_row
@@ -391,6 +396,11 @@ class SyncUpSelectionTest < Plastic::TestCase
 
     assert_equal 0, result.code
   end
+end
+
+# A sync up removes the rows of a path it no longer reads, here a report whose record went.
+class SyncUpUnreadRowsTest < Plastic::TestCase
+  include BetaFolder
 
   PAGE = "resources/output/reports/page.html"
 

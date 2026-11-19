@@ -16,14 +16,14 @@ class KnowledgeReportsTest < Plastic::TestCase
     log_line("1", "reported", REPORT)
     reports = Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database)
 
-    assert_equal [true, false], [reports.include?("1", REPORT), reports.include?("2", REPORT)]
+    assert_equal [true, false], [reports.listed?("1", REPORT), reports.listed?("2", REPORT)]
   end
 
   def test_a_line_of_another_kind_records_no_report
     open_intent
     log_line("1", "noted", REPORT)
 
-    refute Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database).include?("1", REPORT)
+    refute Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database).listed?("1", REPORT)
   end
 
   def test_the_mandatory_names_come_from_a_list_or_a_comma_value
@@ -37,6 +37,6 @@ class KnowledgeReportsTest < Plastic::TestCase
   end
 
   def test_no_report_is_recorded_when_no_store_is_bound
-    refute Plastic::Graph::Knowledge::Reports.new(mandatory: []).include?("1", REPORT)
+    refute Plastic::Graph::Knowledge::Reports.new(mandatory: []).listed?("1", REPORT)
   end
 end

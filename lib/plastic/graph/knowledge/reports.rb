@@ -31,7 +31,7 @@ module Plastic
           Reports.new(mandatory:, recorded: -> { database.rows(RECORDED).map { |row| [row.fetch("intent_id"), row.fetch("path")] } })
         end
 
-        def include?(intent_id, rel) = mandatory?(rel) || recorded?(intent_id, rel)
+        def listed?(intent_id, rel) = mandatory?(rel) || recorded?(intent_id, rel)
 
         def mandatory?(rel) = @mandatory.include?(rel.delete_prefix(FOLDER)) && Reports.report?(rel)
 

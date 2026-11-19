@@ -48,7 +48,7 @@ module Plastic
           return @references if rel.start_with?(REFERENCES)
           return false unless SyncSelection.output?(rel) && @types.include?(SyncSelection.type_of(rel))
 
-          !Reports.report?(rel) || @reports.include?(intent_id, rel)
+          !Reports.report?(rel) || @reports.listed?(intent_id, rel)
         end
 
         def selects?(path)
