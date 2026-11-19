@@ -30,9 +30,9 @@ class GraphBackupWriterTest < Plastic::TestCase
 
   def test_a_backup_of_a_store_with_a_search_database_holds_only_the_store_databases
     home = fresh_home
-    assert_path_exists store_file(home, "retrieval_graph")
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
 
+    assert_path_exists store_file(home, "retrieval_graph")
     assert_equal %w[knowledge_graph-20260101100000.db work_graph-20260101100000.db], Backup::Folders.new(File.join(home, "stores", "alpha")).files("20260101100000")
   end
 
