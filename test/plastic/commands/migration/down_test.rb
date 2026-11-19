@@ -38,11 +38,12 @@ class MigrationDownTest < Plastic::TestCase
     assert_equal [false, []], [recorded(home).include?(DROP), legacy_tables(home)]
   end
 
-  def test_a_down_prints_what_it_put_back_and_offers_plastic_rollback
-    home = migrated_previous_home
+  def test_a_down_prints_what_it_put_back_and_offers_the_list_of_the_store_never_plastic_rollback
+    result = down(migrated_previous_home, "--store", "alpha")
 
-    assert_call down(home, "--store", "alpha"), code: 0,
-      out: ["down: put back 1 row of document_revisions and 1 row of sqlar from legacy.db", "down: alpha no longer records migration #{DROP}", "next: plastic rollback"]
+    assert_call result, code: 0,
+      out: ["down: put back 1 row of document_revisions and 1 row of sqlar from legacy.db", "down: alpha no longer records migration #{DROP}", "next: plastic migration list --store alpha"]
+    refute_includes result.out, "rollback"
   end
 
   def test_a_down_takes_a_backup_of_the_store_first
