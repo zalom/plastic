@@ -23,6 +23,15 @@ class CLIDayBackupTest < Plastic::TestCase
 
   def reasons(home) = %w[alpha beta].map { |slug| backup_reasons(home, slug) }
 
+  # The stores folder can be entered but not listed while the block runs.
+  def with_unreadable_stores(home)
+    stores = File.join(home, "stores")
+    File.chmod(0o333, stores)
+    yield
+  ensure
+    File.chmod(0o755, stores)
+  end
+
   def test_with_the_switch_off_a_command_takes_no_daily_backup
     home = fresh_home
     call(home, "status")
@@ -74,5 +83,22 @@ class CLIDayBackupTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_match(/\Abackup: alpha was not backed up \(.+\); the call goes on\n/, result.err)
     assert_equal [["start of day"]], [backup_reasons(home, "beta")]
+  end
+  def test_a_daily_backup_that_cannot_list_the_stores_prints_one_line_and_the_command_goes_on
+    home = daily_home
+    result = with_unreadable_stores(home) { call(home, "version") }
+
+    assert_equal 0, result.code
+    assert_match(/\Abackup: the daily backups were not taken \(.+\); the call goes on\n\z/, result.err)
+    refute_empty result.out
+  end
+
+  def test_a_session_end_whose_daily_backup_cannot_list_the_stores_still_records_the_end
+    home = daily_home
+    result = with_unreadable_stores(home) { call(home, "hook", "end", input: event(home)) }
+
+    assert_equal 0, result.code
+    assert_match(/\Abackup: the daily backups were not taken \(.+\); the call goes on\n\z/, result.err)
+    refute_nil Plastic::Graph.open(home:, store: "alpha").retrieval.session("s-1").ended_at
   end
 end
