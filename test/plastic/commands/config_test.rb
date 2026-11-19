@@ -40,6 +40,10 @@ class ConfigCommandTest < Plastic::TestCase
     assert_includes config.out, "[ ] statusline"
   end
 
+  def test_the_daily_backups_are_listed_off_by_default
+    assert_includes config.out, "[ ] backup.daily"
+  end
+
   def test_with_no_terminal_the_next_step_asks_the_person
     assert_includes config.out, "next: plastic config <answer>"
   end
@@ -68,7 +72,7 @@ class ConfigCommandTest < Plastic::TestCase
     config("a", "--harness", "codex")
 
     assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true },
-                                "sync" => { "references" => true } } }, saved["harnesses"])
+                                "sync" => { "references" => true }, "backup" => { "daily" => true } } }, saved["harnesses"])
   end
 
   def test_an_answer_that_keeps_every_setting_writes_nothing

@@ -17,5 +17,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | What changes | Where | Reach |
 | --- | --- | --- |
 | The end time and the reason are written to the session row | the local database, in the home folder | stays on this machine |
+| With backup.daily on, every store takes its end-of-day backup, which replaces the earlier one of the day | the backups folder, in the store folder | stays on this machine |
 
 The command is `Plastic::Hooks::End`, in [`hooks/end.rb`](../../../../lib/plastic/hooks/end.rb).

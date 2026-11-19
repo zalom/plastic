@@ -62,3 +62,25 @@ class RoutineBackupFirstTest < Plastic::TestCase
     assert_equal [nil], backup_reasons(home)
   end
 end
+
+# The backup before a call that can lose data purges after 24 hours with
+# backup.daily on, and after three days with it off.
+class RoutineBackupFirstRetentionTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+  include ConfigHomes
+
+  def old_backup_kept?(daily:)
+    home = retention_home(daily:)
+    clocked_call(home, "sync", "up", "--project", "alpha", at: LUNCHTIME)
+    folder_names(home).include?(stamp(OLD_BACKUP))
+  end
+
+  def test_with_the_switch_on_the_backup_first_purges_a_backup_older_than_24_hours
+    refute old_backup_kept?(daily: true)
+  end
+
+  def test_with_the_switch_off_the_backup_first_keeps_a_backup_younger_than_three_days
+    assert old_backup_kept?(daily: false)
+  end
+end

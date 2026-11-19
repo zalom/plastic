@@ -396,3 +396,26 @@ class StartBackupTest < Plastic::TestCase
     assert_equal 0, result.code
   end
 end
+
+# The 12-hour backup of the session start purges after 24 hours with
+# backup.daily on, and after three days with it off.
+class StartBackupRetentionTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+  include ConfigHomes
+
+  def old_backup_kept?(daily:)
+    home = retention_home(daily:)
+    event = JSON.generate(session_id: "s-1", cwd: project_path(home, "alpha"), source: "startup")
+    plastic("hook", "start", env: env_for(home).merge("PLASTIC_SESSION" => "s-1"), input: event, table: Plastic::CLI::TABLE, clock: Clock.new(LUNCHTIME))
+    folder_names(home).include?(stamp(OLD_BACKUP))
+  end
+
+  def test_with_the_switch_on_the_session_start_backup_purges_a_backup_older_than_24_hours
+    refute old_backup_kept?(daily: true)
+  end
+
+  def test_with_the_switch_off_the_session_start_backup_keeps_a_backup_younger_than_three_days
+    assert old_backup_kept?(daily: false)
+  end
+end

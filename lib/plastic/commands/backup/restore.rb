@@ -13,6 +13,7 @@ module Plastic
         include CLI::BackupStore
 
         writes :work, :knowledge
+        skips_daily_backup
 
         option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"
         option :latest, switch: "--latest", default: false, text: "restore the newest backup that is done"

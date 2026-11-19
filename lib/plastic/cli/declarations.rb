@@ -67,6 +67,12 @@ module Plastic
 
       def opens_no_store? = @opens_no_store == true
 
+      # `skips_daily_backup` keeps the start-of-day backup and its purge out
+      # of the call, for a command that must find the backups as they are.
+      def skips_daily_backup = (@skips_daily_backup = true)
+
+      def skips_daily_backup? = @skips_daily_backup == true
+
       def arguments = (@arguments ||= [])
 
       def options = (@options ||= [])

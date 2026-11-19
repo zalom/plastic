@@ -3,6 +3,7 @@
 require_relative "../config"
 require_relative "../graph"
 require_relative "../graph/settings_database"
+require_relative "../graph/backup/purger"
 require_relative "../graph/knowledge/sync_selection"
 require_relative "../graph/knowledge/sync_settings"
 
@@ -18,6 +19,7 @@ module Plastic
     end
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
+    DAILY_BACKUPS = %w[backup daily].freeze
 
     def self.config(home, harness: nil, clock: Time) = Config.new(home, harness:, clock:, database: settings_database(home))
 
@@ -33,6 +35,12 @@ module Plastic
     end
 
     def self.sync(home) = Graph::Knowledge::SyncSettings.new(selection: selection(home), remove_after_import: config(home).flag(REMOVE_AFTER_IMPORT, default: false))
+
+    # Whether the home keeps 24 hours of backups, with a start-of-day and an end-of-day backup of every store.
+    def self.daily_backups?(home) = config(home).flag(DAILY_BACKUPS, default: false)
+
+    # How long a store keeps its backups: one day under the daily backups, else three days.
+    def self.backup_retention(home) = daily_backups?(home) ? Graph::Backup::Purger::DAILY_RETENTION : Graph::Backup::Purger::RETENTION
 
     def self.graphs(home:, store:, session: nil, clock: Time) = Graph.open(home:, store:, session:, clock:, sync: sync(home))
 
