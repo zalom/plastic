@@ -11,9 +11,6 @@ module Plastic
     class MigrationLedger
       FLAG = { true => 1, false => 0 }.freeze
       EVENTS = "SELECT id, store, version, event, at, moved, undoable FROM store_migrations WHERE store = :store ORDER BY id"
-      # The rows of the last event of one version on one store, when that event is an up that a down can undo.
-      UNDOABLE = "SELECT moved FROM (SELECT event, moved, undoable FROM store_migrations WHERE store = :store AND version = :version " \
-                 "ORDER BY id DESC LIMIT 1) WHERE event = 'up' AND undoable = 1"
 
       def initialize(local, now)
         @local = local
@@ -30,12 +27,6 @@ module Plastic
 
       # The events of the store `store`, in the order they were recorded.
       def of(store) = @local.rows(EVENTS, store:)
-
-      # The rows a down of `version` would put back on the store `store`, by table, or nil when the last event of that
-      # version on the store leaves nothing to undo.
-      def undoable(store, version)
-        @local.rows(UNDOABLE, store:, version:).first&.then { |row| JSON.parse(row.fetch("moved")) }
-      end
     end
   end
 end

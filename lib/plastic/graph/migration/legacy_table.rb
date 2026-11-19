@@ -17,11 +17,13 @@ module Plastic
       DEFINITION = "SELECT sql FROM %<schema>s.sqlite_master WHERE type = 'table' AND name = ?"
 
       # The legacy tables that the migration `version` kept.
-      def self.of(connection, version)
+      def self.of(connection, version) = all(connection).select { |table| table.version == version }
+
+      # Every legacy table of legacy.db, by name.
+      def self.all(connection)
         connection.execute("SELECT name FROM #{SCHEMA}.sqlite_master WHERE type = 'table' ORDER BY name")
           .filter_map { |row| NAME.match(row.fetch("name")) }
-          .select { |name| name[:version] == version }
-          .map { |name| new(connection, name[:table], version) }
+          .map { |name| new(connection, name[:table], name[:version]) }
       end
 
       attr_reader :table, :version

@@ -172,7 +172,7 @@ transaction, and the ledger in `plastic.db` records each migration that runs on 
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic migration list --store SLUG` | Prints the ledger rows of the store and what a down would undo now. It changes nothing and offers no next command. |
+| `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
 | `plastic migration down --store SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic migration list --store SLUG`. |
 | `plastic migration purge VERSION --store SLUG` | Removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
 

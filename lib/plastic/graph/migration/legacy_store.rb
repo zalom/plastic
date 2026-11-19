@@ -22,6 +22,13 @@ module Plastic
       # The legacy tables the migration `version` kept, none when legacy.db is not there.
       def tables(version) = File.file?(legacy_file) ? LegacyTable.of(connection, version) : []
 
+      # The rows legacy.db holds, by version and then by table, none when legacy.db is not there.
+      def kept
+        return {} unless File.file?(legacy_file)
+
+        LegacyTable.all(connection).group_by(&:version).transform_values { |tables| tables.to_h { |table| [table.table, table.count] } }
+      end
+
       # Gives the pages that dropped legacy tables left back to the disk.
       def give_back = connection.give_back_free_pages(LegacyTable::SCHEMA)
 

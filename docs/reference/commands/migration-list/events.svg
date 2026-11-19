@@ -87,7 +87,7 @@
 <circle cx="44" cy="83" r="8" class="badge"/>
 <text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
 <text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="106" class="t" text-anchor="start">Print the ledger.</text>
+<text x="64" y="106" class="t" text-anchor="start">Print what the store holds and the ledger.</text>
 <path d="M 424 95 L 480 95" class="wire-end"/>
 <path d="M 472 90 L 480 95 L 472 100 Z" class="head"/>
 <rect x="480" y="64" width="330" height="62" rx="6" class="stop-end"/>
