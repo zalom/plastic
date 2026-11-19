@@ -67,11 +67,11 @@ class CLIDayBackupTest < Plastic::TestCase
     assert_equal [["start of day"], ["start of day"]], reasons(home)
   end
 
-  def test_the_start_hook_takes_the_start_of_day_backup
+  def test_the_start_hook_takes_its_12_hour_backup_and_then_the_start_of_day_backup
     home = daily_home
     call(home, "hook", "start", input: event(home))
 
-    assert_equal [["start of day"], ["start of day"]], reasons(home)
+    assert_equal [["session start", "start of day"], ["start of day"]], reasons(home)
   end
 
   def test_a_failed_backup_prints_one_line_and_the_command_goes_on

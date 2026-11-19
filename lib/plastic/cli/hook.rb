@@ -28,12 +28,13 @@ module Plastic
         CLI::Command::OK
       end
 
-      # Prints the reply to the event, if there is one.
+      # Prints the reply to the event, if there is one, then takes the daily
+      # backup, so the backup holds what the hook wrote and a slow or failed
+      # backup never costs the hook its work.
       def answer
         return help if argv.intersect?(%w[--help -h])
 
-        back_up_the_day
-        print_reply(respond(event))
+        print_reply(respond(event)).tap { back_up_the_day }
       rescue OptionParser::ParseError => error
         refuse_option(error)
       end

@@ -7,7 +7,7 @@ require_relative "../cli/wiring"
 module Plastic
   module Hooks
     # SessionEnd: sets the session's end time and the reason the event names.
-    # With backup.daily on, it takes the end-of-day backup of every store first.
+    # With backup.daily on, it then takes the end-of-day backup of every store.
     class End < CLI::Hook
       changes(local: "The end time and the reason are written to the session row", backups: "With backup.daily on, every store takes its end-of-day backup, which replaces the earlier one of the day")
 
