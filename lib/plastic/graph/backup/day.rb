@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+require "yaml"
 require_relative "../backup"
 require_relative "copy"
 require_relative "folder_name"
@@ -17,33 +19,57 @@ module Plastic
       # session end on a day that has it copies the store with the reason
       # "end of day", unless the day's end-of-day backup holds the store as it
       # is, and then deletes the day's earlier end-of-day backups. Each backup
-      # taken is followed by the purge of the folders older than one day.
+      # taken is followed by the purge of the folders older than one day. A
+      # start-of-day backup that fails counts as tried for the rest of the
+      # day, so a later call says nothing and the session end tries the
+      # end-of-day backup. A backup that fails leaves no folder behind.
       class Day
         START = "start of day"
         FINISH = "end of day"
+        FAILED_START = "failed-start-of-day.yml"
 
-        def initialize(root, slug, now:)
+        def initialize(root, slug, now:, copy: Copy.new(now:))
           @root = root
           @slug = slug
           @now = now
+          @copy = copy
           @folders = Folders.new(root)
         end
 
         # Takes the start-of-day backup when the day has none yet.
-        def begin_day = (write(START) unless sources.empty? || started?)
+        def begin_day = (start unless sources.empty? || started?)
 
         # Takes the end-of-day backup, or the start-of-day one when the day has none yet.
         def end_session
           return if sources.empty?
 
-          started? ? finish : write(START)
+          started? ? finish : start
         end
 
         private
 
-        def sources = Copy.new(now: @now).sources(@root)
+        def sources = @copy.sources(@root)
 
-        def started? = done_today(START).any?
+        def started? = done_today(START).any? || failed_start_today?
+
+        def start
+          write(START)
+        rescue
+          record_failed_start
+          raise
+        end
+
+        def failed_start_file = File.join(@folders.dir, FAILED_START)
+
+        def record_failed_start
+          FileUtils.mkdir_p(@folders.dir)
+          File.write(failed_start_file, { "at" => Plastic.timestamp(@now) }.to_yaml)
+        end
+
+        def failed_start_today?
+          file = failed_start_file
+          File.file?(file) && YAML.safe_load_file(file).to_h["at"].to_s[0, 10] == @now.strftime("%F")
+        end
 
         def finish
           earlier = done_today(FINISH)
@@ -58,9 +84,15 @@ module Plastic
         def fingerprint = SourceCheck.new(sources.map { |name| File.join(@root, "#{name}.db") }).fingerprint
 
         def write(reason)
-          Writer.new(@root, @slug, now: @now, reason:).call
+          before = @folders.names
+          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call
           purger.sweep(now: @now)
+        rescue
+          remove_failed(@folders.names - before)
+          raise
         end
+
+        def remove_failed(names) = names.select { |name| @folders.status(name) == "failed" }.each { |name| purger.remove(name) }
 
         def purger = Purger.new(@root, retention: Purger::DAILY_RETENTION)
 
