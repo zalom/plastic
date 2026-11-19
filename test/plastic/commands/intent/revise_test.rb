@@ -35,14 +35,6 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes body, "## Context\n\nThe owner moved the goal\n"
   end
 
-  def test_the_old_revision_still_reads_back_by_its_printed_reference
-    open_intent
-
-    result = call("1", "Beta, after grilling")
-
-    assert_includes retrieval.fetch_reference(result.out[%r{history: (plastic://\S+)}, 1]).fetch(:body), "## Intent\n\nAlpha\n"
-  end
-
   def test_a_dry_run_prints_both_whats_and_writes_no_row
     open_intent
 

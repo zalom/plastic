@@ -411,7 +411,7 @@ class RetrievalRepairTest < Plastic::TestCase
       audit = retrieval.repair
 
       assert_repaired
-      assert_equal({ repairable: false, missing: [] }, audit)
+      assert_equal({ repairable: false }, audit)
     end
   end
 

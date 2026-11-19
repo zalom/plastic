@@ -19,16 +19,16 @@ class DocumentGetTest < Plastic::TestCase
     assert_includes result.out, "plastic://STORE/INTENT/PATH?revision=SHA256"
   end
 
-  def test_prints_a_historical_qualified_document_as_structured_json
+  def test_a_reference_pinned_to_a_replaced_text_fails
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
     writer.write("1", "plan.md", "second")
     retrieval.repair
 
-    result = get(reference, "--json")
+    result = get(reference)
 
-    assert_call result, code: 0, out: ["first", "revision"]
+    assert_call result, code: 1, err: /no document 1:plan\.md/
   end
 
   def test_plain_output_prints_readable_lines

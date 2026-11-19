@@ -41,7 +41,7 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
     old = reader.current_revision("1", @path)
     rewrite
 
-    assert_equal "no document 1:", assert_raises(Missing) { reader.fetch(fields(revision: old)) }.message
+    assert_equal "no document 1:#{@path}", assert_raises(Missing) { reader.fetch(fields(revision: old)) }.message
   end
 
   def test_a_fetch_of_an_unknown_revision_is_refused
