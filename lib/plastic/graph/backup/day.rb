@@ -13,13 +13,15 @@ require_relative "writer"
 module Plastic
   module Graph
     module Backup
-      # The two backups of one store on one day. The day is the calendar day
-      # of the clock, in the clock's own offset. The first call of the day
-      # copies the store with the reason "start of day", changed or not. A
+      # The two backups of one store on one day. The day of a backup is the
+      # calendar day of the clock when it was taken, so the days the clocks
+      # change count right. The first call of the day copies the store with
+      # the reason "start of day", changed or not. A
       # session end on a day that has it copies the store with the reason
       # "end of day", unless the day's end-of-day backup holds the store as it
       # is, and then deletes the day's earlier end-of-day backups. Each backup
-      # taken is followed by the purge of the folders older than one day. A
+      # taken is followed by the purge of the folders older than one day,
+      # which keeps every backup of today, even on a 25-hour day. A
       # start-of-day backup that fails counts as tried for the rest of the
       # day, so a later call says nothing and the session end tries the
       # end-of-day backup. A backup that fails leaves no folder behind.
@@ -86,7 +88,7 @@ module Plastic
         def write(reason)
           before = @folders.names
           Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call
-          purger.sweep(now: @now)
+          purger.sweep(now: @now, keep: @folders.names.select { |name| today?(name) })
         rescue
           remove_failed(@folders.names - before)
           raise
@@ -101,7 +103,10 @@ module Plastic
           @folders.names.select { |name| today?(name) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
         end
 
-        def today?(name) = FolderName.time(name).getlocal(@now.utc_offset).strftime("%F") == @now.strftime("%F")
+        def today?(name) = day_of(name) == @now.strftime("%F")
+
+        # The day in the taken_at time of the status file; a folder written before it was recorded reads in today's offset.
+        def day_of(name) = @folders.report(name)["taken_at"]&.slice(0, 10) || FolderName.time(name).getlocal(@now.utc_offset).strftime("%F")
       end
     end
   end
