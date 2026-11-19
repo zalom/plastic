@@ -79,16 +79,6 @@ class IntentReportTest < Plastic::TestCase
     assert_equal [1, []], [result.code, reported]
   end
 
-  def test_a_path_outside_the_reports_folder_exits_1_and_writes_nothing
-    say("write the delivery page")
-    write("#{open_intent_dir}/resources/tmp/page.html", "<p>page</p>\n")
-    result = call("1", "resources/tmp/page.html", "--asked", "delivery page")
-
-    assert_equal [1, []], [result.code, reported]
-  end
-
-  def open_intent_dir = retrieval.intent("1").dir
-
   def test_the_outcome_gets_one_line_under_a_reports_heading
     say("write the delivery page")
     call("1", REPORT, "--asked", "delivery page")
@@ -119,6 +109,14 @@ class IntentReportTest < Plastic::TestCase
     plastic("sync", "up", table: Plastic::CLI::TABLE)
 
     assert_includes store_database.rows("SELECT path FROM documents").map { |row| row["path"] }, REPORT
+  end
+
+  def test_a_report_recorded_on_another_machine_counts_as_recorded
+    store_database.transaction do |batch|
+      batch.put(:work_log, { intent_id: "1", position: 90, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: REPORT, sha256: "", text: "on another machine", origin_id: "other-machine" })
+    end
+
+    assert_equal [0, OUTCOME], [call("1", REPORT).code, outcome]
   end
 
   def test_an_unknown_intent_exits_1_and_writes_nothing

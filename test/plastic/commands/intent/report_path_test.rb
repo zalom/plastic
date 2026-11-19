@@ -32,6 +32,12 @@ class IntentReportPathTest < Plastic::TestCase
     [result.code, result.err.include?("Error"), reported, documents.include?(path)]
   end
 
+  def test_a_path_outside_the_reports_folder_exits_1_and_writes_nothing
+    write("#{dir}/resources/tmp/page.html", "<p>page</p>\n")
+
+    assert_equal [1, false, [], false], refused("resources/tmp/page.html")
+  end
+
   def test_a_path_that_climbs_out_with_dot_dot_exits_1_and_writes_nothing
     assert_equal [1, false, [], false], refused("#{FOLDER}/../../../../../secret.txt")
   end
