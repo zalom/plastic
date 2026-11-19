@@ -92,7 +92,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 
 | Command | What it does |
 | --- | --- |
-| [`plastic document get`](document-get/README.md) | Fetch one current or revision-qualified document |
+| [`plastic document get`](document-get/README.md) | Fetch the current text of one document; an older pinned reference is named as changed |
 | [`plastic document batch`](document-batch/README.md) | Fetch qualified documents in request order |
 
 ## architecture

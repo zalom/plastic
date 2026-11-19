@@ -9,6 +9,8 @@ module Plastic
       # Parses and builds qualified references for one retrieval store.
       class Address
         UNRESERVED = "-._~".bytes.freeze
+        # The revision a reference is pinned to.
+        PIN = /\?revision=[0-9a-f]{64}\z/
 
         def initialize(store) = @store = store
 

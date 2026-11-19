@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../address"
+
 module Plastic
   module Graph
     module Retrieval
@@ -25,7 +27,7 @@ module Plastic
           def fresh?(archived) = current.fetch(:uri) == reference && saved_archive(archived) == archived
 
           def current
-            @current ||= retrieval.fetch_reference(reference.sub(/\?revision=[0-9a-f]{64}\z/, ""))
+            @current ||= retrieval.fetch_reference(reference.sub(Address::PIN, ""))
           end
 
           def saved_archive(archived) = document.fetch("archive_states", {}).fetch(reference, archived)

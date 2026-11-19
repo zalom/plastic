@@ -34,7 +34,7 @@ class DocumentGetTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "second"
-    assert_includes result.out, "changed since #{reference}"
+    assert_includes result.out, "changed_since: #{reference}"
   end
 
   def test_a_reference_pinned_to_a_replaced_text_gives_the_current_reference_and_the_old_one_as_json
