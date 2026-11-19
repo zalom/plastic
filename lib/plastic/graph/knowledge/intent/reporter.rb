@@ -17,7 +17,7 @@ module Plastic
           FILE = "outcome.md"
           HEADING = "## Reports"
           MANDATORY = "mandatory"
-          RECORDED = "SELECT 1 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path AND origin_id = :origin"
+          RECORDED = "SELECT 1 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path"
 
           def initialize(databases, retrieval, folder)
             @databases = databases
@@ -32,7 +32,8 @@ module Plastic
               ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(intent, path))
           end
 
-          def recorded?(intent_id, path) = !store.row(RECORDED, intent_id:, path:, origin: @retrieval.origin_id).nil?
+          # A `reported` line of any origin counts, as it does for the sync (Reports::RECORDED).
+          def recorded?(intent_id, path) = !store.row(RECORDED, intent_id:, path:).nil?
 
           # The bytes of the report, for the sha256 of its log line.
           def body(intent, path) = @folder.read("#{intent.dir}/#{path}").force_encoding(Encoding::UTF_8)
