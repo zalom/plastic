@@ -29,10 +29,10 @@ class DoctorUnsortedStoresTest < Plastic::TestCase
   end
 
   def test_a_conflict_is_a_finding_that_names_the_target
-    put("reviews/r1.md" => "a\n", "resources/output/reports/reviews/r1.md" => "b\n")
+    put("reviews/r1.md" => "a\n", "resources/tmp/reviews/r1.md" => "b\n")
     found = checks.first
 
-    assert_includes found.value, "resources/output/reports/reviews/r1.md"
+    assert_includes found.value, "resources/tmp/reviews/r1.md"
     assert_equal "plastic resources sort --store global", found.repair
   end
 
