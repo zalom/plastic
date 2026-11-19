@@ -14,6 +14,9 @@ module Plastic
       # The tables a version drops, kept whole before its SQL runs.
       WHOLE = { "20261119000000" => %w[document_revisions] }.freeze
 
+      # The legacy.db of the store at `root`, attached as `legacy` only while a `pending` version keeps what it removes.
+      def self.attachment(root, pending) = (KEEPS & pending).empty? ? {} : { legacy: File.join(root, FILE) }
+
       # One migration that ran on the store: the rows it kept by table, and whether a down can undo it.
       Entry = Data.define(:version, :kept, :undoable)
 

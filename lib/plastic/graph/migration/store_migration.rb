@@ -87,12 +87,7 @@ module Plastic
       end
 
       # legacy.db is attached only while a pending migration keeps what it removes, so no other run makes the file.
-      def attachments
-        files = Database::Store.attachments(knowledge_file)
-        return files unless LegacyKeep::KEEPS.any? { |version| pending?(version) }
-
-        files.merge(legacy: File.join(root, LegacyKeep::FILE))
-      end
+      def attachments = Database::Store.attachments(knowledge_file).merge(LegacyKeep.attachment(root, pending))
 
       def migrate_rows(migrating, data)
         keep = LegacyKeep.new(migrating)
@@ -101,7 +96,10 @@ module Plastic
         @ledger = keep.entries
       end
 
-      def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)
+      # Every store version when the knowledge file is missing, else the versions it lacks.
+      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store).pending : MIGRATIONS.versions(:store)
+
+      def pending?(version) = pending.include?(version)
 
       # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
       def baseline_pending? = pending?(MIGRATIONS.baseline(:store))
