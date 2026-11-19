@@ -4,14 +4,15 @@ require "minitest/autorun"
 require "prism"
 
 # A method name says what the method does. `run` says nothing, and `take` hides
-# whether it locks, captures or reads, so neither names a method. Names that
+# whether it locks, captures or reads, so neither names a method. No form of
+# `take` (takes, taken, taking, takeover) is a word of a method name. Names that
 # start with `test_` are left out. The guard reads the syntax tree, so a name made by
 # `def`, `alias`, `alias_method`, `define_method`, a class method or an `attr_*` call counts.
 class MethodNamesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   FOLDERS = %w[lib bin tools scripts exe test].freeze
   RUN = /\Arun!?\z/
-  TAKE = /\A(?:\w*_)?take(?:_\w*)?[!?=]?\z/
+  TAKE = /(?:\A|_)tak(?:e|es|en|ing)(?:over)?(?:_|[!?=]?\z)/
   SCOPES = [Prism::ClassNode, Prism::ModuleNode, Prism::SingletonClassNode].freeze
   READERS = %i[attr_reader attr_accessor attr].freeze
   NAMING_CALLS = [:alias_method, :define_method, :attr_writer, *READERS].freeze
@@ -90,14 +91,17 @@ class MethodNamesGuardTest < Minitest::Test
       "class A\n  define_method(:run) { 1 }\nend\n" => %w[run],
       "class A\n  def A.run = 1\nend\n" => %w[run],
       "class A\n  attr_reader :take\nend\n" => %w[take],
-      "class A\n  attr_accessor :lock, :take_lock\nend\n" => %w[take_lock]
+      "class A\n  attr_accessor :lock, :take_lock\nend\n" => %w[take_lock],
+      "class A\n  def self.taken?(context) = 1\nend\n" => %w[taken?],
+      "class A\n  def takes_problem = 1\n  def taking = 1\n  def takeover_then_finish = 1\nend\n" => %w[takes_problem taking takeover_then_finish],
+      "class A\n  attr_reader :taken_at\nend\n" => %w[taken_at]
     }
 
     assert_equal samples.values, samples.keys.map { |sample| vague_names(sample) }
   end
 
   def test_the_detector_leaves_clear_names_made_the_same_ways_alone
-    sample = "class A\n  alias_method :run_report, :respond\n  define_method(:last_run) { 1 }\n  def A.retake = 1\n  attr_reader :taken\nend\n"
+    sample = "class A\n  alias_method :run_report, :respond\n  define_method(:last_run) { 1 }\n  def A.retake = 1\n  attr_reader :intake, :mistaken\nend\n"
 
     assert_empty vague_names(sample)
   end
