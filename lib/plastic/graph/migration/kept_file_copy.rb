@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require "digest"
-require "fileutils"
+require_relative "file_print"
 
 module Plastic
   module Graph
     # Finds a verified copy of the bytes of a kept file outside sqlar: the file on disk, or the archive of its intent.
-    # A file that is gone from disk is printed back first. The answer is nil when a verified copy exists, or else the
+    # A file that is gone from disk is printed back first, and the printed copy is checked. The answer is nil when a verified copy exists, or else the
     # reason the row has to stay.
     class KeptFileCopy
       ARCHIVED = "SELECT 1 FROM main.archives WHERE intent_id = :intent_id AND restored_at IS NULL"
@@ -15,9 +15,11 @@ module Plastic
         WHERE a.restored_at IS NULL AND e.kind = 'file' AND e.intent_id = :intent_id AND e.path = :path
       SQL
 
-      def initialize(connection, root)
+      # `printer` writes bytes to a path; the copy it leaves is checked against the hash of the row.
+      def initialize(connection, root, printer: FilePrint)
         @connection = connection
         @root = root
+        @printer = printer
       end
 
       def missing(file)
@@ -39,9 +41,11 @@ module Plastic
       end
 
       def print_back(file, path)
-        FileUtils.mkdir_p(File.dirname(path))
-        File.binwrite(path, file.bytes)
-        nil
+        @printer.call(path, file.bytes)
+        return if Digest::SHA256.file(path).hexdigest == file.digest
+
+        File.delete(path)
+        "the printed copy differs"
       end
     end
   end

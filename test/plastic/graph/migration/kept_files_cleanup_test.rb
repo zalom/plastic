@@ -150,11 +150,12 @@ class KeptFilesCleanupTest < Plastic::TestCase
     assert_equal [1, [TMP]], [result.removed, result.kept.keys]
   end
 end
+
 class KeptFilesPrintTest < Plastic::TestCase
   include KeptFilesCleanupCases
 
   # Stands in for a write that leaves other bytes on the disk than it was given.
-  WRONG_PRINT = ->(path, _bytes) { File.binwrite(path, "other bytes") }
+  WRONG_PRINT = ->(path, _bytes) { FileUtils.mkdir_p(File.dirname(path)).then { File.binwrite(path, "other bytes") } }
 
   # Bytes whose write fails part way, as on a full disk.
   FAILING_BYTES = Class.new { def to_s = raise(Errno::ENOSPC) }.new

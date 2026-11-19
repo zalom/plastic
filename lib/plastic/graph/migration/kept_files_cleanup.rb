@@ -28,16 +28,17 @@ module Plastic
       ROWS = "SELECT name, data, intent_id, origin_id FROM main.sqlar ORDER BY name"
       DELETE = "DELETE FROM main.sqlar WHERE name IN (SELECT value FROM json_each(?))"
 
-      def initialize(connection, root, selection)
+      def initialize(connection, root, selection, printer: FilePrint)
         @connection = connection
         @root = File.expand_path(root)
         @selection = selection
+        @printer = printer
       end
 
       def call
         files = removed
         refuse_outside(files)
-        copies = KeptFileCopy.new(@connection, @root)
+        copies = KeptFileCopy.new(@connection, @root, printer: @printer)
         gone, kept = files.to_h { |file| [file.name, copies.missing(file)] }.partition { |_name, reason| reason.nil? }
         @connection.execute(DELETE, [JSON.generate(gone.map(&:first))])
         Result.new(removed: gone.size, kept: kept.to_h)
