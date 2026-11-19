@@ -96,7 +96,7 @@ module Plastic
       def attachments = Database::Store.attachments(knowledge_file).merge(LegacyKeep.attachment(root, pending))
 
       def migrate_rows(migrating, data)
-        keep = LegacyKeep.new(migrating)
+        keep = LegacyKeep.new(migrating, @selection)
         SchemaMigrator.new(migrating, :store, before: keep, released: @released).call
         data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
         @ledger = keep.entries

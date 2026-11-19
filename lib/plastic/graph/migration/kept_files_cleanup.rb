@@ -10,8 +10,8 @@ module Plastic
   module Graph
     # Keeps in sqlar only the files that a sync of this machine reads. Every other row goes only when a verified copy of
     # its bytes is elsewhere: the file on disk or the archive of its intent, with the same SHA-256. A row whose file is
-    # gone is printed back to its path first, and each row that goes is kept in legacy.db first. Any other row stays and
-    # is reported. It runs in the transaction of the migration, so a refusal takes the migration back with it.
+    # gone is printed back to its path first, so legacy.db keeps none of them. Any other row stays and is reported.
+    # It runs in the transaction of the migration, so a refusal takes the migration back with it.
     class KeptFilesCleanup
       # A row names a path outside the store folder.
       class Refused < Database::Error; end
@@ -29,7 +29,7 @@ module Plastic
       CHOSEN = "name IN (SELECT value FROM json_each(?))"
       DELETE = "DELETE FROM main.sqlar WHERE #{CHOSEN}".freeze
 
-      # The `keep` step takes a table, a condition and its values, and keeps the rows it selects in legacy.db.
+      # `keep` is the keep of the data step; this step keeps nothing in legacy.db.
       def initialize(connection, root, selection, keep:, printer: FilePrint)
         @connection = connection
         @root = File.expand_path(root)
@@ -44,7 +44,6 @@ module Plastic
         copies = KeptFileCopy.new(@connection, @root, printer: @printer)
         gone, kept = files.to_h { |file| [file.name, copies.missing(file)] }.partition { |_name, reason| reason.nil? }
         names = [JSON.generate(gone.map(&:first))]
-        @keep.call("sqlar", CHOSEN, names)
         @connection.execute(DELETE, names)
         Result.new(removed: gone.size, kept: kept.to_h)
       end
