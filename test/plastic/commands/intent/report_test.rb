@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/work/chat/writer"
 
 class IntentReportTest < Plastic::TestCase
   include ConfigHomes
