@@ -53,7 +53,13 @@ Verification section holds one of three delivery lines:
 | `Delivered: resources/output/<path> because <reason>` | Work that no version control holds, such as a report or a document | Nothing more |
 
 Delivered files go in the intent folder: reports under `resources/output/reports`, and other
-files under `resources/output/files`. The `Delivered:` line counts only when the path it names
+files under `resources/output/files`. `resources/output/reports` holds only the reports the owner
+asked for and the reports the setting `reports.mandatory` names. Record an asked report with
+`plastic intent report ID PATH --asked WORDS`: the words must appear in an owner message of the
+store, the intent or the session, or the command exits 3 and writes nothing. A mandatory report
+takes the same command without `--asked`. The command adds one line for the report under
+`## Reports` in outcome.md. Tool output, packets, plans and notes go to `resources/tmp`, and
+copies of outside material go to `resources/references`. The `Delivered:` line counts only when the path it names
 exists there. Code always takes `Merged:` or `Committed:`, never `Delivered:`.
 
 A line counts only when it is filled in: one that starts with a denying word such as `no`,

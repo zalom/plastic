@@ -82,7 +82,7 @@ A migration that removes data keeps it first in `legacy.db`, a fourth file in th
 The keep runs in the transaction of the migration, so the rows stay kept only when the migration
 commits.
 
-- Each kept table is named for the live table and the version, such as `sqlar_20261119000000`.
+- Each kept table is named for the live table and the version, such as `document_revisions_20261119000000`.
   It is made from the live table's own `CREATE TABLE` text, so it keeps the old shape.
 - `LegacyKeep::KEEPS` in `lib/plastic/graph/migration/legacy_keep.rb` lists the versions that
   keep what they remove. `LegacyKeep::WHOLE` lists the tables such a version drops, kept whole
@@ -91,6 +91,11 @@ commits.
 - The store migration attaches `legacy.db` only while a version of `KEEPS` is pending, so no
   other run makes the file.
 - A backup copies `legacy.db` when the store has one, and a restore puts it back.
+
+A migration whose removed rows a sync up reads back keeps nothing. `LegacyKeep::ALONE` lists
+such versions, and a down of one removes its version alone. Migration `20261119180000` drops the
+rows of every report that `reports.mandatory` does not name and is in `ALONE`: the files stay on
+disk, and a report recorded later gets its rows back on the next sync up.
 
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
@@ -136,8 +141,8 @@ transaction, so the ledger holds all of them or none.
 
 A down refuses with exit 3 and changes nothing in these cases:
 
-- The store is behind or ahead of this release.
-- The newest migration kept nothing.
+- The store records a version newer than this release, or lacks one older than the newest it records.
+- The newest migration kept nothing and is not in `LegacyKeep::ALONE`.
 - The rows it kept are not in `legacy.db`.
 - A live row it would overwrite changed after the migration kept it.
 
@@ -147,7 +152,8 @@ In the same transaction, the down of migration `20261119000000` builds a `docume
 for each current document that has none, from `documents` and `document_heads`. The release
 before it then finds every document in its search, its reads by revision and its integrity audit.
 A migration that needs such rows on its down adds its version to `MigrationDown::REBUILDS`.
-A down undoes only the newest migration the store records. To go back further, restore a backup.
+A down undoes only the newest migration the store records. A second down then undoes the one
+before it. To go back past a migration that kept nothing, restore a backup.
 
 A down undoes one store, not the install. `plastic.db` and the other stores keep their
 versions, so an older release still refuses them, and the down never offers `plastic rollback`.
