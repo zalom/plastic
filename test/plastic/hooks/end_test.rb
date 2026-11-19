@@ -69,3 +69,25 @@ class EndTest < Plastic::TestCase
     assert_nil store_graphs.retrieval.session("s-1")&.end_reason
   end
 end
+
+# With backup.daily on, a session end after the day's start-of-day backup
+# takes the end-of-day backup of every store.
+class EndDailyBackupTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+  include ConfigHomes
+
+  def end_at(home, time)
+    event = JSON.generate(session_id: "s-1", cwd: project_path(home, "alpha"), reason: "logout")
+    plastic("hook", "end", env: env_for(home).merge("PLASTIC_SESSION" => "s-1"), input: event, table: Plastic::CLI::TABLE, clock: Clock.new(time))
+  end
+
+  def test_a_session_end_after_the_start_of_day_backup_takes_the_end_of_day_backup
+    home = fresh_home.tap { |path| seed_config(path, "global:\n  backup:\n    daily: true\n") }
+    end_at(home, Time.new(2026, 1, 2, 9, 0, 0, "+01:00"))
+    result = end_at(home, Time.new(2026, 1, 2, 18, 0, 0, "+01:00"))
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal ["start of day", "end of day"], backup_reasons(home, "beta")
+  end
+end
