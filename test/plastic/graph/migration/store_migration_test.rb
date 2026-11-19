@@ -165,16 +165,6 @@ class PartialStoreMigrationTest < Plastic::TestCase
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
     assert_equal fresh_layouts, layouts_of(store_root(home))
   end
-
-  def test_a_compaction_that_fails_after_the_commit_keeps_the_new_knowledge_file_and_its_rows
-    home = beta_2_home
-    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
-    full_disk = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
-    answer = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, selection: SELECTION, compaction: full_disk).call
-
-    assert_equal "it could not be migrated (database or disk is full)", answer
-    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
-  end
 end
 
 class StoreMigrationFailureTest < Plastic::TestCase
@@ -336,5 +326,65 @@ class PreviousStoreMigrationTest < Plastic::TestCase
 
     assert_equal ["it could not be migrated (the kept file ../outside.md leads outside the store folder)", [["document_revisions"]], [[1]]],
       [report.failed.fetch("alpha"), knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), knowledge(home, "SELECT count(*) FROM sqlar")]
+  end
+end
+
+class StoreMigrationCompactionTest < Plastic::TestCase
+  include StoreMigrationRuns
+
+  FILES = %w[knowledge_graph.db work_graph.db retrieval_graph.db].freeze
+  FULL_DISK = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
+  FAILED = "compact: alpha was not compacted (database or disk is full); run plastic update to try again"
+
+  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, selection: SELECTION, compaction:)
+
+  def vacuum_modes(home) = FILES.map { |name| SQLite3::Database.open(store_path(home, name)) { |database| database.get_first_value("PRAGMA auto_vacuum") } }
+
+  def current_home
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+    Plastic::Graph::Database::ConnectionPool.release(store_root(home))
+    home
+  end
+
+  def without_vacuum(home)
+    FILES.each { |name| SQLite3::Database.open(store_path(home, name)) { |database| database.execute_batch("PRAGMA auto_vacuum = NONE; VACUUM") } }
+    home
+  end
+
+  def test_a_compaction_that_fails_after_the_commit_reports_a_failed_compaction_and_the_store_as_migrated
+    home = beta_2_home
+    File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
+    run = migration(home, compaction: FULL_DISK)
+
+    assert_equal [:migrated, [FAILED]], [run.call, run.notes]
+    assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
+  end
+
+  def test_a_current_store_with_a_file_not_on_incremental_vacuum_is_compacted
+    home = without_vacuum(current_home)
+
+    assert_equal [:current, [2, 2, 2]], [migration(home).call, vacuum_modes(home)]
+  end
+
+  def test_a_failed_compaction_is_tried_again_by_the_next_run
+    home = beta_2_home
+    migration(home, compaction: FULL_DISK).call
+    migration(home).call
+
+    assert_equal [2, 2, 2], vacuum_modes(home)
+  end
+
+  def test_a_current_store_whose_files_are_all_on_incremental_vacuum_is_not_compacted
+    calls = []
+    migration(current_home, compaction: ->(_home, slug) { calls << slug }).call
+
+    assert_empty calls
+  end
+
+  def test_a_current_store_whose_compaction_fails_stays_current_and_reports_it
+    run = migration(without_vacuum(current_home), compaction: FULL_DISK)
+
+    assert_equal [:current, [FAILED]], [run.call, run.notes]
   end
 end
