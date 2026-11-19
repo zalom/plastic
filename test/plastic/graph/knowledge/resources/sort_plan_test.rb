@@ -31,14 +31,14 @@ class ResourcesSortPlanTest < Plastic::TestCase
   end
 
   def test_a_target_with_other_bytes_is_refused
-    put("reviews/r1.md" => "old\n", "resources/output/reports/reviews/r1.md" => "other\n")
+    put("reviews/r1.md" => "old\n", "resources/tmp/reviews/r1.md" => "other\n")
     error = assert_raises(Plastic::Refused) { SortPlan.new(@folder).moves }
 
-    assert_includes error.message, "#{INTENT}/resources/output/reports/reviews/r1.md"
+    assert_includes error.message, "#{INTENT}/resources/tmp/reviews/r1.md"
   end
 
   def test_a_target_with_the_same_bytes_is_a_move_that_replaces_it
-    put("reviews/r1.md" => "same\n", "resources/output/reports/reviews/r1.md" => "same\n")
+    put("reviews/r1.md" => "same\n", "resources/tmp/reviews/r1.md" => "same\n")
 
     assert_equal ["#{INTENT}/reviews/r1.md"], SortPlan.new(@folder).moves.map(&:from)
   end
@@ -56,8 +56,8 @@ class ResourcesSortPlanTest < Plastic::TestCase
     @folder.write("store/2--b/spec.md", "# B\n")
     @folder.write("store/2--b/reviews/r2.md", "# R2\n")
     plan = SortPlan.new(@folder)
-    written = plan.rewrites.find { |rewrite| rewrite.path == "#{INTENT}/resources/output/reports/reviews/r1.md" }
+    written = plan.rewrites.find { |rewrite| rewrite.path == "#{INTENT}/resources/tmp/reviews/r1.md" }
 
-    assert_equal ["[o](../../../../../2--b/spec.md) [m](../../../../../2--b/resources/output/reports/reviews/r2.md)\n", []], [written.text, plan.unresolved.grep(/r1/)]
+    assert_equal ["[o](../../../../2--b/spec.md) [m](../../../../2--b/resources/tmp/reviews/r2.md)\n", []], [written.text, plan.unresolved.grep(/r1/)]
   end
 end

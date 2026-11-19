@@ -34,12 +34,13 @@ class ResourcesSortTest < Plastic::TestCase
 
   def at_new_places = MOVES.values.select { |rel| File.file?(File.join(store_root, INTENT, rel)) }.sort
 
-  def test_rows_move_with_their_files
+  # No new place of a moved file is one the sync reads by default, so its rows go with the sort.
+  def test_the_rows_of_a_file_moved_where_the_sync_does_not_read_go
     sort
 
-    assert_equal %w[resources/references/ref.md], row_paths("documents").reject { |path| %w[spec.md intent.md].include?(path) }
+    assert_equal [], row_paths("documents").reject { |path| %w[spec.md intent.md].include?(path) }
     assert_equal row_paths("documents"), row_paths("document_heads")
-    assert_includes row_paths("printed"), "#{INTENT}/resources/references/ref.md"
+    refute_includes row_paths("printed"), "#{INTENT}/resources/references/ref.md"
   end
 
   def test_files_move_to_their_destinations
