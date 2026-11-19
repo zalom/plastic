@@ -94,7 +94,7 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now).call.behind_lines.each { |line| puts "   #{line}" }
+        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now, selection: package.settings.selection, released: package.settings.released).call.lines.each { |line| puts "   #{line}" }
       end
 
       def report_config_upgrade

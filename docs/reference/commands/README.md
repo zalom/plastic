@@ -82,6 +82,14 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed or --older-than |
 | [`plastic backup restore`](backup-restore/README.md) | Replace one store's databases with those of a done backup |
 
+## migration
+
+| Command | What it does |
+| --- | --- |
+| [`plastic migration list`](migration-list/README.md) | Print the ledger rows of one store and what a down would undo now |
+| [`plastic migration down`](migration-down/README.md) | Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup |
+| [`plastic migration purge`](migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
+
 ## resources
 
 | Command | What it does |
@@ -92,7 +100,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 
 | Command | What it does |
 | --- | --- |
-| [`plastic document get`](document-get/README.md) | Fetch one current or revision-qualified document |
+| [`plastic document get`](document-get/README.md) | Fetch the current text of one document; an older pinned reference is named as changed |
 | [`plastic document batch`](document-batch/README.md) | Fetch qualified documents in request order |
 
 ## architecture

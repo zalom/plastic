@@ -70,11 +70,16 @@ module Plastic
         "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed or --older-than"],
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
       },
+      "migration" => {
+        "migration list" => ["Commands::Migration::List", "Print the ledger rows of one store and what a down would undo now"],
+        "migration down" => ["Commands::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"],
+        "migration purge" => ["Commands::Migration::Purge", "Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it"]
+      },
       "resources" => {
         "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
       },
       "document" => {
-        "document get" => ["Commands::Document::Get", "Fetch one current or revision-qualified document"],
+        "document get" => ["Commands::Document::Get", "Fetch the current text of one document; an older pinned reference is named as changed"],
         "document batch" => ["Commands::Document::Batch", "Fetch qualified documents in request order"]
       },
       "architecture" => {

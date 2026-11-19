@@ -73,33 +73,19 @@ Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/verify-change'
 
-# Offense count: 4
-# This cop supports safe autocorrection (--autocorrect).
-Minitest/AssertPredicate:
-  Exclude:
-    - 'test/bin_test_test.rb'
-
-# Offense count: 14
+# Offense count: 5
 # This cop supports safe autocorrection (--autocorrect).
 Minitest/EmptyLineBeforeAssertionMethods:
   Exclude:
-    - 'test/bin_test_test.rb'
     - 'test/harness_support_docs_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
     - 'test/releasing_skill_publish_test.rb'
 
-# Offense count: 6
+# Offense count: 1
 # Configuration parameters: Max.
 Minitest/MultipleAssertions:
   Exclude:
-    - 'test/bin_test_test.rb'
     - 'test/harness_support_docs_test.rb'
-
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Minitest/RefutePredicate:
-  Exclude:
-    - 'test/bin_test_test.rb'
 
 # Offense count: 7
 # This cop supports unsafe autocorrection (--autocorrect-all).

@@ -29,7 +29,7 @@ class IntentNoteTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions = store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
+  def outcome_rows = store_graphs.databases.fetch(:store).rows("SELECT body FROM documents WHERE path = :path", path: FILE).map(&:values)
 
   def with_outcome(text = OUTCOME)
     intent = open_intent
@@ -64,15 +64,6 @@ class IntentNoteTest < Plastic::TestCase
     assert_equal "# Outcome\n\n## Notes\n\n- Review: earlier\n- Report: later\n\n## Verification\n\n- Merged: yes\n", body
   end
 
-  def test_the_old_revision_stays_as_a_row
-    with_outcome
-    before = revisions
-
-    call("1", "all checks pass")
-
-    assert_equal before + 1, revisions
-  end
-
   def test_the_kind_is_kept
     with_outcome
 
@@ -92,10 +83,10 @@ class IntentNoteTest < Plastic::TestCase
   def test_an_outcome_file_edited_by_hand_fails_the_note_and_writes_nothing
     intent = with_outcome
     write("#{intent.dir}/#{FILE}", "#{OUTCOME}\nEdited by hand.\n")
-    before = revisions
+    before = outcome_rows
     result = call("1", "all checks pass")
 
-    assert_equal [1, before, true], [result.code, revisions, result.err.include?("run plastic sync up first")]
+    assert_equal [1, before, true], [result.code, outcome_rows, result.err.include?("run plastic sync up first")]
   end
 
   def test_the_outcome_file_is_printed_from_the_rows
@@ -124,13 +115,13 @@ class IntentNoteTest < Plastic::TestCase
   end
 
   %w[done abandoned].each do |status|
-    define_method(:"test_a_#{status}_intent_fails_the_note_offers_next_and_writes_no_revision") do
+    define_method(:"test_a_#{status}_intent_fails_the_note_offers_next_and_writes_no_row") do
       open_intent(status:)
-      before = revisions
+      before = outcome_rows
 
       result = call("1", "late thought")
 
-      assert_equal [1, before], [result.code, revisions]
+      assert_equal [1, before], [result.code, outcome_rows]
       assert_includes result.err, "is #{status}"
       assert_match(/^next: plastic next/, result.out)
     end

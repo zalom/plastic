@@ -18,7 +18,7 @@ class RetrievalEvidenceIntegrityAuditTest < Plastic::TestCase
   def change(sql) = store_database.transaction { |batch| batch.add(sql) }
 
   def test_matching_rows_report_no_drift
-    assert_equal({ repairable: false, missing: [] }, report)
+    assert_equal({ repairable: false }, report)
   end
 
   def test_a_head_with_the_wrong_hash_drifts
@@ -39,9 +39,9 @@ class RetrievalEvidenceIntegrityAuditTest < Plastic::TestCase
     assert report.fetch(:repairable)
   end
 
-  def test_a_document_whose_body_has_no_revision_is_missing
+  def test_a_document_whose_body_changed_drifts
     change("UPDATE documents SET body = 'edited'")
 
-    assert_equal ["1:plan.md has no immutable revision"], report.fetch(:missing)
+    assert report.fetch(:repairable)
   end
 end

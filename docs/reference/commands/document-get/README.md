@@ -1,6 +1,6 @@
 # plastic document get
 
-Fetch one current or revision-qualified document.
+Fetch the current text of one document; an older pinned reference is named as changed.
 
 ```sh
 plastic document get REF [--passage N]

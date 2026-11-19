@@ -28,7 +28,7 @@ class NodeClaimReviewTest < Plastic::TestCase
 
   def snapshot = [node.to_h, store_graphs.retrieval.structure.runs("1").map(&:to_h)]
 
-  def takeover_then_finish
+  def reclaim_lapsed_then_finish
     as("s-1", "node", "claim", "1", "n1")
     at(16)
     as("s-2", "node", "claim", "1", "n1")
@@ -36,7 +36,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_the_old_holder_cannot_finish_a_node_the_new_holder_finished
-    takeover_then_finish
+    reclaim_lapsed_then_finish
 
     result = as("s-1", "node", "done", "1", "n1", "old holder")
 

@@ -27,7 +27,7 @@ Everything it keeps lives under the Plastic home.
 | `~/.local/share/plastic/` | The install: `active/bin/plastic`, the program; `releases/VERSION/`, one folder for each release; and `download/`, the files `plastic update` fetched. Each release runs on the Ruby that was on the `PATH` at install. `~/.local/bin/plastic` links to the program. |
 | `exe/plastic` | In the home, the launcher the non-release hooks run. |
 | `PLASTIC.md` | The always-on instructions that the harness imports. |
-| `plastic.db` | What belongs to one machine: `command_runs`, `sessions`, the `settings` rows and the hash of each file printed from them. |
+| `plastic.db` | What belongs to one machine: `command_runs`, `sessions`, the `settings` rows, the hash of each file printed from them, and `store_migrations`, the ledger of the migrations of each store. |
 | `config.yml`, `projects.yml` | The settings, printed from the `settings` rows, and the list of projects from slug to repository. |
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
@@ -36,14 +36,15 @@ Everything it keeps lives under the Plastic home.
 | `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
 | `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
 
-A store keeps its rows in three SQLite databases: work, knowledge and retrieval. The store folder's `.gitignore` lists them,
+A store keeps its rows in three SQLite databases: work, knowledge and retrieval. A fourth, `legacy.db`, keeps what a migration removed. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
 | `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
-| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_revisions`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the files kept for archived intents |
+| `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
+| `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`; made by the first migration that keeps rows, and read only by `plastic migration down` and `plastic migration purge` |
 
 The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
 as of the last print. No table logs the history of a row.
@@ -127,7 +128,7 @@ it reads every database and writes nothing. The commands below reach them throug
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
 | Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
-| Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
+| Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
 ![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
@@ -340,7 +341,17 @@ minutes takes none. A backup runs by itself when the newest is older than 12 hou
 session start for the current and the global store, before `intent archive`, `sync up`,
 `sync down` and `backup restore`, and at `intent end`. Each automatic backup that was taken
 is followed by the purge of the folders older than three days; the purge keeps the newest
-done backup and the newest backup the runner took before a migration. The writer records the
+done backup and the newest backup the runner took before a migration. With `backup.daily` on,
+the purge keeps one day instead of three, and `CLI::DayBackup` runs from every command before
+its work and from every hook after it, except help, a dry run, `backup restore` and `backup list`,
+which must find the backups as they are. The first call of the day takes the start-of-day
+backup of every store, changed or not, and each session end after it takes an end-of-day
+backup, unless the day's end-of-day backup holds the store as it is, and once it is written
+deletes the day's earlier end-of-day backup. The day of a backup is the day of the clock when
+it was taken, as `taken_at` in its status file records it, and the daily purge keeps every
+backup of today. A failure prints one line and the call goes on. A store whose start-of-day
+backup failed is tried once that day, and a failed copy leaves no folder. No
+backup holds `retrieval_graph.db`, which `plastic doctor` rebuilds. A backup copies `legacy.db` when the store has one. The writer records the
 verdict of each live check in `backups/last-check.yml`, and `plastic doctor` prints it beside
 each store's backup age; a failed check is a finding that names `plastic backup --store SLUG`.
 A backup at version 0 is checked against the tables of beta.2, and a backup at the newest
@@ -368,7 +379,11 @@ writer, and the home database is copied with `VACUUM INTO` to `backups/local-<UT
 and checked first. The runner reads the state again under the write lock, so a runner that
 waited runs nothing. The pending migrations run in ascending order, and every one of them and
 its row commit in one transaction, so a failure leaves the database as it was backed up.
-`docs/contributing/MIGRATIONS.md` says how to add a migration.
+A migration that removes data keeps it in `legacy.db` in the same transaction, and the ledger in
+`plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
+newest migration the store records from those rows. A migration that changes stored data waits
+behind a config switch that is off by default, such as `migrate.drop_document_revisions`. `docs/contributing/MIGRATIONS.md` says how to add a
+migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,
 skips a missing database by name, copies the other files of the home, and checks that the real

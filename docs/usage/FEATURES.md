@@ -66,10 +66,10 @@ refuses one without the go-ahead.
 | ------- | ------ |
 | `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
-| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. The earlier text stays as a revision. |
+| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. |
 
-`intent revise` writes the intent file as a new revision and keeps the old one, so the old
-What and Why read back with `plastic document get`. A done or abandoned intent refuses with
+`intent revise` writes the new What and Why into the intent file, and its work log line keeps
+the old What and Why. A done or abandoned intent refuses with
 exit 3.
 
 ## Preview a change with --dry-run
@@ -165,6 +165,23 @@ records. When nothing names a harness, the doctor exits 2 and lists the register
 The doctor also names each store with files outside the resources layout, as `resources NAME: N files
 are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
 
+## Undo a migration
+
+A migration that removes data keeps it in `legacy.db` in the store folder, in the same
+transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
+migration that drops `document_revisions` runs only once `migrate.drop_document_revisions` is on;
+the switch is off by default.
+
+| Command | What it does |
+| ------- | ------------ |
+| `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
+| `plastic migration down --store SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic migration list --store SLUG`. |
+| `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
+
+A down exits 3 and changes nothing when the store is not at the newest version, when the newest
+migration the store records kept nothing or its rows were purged, or when a row it would put back changed after
+the migration. `plastic update` migrates the store up again after a down.
+
 ## The resources layout
 
 An intent folder keeps its notes in the root and its other files under `resources/`:
@@ -187,7 +204,7 @@ finds nothing to move and says `sorted: nothing to move`.
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
-then one heading for each family: intent, project, sync, session, config, backup, document,
+then one heading for each family: intent, project, sync, session, config, backup, migration, document,
 architecture, node, edge, graph, roadmap and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.

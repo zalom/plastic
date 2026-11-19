@@ -32,12 +32,10 @@ module Plastic
           end
 
           def capture_with(reader, derived)
-            { heads: select(reader, *HEADS), revisions: revisions(reader), documents: documents(reader), passages: [], fts: [] }.merge(derived)
+            { heads: select(reader, *HEADS), documents: documents(reader), passages: [], fts: [] }.merge(derived)
           end
 
           def documents(reader) = select(reader, "documents", "intent_id, path, body, updated_at").map { |row| Evidence::IntegrityDocument.from_row(row, digester: @digester) }
-
-          def revisions(reader) = select(reader, "document_revisions", "intent_id, path, body, sha256").map { |row| Evidence::IntegrityRevision.from_row(row) }
 
           def select(reader, table, columns)
             reader.rows("SELECT #{columns} FROM #{table} WHERE origin_id = :origin", origin: @origin_id)

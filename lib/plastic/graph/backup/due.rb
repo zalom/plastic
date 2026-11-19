@@ -16,19 +16,19 @@ module Plastic
       # no database file is missing and needs none. A store
       # that cannot be backed up answers :failed, and the call goes on. The
       # time is passed in. A backup that was taken is followed by the purge of the
-      # folders older than three days, which keeps the newest done backup and the
-      # newest backup of a migration.
+      # folders older than three days, or one day under the daily backups, which
+      # keeps the newest done backup and the newest backup of a migration.
       class Due
         WINDOW = 12 * 3600
 
         # :taken, :unchanged, :fresh, :missing or :failed, the backup row when one was written, and the reason when it failed.
         Result = Data.define(:status, :row, :reason)
 
-        def initialize(home:, slug:, now:)
-          @home = home
+        def initialize(home:, slug:, now:, retention: Purger::RETENTION)
           @root = File.join(home, "stores", slug)
           @slug = slug
           @now = now
+          @retention = retention
         end
 
         def call(reason)
@@ -45,7 +45,7 @@ module Plastic
         private
 
         def purge
-          Purger.new(@root).sweep(now: @now)
+          Purger.new(@root, retention: @retention).sweep(now: @now)
         end
 
         def stale?

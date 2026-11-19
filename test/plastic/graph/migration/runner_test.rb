@@ -6,11 +6,12 @@ require_relative "../../../test_helper"
 class SchemaRunnerTest < Plastic::TestCase
   include BackupHomes
   include OldLayoutHomes
+  include ConfigHomes
 
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
 
-  def run_runner(home, **options) = Runner.new(home:, now: NOW, **options).call
+  def run_runner(home, **options) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MIGRATIONS.held(:store), **options).call
 
   def old_home = old_layout(fresh_home)
 
@@ -25,6 +26,12 @@ class SchemaRunnerTest < Plastic::TestCase
 
   def test_a_report_with_no_store_behind_has_no_lines
     assert_empty Runner::Report.new(migrated: ["alpha"], failed: {}).behind_lines
+  end
+
+  def test_the_lines_of_a_report_are_the_stores_behind_and_then_the_notes
+    report = Runner::Report.new(migrated: ["beta"], failed: { "alpha" => "it is locked" }, notes: ["migrate: beta keeps a row"])
+
+    assert_equal ["migrate: alpha stays behind because it is locked; fix the cause and run plastic update", "migrate: beta keeps a row"], report.lines
   end
 
   def test_an_old_layout_home_migrated_through_every_migration_has_the_layout_of_a_new_database
@@ -94,6 +101,7 @@ class SchemaRunnerTest < Plastic::TestCase
     run_runner(home)
     migrated = store_digests(home).except("retrieval_graph.db")
     Plastic::Graph::Database::ConnectionPool.release(home)
+    seed_config(home, "global:\n  migrate:\n    drop_document_revisions: true\n")
     restore_call(home, "--store", "alpha", "--latest")
 
     assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], versions_in(home, "/alpha/knowledge_graph.db")

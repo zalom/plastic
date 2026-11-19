@@ -15,6 +15,8 @@ module Plastic
 
         def flag(path, default:) = @values.fetch(path.join("."), default)
 
+        def list(key) = Array(@values.fetch(key, []))
+
         def choice(path, default:, allowed:)
           value = @values.fetch(path.join("."), default)
           allowed.include?(value) ? value : default
@@ -44,6 +46,10 @@ module Plastic
       end
 
       attr_reader :store
+
+      def selection = Plastic::Wiring.selection_of(Values.new(@values, @written))
+
+      def released = Plastic::Wiring.released_of(Values.new(@values, @written))
     end
   end
 end

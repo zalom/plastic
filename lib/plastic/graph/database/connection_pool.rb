@@ -28,13 +28,14 @@ module Plastic
           raise
         end
 
-        # Attaches each file not yet attached under its schema name, then keeps its schema in a delete journal with full synchronous.
+        # Attaches each file not yet attached under its schema name, then keeps its schema in a delete journal with full
+        # synchronous. A new file is made with incremental auto vacuum; an existing one gets it from the VACUUM after a migration.
         def attach_all(main, files)
           pending = files.except(*attached)
           return if pending.empty?
 
           pending.each { |schema, file| execute("ATTACH DATABASE ? AS #{schema}", [file]).tap { attached << schema } }
-          { main: main, **pending }.each { |schema, file| keep_delete_journal(schema, file) }
+          { main: main, **pending }.each { |schema, file| keep_store_modes(schema, file) }
         end
 
         def read(sql, values = {})
@@ -53,11 +54,22 @@ module Plastic
         # Runs the block in one transaction that takes no lock until its first write.
         def deferred(&) = transaction_active? ? savepoint(&) : deferring(&)
 
+        # Gives the free pages of the schema's file back to the disk. A file with none is left alone, since the pragma takes its write lock.
+        def give_back_free_pages(schema)
+          execute("PRAGMA #{schema}.incremental_vacuum") if get_first_value("PRAGMA #{schema}.freelist_count").positive?
+        end
+
         private
 
         def attached = (@attached ||= [])
 
-        def keep_delete_journal(schema, file)
+        # Asking on an existing file would take its write lock at every connection, so only a file with no page yet asks.
+        def vacuum_new_file(schema)
+          execute("PRAGMA #{schema}.auto_vacuum = INCREMENTAL") if get_first_value("PRAGMA #{schema}.page_count").zero?
+        end
+
+        def keep_store_modes(schema, file)
+          vacuum_new_file(schema)
           mode = get_first_value("PRAGMA #{schema}.journal_mode")
           mode = get_first_value("PRAGMA #{schema}.journal_mode = DELETE") unless mode == "wal"
           raise Database::JournalModeRefused, "#{File.basename(file)} is in #{mode} journal mode; a store keeps every file in delete mode" unless mode == "delete"
@@ -108,6 +120,9 @@ module Plastic
           @created = created - made
           made.uniq.product(["", "-wal", "-shm", "-journal"]).map(&:join).select { |file| File.file?(file) }.each { |file| File.delete(file) }
         end
+
+        # Forgets that this process made the file `path`, so a later removal of the files it made keeps it.
+        def self.forget_created(path) = created.delete(File.expand_path(path))
 
         def self.connect(path, attach)
           remember_missing([path, *attach.values])

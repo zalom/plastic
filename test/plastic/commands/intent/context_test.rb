@@ -35,12 +35,6 @@ module IntentContextTestSupport
     reference
   end
 
-  def remove_selected_revision
-    Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:store).transaction do |batch|
-      batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
-    end
-  end
-
   def remove_current_head
     graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", "evidence.md")
@@ -156,19 +150,10 @@ class IntentContextPersistenceTest < Plastic::TestCase
     assert_archived_context(fresh, stale, reference)
   end
 
-  def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
+  def test_reports_selected_evidence_as_missing_once_its_document_is_removed
     reference = discovered_reference
     submit_context(context_submission(reference))
     remove_current_head
-
-    assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
-  end
-
-  def test_reports_selected_evidence_as_missing_when_its_pinned_revision_is_removed
-    reference = discovered_reference
-    submit_context(context_submission(reference))
-    remove_current_head
-    remove_selected_revision
 
     assert_equal "missing", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end

@@ -63,6 +63,9 @@ module Plastic
         error_document(source ? "#{source}: #{message}" : message, "failed", offer)
       end
 
+      # Writes one line to standard error, beside the result.
+      def warn(text) = tap { diagnose(text) }
+
       private
 
       attr_reader :out, :result

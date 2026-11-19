@@ -84,6 +84,10 @@ module Plastic
       code_backup_purge: "Code::Backup::Purge",
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
+      # Migrations: the ledger of one store, and the down and purge of its legacy rows.
+      code_migration_down: "Code::Migration::Down",
+      code_migration_purge: "Code::Migration::Purge",
+      code_migration_list: "Code::Migration::List",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",

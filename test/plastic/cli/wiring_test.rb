@@ -34,6 +34,12 @@ class WiringTest < Plastic::TestCase
     assert_includes read_by(Plastic::Wiring.selection(@plastic_home)), "resources/references/paper.pdf"
   end
 
+  def test_the_settings_answer_the_selection_of_the_sync_settings_of_the_home
+    seed_config(@plastic_home, "global:\n  sync:\n    types: [png]\n    references: true\n")
+
+    assert_equal %w[spec.md resources/output/files/shot.png resources/references/paper.pdf], read_by(Plastic::Wiring.settings(@plastic_home).selection)
+  end
+
   def test_the_asked_setting_is_carried_to_the_selection
     seed_config(@plastic_home, "global:\n  sync:\n    asked: [pdf]\n")
 
@@ -77,5 +83,25 @@ class WiringTest < Plastic::TestCase
 
     assert_equal [true, false], [settings.config(harness: "claude-code").flag(["statusline"], default: false), settings.config.flag(["statusline"], default: false)]
     assert_nil settings.store.problem
+  end
+
+  def test_a_home_with_no_setting_takes_no_daily_backups
+    refute Plastic::Wiring.daily_backups?(@plastic_home)
+  end
+
+  def test_the_daily_setting_turns_the_daily_backups_on
+    seed_config(@plastic_home, "global:\n  backup:\n    daily: true\n")
+
+    assert Plastic::Wiring.daily_backups?(@plastic_home)
+  end
+
+  def test_a_home_with_no_setting_releases_no_held_migration
+    assert_empty Plastic::Wiring.settings(@plastic_home).released
+  end
+
+  def test_the_switch_of_a_held_migration_releases_it
+    seed_config(@plastic_home, "global:\n  migrate:\n    drop_document_revisions: true\n")
+
+    assert_equal %w[20261119000000], Plastic::Wiring.settings(@plastic_home).released
   end
 end

@@ -19,16 +19,29 @@ class DocumentGetTest < Plastic::TestCase
     assert_includes result.out, "plastic://STORE/INTENT/PATH?revision=SHA256"
   end
 
-  def test_prints_a_historical_qualified_document_as_structured_json
+  def replaced_reference
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
     writer.write("1", "plan.md", "second")
     retrieval.repair
+    reference
+  end
 
-    result = get(reference, "--json")
+  def test_a_reference_pinned_to_a_replaced_text_prints_the_current_text_and_says_it_changed_since_that_reference
+    reference = replaced_reference
+    result = get(reference)
 
-    assert_call result, code: 0, out: ["first", "revision"]
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "second"
+    assert_includes result.out, "changed_since: #{reference}"
+  end
+
+  def test_a_reference_pinned_to_a_replaced_text_gives_the_current_reference_and_the_old_one_as_json
+    reference = replaced_reference
+    document = JSON.parse(get(reference, "--json").out).dig("result", "document")
+
+    assert_equal ["second", reference, retrieval.reference("1", "plan.md").fetch(:uri)], document.values_at("body", "changed_since", "uri")
   end
 
   def test_plain_output_prints_readable_lines

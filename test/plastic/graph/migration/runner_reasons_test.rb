@@ -8,7 +8,7 @@ class SchemaRunnerReasonsTest < Plastic::TestCase
 
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
 
-  def failure(home) = Plastic::Graph::SchemaRunner.new(home:, now: NOW).call.failed.fetch("alpha")
+  def failure(home) = Plastic::Graph::SchemaRunner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call.failed.fetch("alpha")
 
   def test_a_store_with_a_file_that_is_not_a_database_gives_the_file_in_its_reason
     home = old_layout(fresh_home)

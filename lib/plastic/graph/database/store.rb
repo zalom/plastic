@@ -5,7 +5,8 @@ module Plastic
     class Database
       # The one database of a store: knowledge is the main file, work and retrieval are attached to it, and every table
       # name is unique across the three, so a statement names no schema. A write runs in BEGIN IMMEDIATE, which reserves
-      # all three files, so rows of work and knowledge land together or not at all.
+      # all three files, so rows of work and knowledge land together or not at all. Each write gives the pages it freed back
+      # to the disk before it commits.
       class Store < Database
         SCHEMAS = { knowledge: "main", work: "work", retrieval: "retrieval" }.freeze
         FILES = [*Schema.store, *Schema.derived].map { |key| Schema.file(key) }.freeze
@@ -36,18 +37,23 @@ module Plastic
         def phrases = written_by_file.sort_by { |file, _tables| FILES.index(file) }.map { |file, tables| "#{Schema.phrase(tables)} in #{file}" }
 
         # Runs a search rebuild in a deferred transaction, which takes the write lock of a file only when it first writes
-        # there. The rebuild reads before it and writes only retrieval tables, so work and knowledge stay writable.
+        # there. The rebuild reads before it and writes only retrieval tables, and gives back free pages of retrieval only,
+        # so work and knowledge stay writable.
         def rebuilding
           batch = Batch.new(origin:)
           connected do |connection|
             connection.deferred do
               yield batch, connection
-              write(connection, batch) unless batch.empty?
+              write(connection, batch, schemas: %w[retrieval]) unless batch.empty?
             end
           end.tap { @retrieval_lost = false }
         end
 
         private
+
+        def write(connection, batch, schemas: SCHEMAS.values)
+          super(connection, batch).tap { schemas.each { |schema| connection.give_back_free_pages(schema) } }
+        end
 
         def written_by_file = written.except(RUNS).group_by { |table, _count| Schema.file_of(table) }.transform_values(&:to_h)
 

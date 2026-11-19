@@ -55,4 +55,9 @@ class MigrationListTest < Plastic::TestCase
 
     assert_equal [true, true, false, false], [0, 20_261_117_000_000, 20_991_231_000_000, 99].map { |number| list.known_number?(:store, number) }
   end
+
+  def test_the_held_migrations_of_a_kind_name_the_drop_of_document_revisions_and_its_switch
+    assert_equal [%w[20261119000000], {}, "migrate.drop_document_revisions"],
+      [Plastic::Graph::MIGRATIONS.held(:store), Plastic::Graph::MigrationList::HELD.except("20261119000000"), Plastic::Graph::MigrationList::HELD.fetch("20261119000000")]
+  end
 end

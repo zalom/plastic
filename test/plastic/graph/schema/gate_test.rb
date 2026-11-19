@@ -170,7 +170,7 @@ class SchemaGateAheadTest < Plastic::TestCase
 
     error = assert_raises(Behind) { store_database(home).rows("SELECT 1") }
 
-    assert_includes error.message, "(it lacks #{Plastic::Graph::MIGRATIONS.baseline(:store)})"
+    assert_includes error.message, "(it lacks #{(Plastic::Graph::MIGRATIONS.versions(:store) - Plastic::Graph::MIGRATIONS.held(:store)).join(", ")})"
   end
 
   def test_a_fresh_build_runs_no_migration_and_records_every_version_of_the_list

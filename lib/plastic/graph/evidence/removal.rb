@@ -4,7 +4,7 @@ module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Removes only mutable document views while preserving immutable revisions.
+        # Removes one document and its head.
         class Removal
           def initialize(batch, origin_id)
             @batch = batch

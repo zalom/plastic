@@ -13,7 +13,7 @@ module Plastic
 
           CLOSED = %w[done abandoned].freeze
 
-          sets :intent, :status, :change, :problem, :old_reference, :new_reference
+          sets :intent, :status, :change, :problem, :reference
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -42,14 +42,13 @@ module Plastic
             show_why(context, change) if change.why
           end
 
-          step "write the revision", done: ->(context) { context.dry_run || !context.new_reference.nil? },
-            changes: { knowledge: "A new revision of the spec is written", work: "The title of the intent is updated" } do |context|
-            context[:old_reference], context[:new_reference] = context.work.revise_intent(context.change)
+          step "write the revision", done: ->(context) { context.dry_run || !context.reference.nil? },
+            changes: { knowledge: "The intent file holds the new What and Why", work: "The title is updated and the work log line keeps the old What and Why" } do |context|
+            context[:reference] = context.work.revise_intent(context.change)
           end
 
           read "say what was written" do |context|
-            context.print("revision: #{context.new_reference}") unless context.dry_run
-            context.print("history: #{context.old_reference}") unless context.dry_run
+            context.print("revision: #{context.reference}") unless context.dry_run
           end
 
           outcome :previewed, if: ->(context) { context.dry_run }, offers: "%{original_command}",

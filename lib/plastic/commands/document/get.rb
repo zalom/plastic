@@ -5,7 +5,7 @@ require_relative "../../routine"
 module Plastic
   module Commands
     module Document
-      # Fetches one current or immutable document by its qualified reference.
+      # Fetches the current text of one document by its qualified reference.
       class Get < Routine
         argument :reference, label: "REF", text: "plastic://STORE/INTENT/PATH?revision=SHA256"
         option :passage, switch: "--passage N", text: "one-based bounded passage position"

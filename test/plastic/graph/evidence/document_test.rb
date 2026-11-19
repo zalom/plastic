@@ -18,10 +18,6 @@ class RetrievalEvidenceDocumentTest < Plastic::TestCase
     assert_equal({ intent_id: "1", path: "plan.md", body: "x", updated_at: STAMP }, document("x").document_row)
   end
 
-  def test_the_revision_row_carries_the_origin
-    assert_equal [Digest::SHA256.hexdigest("x"), "o"], document("x").revision_row("o").values_at(:sha256, :origin_id)
-  end
-
   def test_the_head_row_points_at_the_revision
     assert_equal({ intent_id: "1", path: "plan.md", sha256: Digest::SHA256.hexdigest("x"), updated_at: STAMP }, document("x").head_row)
   end

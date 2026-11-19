@@ -5,12 +5,10 @@ require_relative "../graph/backup/databases"
 
 module Plastic
   class CLI
-    # What every backup command shares: it works on one registered store,
-    # named by --store and never found from the working directory.
-    module BackupStore
-      def self.included(command)
-        command.option :store, switch: "--store SLUG", required: true, text: "the registered project whose backups the call works on"
-      end
+    # What every command on one registered store shares: --store names the store, and the working directory never
+    # finds it. BackupStore and MigrationStore add the option with the words of their commands.
+    module OneStore
+      def self.option(command, text) = command.option(:store, switch: "--store SLUG", required: true, text:)
 
       def call
         refuse_project
@@ -51,6 +49,22 @@ module Plastic
 
       def new_scope
         Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)
+      end
+    end
+
+    # A backup command: --store names the project whose backups the call works on.
+    module BackupStore
+      def self.included(command)
+        command.include(OneStore)
+        OneStore.option(command, "the registered project whose backups the call works on")
+      end
+    end
+
+    # A migration command: --store names the project whose store migrations the call works on.
+    module MigrationStore
+      def self.included(command)
+        command.include(OneStore)
+        OneStore.option(command, "the registered project whose store migrations the call works on")
       end
     end
   end

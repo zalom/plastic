@@ -24,9 +24,9 @@ class RetrievalContextFreshnessTest < Plastic::TestCase
     assert_equal [{ "uri" => "plastic://global/1/none.md", "state" => "missing" }], states("plastic://global/1/none.md").fetch("evidence")
   end
 
-  def test_a_revision_whose_document_was_removed_is_stale
+  def test_a_revision_whose_document_was_removed_is_missing
     Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).remove("1", @intent.file)
 
-    assert_equal [{ "uri" => @reference, "state" => "stale" }], states(@reference).fetch("evidence")
+    assert_equal [{ "uri" => @reference, "state" => "missing" }], states(@reference).fetch("evidence")
   end
 end

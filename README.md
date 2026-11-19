@@ -252,6 +252,9 @@ plastic backup list --store alpha     # Folder, start time, status and goal of e
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
 plastic backup purge --store alpha --failed   # Delete the backups that failed
 plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
+plastic migration list --store alpha  # The store's version, its kept rows, its ledger, and what a down would undo
+plastic migration down --store alpha  # Put back the rows the newest migration kept in legacy.db, after a backup
+plastic migration purge 20261119000000 --store alpha   # Remove the rows one migration kept, so it can no longer be undone
 ```
 
 ### Product
@@ -365,6 +368,8 @@ settings you changed, in a `global` section and one section per harness, and hol
 global:
   runner:
     stop_hook: true                  # Keep working while a node is ready
+  backup:
+    daily: true                      # Keep 24 hours of backups, with two copies a day
 harnesses:
   codex:
     agents:
@@ -377,6 +382,18 @@ A sync always reads the Markdown notes and the graph of each intent. Under `reso
 the `references` folder when `sync.references` is on, and never `tmp`. A file of a type not yet
 named is skipped once, with one line that gives the `plastic config set sync.types` command to
 include it. `plastic init` offers images and videos picked.
+
+With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
+Plastic command or hook of the day copies the databases of every store as the start-of-day
+backup, and each session end after it replaces the day's end-of-day backup. A store always keeps
+its newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so
+they find the backups as they are. Plastic runs no background process for this, and
+`backup.daily` is off by default.
+
+`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
+table of each store. While it is off, `plastic update` leaves that table in place. Turn it on
+with `plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each
+store keeps the table in its `legacy.db` before the drop. The switch is off by default.
 
 ```bash
 plastic config list                         # Every key with its value

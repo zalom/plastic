@@ -224,6 +224,19 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
     Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home: @backup_home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
   end
 
+  # A restorer that reads no claim from the store, so the store may record an earlier version.
+  def baseline_restorer
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home: @backup_home, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Struct.new(:store, :claimed_nodes).new("alpha", []), now: at(2026, 6, 1, 12, 0, 0))
+  end
+
+  # Leaves the live knowledge database recording the baseline and no later version.
+  def keep_only_the_baseline
+    SQLite3::Database.open(store_file(@backup_home, "knowledge_graph")) do |database|
+      database.execute("DELETE FROM schema_migrations WHERE version > ?", [Plastic::Graph::MIGRATIONS.baseline(:store)])
+    end
+  end
+
   def test_a_listed_database_is_not_refused_when_the_store_holds_no_knowledge_database
     File.delete(store_file(@backup_home, "knowledge_graph"))
 
@@ -232,8 +245,10 @@ class GraphBackupRestorerLiveVersionTest < Plastic::TestCase
 
   def test_a_listed_database_from_a_backup_an_alpha_build_stamped_1_is_not_refused_in_a_store_at_the_baseline
     Plastic::Graph::Backup::Folders.new(root).write_report(STAMP, status: "done", goal: "full", version: 1)
+    checked = baseline_restorer
+    keep_only_the_baseline
 
-    assert_nil restorer.refusal(STAMP, databases: %w[knowledge_graph])
+    assert_nil checked.refusal(STAMP, databases: %w[knowledge_graph])
   end
 end
 
@@ -278,5 +293,27 @@ class GraphBackupRestoreEarlierVersionTest < Plastic::TestCase
     earlier = Plastic::Graph::MIGRATIONS.versions(:store)
 
     assert_equal [earlier, [*earlier, LATER]], [restored, recorded_versions(knowledge)]
+  end
+end
+
+# A store with legacy.db: a restore puts back the copy of it that the backup holds.
+class GraphBackupRestoreLegacyTest < Plastic::TestCase
+  include BackupHomes
+
+  def restorer(home)
+    root = File.join(home, "stores", "alpha")
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home:, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
+  end
+
+  def test_a_restore_puts_back_the_legacy_database_the_backup_holds
+    home = fresh_home
+    legacy = store_file(home, "legacy")
+    SQLite3::Database.open(legacy) { |database| database.execute_batch("CREATE TABLE sqlar_20261119000000(name TEXT); INSERT INTO sqlar_20261119000000 VALUES ('kept.md');") }
+    backup_at(home, at(2026, 2, 1, 10, 0, 0))
+    SQLite3::Database.open(legacy) { |database| database.execute("DELETE FROM sqlar_20261119000000") }
+    restorer(home).call("20260201100000")
+
+    assert_equal [["kept.md"]], SQLite3::Database.open(legacy, readonly: true) { |database| database.execute("SELECT name FROM sqlar_20261119000000") }
   end
 end

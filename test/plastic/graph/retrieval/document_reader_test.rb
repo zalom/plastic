@@ -31,11 +31,17 @@ class RetrievalDocumentReaderTest < Plastic::TestCase
     assert_equal "changed", reader.fetch(fields).fetch("body")
   end
 
-  def test_a_fetch_with_a_revision_reads_that_body
+  def test_a_fetch_with_the_current_revision_reads_the_current_body
+    rewrite
+
+    assert_equal "changed", reader.fetch(fields(revision: reader.current_revision("1", @path))).fetch("body")
+  end
+
+  def test_a_fetch_of_a_replaced_revision_is_refused
     old = reader.current_revision("1", @path)
     rewrite
 
-    refute_equal "changed", reader.fetch(fields(revision: old)).fetch("body")
+    assert_equal "no document 1:#{@path}", assert_raises(Missing) { reader.fetch(fields(revision: old)) }.message
   end
 
   def test_a_fetch_of_an_unknown_revision_is_refused
