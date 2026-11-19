@@ -11,6 +11,7 @@ module Plastic
         FOLDER = "resources/output/reports/"
         RECORDED = "SELECT intent_id, path FROM work_log WHERE kind = 'reported'"
         NOTHING = -> { [] }
+        PARTS = ["", ".", ".."].freeze
 
         def self.none = new(mandatory: [])
 
@@ -18,6 +19,14 @@ module Plastic
         def self.named(value) = (value.is_a?(Array) ? value : value.to_s.split(",")).map { |name| name.to_s.strip }.reject(&:empty?)
 
         def self.report?(rel) = rel.start_with?(FOLDER)
+
+        # Why `rel` is no plain path inside resources/output/reports/, or nil. A plain path has no ., .. or empty part.
+        def self.path_problem(rel)
+          return "#{rel} is an absolute path; give the path inside the intent folder" if rel.start_with?("/")
+          return "#{rel} holds a . or .. part or an empty part; give the plain path inside the intent folder" if rel.split("/", -1).intersect?(PARTS)
+
+          "#{rel} is not in #{FOLDER}; a report lives there" unless report?(rel)
+        end
 
         attr_reader :mandatory
 

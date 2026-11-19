@@ -46,10 +46,13 @@ module Plastic
         def read?(rel, intent_id: nil)
           return true if SyncSelection.note?(rel)
           return @references if rel.start_with?(REFERENCES)
-          return false unless SyncSelection.output?(rel) && @types.include?(SyncSelection.type_of(rel))
+          return false unless reads_type?(rel)
 
           !Reports.report?(rel) || @reports.listed?(intent_id, rel)
         end
+
+        # Whether `rel` is a file of an output folder whose type the sync reads.
+        def reads_type?(rel) = SyncSelection.output?(rel) && @types.include?(SyncSelection.type_of(rel))
 
         def selects?(path)
           match = INTENT_FILE.match(path)

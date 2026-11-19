@@ -30,11 +30,11 @@ module Plastic
             pass: ->(context) { !CLOSED.include?(context.status) }
 
           read "check the report" do |context|
-            context[:problem] = context.work.report_problem(context.intent, context.path)
+            context[:problem] = context.work.report_problem(context.intent, context.path, context.settings.selection)
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the path is outside resources/output/reports/ or names no file",
+            words: "the path is no plain path to a text file of a read type in resources/output/reports/",
             pass: ->(context) { context.problem.nil? }
 
           read "find the owner's words" do |context|

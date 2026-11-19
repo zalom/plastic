@@ -3,6 +3,7 @@
 require "digest"
 require_relative "outcome_section"
 require_relative "../reports"
+require_relative "../sync_selection"
 require_relative "../../evidence/writer"
 
 module Plastic
@@ -24,11 +25,11 @@ module Plastic
             @folder = folder
           end
 
-          # Why `path` of `intent` cannot be recorded, or nil.
-          def problem(intent, path)
-            return "#{path} is not in #{Reports::FOLDER}; a report lives there" unless Reports.report?(path)
-
-            "no file #{intent.dir}/#{path}" unless @folder.exist?("#{intent.dir}/#{path}")
+          # Why `path` of `intent` cannot be recorded, or nil: the same questions the sync asks of `selection` before it
+          # reads a file into documents, and the resolved file stays inside the reports folder of the intent.
+          def problem(intent, path, selection)
+            Reports.path_problem(path) || type_problem(path, selection) || file_problem(intent.dir, path) ||
+              ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(intent, path))
           end
 
           def recorded?(intent_id, path) = !store.row(RECORDED, intent_id:, path:, origin: @retrieval.origin_id).nil?
@@ -45,6 +46,23 @@ module Plastic
           end
 
           private
+
+          def type_problem(path, selection)
+            "the sync does not read .#{SyncSelection.type_of(path)} files; #{path} cannot be a report" unless selection.reads_type?(path)
+          end
+
+          def file_problem(dir, path)
+            return "no file #{dir}/#{path}" unless @folder.exist?("#{dir}/#{path}")
+
+            "#{path} leads outside #{dir}/#{Reports::FOLDER}" unless inside?(dir, path)
+          end
+
+          # Whether the file, with every link resolved, is still inside the reports folder of the intent.
+          def inside?(dir, path) = real("#{dir}/#{path}").start_with?("#{real("#{dir}/#{Reports::FOLDER}")}/")
+
+          def real(rel) = File.realpath(@folder.path(rel))
+
+          def text?(intent, path) = Retrieval::Evidence::Text.classify(path, @folder.read("#{intent.dir}/#{path}")) == :text
 
           def line(path, asked) = (asked == MANDATORY) ? "- #{path} (#{MANDATORY})" : "- #{path}, asked: #{asked.inspect}"
 
