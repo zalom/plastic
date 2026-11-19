@@ -16,11 +16,11 @@ module Plastic
       # The two backups of one store on one day. The day of a backup is the
       # calendar day of the clock when it was taken, so the days the clocks
       # change count right. The first call of the day copies the store with
-      # the reason "start of day", changed or not. A
-      # session end on a day that has it copies the store with the reason
-      # "end of day", unless the day's end-of-day backup holds the store as it
-      # is, and then deletes the day's earlier end-of-day backups. Each backup
-      # taken is followed by the purge of the folders older than one day,
+      # the reason "start of day", changed or not. A session end on a day that
+      # has it copies the store with the reason "end of day", unless the day's
+      # end-of-day backup holds the store as it is, and once the copy is
+      # written deletes the day's earlier end-of-day backups. Each backup
+      # written is followed by the purge of the folders older than one day,
       # which keeps every backup of today, even on a 25-hour day. A
       # start-of-day backup that fails counts as tried for the rest of the
       # day, so a later call says nothing and the session end tries the
@@ -77,18 +77,17 @@ module Plastic
           earlier = done_today(FINISH)
           return if holds_store?(earlier.last)
 
-          write(FINISH)
-          earlier.each { |name| purger.remove(name) }
+          earlier.each { |name| purger.remove(name) } if write(FINISH)
         end
 
         def holds_store?(name) = !name.nil? && @folders.report(name)["fingerprint"] == fingerprint
 
         def fingerprint = SourceCheck.new(sources.map { |name| File.join(@root, "#{name}.db") }).fingerprint
 
+        # The backup row, or nil when another process took the folder name; only a written backup is followed by the purge.
         def write(reason)
           before = @folders.names
-          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call
-          purger.sweep(now: @now, keep: @folders.names.select { |name| today?(name) })
+          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call&.tap { purger.sweep(now: @now, keep: @folders.names.select { |name| today?(name) }) }
         rescue
           remove_failed(@folders.names - before)
           raise
