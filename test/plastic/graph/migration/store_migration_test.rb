@@ -344,15 +344,35 @@ class PreviousStoreMigrationTest < Plastic::TestCase
     assert_equal [before, shape], [legacy(home, "SELECT * FROM document_revisions_#{DROP}"), legacy(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions_#{DROP}')")]
   end
 
-  def test_a_store_of_the_previous_release_keeps_each_removed_sqlar_row_with_its_bytes_and_no_row_it_keeps
+  def test_a_store_of_the_previous_release_keeps_no_sqlar_row_in_legacy_db
     home = previous_home
     keep(home, "originals/roadmaps/plan.md", "old roadmap")
-    keep(home, "store/1--alpha/resources/tmp/scratch.md", "old scratch")
-    File.join(store_root(home), "store/1--alpha/resources/tmp/scratch.md").then { |path| FileUtils.mkdir_p(File.dirname(path)).then { File.write(path, "new scratch") } }
     migrate(home)
 
-    assert_equal [[["originals/roadmaps/plan.md", "old roadmap"]], [["store/1--alpha/resources/tmp/scratch.md"]]],
-      [legacy(home, "SELECT name, data FROM sqlar_#{DROP}"), knowledge(home, "SELECT name FROM sqlar")]
+    assert_equal [[["document_revisions_#{DROP}"]], "old roadmap"],
+      [legacy(home, "SELECT name FROM sqlite_master WHERE type = \x27table\x27"), File.read(File.join(store_root(home), "originals/roadmaps/plan.md"))]
+  end
+
+  def revise(home, *row)
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |database| database.execute("INSERT INTO document_revisions VALUES (?, ?, ?, ?, ?, ?)", row) }
+  end
+
+  def head(home, path, sha)
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
+      database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES (\x271\x27, ?, \x27text\x27, \x27now\x27, \x27origin\x27)", [path])
+      database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27now\x27, \x27origin\x27)", [path, sha])
+    end
+  end
+
+  def test_a_store_of_the_previous_release_keeps_only_the_earlier_revision_texts_of_the_paths_the_sync_reads
+    home = previous_home
+    revise(home, "cur", "1", "intent.md", "text", "now", "origin")
+    revise(home, "tmp", "1", "resources/tmp/x.md", "scratch", "now", "origin")
+    revise(home, "road", "", "roadmaps/plan.md", "plan", "now", "origin")
+    head(home, "intent.md", "cur")
+    migrate(home)
+
+    assert_equal [["road"], ["sha"]], legacy(home, "SELECT sha256 FROM document_revisions_#{DROP} ORDER BY sha256")
   end
 
   def test_a_store_whose_cleanup_is_refused_makes_no_legacy_db
@@ -459,7 +479,7 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     Pool.release(home)
     Pool.remove_created(alpha_file(home, ""))
 
-    assert_equal [false, ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
+    assert_equal [false, ["document_revisions_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
   end
 end
 
@@ -484,8 +504,8 @@ class StoreMigrationLegacyRollbackTest < Plastic::TestCase
   def test_a_failed_run_into_a_legacy_db_that_holds_rows_leaves_only_the_old_rows_and_the_store_behind
     home, report = failing_second_run
 
-    assert_equal ["it could not be migrated (refused)", [["sha"]], [[ROADMAP]], [["sha2"]], false],
-      [report.failed.fetch("alpha"), alpha_rows(home, "legacy.db", "SELECT sha256 FROM document_revisions_#{DROP}"), alpha_rows(home, "legacy.db", "SELECT name FROM sqlar_#{DROP}"),
+    assert_equal ["it could not be migrated (refused)", [["sha"]], [["sha2"]], false],
+      [report.failed.fetch("alpha"), alpha_rows(home, "legacy.db", "SELECT sha256 FROM document_revisions_#{DROP}"),
         alpha_rows(home, "knowledge_graph.db", "SELECT sha256 FROM document_revisions"), recorded(home).include?(DROP)]
   end
 end
@@ -508,6 +528,67 @@ class StoreMigrationSwitchTest < Plastic::TestCase
     home = previous_home
     report = migrate(home, [DROP])
 
-    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}", "sqlar_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+  end
+end
+
+class ReportRowsMigrationTest < Plastic::TestCase
+  include PreviousStore
+
+  Knowledge = Plastic::Graph::Knowledge
+  DIR = "store/1--alpha"
+  LOOSE = "resources/output/reports/loose.html"
+  MANDATORY = "resources/output/reports/summary.md"
+  FILES = { "spec.md" => "# Spec\n", LOOSE => "<p>loose</p>\n", MANDATORY => "# Summary\n", "resources/output/files/data.html" => "<p>data</p>\n" }.freeze
+
+  def selection = Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [], reports: Knowledge::Reports.new(mandatory: %w[summary.md]))
+
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection:, released: [DROP]).call.tap { forget(home) }
+
+  # A store the previous release synced: every report read into rows, as the sync read them by type.
+  def synced_home
+    home = previous_home
+    store = alpha_file(home, "")
+    FILES.each { |rel, text| FileUtils.mkdir_p(File.dirname(File.join(store, DIR, rel))).then { File.write(File.join(store, DIR, rel), text) } }
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
+      database.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES (\x271\x27, \x27o\x27, \x27alpha\x27, \x27Alpha\x27, \x27open\x27)")
+      FILES.each do |rel, text|
+        database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27then\x27, \x27o\x27)", [rel, text])
+        database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27then\x27, \x27o\x27)", [rel, Digest::SHA256.hexdigest(text)])
+      end
+    end
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
+      FILES.each_key { |rel| database.execute("INSERT INTO printed (path, sha256, at) VALUES (?, \x27s\x27, \x27then\x27)", ["#{DIR}/#{rel}"]) }
+    end
+    SQLite3::Database.open(alpha_file(home, "retrieval_graph.db")) do |database|
+      FILES.each_key { |rel| database.execute("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (\x27b\x27, \x271\x27, ?, \x27s\x27, 0, \x27o\x27)", [rel]) }
+    end
+    home
+  end
+
+  def paths(name, sql) = alpha_rows(@home, name, sql).flatten.sort
+
+  def test_the_report_migration_drops_the_rows_of_every_report_that_is_not_mandatory
+    @home = synced_home
+    migrate(@home)
+
+    kept = [LOOSE, MANDATORY, "resources/output/files/data.html", "spec.md"] - [LOOSE]
+    assert_equal [kept.sort, kept.sort, kept.map { |rel| "#{DIR}/#{rel}" }.sort, kept.sort],
+      [paths("knowledge_graph.db", "SELECT path FROM documents"), paths("knowledge_graph.db", "SELECT path FROM document_heads"),
+        paths("work_graph.db", "SELECT path FROM printed WHERE path LIKE \x27store/%\x27"), paths("retrieval_graph.db", "SELECT path FROM document_fts")]
+  end
+
+  def test_the_report_migration_leaves_the_files_on_disk
+    @home = synced_home
+    migrate(@home)
+
+    assert File.file?(File.join(alpha_file(@home, ""), DIR, LOOSE))
+  end
+
+  def test_the_report_migration_is_recorded_and_keeps_nothing_in_legacy_db
+    @home = synced_home
+    migrate(@home)
+
+    assert_equal [true, ["document_revisions_#{DROP}"]], [recorded(@home).include?(REPORTS), legacy_tables(@home)]
   end
 end

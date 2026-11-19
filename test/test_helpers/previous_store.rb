@@ -6,9 +6,10 @@ require "fileutils"
 
 # A throwaway home whose registered store alpha the previous release wrote: it records every version before the drop
 # of document_revisions, holds a row there, and keeps in sqlar a file that only its row holds. `migrated_previous_home`
-# runs the migrations on it, which keep both rows in legacy.db.
+# runs the migrations on it, which keep the earlier revision in legacy.db and print the file back.
 module PreviousStore
   DROP = "20261119000000"
+  REPORTS = "20261119180000"
   ROADMAP = "originals/roadmaps/plan.md"
   MIGRATED_AT = Time.utc(2026, 11, 19, 12, 0, 0)
   REVISIONS = <<~SQL
@@ -26,7 +27,7 @@ module PreviousStore
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version = ?", [DROP])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?)", [DROP, REPORTS])
     end
     home
   end
@@ -36,6 +37,9 @@ module PreviousStore
   def migrate_store(home, now: MIGRATED_AT)
     Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call.tap { forget(home) }
   end
+
+  # Undoes the report migration, the newest, so the next down undoes the drop.
+  def past_reports(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
   def forget(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
