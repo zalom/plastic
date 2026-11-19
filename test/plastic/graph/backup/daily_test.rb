@@ -118,6 +118,14 @@ class GraphBackupDailyTest < Plastic::TestCase
     assert_equal [[["alpha", true]], ["start of day"]], [failures.map { |failure| [failure.slug, failure.reason.include?("work_graph")] }, backup_reasons(home, "beta")]
   end
 
+  def test_a_damaged_store_is_named_once_a_day
+    home = fresh_home
+    damage(home)
+    daily(home, MORNING)
+
+    assert_empty daily(home, NOON)
+  end
+
   def test_a_daily_backup_purges_the_backups_older_than_a_day
     home = fresh_home
     backup_at(home, MORNING - (30 * 3600))
