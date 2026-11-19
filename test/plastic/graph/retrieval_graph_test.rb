@@ -134,13 +134,13 @@ class RetrievalGraphTest < Plastic::TestCase
 end
 
 class RetrievalReadTest < Plastic::TestCase
-  def test_fetches_current_and_historical_qualified_references_without_ambiguous_paths
+  def test_fetches_the_current_qualified_reference_and_refuses_a_replaced_one
     reference = historical_reference
 
     assert_historical_reference(reference)
   end
 
-  def test_rejects_unknown_and_stale_qualified_references
+  def test_rejects_unknown_and_removed_qualified_references
     reference = removed_reference
 
     assert_removed_reference(reference)
@@ -201,7 +201,7 @@ class RetrievalReadTest < Plastic::TestCase
 
   def assert_historical_reference(reference)
     assert_equal expected_reference, reference.fetch(:uri)
-    assert_equal "first body", retrieval.fetch_reference(reference.fetch(:uri)).fetch(:body)
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(reference.fetch(:uri)) }
     assert_equal "second body", retrieval.fetch_reference(retrieval.reference("1", historical_path)).fetch(:body)
   end
 
@@ -217,22 +217,22 @@ class RetrievalReadTest < Plastic::TestCase
   end
 
   def assert_removed_reference(reference)
-    assert_equal "current", retrieval.fetch_reference(reference).fetch(:body)
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(reference) }
     assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference("plastic://global/1/missing.md") }
     assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(reference.merge(revision: "missing")) }
   end
 end
 
 class RetrievalRepairIntegrityTest < Plastic::TestCase
-  def test_repair_rebuilds_wrong_values_and_orphans_without_losing_revisions
+  def test_repair_rebuilds_wrong_values_and_orphans_without_changing_documents
     writer.write("1", "repair.md", "repair evidence")
-    revision = store_database.row("SELECT sha256, body FROM document_revisions")
+    document = store_database.row("SELECT body, updated_at FROM documents")
     reindex
     corrupt_derived_rows
 
     repair
 
-    assert_repaired(revision)
+    assert_repaired(document)
   end
 
   def test_repair_uses_a_current_snapshot_when_a_writer_commits_before_rebuild
@@ -242,15 +242,15 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
     assert_empty retrieval.search("old")
   end
 
-  def test_repair_reports_missing_immutable_evidence_without_changing_canonical_documents
+  def test_repair_indexes_a_document_that_has_no_head_without_changing_it
     store_database.transaction do |batch|
-      batch.add("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', 'missing.md', 'canonical evidence', 'then', :origin)", origin:)
+      batch.add("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', 'headless.md', 'canonical evidence', 'then', :origin)", origin:)
     end
 
-    error = assert_raises(Plastic::Graph::Retrieval::Evidence::Integrity::EvidenceLost) { repair }
+    repair
 
-    assert_includes error.message, "1:missing.md has no immutable revision"
-    assert_equal "canonical evidence", store_database.row("SELECT body FROM documents WHERE path = 'missing.md'").fetch("body")
+    assert_equal ["headless.md"], retrieval.search("canonical").map { |row| row.fetch("path") }
+    assert_equal "canonical evidence", store_database.row("SELECT body FROM documents WHERE path = 'headless.md'").fetch("body")
   end
 
   def test_repair_rebuilds_derived_rows_without_writing_canonical_documents
@@ -288,8 +288,8 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
 
   private
 
-  def assert_repaired(revision)
-    assert_equal revision, store_database.row("SELECT sha256, body FROM document_revisions")
+  def assert_repaired(document)
+    assert_equal document, store_database.row("SELECT body, updated_at FROM documents")
     assert_equal ["repair evidence"], retrieval.search("repair").map { |row| row.fetch("body") }
     assert_equal [[1, 1]], store_database.rows("SELECT line_start, line_end FROM document_passages").map(&:values)
   end

@@ -7,9 +7,7 @@ class RoutinePrintingTest < Plastic::TestCase
   include LifecycleHelper
   include HandEditHelper
 
-  def row_counts
-    %w[approvals document_revisions].to_h { |table| [table, store_database.row("SELECT COUNT(*) AS n FROM #{table}").fetch("n")] }
-  end
+  def row_state = [store_database.row("SELECT COUNT(*) AS n FROM approvals").fetch("n"), store_database.rows("SELECT path, body FROM documents ORDER BY path").map(&:values)]
 
   def test_a_level_file_whose_bytes_equal_its_print_passes
     specified
@@ -53,11 +51,11 @@ class RoutinePrintingTest < Plastic::TestCase
   def test_an_edited_intent_file_refuses_a_note
     intent = specified
     write("#{intent.dir}/intent.md", "# by hand\n")
-    before = row_counts
+    before = row_state
     result = cli("intent", "note", "1", "a line")
 
     assert_refused(result, "#{intent.dir}/intent.md")
-    assert_equal [before, "# by hand\n"], [row_counts, File.read(store_path("#{intent.dir}/intent.md"))]
+    assert_equal [before, "# by hand\n"], [row_state, File.read(store_path("#{intent.dir}/intent.md"))]
   end
 
   def test_an_edited_intent_file_refuses_a_rule

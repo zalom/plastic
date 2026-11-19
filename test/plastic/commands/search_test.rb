@@ -71,12 +71,6 @@ module SearchTestAssertionSupport
     assert_equal store_database, File.binread(File.join(root, "knowledge_graph.db"))
   end
 
-  def assert_pinned_document(hit, document)
-    assert_equal "first evidence", document.fetch(:body)
-    assert_equal hit.fetch("sha256"), document.fetch(:revision)
-    assert_includes document.fetch(:uri), hit.fetch("sha256")
-  end
-
   def assert_centered_excerpt(result)
     assert_equal 0, result.code
     excerpt = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0).fetch("passage")
@@ -94,20 +88,15 @@ module SearchTestAssertionSupport
     assert_equal before, selected_store_bytes
   end
 
-  def historical_document
+  # The reference of a hit on "first evidence", after the text is replaced.
+  def replaced_hit_reference
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
     writer.write("1", "evidence.md", "first evidence")
     graphs.retrieval.repair
-    hit = sole(graphs.retrieval.search("evidence"))
-    replace_and_remove(writer)
-
-    [hit, graphs.retrieval.fetch_reference(graphs.retrieval.search_reference(hit))]
-  end
-
-  def replace_and_remove(writer)
+    reference = graphs.retrieval.search_reference(sole(graphs.retrieval.search("evidence")))
     writer.write("1", "evidence.md", "second evidence")
-    writer.remove("1", "evidence.md")
+    [graphs.retrieval, reference]
   end
 end
 
@@ -227,10 +216,10 @@ class SearchEvidenceTest < Plastic::TestCase
   include SearchTestSupport
   include SearchTestAssertionSupport
 
-  def test_pins_a_hit_to_its_historical_revision_through_concurrent_replacement_and_removal
-    hit, document = historical_document
+  def test_a_hit_reference_no_longer_reads_back_once_its_text_is_replaced
+    retrieval, reference = replaced_hit_reference
 
-    assert_pinned_document(hit, document)
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(reference) }
   end
 
   def test_centers_the_excerpt_on_nonadjacent_matching_evidence

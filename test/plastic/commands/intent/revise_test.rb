@@ -12,17 +12,17 @@ class IntentReviseTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions = store_graphs.databases.fetch(:store).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
+  def what_in_file = body[/^## Intent\n\n(.+)$/, 1]
 
   def set_status(status) = store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
-  def test_a_revise_changes_the_title_row_and_writes_a_second_revision
+  def test_a_revise_changes_the_title_row_and_the_text_of_the_intent_file
     open_intent
 
     result = call("1", "Beta, after grilling")
 
     assert_equal 0, result.code, result.err
-    assert_equal ["Beta, after grilling", 2], [retrieval.intent("1").title, revisions]
+    assert_equal ["Beta, after grilling"] * 2, [retrieval.intent("1").title, what_in_file]
     refute_includes result.out, "plastic sync down"
   end
 
@@ -49,7 +49,7 @@ class IntentReviseTest < Plastic::TestCase
     result = call("1", "Beta, after grilling", "--dry-run")
 
     assert_call result, code: 0, out: ["what was: Alpha\nwhat: Beta, after grilling\n", "next: plastic intent revise 1 Beta,\\ after\\ grilling\n"]
-    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
+    assert_equal ["Alpha"] * 2, [retrieval.intent("1").title, what_in_file]
   end
 
   def test_a_dry_run_prints_the_old_why_or_none
@@ -70,7 +70,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal [1, true], [result.code, result.err.include?("intent 1 is done")]
     assert_match(/^next: plastic next/, result.out)
-    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
+    assert_equal ["Alpha"] * 2, [retrieval.intent("1").title, what_in_file]
   end
 
   def test_a_parked_intent_is_revised
@@ -95,7 +95,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_includes result.err, "missing LINE"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_a_line_with_a_line_break_fails_with_exit_1
@@ -115,7 +115,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "nothing to change"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_a_hand_edited_intent_file_fails_with_no_row_written
@@ -126,7 +126,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "changed since its last print on this home"
-    assert_equal 1, revisions
+    assert_equal "Alpha", what_in_file
   end
 
   def test_an_intent_with_no_file_row_fails_with_exit_1

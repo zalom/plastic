@@ -36,7 +36,6 @@ module ResourcesHomes
     store_database.transaction do |batch|
       batch.put(:documents, { intent_id: "1", path: rel, body:, updated_at: Plastic::TestCase::STAMP })
       batch.put(:document_heads, { intent_id: "1", path: rel, sha256: sha, updated_at: Plastic::TestCase::STAMP })
-      batch.put(:document_revisions, { sha256: sha, intent_id: "1", path: rel, body:, created_at: Plastic::TestCase::STAMP })
       batch.put(:printed, { path: "#{INTENT}/#{rel}", sha256: sha, at: Plastic::TestCase::STAMP })
     end
   end
@@ -45,7 +44,7 @@ module ResourcesHomes
 
   def intent_files = snapshot(File.join(store_root, INTENT)).keys
 
-  def row_digest = %w[documents document_heads document_revisions printed].to_h { |table| [table, store_database.rows("SELECT * FROM #{table} ORDER BY 1, 2").map(&:values)] }
+  def row_digest = %w[documents document_heads printed].to_h { |table| [table, store_database.rows("SELECT * FROM #{table} ORDER BY 1, 2").map(&:values)] }
 
   def relative_targets(text) = text.scan(/\]\(([^)\s]+)\)/).flatten.reject { |target| target.match?(%r{\A(?:[a-z]+:|/)}) }
 

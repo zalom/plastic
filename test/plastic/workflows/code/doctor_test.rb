@@ -74,15 +74,6 @@ class CheckHealthTest < Plastic::TestCase
     assert_equal [:done, "ok, rebuilt", 1], [outcome, printed_row(context, "search index #{SLUG}:"), search_rows(SLUG)]
   end
 
-  def test_evidence_that_is_gone_fails_with_the_backup_list_to_read
-    write_evidence(SLUG)
-    knowledge(SLUG).transaction { |batch| batch.add("DELETE FROM document_revisions") }
-    error, context = failed_check
-
-    assert_equal [GATE, "the evidence of 1 document is lost; no rebuild brings it back", ["plastic backup list --store #{SLUG}"]],
-      [error.message, printed_row(context, "search index #{SLUG}:"), printed_row(context, "repair:").grep(/backup list/)]
-  end
-
   def test_a_store_with_no_knowledge_database_prints_that_and_makes_none
     Plastic::Graph::Database::ConnectionPool.release(@home)
     File.delete(store_path(:knowledge))
