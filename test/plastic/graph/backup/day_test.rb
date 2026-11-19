@@ -58,3 +58,67 @@ class GraphBackupDayTest < Plastic::TestCase
     assert_equal ["end of day"], backup_reasons(home)
   end
 end
+
+# The days the clocks change, read with the clock that Time.now gives under
+# TZ=Europe/Berlin: +01:00 in winter and +02:00 in summer. A backup's day is
+# the day of the clock when it was taken.
+class GraphBackupDayClockChangeTest < Plastic::TestCase
+  include BackupHomes
+  include BackupTriggers
+
+  Backup = Plastic::Graph::Backup
+
+  # The summer time of Europe/Berlin in 2026, in UTC.
+  BERLIN_SUMMER = (Time.utc(2026, 3, 29, 1)...Time.utc(2026, 10, 25, 1))
+
+  # A wall-clock time in Europe/Berlin, with the offset that applied then; the hour the clocks go back reads as summer.
+  def berlin(*day, hour, minute)
+    summer = Time.new(*day, hour, minute, 0, "+02:00")
+    BERLIN_SUMMER.cover?(summer) ? summer : Time.new(*day, hour, minute, 0, "+01:00")
+  end
+
+  # Runs each moment in turn on store alpha, given as [method, Berlin time], and adds an intent before the last one.
+  def run_day(home, *moments)
+    *before, (last_moment, last_time) = moments
+    before.each { |moment, time| day(home, berlin(*time)).public_send(moment) }
+    add_intent(home)
+    day(home, berlin(*last_time)).public_send(last_moment)
+  end
+
+  def day(home, now) = Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now:)
+
+  def test_a_start_of_day_backup_taken_late_the_night_before_the_clocks_go_forward_does_not_count_for_that_day
+    home = fresh_home
+    day(home, berlin(2026, 3, 28, 23, 30)).begin_day
+    day(home, berlin(2026, 3, 29, 10, 0)).begin_day
+
+    assert_equal ["start of day", "start of day"], backup_reasons(home)
+  end
+
+  def test_an_end_of_day_backup_of_the_night_before_the_clocks_go_forward_is_not_replaced_as_that_day_s
+    home = fresh_home
+    day(home, berlin(2026, 3, 28, 9, 0)).begin_day
+    day(home, berlin(2026, 3, 28, 23, 30)).end_session
+    day(home, berlin(2026, 3, 29, 10, 0)).begin_day
+    add_intent(home)
+    day(home, berlin(2026, 3, 29, 18, 0)).end_session
+
+    assert_includes folder_names(home), stamp(berlin(2026, 3, 28, 23, 30))
+  end
+
+  def test_a_start_of_day_backup_taken_before_the_clocks_go_back_counts_for_that_day
+    home = fresh_home
+    day(home, berlin(2026, 10, 25, 0, 30)).begin_day
+    day(home, berlin(2026, 10, 25, 10, 0)).begin_day
+
+    assert_equal ["start of day"], backup_reasons(home)
+  end
+
+  def test_the_session_end_of_the_25_hour_day_keeps_that_day_s_start_of_day_backup
+    home = fresh_home
+    day(home, berlin(2026, 10, 25, 0, 10)).begin_day
+    day(home, berlin(2026, 10, 25, 23, 30)).end_session
+
+    assert_equal ["start of day", "end of day"], backup_reasons(home)
+  end
+end
