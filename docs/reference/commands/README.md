@@ -82,6 +82,12 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed or --older-than |
 | [`plastic backup restore`](backup-restore/README.md) | Replace one store's databases with those of a done backup |
 
+## migration
+
+| Command | What it does |
+| --- | --- |
+| [`plastic migration down`](migration-down/README.md) | Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup |
+
 ## resources
 
 | Command | What it does |

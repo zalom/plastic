@@ -6,7 +6,10 @@ require_relative "../../../../lib/plastic/commands/migration/down"
 class MigrationDownTest < Plastic::TestCase
   include PreviousStore
 
-  def down(home, *argv) = plastic("migration", "down", *argv, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
+  # The down runs an hour after the migration, so its backup folder sorts last.
+  CLOCK = FixedClock::Clock.new(MIGRATED_AT + 3600)
+
+  def down(home, *argv) = plastic("migration", "down", *argv, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
   def revisions(home) = alpha_rows(home, "knowledge_graph.db", "SELECT * FROM document_revisions")
 

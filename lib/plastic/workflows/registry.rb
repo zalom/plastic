@@ -84,6 +84,8 @@ module Plastic
       code_backup_purge: "Code::Backup::Purge",
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
+      # Migrations: undoing the newest migration of one store from legacy.db.
+      code_migration_down: "Code::Migration::Down",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",

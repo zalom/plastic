@@ -70,6 +70,9 @@ module Plastic
         "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed or --older-than"],
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
       },
+      "migration" => {
+        "migration down" => ["Commands::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"]
+      },
       "resources" => {
         "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
       },
