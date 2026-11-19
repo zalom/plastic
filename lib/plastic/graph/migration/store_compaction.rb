@@ -24,12 +24,7 @@ module Plastic
         FILES.map { |key| File.join(root, Schema.file(key)) }.select { |file| File.file?(file) }.any? { |file| vacuum_mode(file) != INCREMENTAL }
       end
 
-      def self.vacuum_mode(file)
-        database = SQLite3::Database.new(file, readonly: true)
-        database.get_first_value("PRAGMA auto_vacuum")
-      ensure
-        database&.close
-      end
+      def self.vacuum_mode(file) = SQLite3::Database.open(file, readonly: true) { |database| database.get_first_value("PRAGMA auto_vacuum") }
     end
   end
 end
