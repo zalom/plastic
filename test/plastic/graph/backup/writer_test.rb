@@ -79,6 +79,15 @@ class GraphBackupWriterTest < Plastic::TestCase
 
     assert_raises(Backup::Writer::Error) { writer.call }
   end
+
+  def test_a_backup_of_a_store_with_a_legacy_database_holds_a_copy_of_its_rows
+    home = fresh_home
+    SQLite3::Database.open(store_file(home, "legacy")) { |database| database.execute_batch("CREATE TABLE sqlar_20261119000000(name TEXT); INSERT INTO sqlar_20261119000000 VALUES ('kept.md');") }
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    copy = File.join(backups_dir(home), "20260101100000", "legacy-20260101100000.db")
+
+    assert_equal [["kept.md"]], SQLite3::Database.open(copy, readonly: true) { |database| database.execute("SELECT name FROM sqlar_20261119000000") }
+  end
 end
 
 class GraphBackupWriterLogTest < Plastic::TestCase

@@ -295,3 +295,25 @@ class GraphBackupRestoreEarlierVersionTest < Plastic::TestCase
     assert_equal [earlier, [*earlier, LATER]], [restored, recorded_versions(knowledge)]
   end
 end
+
+# A store with legacy.db: a restore puts back the copy of it that the backup holds.
+class GraphBackupRestoreLegacyTest < Plastic::TestCase
+  include BackupHomes
+
+  def restorer(home)
+    root = File.join(home, "stores", "alpha")
+    target = Plastic::Graph::Backup::Target.new(Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local), root, "alpha", nil)
+    Plastic::Graph::Backup::Restorer.new(target, Plastic::Graph.open(home:, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
+  end
+
+  def test_a_restore_puts_back_the_legacy_database_the_backup_holds
+    home = fresh_home
+    legacy = store_file(home, "legacy")
+    SQLite3::Database.open(legacy) { |database| database.execute_batch("CREATE TABLE sqlar_20261119000000(name TEXT); INSERT INTO sqlar_20261119000000 VALUES ('kept.md');") }
+    backup_at(home, at(2026, 2, 1, 10, 0, 0))
+    SQLite3::Database.open(legacy) { |database| database.execute("DELETE FROM sqlar_20261119000000") }
+    restorer(home).call("20260201100000")
+
+    assert_equal [["kept.md"]], SQLite3::Database.open(legacy, readonly: true) { |database| database.execute("SELECT name FROM sqlar_20261119000000") }
+  end
+end
