@@ -233,3 +233,47 @@ class KeptFilesFolderTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
   end
 end
+
+class KeptFilesLinkTest < Plastic::TestCase
+  include KeptFilesCleanupCases
+
+  LINKED = { TMP => "a symlink is on its path" }.freeze
+
+  def outside = (@outside ||= Dir.mktmpdir)
+
+  def link(target, name) = FileUtils.mkdir_p(File.dirname(on_disk(name))).then { File.symlink(target, on_disk(name)) }
+
+  def test_a_row_whose_path_is_a_broken_symlink_stays_and_nothing_is_written_through_it
+    link(File.join(outside, "victim.md"), TMP)
+    keep(TMP, "written through the link")
+    result = clean
+
+    assert_equal [[TMP], LINKED, []], [names, result.kept, Dir.children(outside)]
+  end
+
+  def test_a_row_under_a_symlinked_folder_stays_and_nothing_is_written_through_it
+    link(outside, "store/1--alpha/resources/tmp")
+    keep(TMP, "written through the folder link")
+    result = clean
+
+    assert_equal [[TMP], LINKED, []], [names, result.kept, Dir.children(outside)]
+  end
+
+  def test_a_row_whose_path_links_to_a_file_with_its_bytes_stays
+    File.write(File.join(outside, "same.md"), "same bytes")
+    link(File.join(outside, "same.md"), TMP)
+    keep(TMP, "same bytes")
+    clean
+
+    assert_equal [TMP], names
+  end
+
+  def test_a_store_folder_reached_through_a_symlink_still_prints_a_row_back
+    keep(ROADMAP, "old roadmap", intent_id: nil)
+    linked_root = File.join(outside, "alpha")
+    File.symlink(root, linked_root)
+    Cleanup.new(connection, linked_root, selection).call
+
+    assert_equal [[], "old roadmap"], [names, File.read(on_disk(ROADMAP))]
+  end
+end
