@@ -12,8 +12,18 @@ class WiringTest < Plastic::TestCase
 
   def read_by(selection) = PATHS.select { |rel| selection.read?(rel) }
 
-  def test_a_home_with_no_setting_reads_the_markdown_and_html_types_and_no_references
-    assert_equal %w[spec.md resources/output/reports/page.md resources/output/files/page.html], read_by(Plastic::Wiring.selection(@plastic_home))
+  def test_a_home_with_no_setting_reads_the_markdown_and_html_types_no_report_and_no_references
+    assert_equal %w[spec.md resources/output/files/page.html], read_by(Plastic::Wiring.selection(@plastic_home))
+  end
+
+  def test_a_home_with_no_setting_has_no_mandatory_report
+    assert_empty Plastic::Config::Defaults::GLOBAL.fetch("reports").fetch("mandatory")
+  end
+
+  def test_the_mandatory_setting_names_the_reports_read_in_every_intent
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.md]\n")
+
+    assert_includes read_by(Plastic::Wiring.selection(@plastic_home)), "resources/output/reports/page.md"
   end
 
   def test_the_types_setting_names_the_types_read
@@ -25,7 +35,7 @@ class WiringTest < Plastic::TestCase
   def test_the_types_setting_given_as_a_comma_value_is_read_as_a_list
     seed_config(@plastic_home, "global:\n  sync:\n    types: md,png\n")
 
-    assert_equal %w[spec.md resources/output/reports/page.md resources/output/files/shot.png], read_by(Plastic::Wiring.selection(@plastic_home))
+    assert_equal %w[spec.md resources/output/files/shot.png], read_by(Plastic::Wiring.selection(@plastic_home))
   end
 
   def test_the_references_setting_adds_the_references_folder
@@ -102,6 +112,6 @@ class WiringTest < Plastic::TestCase
   def test_the_switch_of_a_held_migration_releases_it
     seed_config(@plastic_home, "global:\n  migrate:\n    drop_document_revisions: true\n")
 
-    assert_equal %w[20261119000000], Plastic::Wiring.settings(@plastic_home).released
+    assert_equal %w[20261119000000 20261119190000], Plastic::Wiring.settings(@plastic_home).released
   end
 end

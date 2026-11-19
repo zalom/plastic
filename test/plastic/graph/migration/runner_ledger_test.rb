@@ -12,7 +12,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
   DROP = "20261119000000"
 
-  def run_runner(home) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: [DROP]).call
+  def run_runner(home, released: Plastic::Graph::MigrationList::HELD.keys) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call
 
   def old_home = old_layout(fresh_home)
 
@@ -29,13 +29,14 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     home = old_home
     run_runner(home)
 
-    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 1]],
+    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 1], ["alpha", "20261119180000", "up", "2026-11-16T12:00:00Z", 1],
+      ["alpha", TRIM, "up", "2026-11-16T12:00:00Z", 1]],
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 
   def test_the_up_row_of_a_migration_names_the_rows_it_kept_in_legacy_db_by_table
     home = old_home
-    run_runner(home)
+    run_runner(home, released: [DROP])
     moved = ledger(home).find { |row| row.first(2) == ["alpha", DROP] }[4]
 
     assert_equal kept_counts(home), JSON.parse(moved).sort.to_h
@@ -68,7 +69,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     report = migrate_store(home)
 
     assert_equal [["migrate: the ledger in plastic.db records the migrations of alpha but not those of beta (plastic.db: refused)"], ["alpha"]],
-      [report.notes, ledger(home).map(&:first).uniq]
+      [report.notes.grep(/ledger/), ledger(home).map(&:first).uniq]
   end
 
   def test_a_run_whose_home_stays_behind_notes_that_the_ledger_does_not_record_its_store_migrations

@@ -9,6 +9,7 @@ require_relative "archived_intents"
 require_relative "readability"
 require_relative "second_home"
 require_relative "old_savepoints"
+require_relative "unread_rows"
 
 module Plastic
   module Graph
@@ -18,9 +19,9 @@ module Plastic
         # store whose INDEX.md waits to be imported, `problem` a call that
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
-        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason. `new_types` are the file types a sync up skips and has not told about yet.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints, :new_types) do
-          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, new_types: [], **fields) = super
+        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason. `new_types` are the file types a sync up skips and has not told about yet. `unread` holds the rows of the paths the sync no longer reads.
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints, :new_types, :unread) do
+          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, new_types: [], unread: UnreadRows.none, **fields) = super
         end
 
         # Each entry's action, and what the sync writes.
@@ -49,7 +50,10 @@ module Plastic
           def entries_for(action) = actions.select { |_entry, found| found == action }.keys
 
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra + old_savepoints.removable.size
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + beyond_entries
+
+          # The writes a sync makes beyond its entries: the second home, the old savepoint files and the unread paths.
+          def beyond_entries = second_home_extra + old_savepoints.removable.size + unread.size
 
           # The reads of a second home that no entry already counts.
           def second_home_extra = second_home.size - (second_home.paths & entries_for(:read).map(&:path)).size

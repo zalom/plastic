@@ -11,7 +11,7 @@ class GraphMigrationPurgeTest < Plastic::TestCase
   def purge(home, version) = Plastic::Graph::MigrationPurge.new(home, "alpha", NOW).call(version)
 
   def test_a_purge_answers_the_rows_it_removed_by_table
-    assert_equal({ "document_revisions" => 1, "sqlar" => 1 }, purge(migrated_previous_home, DROP).moved)
+    assert_equal({ "document_revisions" => 1 }, purge(migrated_previous_home, DROP).moved)
   end
 
   def test_a_purge_of_a_version_with_no_legacy_rows_is_refused

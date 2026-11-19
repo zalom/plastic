@@ -15,6 +15,11 @@ module Plastic
           LINK = /(\]\(|(?:href|src)=")([^)"\s]+)/
           EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|/|#|\?)}i
 
+          # The store paths that the relative links of `text`, the file at the store path `path`, name.
+          def self.targets(path, text) = text.scan(LINK).map(&:last).reject { |link| EXTERNAL.match?(link) }.map { |link| resolved(link, path) }
+
+          def self.resolved(link, path) = Pathname.new(File.join(File.dirname(path), link.split(/(?=[#?])/, 2).first)).cleanpath.to_s
+
           def initialize(moves, known)
             @moves = moves
             @known = known
@@ -38,8 +43,8 @@ module Plastic
           def target(link, path, unresolved)
             return link if EXTERNAL.match?(link)
 
-            name, tail = link.split(/(?=[#?])/, 2)
-            found = Pathname.new(File.join(File.dirname(path), name)).cleanpath.to_s
+            tail = link.split(/(?=[#?])/, 2)[1]
+            found = LinkRewrite.resolved(link, path)
             return unresolved.push(link) && link unless @known.include?(found)
 
             moved?(found, path) ? "#{relative(found, path)}#{tail}" : link

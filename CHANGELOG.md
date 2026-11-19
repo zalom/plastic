@@ -5,6 +5,12 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.5
+
+- A sync reads a file in `resources/output/reports/` only when the owner asked for it or the config makes it mandatory. `plastic intent report ID PATH --asked WORDS` records an asked report: it checks the words against the owner messages of the store, the intent or the session, and refuses with exit 3 when no message holds them. It writes a `reported` line in the work log and one line under `## Reports` in `outcome.md`. The setting `reports.mandatory` names the mandatory reports and is empty by default. Every other file in that folder stays on disk with no row.
+- A sync up removes the rows of every path its rules no longer read, search rows included. Store migration `20261119180000` drops the rows of the reports that are neither recorded nor mandatory, and the files stay on disk. Store migration `20261119190000` trims `legacy.db` to the earlier texts of the paths a sync reads, with no `sqlar` row, and waits behind `migrate.drop_document_revisions` with migration `20261119000000`. The down of each new migration removes its version alone.
+- `plastic resources sort` files loose Markdown and HTML into `resources/tmp/`. It names and moves each report that is neither recorded nor mandatory, and keeps the files a listed report links to. `plastic doctor` is unchanged.
+
 ## 3.0.0-beta.4
 
 - Every reader takes a document's current text from `documents`. A revise keeps the old What and Why in its work log line and prints no `history:` line. `document get` of a reference pinned to a replaced text prints the current text and names the old reference as `changed_since`. Every store file moves to incremental auto vacuum, and a store write gives its free pages back to the disk in the same transaction.

@@ -294,15 +294,19 @@ disk and get no rows.
 | Place in an intent folder | Files | Read |
 | ------------------------- | ----- | ---- |
 | Intent root | Every Markdown file, `graph.json`, `context.json`, `work.log` and the legacy plan, checklist and `actions/` files | Always |
-| `resources/output/reports/` and `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
-| `resources/references/` | Every file | When `sync.references` is on |
-| `resources/tmp/` and every other place | Every file | Never |
+| `resources/output/reports/` | The reports the owner asked for and the reports the config makes mandatory | A file of an included type, only when `plastic intent report` recorded it or `reports.mandatory` names it |
+| `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
+| `resources/references/` | Copies of outside material | When `sync.references` is on |
+| `resources/tmp/` and every other place | Tool output, packets, plans, notes and every other file | Never |
 
 A sync up skips the first file of a type that `sync.types` and `sync.asked` do not name, prints one
 line that names the `plastic config set` command adding the type to `sync.types`, and adds the type to
 `sync.asked`.
 
-A file the selection leaves out is not read, even when an earlier sync put it in rows.
+A file the selection leaves out is not read, even when an earlier sync put it in rows. A sync up
+removes the rows of such a path: `documents`, `document_heads`, `printed`, `document_passages` and
+`document_fts`. `Graph::Knowledge::Reports` answers whether a report is recorded, from the
+`reported` lines of the work log, or mandatory, from `reports.mandatory`.
 Its rows stay, and nothing on disk is removed.
 
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a

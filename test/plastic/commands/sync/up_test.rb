@@ -283,15 +283,15 @@ class SyncUpGeneratedTest < Plastic::TestCase
   end
 end
 
-# Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
-class SyncUpSelectionTest < Plastic::TestCase
+# An intent folder, 2--beta, with one file of each kind, and the sync up and the rows read over it.
+module BetaFolder
   include ConfigHomes
 
   def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def setup
     super
-    page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{STAMP.to_json}\n---\n\n# 2 - Beta\n"
+    page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: #{Plastic::TestCase::STAMP.to_json}\n---\n\n# 2 - Beta\n"
     { "2--beta.md" => page, "spec.md" => "# Spec\n", "resources/output/files/shot.png" => "\x89PNG\x00".b,
       "resources/output/reports/page.html" => "<p>page</p>\n", "resources/references/notes.md" => "# Notes\n",
       "resources/tmp/scratch.md" => "# Scratch\n" }
@@ -302,28 +302,60 @@ class SyncUpSelectionTest < Plastic::TestCase
 
   def documents = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents ORDER BY path").map { |row| row["path"] }
 
+  def record_report(rel)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.put(:work_log, { intent_id: "2", position: 1, at: Plastic::TestCase::STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: rel, sha256: "", text: "the page" })
+    end
+  end
+end
+
+# Sync up reads the notes and the graph of an intent always, and its other files only as the settings ask.
+class SyncUpSelectionTest < Plastic::TestCase
+  include BetaFolder
+
   def asked = Plastic::Wiring.config(@plastic_home).list("sync.asked")
 
-  def test_a_sync_with_no_setting_reads_the_notes_and_the_reports_and_leaves_the_other_files_on_disk
+  def test_a_sync_with_no_setting_reads_the_notes_and_leaves_the_other_files_on_disk
     result = sync
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal [%w[2--beta.md resources/output/reports/page.html spec.md], []], [documents, kept]
+    assert_equal [%w[2--beta.md spec.md], []], [documents, kept]
     assert_path_exists folder.path("store/2--beta/resources/references/notes.md")
+  end
+
+  def test_an_unrecorded_report_stays_on_disk_with_no_row
+    sync
+
+    assert_equal [false, true], [documents.include?("resources/output/reports/page.html"), File.file?(folder.path("store/2--beta/resources/output/reports/page.html"))]
+  end
+
+  def test_a_recorded_report_is_read
+    sync
+    record_report("resources/output/reports/page.html")
+    sync
+
+    assert_includes documents, "resources/output/reports/page.html"
+  end
+
+  def test_a_mandatory_report_is_read_with_no_record
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
+    sync
+
+    assert_includes documents, "resources/output/reports/page.html"
   end
 
   def test_a_sync_with_the_png_type_included_keeps_the_image_and_no_other_file
     seed_config(@plastic_home, "global:\n  sync:\n    types: [md, html, png]\n")
 
     assert_equal 0, sync.code
-    assert_equal [%w[2--beta.md resources/output/reports/page.html spec.md], %w[store/2--beta/resources/output/files/shot.png]], [documents, kept]
+    assert_equal [%w[2--beta.md spec.md], %w[store/2--beta/resources/output/files/shot.png]], [documents, kept]
   end
 
   def test_a_sync_with_the_references_setting_on_reads_the_references_and_never_the_tmp_folder
     seed_config(@plastic_home, "global:\n  sync:\n    references: true\n")
 
     assert_equal 0, sync.code
-    assert_equal %w[2--beta.md resources/output/reports/page.html resources/references/notes.md spec.md], documents
+    assert_equal %w[2--beta.md resources/references/notes.md spec.md], documents
   end
 
   def types(value) = seed_config(@plastic_home, "global:\n  sync:\n    types: #{value}\n")
@@ -364,16 +396,54 @@ class SyncUpSelectionTest < Plastic::TestCase
 
     assert_equal 0, result.code
   end
+end
 
-  def test_a_file_that_left_the_selection_keeps_its_rows_and_the_preview_plans_no_removal
-    types("[md, html, png]")
+# A sync up removes the rows of a path it no longer reads, here a report whose record went.
+class SyncUpUnreadRowsTest < Plastic::TestCase
+  include BetaFolder
+
+  PAGE = "resources/output/reports/page.html"
+
+  def left_the_selection
+    record_report(PAGE)
     sync
-    types("[md]")
-    preview = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("DELETE FROM work_log WHERE kind = :kind", kind: "reported") }
+  end
 
-    assert_equal 0, preview.code
-    refute_match(/would remove .*page\.html/, preview.out)
-    assert_includes documents, "resources/output/reports/page.html"
+  def row_count(sql) = store_graphs.databases.fetch(:store).rows(sql, path: PAGE, printed: "store/2--beta/#{PAGE}").first.values.first
+
+  def rows_of_the_page
+    ["SELECT count(*) FROM main.documents WHERE path = :path", "SELECT count(*) FROM main.document_heads WHERE path = :path",
+      "SELECT count(*) FROM main.printed WHERE path = :printed", "SELECT count(*) FROM retrieval.document_passages WHERE path = :path",
+      "SELECT count(*) FROM retrieval.document_fts WHERE path = :path"].map { |sql| row_count(sql) }
+  end
+
+  # The dry run prints the lines of this same plan, applied to its copy of the store.
+  def test_the_plan_counts_and_names_the_rows_of_a_path_the_sync_no_longer_reads
+    left_the_selection
+    work = store_graphs.work
+    plan = work.sync_plan(:up, {})
+
+    assert_equal [1, ["removed the rows of store/2--beta/#{PAGE}: the sync no longer reads it"]],
+      [plan.pending, work.sync_apply(plan).grep(/removed the rows/)]
+  end
+
+  def test_a_sync_up_removes_every_row_of_a_path_the_sync_no_longer_reads
+    left_the_selection
+    store_graphs.retrieval.reindex
+    before = rows_of_the_page.map(&:positive?)
+    sync
+
+    assert_equal [[true] * 5, [0] * 5, true], [before, rows_of_the_page, File.file?(folder.path("store/2--beta/#{PAGE}"))]
+  end
+
+  def test_a_sync_down_after_the_removal_prints_nothing_at_that_path
+    left_the_selection
+    sync
+    File.delete(folder.path("store/2--beta/#{PAGE}"))
+    plastic("sync", "down", table: Plastic::CLI::TABLE)
+
+    refute_path_exists folder.path("store/2--beta/#{PAGE}")
   end
 end
 

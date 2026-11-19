@@ -21,10 +21,10 @@ class SchemaMigrationTest < Plastic::TestCase
     forget(home)
   end
 
-  def test_a_store_skips_a_held_migration_while_the_settings_leave_its_switch_off
+  def test_a_store_skips_a_held_migration_while_the_settings_leave_its_switch_off_and_runs_the_report_migration
     home = previous_home
 
-    assert_equal [[], false], [bring_alpha_current(home, {}).migrated, recorded(home).include?(DROP)]
+    assert_equal [["alpha"], false], [bring_alpha_current(home, {}).migrated, recorded(home).include?(DROP)]
   ensure
     forget(home)
   end

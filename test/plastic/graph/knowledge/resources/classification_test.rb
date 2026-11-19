@@ -12,8 +12,8 @@ class ResourcesClassificationTest < Plastic::TestCase
     assert_equal %w[resources/references/ref.md resources/references/sources/a.pdf], destinations("references/ref.md", "resources/sources/a.pdf")
   end
 
-  def test_reviews_packets_and_nodes_go_to_output_reports
-    assert_equal %w[resources/output/reports/reviews/r1.md resources/output/reports/packets/p.json resources/output/reports/nodes/n1/brief.md],
+  def test_reviews_packets_and_nodes_go_to_tmp
+    assert_equal %w[resources/tmp/reviews/r1.md resources/tmp/packets/p.json resources/tmp/nodes/n1/brief.md],
       destinations("reviews/r1.md", "packets/p.json", "nodes/n1/brief.md")
   end
 
@@ -29,12 +29,12 @@ class ResourcesClassificationTest < Plastic::TestCase
     assert_equal [nil] * 5, destinations("spec.md", "graph.json", "resources/output/reports/a.md", "resources/references/a.md", "resources/tmp/a.out")
   end
 
-  def test_other_agent_output_goes_by_extension_and_scratch_goes_to_tmp
-    assert_equal %w[resources/output/reports/notes.md resources/output/reports/page.html resources/output/files/data.csv resources/output/files/review.rb resources/tmp/runner-step.last],
+  def test_a_loose_markdown_or_html_file_and_scratch_go_to_tmp_and_other_output_to_files
+    assert_equal %w[resources/tmp/notes.md resources/tmp/page.html resources/output/files/data.csv resources/output/files/review.rb resources/tmp/runner-step.last],
       destinations("resources/notes.md", "page.html", "resources/data.csv", "review.rb", "runner-step.last")
   end
 
   def test_a_file_directly_under_output_is_sorted_by_its_type
-    assert_equal %w[resources/output/reports/loose.md resources/output/files/loose.csv resources/tmp/loose.out], destinations("resources/output/loose.md", "resources/output/loose.csv", "resources/output/loose.out")
+    assert_equal %w[resources/tmp/loose.md resources/output/files/loose.csv resources/tmp/loose.out], destinations("resources/output/loose.md", "resources/output/loose.csv", "resources/output/loose.out")
   end
 end

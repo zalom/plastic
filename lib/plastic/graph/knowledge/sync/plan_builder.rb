@@ -5,6 +5,7 @@ require_relative "archived_intents"
 require_relative "readability"
 require_relative "second_home"
 require_relative "old_savepoints"
+require_relative "unread_rows"
 require_relative "../new_types"
 
 module Plastic
@@ -44,11 +45,17 @@ module Plastic
 
           def old_savepoints = up? ? OldSavepoints.none : OldSavepoints.find(@folder, @retrieval)
 
-          # What only a sync up of a store that is not legacy reads: the archived intents, the second home and the files no read can take.
+          # What only a sync up of a store that is not legacy reads: the archived intents, the second home, the files no read
+          # can take and the rows of the paths the sync no longer reads.
           def reads(entries, folders)
             second_home = SecondHome.new(@folder, @retrieval, folders)
             { archived: ArchivedIntents.new(@folder, @retrieval).missing.size, second_home:, new_types: NewTypes.new(@folder).call,
-              unreadable_files: unreadable_entries(entries).merge(second_home.problems) }
+              unreadable_files: unreadable_entries(entries).merge(second_home.problems), unread: }
+          end
+
+          def unread
+            dirs = @retrieval.intents.to_h { |intent| [intent.intent_id, intent.dir] }
+            UnreadRows.find(@folder.sync.selection, @databases.fetch(:store), dirs)
           end
 
           # The changed files of `entries` that sync up would read and cannot.

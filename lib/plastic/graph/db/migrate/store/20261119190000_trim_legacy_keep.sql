@@ -1,0 +1,2 @@
+-- Migration 20261119000000 kept every document_revisions row and each removed sqlar row in legacy.db.
+-- The data step of this version trims them to the earlier texts of the paths the sync reads; no table changes.

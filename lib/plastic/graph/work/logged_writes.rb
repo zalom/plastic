@@ -3,6 +3,7 @@
 require "forwardable"
 require_relative "log_writer"
 require_relative "logged_nodes"
+require_relative "../knowledge/intent/reporter"
 
 module Plastic
   module Graph
@@ -74,6 +75,18 @@ module Plastic
             end
           end
         end
+
+        # Records a report of the intent with the owner's words that asked for it, or Reporter::MANDATORY.
+        def report_intent(intent, path, asked)
+          intent_id = intent.intent_id
+          @log.recorded do
+            reporter.write(intent, path, asked).tap do
+              @log.line(intent_id, "reported", asked, path:, body: reporter.body(intent, path))
+            end
+          end
+        end
+
+        def reporter = (@reporter ||= Knowledge::Intent::Reporter.new(@writers.databases, @writers.retrieval, @writers.folder))
 
         private
 

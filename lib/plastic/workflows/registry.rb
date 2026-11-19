@@ -18,6 +18,7 @@ module Plastic
       code_add_ruling: "Code::Intent::Rule",
       code_revise_intent: "Code::Intent::Revise",
       code_note_intent: "Code::Intent::Note",
+      code_report_intent: "Code::Intent::Report",
       code_show_spec: "Code::Intent::Spec",
       code_approve_intent: "Code::Intent::Approve",
       code_prepare_judge: "Code::Intent::Judge",

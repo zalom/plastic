@@ -6,8 +6,8 @@ require "digest"
 module ResourcesHomes
   INTENT = "store/1--alpha"
   MOVES = {
-    "reviews/r1.md" => "resources/output/reports/reviews/r1.md",
-    "resources/notes.md" => "resources/output/reports/notes.md",
+    "reviews/r1.md" => "resources/tmp/reviews/r1.md",
+    "resources/notes.md" => "resources/tmp/notes.md",
     "resources/data.csv" => "resources/output/files/data.csv",
     "references/ref.md" => "resources/references/ref.md",
     "review.rb" => "resources/output/files/review.rb",

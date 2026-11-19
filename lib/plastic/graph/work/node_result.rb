@@ -46,7 +46,7 @@ module Plastic
 
         def result?(dir, path)
           rel = path.delete_prefix("#{dir}/")
-          !PRINTED_BY_ROWS.include?(rel) && !Knowledge::LegacyPath.legacy?(rel) && @folder.sync.selection.read?(rel)
+          !PRINTED_BY_ROWS.include?(rel) && !Knowledge::LegacyPath.legacy?(rel) && @folder.sync.selection.read?(rel, intent_id: Knowledge::SyncSelection.intent_of(dir))
         end
       end
     end

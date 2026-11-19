@@ -49,16 +49,19 @@ module Plastic
         end
 
         # Sync up: the rows of the folders that have none first, the archived intents the index lists, then every file
-        # changed, then the index printed again from the rows.
+        # changed, then the rows of the paths it no longer reads go, then the index is printed again from the rows.
         def read_up(plan)
-          IntentFolders.new(@folder, @retrieval).write_to(@databases)
-          ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
-          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths)
+          write_folders
+          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths) + remove_unread(plan)
           printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
           lines
         end
 
+        def write_folders = [IntentFolders, ArchivedIntents].each { |rows| rows.new(@folder, @retrieval).write_to(@databases) }
+
         def read(paths) = file_reads.call(paths)
+
+        def remove_unread(plan) = plan.unread.remove(@databases.fetch(:store))
 
         def read_all(paths) = file_reads.read_all(paths)
 
