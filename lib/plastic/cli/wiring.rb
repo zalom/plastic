@@ -27,10 +27,7 @@ module Plastic
 
     def self.rows(home) = Config::Rows.new(settings_database(home))
 
-    def self.selection(home)
-      settings = config(home)
-      Graph::Knowledge::SyncSelection.new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"))
-    end
+    def self.selection(home) = Graph::Knowledge::SyncSelection.of(config(home))
 
     def self.sync(home) = Graph::Knowledge::SyncSettings.new(selection: selection(home), remove_after_import: config(home).flag(REMOVE_AFTER_IMPORT, default: false))
 

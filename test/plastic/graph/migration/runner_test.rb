@@ -10,7 +10,7 @@ class SchemaRunnerTest < Plastic::TestCase
   Runner = Plastic::Graph::SchemaRunner
   NOW = Time.utc(2026, 11, 16, 12, 0, 0)
 
-  def run_runner(home, **options) = Runner.new(home:, now: NOW, **options).call
+  def run_runner(home, **options) = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none, **options).call
 
   def old_home = old_layout(fresh_home)
 

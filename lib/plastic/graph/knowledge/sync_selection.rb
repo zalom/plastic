@@ -18,6 +18,11 @@ module Plastic
 
         def self.none = new(types: [], references: false, asked: [])
 
+        # The selection the `settings` name, as a Config reads them.
+        def self.of(settings)
+          new(types: settings.list("sync.types"), references: settings.flag(%w[sync references], default: false), asked: settings.list("sync.asked"))
+        end
+
         def self.output?(rel) = OUTPUT.any? { |folder| rel.start_with?(folder) }
 
         def self.root_note?(rel) = !rel.include?("/") && type_of(rel) == "md"

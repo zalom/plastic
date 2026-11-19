@@ -9,7 +9,8 @@ module Plastic
     # behind because its backup failed.
     module SchemaMigration
       def self.bring_current(context, slug: nil)
-        report = Graph::SchemaRunner.new(home: context.scope.plastic_home, now: context.now, only: slug).call
+        selection = Graph::Knowledge::SyncSelection.of(context.settings.config)
+        report = Graph::SchemaRunner.new(home: context.scope.plastic_home, now: context.now, selection:, only: slug).call
         report.behind_lines.each { |line| context.print(line) }
         import_config(context) unless slug
         report

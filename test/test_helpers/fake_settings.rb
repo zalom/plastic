@@ -15,6 +15,8 @@ module Plastic
 
         def flag(path, default:) = @values.fetch(path.join("."), default)
 
+        def list(key) = Array(@values.fetch(key, []))
+
         def choice(path, default:, allowed:)
           value = @values.fetch(path.join("."), default)
           allowed.include?(value) ? value : default

@@ -87,10 +87,11 @@ class StoreMigrationTest < Plastic::TestCase
     assert_equal [["intents/1/plan.md", "aa"], ["intents/2/outcome.md", "bb"], ["refs.md", "dd"], ["shared.md", "knowledge-copy"]], knowledge(home, "SELECT path, sha256 FROM printed ORDER BY path")
   end
 
-  def test_the_files_of_references_land_in_knowledge_with_their_columns
+  def test_the_files_of_references_that_no_sync_reads_are_printed_back_with_their_bytes_and_leave_sqlar
     home = migrated_home
+    printed = %w[1/design.png 1/spec.pdf].map { |name| File.binread(File.join(store_root(home), name)) }
 
-    assert_equal [["1/design.png", 3, "sha-design"], ["1/spec.pdf", 2, nil]], knowledge(home, "SELECT name, sz, sha256 FROM sqlar ORDER BY name")
+    assert_equal [[[0]], ["\x01\x02\x03".b, "\xFF\x00".b]], [knowledge(home, "SELECT count(*) FROM sqlar"), printed]
   end
 
   def test_the_retrieval_tables_leave_knowledge
@@ -205,7 +206,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home
     plant(home, trigger)
     before = [state(home), rows_digest(home)]
-    report = Runner.new(home:, now: NOW).call
+    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call
     [home, before, report]
   end
 
@@ -229,7 +230,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home(older: true)
     before = beta_2_files(home)
 
-    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW).call }
+    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call }
 
     assert_includes error.message, "beta.2"
     assert_equal before, beta_2_files(home)

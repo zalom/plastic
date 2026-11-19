@@ -6,6 +6,7 @@ require_relative "../schema/gate"
 require_relative "../schema/migrator"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
+require_relative "kept_files_cleanup"
 require_relative "migration_reason"
 require_relative "store_age"
 require_relative "store_compaction"
@@ -14,21 +15,23 @@ module Plastic
   module Graph
     # Brings the files of one store to the newest version. A store behind is backed up first, whatever the age of its
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
-    # stayed behind.
+    # stayed behind. The migration that keeps in sqlar only the files a sync reads takes the sync `selection` of the machine.
     class StoreMigration
       REFERENCES = "references.db"
+      KEPT_FILES = "20261119000000"
 
-      def initialize(home, slug, now, compaction: StoreCompaction)
+      def initialize(home, slug, now, selection:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
+        @selection = selection
         @compaction = compaction
       end
 
       def call
         return :current unless behind?
 
-        StoreAge.call(root) if baseline_pending?
+        StoreAge.call(root) if pending?(MIGRATIONS.baseline(:store))
         reason = backup_failure
         reason ? "its backup failed (#{reason})" : migrate_files
       rescue SQLite3::Exception, Database::Error, SystemCallError => error
@@ -55,17 +58,28 @@ module Plastic
         :migrated
       end
 
+      # The kept files are cleaned in the transaction of the migration, after the baseline has made sqlar.
       def run_migration
+        steps = migration_steps
         migrating = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file))
-        with_references(migrating) { SchemaMigrator.new(migrating, :store).call }
+        with_references(migrating) { migrating.atomically { steps.each { |step| step.call(migrating) } } }
       rescue SQLite3::Exception, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
       end
 
+      def migration_steps
+        migrate = ->(connection) { SchemaMigrator.new(connection, :store).call }
+        return [migrate] unless pending?(KEPT_FILES)
+
+        [migrate, ->(connection) { KeptFilesCleanup.new(connection, root, @selection).call }]
+      end
+
+      def pending?(version) = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(version)
+
       # Only the baseline reads the work file and the references file of a beta.2 store; a later migration needs neither.
-      def baseline_pending? = !File.file?(knowledge_file) || SchemaState.of_file(knowledge_file, :store).pending.include?(MIGRATIONS.baseline(:store))
+      def baseline_pending? = pending?(MIGRATIONS.baseline(:store))
 
       # Attaches the references file while the baseline runs, the one migration that reads it.
       def with_references(migrating)

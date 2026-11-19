@@ -18,15 +18,17 @@ module Plastic
         def behind_lines = failed.map { |store, reason| "migrate: #{store} stays behind because #{reason}; fix the cause and run plastic update" }
       end
 
-      # `only` names one store to migrate; the home database is checked either way.
-      def initialize(home:, now:, only: nil)
+      # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of
+      # the machine, which says which kept files a store keeps.
+      def initialize(home:, now:, selection:, only: nil)
         @home = home
         @only = only
         @now = now
+        @selection = selection
       end
 
       def call
-        results = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now).call] }
+        results = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, selection: @selection).call] }
         results["home"] = HomeMigration.new(@home, @now).call
         Report.of(results)
       end
