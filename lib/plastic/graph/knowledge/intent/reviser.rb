@@ -7,9 +7,9 @@ module Plastic
   module Graph
     module Knowledge
       class Intent
-        # Rewrites an intent's What and Why: a new revision of its own file in
-        # the knowledge graph, then its title row. The old revision row stays,
-        # so the old text reads back by its qualified reference.
+        # Rewrites an intent's What and Why: the text of its own file in the
+        # knowledge graph, then its title row. The work log line of the revise
+        # holds the old What and Why.
         class Reviser
           TITLE_SQL = <<~SQL
             UPDATE intents SET title = :title, updated_at = :now
@@ -26,15 +26,15 @@ module Plastic
           def change(intent, line, why)
             key = key_of(intent)
             document = @retrieval.fetch(*key)
-            document && Change.new(intent:, document:, history: uri(key), line:, why:)
+            document && Change.new(intent:, document:, line:, why:)
           end
 
-          # Writes the change and returns the qualified references of the old and the new revision.
+          # Writes the change and returns the qualified reference of the new text.
           def write(change)
             key = key_of(change.intent)
             Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id, clock: @clock).write(*key, change.body)
             write_title(key.first, change.line)
-            [change.history, uri(key)]
+            uri(key)
           end
 
           private
