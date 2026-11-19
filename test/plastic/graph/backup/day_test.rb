@@ -53,14 +53,14 @@ class GraphBackupDayTest < Plastic::TestCase
   EVENING = Time.new(2026, 1, 2, 18, 0, 0, "+01:00")
 
   # Another process takes the folder name of the moment between the free-name check and the claim, as a dangling link does.
-  def take_folder_name(home, time) = File.symlink(File.join(Dir.mktmpdir, "gone"), File.join(backups_dir(home), stamp(time)))
+  def occupy_folder_name(home, time) = File.symlink(File.join(Dir.mktmpdir, "gone"), File.join(backups_dir(home), stamp(time)))
 
   def test_a_session_end_whose_folder_was_taken_keeps_the_earlier_end_of_day_backup
     home = fresh_home
     day(home, MORNING).begin_day
     day(home, NOON).end_session
     add_intent(home)
-    take_folder_name(home, EVENING)
+    occupy_folder_name(home, EVENING)
     day(home, EVENING).end_session
 
     assert_equal [stamp(MORNING), stamp(NOON)], Backup::Folders.new(root(home)).names
@@ -72,6 +72,23 @@ class GraphBackupDayTest < Plastic::TestCase
     day(home, NOON).end_session
 
     assert_equal ["end of day"], backup_reasons(home)
+  end
+
+  AFTER_MIDNIGHT = Time.new(2026, 1, 2, 0, 30, 0, "+01:00")
+
+  # Rewrites a folder's status file without taken_at, as a backup written before it was recorded.
+  def drop_taken_at(home, name)
+    path = File.join(backups_dir(home), name, "status.yml")
+    File.write(path, YAML.safe_load_file(path).except("taken_at").to_yaml)
+  end
+
+  def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_in_the_clock_s_offset
+    home = fresh_home
+    day(home, AFTER_MIDNIGHT).begin_day
+    drop_taken_at(home, stamp(AFTER_MIDNIGHT))
+    day(home, MORNING).begin_day
+
+    assert_equal ["start of day"], backup_reasons(home)
   end
 end
 
