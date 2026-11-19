@@ -128,6 +128,16 @@ class IntentVerdictAcceptGateTest < Plastic::TestCase
     assert_match(/^next: plastic graph show 1/, result.out)
   end
 
+  def test_an_accept_with_an_open_unclaimed_node_exits_1_names_the_graph_show_command_and_writes_no_row
+    claimed_node
+    released = cli("node", "release", "1", "n1")
+
+    result = verdict("accept")
+
+    assert_equal [0, 1, []], [released.code, result.code, verdicts]
+    assert_match(/^next: plastic graph show 1/, result.out)
+  end
+
   def test_an_accept_with_no_done_criterion_exits_1_names_the_spec_command_and_writes_no_row
     open_intent
 
