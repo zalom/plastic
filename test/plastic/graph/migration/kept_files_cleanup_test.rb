@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
+require "digest"
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/migration/kept_files_cleanup"
 
-class KeptFilesCleanupTest < Plastic::TestCase
+module KeptFilesCleanupCases
   Cleanup = Plastic::Graph::KeptFilesCleanup
   SyncSelection = Plastic::Graph::Knowledge::SyncSelection
-  INSERT = "INSERT INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (?, 420, 0, 0, ?, ?, 's', 'o')"
+  INSERT = "INSERT INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (?, 420, 0, 0, ?, ?, ?, 'o')"
   TMP = "store/1--alpha/resources/tmp/scratch.md"
   REPORT = "store/1--alpha/resources/output/reports/review.md"
   PAPER = "store/1--alpha/resources/references/paper.pdf"
@@ -15,6 +16,8 @@ class KeptFilesCleanupTest < Plastic::TestCase
   def setup
     super
     Plastic::Graph.create(home: @plastic_home, store: "alpha")
+    connection.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('1', 'o', 'alpha', 'Alpha', 'open')")
+    FileUtils.mkdir_p(on_disk("store/1--alpha"))
   end
 
   def root = File.join(@plastic_home, "stores", "alpha")
@@ -24,15 +27,32 @@ class KeptFilesCleanupTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.for(knowledge, attach: Plastic::Graph::Database::Store.attachments(knowledge))
   end
 
-  def keep(name, data = "kept bytes", intent_id: "1") = connection.execute(INSERT, [name, SQLite3::Blob.new(data), intent_id])
+  def keep(name, data = "kept bytes", intent_id: "1")
+    connection.execute(INSERT, [name, SQLite3::Blob.new(data), intent_id, Digest::SHA256.hexdigest(data)])
+  end
 
-  def clean(references: false) = Cleanup.new(connection, root, SyncSelection.new(types: %w[md html], references:, asked: [])).call
+  def selection(references: false) = SyncSelection.new(types: %w[md html], references:, asked: [])
+
+  def clean(references: false, **options) = Cleanup.new(connection, root, selection(references:), **options).call
 
   def names = connection.execute("SELECT name FROM sqlar ORDER BY name").map { |row| row.fetch("name") }
 
   def on_disk(name) = File.join(root, name)
 
   def put_on_disk(name, text) = FileUtils.mkdir_p(File.dirname(on_disk(name))).then { File.write(on_disk(name), text) }
+
+  def archive(entry: nil, restored_at: nil)
+    connection.execute("INSERT INTO archives (intent_id, at, origin_id, restored_at) VALUES ('1', 'then', 'o', ?)", [restored_at])
+    FileUtils.rm_rf(on_disk("store/1--alpha")) unless restored_at
+    return unless entry
+
+    connection.execute("INSERT INTO archive_entries (intent_id, path, origin_id, kind, mode, mtime, data) VALUES ('1', 'resources/tmp/scratch.md', 'o', 'file', 420, 'then', ?)",
+      [SQLite3::Blob.new(entry)])
+  end
+end
+
+class KeptFilesCleanupTest < Plastic::TestCase
+  include KeptFilesCleanupCases
 
   def test_a_row_the_sync_reads_stays_and_a_row_it_never_reads_goes
     [REPORT, TMP].each { |name| keep(name) }
@@ -55,25 +75,57 @@ class KeptFilesCleanupTest < Plastic::TestCase
     assert_equal [[], "old roadmap"], [names, File.read(on_disk(ROADMAP))]
   end
 
-  def test_a_removed_row_whose_file_is_on_disk_leaves_the_file_as_it_is
-    keep(TMP, "old scratch")
-    put_on_disk(TMP, "new scratch")
+  def test_a_removed_row_whose_file_on_disk_has_its_bytes_goes_and_leaves_the_file_as_it_is
+    keep(TMP, "same scratch")
+    put_on_disk(TMP, "same scratch")
     clean
 
-    assert_equal [[], "new scratch"], [names, File.read(on_disk(TMP))]
+    assert_equal [[], "same scratch"], [names, File.read(on_disk(TMP))]
   end
 
-  def test_a_removed_row_of_an_archived_intent_is_not_printed_back
+  def test_a_row_whose_file_on_disk_differs_stays_and_is_reported
+    keep(TMP, "old scratch")
+    put_on_disk(TMP, "new scratch")
+    result = clean
+
+    assert_equal [[TMP], "new scratch", { TMP => "the file on disk differs" }], [names, File.read(on_disk(TMP)), result.kept]
+  end
+
+  def test_a_row_whose_file_on_disk_is_empty_stays
+    keep(TMP, "the only full copy")
+    put_on_disk(TMP, "")
+    clean
+
+    assert_equal [TMP], names
+  end
+
+  def test_a_row_of_an_archived_intent_whose_archive_holds_no_copy_stays_and_is_reported
     keep(TMP)
-    connection.execute("INSERT INTO archives (intent_id, at, origin_id) VALUES ('1', 'then', 'o')")
+    archive
+    result = clean
+
+    assert_equal [[TMP], false, { TMP => "intent 1 is archived and its archive holds no copy of it" }], [names, File.exist?(on_disk("store/1--alpha")), result.kept]
+  end
+
+  def test_a_row_of_an_archived_intent_whose_archive_holds_its_bytes_goes_and_nothing_is_printed
+    keep(TMP, "archived scratch")
+    archive(entry: "archived scratch")
     clean
 
     assert_equal [[], false], [names, File.exist?(on_disk("store/1--alpha"))]
   end
 
+  def test_a_row_of_an_archived_intent_whose_archive_holds_other_bytes_stays
+    keep(TMP, "the newer scratch")
+    archive(entry: "the older scratch")
+    clean
+
+    assert_equal [TMP], names
+  end
+
   def test_a_removed_row_of_a_restored_intent_is_printed_back
     keep(TMP, "scratch")
-    connection.execute("INSERT INTO archives (intent_id, at, origin_id, restored_at) VALUES ('1', 'then', 'o', 'later')")
+    archive(restored_at: "later")
     clean
 
     assert_equal "scratch", File.read(on_disk(TMP))
@@ -89,9 +141,11 @@ class KeptFilesCleanupTest < Plastic::TestCase
       [error.message, names, File.exist?(File.join(root, "..", "outside.md")), File.exist?(on_disk(ROADMAP))]
   end
 
-  def test_a_cleanup_answers_the_number_of_rows_it_removed
+  def test_a_cleanup_answers_the_number_of_rows_it_removed_and_the_rows_it_kept
     [REPORT, TMP, ROADMAP].each { |name| keep(name) }
+    put_on_disk(TMP, "changed")
+    result = clean
 
-    assert_equal 2, clean
+    assert_equal [1, [TMP]], [result.removed, result.kept.keys]
   end
 end
