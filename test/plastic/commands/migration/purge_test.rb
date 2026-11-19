@@ -50,6 +50,13 @@ class MigrationPurgeTest < Plastic::TestCase
       [result.code, legacy_tables(home), result.err.lines.map(&:chomp)]
   end
 
+  def test_a_purge_more_than_twelve_hours_after_the_newest_backup_backs_the_store_up_first
+    home = migrated_previous_home
+    result = plastic("migration", "purge", DROP, "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + (13 * 3600)))
+
+    assert_equal [0, "migration purge"], [result.code, Plastic::Graph::Backup::Folders.new(alpha_file(home, "")).report(backup_folders(home).last).fetch("reason")]
+  end
+
   def test_a_purge_adds_a_purge_row_to_the_ledger
     home = migrated_previous_home
     purge(home, DROP, "--store", "alpha")
