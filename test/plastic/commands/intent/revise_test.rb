@@ -35,6 +35,23 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes body, "## Context\n\nThe owner moved the goal\n"
   end
 
+  def test_a_revise_prints_the_new_revision_and_no_history_line
+    open_intent
+
+    result = call("1", "Beta, after grilling")
+
+    assert_match(%r{^revision: plastic://\S+$}, result.out)
+    refute_includes result.out, "history:"
+  end
+
+  def test_the_work_log_line_of_a_revise_holds_the_old_what_and_why
+    open_intent
+
+    call("1", "Beta", "--why", "The owner moved the goal")
+
+    assert_equal "title: Beta; what was: Alpha; why was: none", retrieval.structure.work_log("1").last.to_h.fetch(:text)
+  end
+
   def test_a_dry_run_prints_both_whats_and_writes_no_row
     open_intent
 
