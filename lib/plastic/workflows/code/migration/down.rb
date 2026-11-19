@@ -44,7 +44,7 @@ module Plastic
           read "say what was put back" do |context|
             context.print("down: put back #{Migration.counted(context.moved)} from legacy.db")
             context.print("down: #{context.store} no longer records migration #{context.version}")
-            context.print("down: built #{Migration.counted(context.built)} from the current documents") unless context.built.empty?
+            context.print("down: built #{Migration.counted(context.built)} from the current documents")
             context.warn("down: #{context.store} no longer records migration #{context.version}, but the ledger in plastic.db has no down row for it (#{context.ledger_gap})") if context.ledger_gap
           end
 
