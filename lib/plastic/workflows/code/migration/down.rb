@@ -22,7 +22,7 @@ module Plastic
 
           def self.down(context) = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
 
-          def self.run(context)
+          def self.undo(context)
             undone = down(context).call
             context[:version] = undone.version
             context[:moved] = undone.moved
@@ -41,7 +41,7 @@ module Plastic
 
           step "put the kept rows back", done: ->(context) { !context.version.nil? },
             changes: { databases: "The rows the newest migration kept in legacy.db go back into the store, and its version goes", backups: "A backup of the store is written first" } do |context|
-            run(context)
+            undo(context)
           end
 
           read "say what was put back" do |context|
