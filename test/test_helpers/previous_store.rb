@@ -3,6 +3,7 @@
 require "sqlite3"
 require "tmpdir"
 require "fileutils"
+require_relative "../../lib/plastic/graph/migration/migration_down"
 
 # A throwaway home whose registered store alpha the previous release wrote: it records every version before the drop
 # of document_revisions, holds a row there, and keeps in sqlar a file that only its row holds. `migrated_previous_home`
