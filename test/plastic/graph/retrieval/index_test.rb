@@ -19,7 +19,7 @@ class RetrievalIndexTest < Plastic::TestCase
 
   def test_the_named_intents_get_their_search_rows_and_the_others_keep_theirs
     put_document("3", "# Three\n\nThe third intent.\n")
-    index.rebuild_intent("3")
+    index.rebuild_intents(%w[3])
     %w[1 2].each { |intent_id| put_document(intent_id, "# Notes #{intent_id}\n\nThe zanzibar route.\n") }
     store.transaction { |batch| batch.add("DELETE FROM documents WHERE intent_id = '3'") }
     index.rebuild_intents(%w[1 2])
@@ -29,7 +29,7 @@ class RetrievalIndexTest < Plastic::TestCase
 
   def test_no_intent_builds_nothing_and_clears_nothing
     put_document("3", "# Three\n\nThe third intent.\n")
-    index.rebuild_intent("3")
+    index.rebuild_intents(%w[3])
     index.rebuild_intents([])
 
     assert_equal %w[3], fts_intents

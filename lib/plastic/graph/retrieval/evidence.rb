@@ -35,6 +35,8 @@ module Plastic
         def repair = @maintenance.repair
         # Rebuilds the passages and search entries of one intent, or of every intent when none is named.
         def reindex(intent_id = nil) = @maintenance.reindex(intent_id)
+        # Rebuilds the passages and search entries of the intents `intent_ids` in one pass.
+        def reindex_intents(intent_ids) = @maintenance.reindex_intents(intent_ids)
         # Whether the derived rows match the evidence, and which evidence is gone.
         def search_index_report = @maintenance.search_index_report
 

@@ -51,7 +51,7 @@ module Plastic
 
         # Sync up: the rows of the folders that have none first, the archived intents the index lists, then every file
         # changed, then the rows of the paths it no longer reads go, then the index is printed again from the rows. Last,
-        # the search rows of each intent whose files it read are built again.
+        # the search rows of the intents whose files it read are built again, all in one pass.
         def read_up(plan)
           write_folders
           paths = plan.entries_for(:read).map(&:path) | plan.second_home.paths
@@ -84,7 +84,7 @@ module Plastic
 
         private
 
-        def reindex(paths) = paths.filter_map { |path| SyncSelection.intent_of(path) }.uniq.each { |intent_id| @retrieval.reindex(intent_id) }
+        def reindex(paths) = @retrieval.reindex_intents(paths.filter_map { |path| SyncSelection.intent_of(path) }.uniq)
 
         def file_reads = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer)
       end
