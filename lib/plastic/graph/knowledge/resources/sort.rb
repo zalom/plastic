@@ -85,7 +85,7 @@ module Plastic
 
           def settle(moves = [])
             work.sync_apply(work.sync_plan(:up, {}))
-            @graphs.retrieval.reindex_intents(moves.filter_map { |move| SyncSelection.intent_of(move.from) }.uniq)
+            @graphs.retrieval.reindex(moves.filter_map { |move| SyncSelection.intent_of(move.from) }.uniq)
           end
 
           def print_logs(amendments) = amendments.map(&:intent_id).uniq.each { |intent_id| work.print_intent(intent_id) }

@@ -34,7 +34,7 @@ module Plastic
 
       def_delegators :sessions, :command_run, :session, :previous_session, :predecessor, :last_run, :touched, :sessions_on
       def_delegators :work, :ready_nodes, :claimed_nodes, :node, :rulings, :links, :every_link
-      def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :repair, :reindex, :reindex_intents, :search_index_report
+      def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :repair, :reindex, :search_index_report
       def_delegators "evidence.references", :reference, :search_reference
 
       def initialize(databases, store:, origin:, clock:)

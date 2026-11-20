@@ -84,7 +84,7 @@ module Plastic
 
         private
 
-        def reindex(paths) = @retrieval.reindex_intents(paths.filter_map { |path| SyncSelection.intent_of(path) }.uniq)
+        def reindex(paths) = @retrieval.reindex(paths.filter_map { |path| SyncSelection.intent_of(path) }.uniq)
 
         def file_reads = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer)
       end
