@@ -1,21 +1,14 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/work/chat/writer"
 
 class IntentReportTest < Plastic::TestCase
   include ConfigHomes
 
   REPORT = "resources/output/reports/page.html"
   OUTCOME = "# Outcome\n\nDelivered.\n"
-  SESSION = { "PLASTIC_SESSION" => "s-1" }.freeze
 
-  def call(*args, env: {}) = plastic("intent", "report", *args, env:, table: Plastic::CLI::TABLE)
-
-  def say(text, role: "user", store: "global", session_id: "s-9", intent_id: nil)
-    Plastic::Graph::Work::Chat::Writer.new(store_graphs.databases.fetch(:local), store:, clock: Time)
-      .record(session_id:, harness: nil, intent_id:, role:, text:)
-  end
+  def call(*args) = plastic("intent", "report", *args, table: Plastic::CLI::TABLE)
 
   def reported = store_database.rows("SELECT intent_id, path, text, sha256 FROM work_log WHERE kind = 'reported'").map(&:values)
 
@@ -29,67 +22,49 @@ class IntentReportTest < Plastic::TestCase
     sync_up
   end
 
-  def test_words_of_an_owner_message_of_the_store_record_the_report
-    say("Please write the delivery page as html")
-    result = call("1", REPORT, "--asked", "delivery page")
+  def test_a_report_records_with_no_words
+    result = call("1", REPORT)
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal [["1", REPORT, "delivery page", Digest::SHA256.hexdigest("<p>page</p>\n")]], reported
+    assert_equal [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]], reported
   end
 
-  def test_the_words_match_without_regard_to_case
-    say("Please write the Delivery Page")
+  def test_the_asked_option_is_a_usage_error_and_writes_nothing
+    result = call("1", REPORT, "--asked", "delivery page")
 
-    assert_equal 0, call("1", REPORT, "--asked", "delivery page").code
+    assert_equal [2, [], OUTCOME], [result.code, reported, outcome]
   end
 
-  def test_an_owner_message_of_the_session_counts_in_another_store
-    say("write the delivery page", store: "other", session_id: "s-1")
+  def test_a_closed_intent_exits_1_and_writes_nothing
+    store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
 
-    assert_equal 0, call("1", REPORT, "--asked", "delivery page", env: SESSION).code
+    assert_equal [1, [], OUTCOME], [call("1", REPORT).code, reported, outcome]
   end
 
-  def test_words_in_no_owner_message_exit_3_and_write_nothing
-    say("write the delivery page")
-    result = call("1", REPORT, "--asked", "a summary nobody asked for")
+  def test_an_older_line_with_the_asked_words_stays_beside_the_new_line
+    older = "#{OUTCOME}\n## Reports\n\n- resources/output/reports/old.html, asked: \"the old page\"\n"
+    write("#{retrieval.intent("1").dir}/outcome.md", older)
+    sync_up
+    call("1", REPORT)
 
-    assert_equal [3, [], OUTCOME], [result.code, reported, outcome]
-  end
-
-  def test_an_owner_message_of_another_store_intent_and_session_does_not_count
-    say("write the delivery page", store: "other", session_id: "s-9", intent_id: "9")
-
-    assert_equal [3, []], [call("1", REPORT, "--asked", "delivery page", env: SESSION).code, reported]
-  end
-
-  def test_an_assistant_message_does_not_count
-    say("I will write the delivery page", role: "assistant")
-
-    assert_equal [3, []], [call("1", REPORT, "--asked", "delivery page").code, reported]
-  end
-
-  def test_a_report_with_no_words_and_no_mandatory_setting_exits_3
-    assert_equal [3, []], [call("1", REPORT).code, reported]
+    assert_equal "#{older}- #{REPORT}\n", outcome
   end
 
   def test_a_missing_file_exits_1_and_writes_nothing
-    say("write the delivery page")
-    result = call("1", "resources/output/reports/gone.html", "--asked", "delivery page")
+    result = call("1", "resources/output/reports/gone.html")
 
     assert_equal [1, []], [result.code, reported]
   end
 
   def test_the_outcome_gets_one_line_under_a_reports_heading
-    say("write the delivery page")
-    call("1", REPORT, "--asked", "delivery page")
+    call("1", REPORT)
 
-    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"delivery page\"\n", outcome
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
   end
 
   def test_a_second_record_of_the_same_path_writes_nothing
-    say("write the delivery page")
-    call("1", REPORT, "--asked", "delivery page")
-    result = call("1", REPORT, "--asked", "delivery page")
+    call("1", REPORT)
+    result = call("1", REPORT)
 
     assert_equal [0, 1], [result.code, reported.size]
     assert_equal 1, outcome.scan(REPORT).size
@@ -104,8 +79,7 @@ class IntentReportTest < Plastic::TestCase
   end
 
   def test_a_recorded_report_is_read_by_the_next_sync
-    say("write the delivery page")
-    call("1", REPORT, "--asked", "delivery page")
+    call("1", REPORT)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
 
     assert_includes store_database.rows("SELECT path FROM documents").map { |row| row["path"] }, REPORT
@@ -120,18 +94,15 @@ class IntentReportTest < Plastic::TestCase
   end
 
   def test_an_unknown_intent_exits_1_and_writes_nothing
-    say("write the delivery page")
-
-    assert_equal [1, []], [call("9", REPORT, "--asked", "delivery page").code, reported]
+    assert_equal [1, []], [call("9", REPORT).code, reported]
   end
 
   def test_an_intent_with_no_outcome_gets_one_with_the_reports_section
-    say("write the delivery page")
     intent = open_intent("Beta")
     write("#{intent.dir}/#{REPORT}", "<p>page</p>\n")
     sync_up
-    call(intent.intent_id, REPORT, "--asked", "delivery page")
+    call(intent.intent_id, REPORT)
 
-    assert_equal "# Outcome\n\n## Reports\n\n- #{REPORT}, asked: \"delivery page\"\n", retrieval.fetch(intent.intent_id, "outcome.md").body
+    assert_equal "# Outcome\n\n## Reports\n\n- #{REPORT}\n", retrieval.fetch(intent.intent_id, "outcome.md").body
   end
 end
