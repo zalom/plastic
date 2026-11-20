@@ -1,16 +1,15 @@
 # plastic intent report
 
-Record a report the owner asked for, with the words that asked for it, so the sync reads it.
+Record a report of an intent so the sync reads it.
 
 ```sh
-plastic intent report ID PATH [--asked WORDS]
+plastic intent report ID PATH
 ```
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
 | `PATH` | the report, a path inside the intent folder under resources/output/reports/ | |
-| `--asked WORDS` | the owner's words that asked for the report |  |
 
 ## The events of one call, step by step
 

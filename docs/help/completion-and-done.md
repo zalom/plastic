@@ -53,14 +53,33 @@ Verification section holds one of three delivery lines:
 | `Delivered: resources/output/<path> because <reason>` | Work that no version control holds, such as a report or a document | Nothing more |
 
 Delivered files go in the intent folder: reports under `resources/output/reports`, and other
-files under `resources/output/files`. `resources/output/reports` holds only the reports the owner
-asked for and the reports the setting `reports.mandatory` names. Record an asked report with
-`plastic intent report ID PATH --asked WORDS`: the words must appear in an owner message of the
-store, the intent or the session, or the command exits 3 and writes nothing. A mandatory report
-takes the same command without `--asked`. The command adds one line for the report under
-`## Reports` in outcome.md. Tool output, packets, plans and notes go to `resources/tmp`, and
-copies of outside material go to `resources/references`. The `Delivered:` line counts only when the path it names
-exists there. Code always takes `Merged:` or `Committed:`, never `Delivered:`.
+files under `resources/output/files`. Record a report with `plastic intent report ID PATH`. The
+command adds the line `- PATH` under `## Reports` in outcome.md, and the sync reads the report.
+A report the setting `reports.mandatory` names takes the same command. The `Delivered:` line
+counts only when the path it names exists there. Code always takes `Merged:` or `Committed:`,
+never `Delivered:`.
+
+### Which work records a report
+
+The rule lives in this guidance. The command checks the path, the file type and that the intent
+is open, and then records; it does not judge whether the work needed a report.
+
+| Kind of result | Report? |
+| --- | --- |
+| Research, a comparison of options, a review or audit where the review is the work, a proposal for a ruling | Yes, with no ask |
+| A plan, a delivery report, an explainer | Only when the owner asks for one, or `reports.mandatory` names it |
+| A product file the work makes | No: it goes to `resources/output/files` |
+| A working file, a link list, a part of a research job | No: it goes to `resources/tmp`; only the synthesis is the report |
+
+To tell which kind the work is, read three things:
+
+- The words of the request. "Report", "artifact" and "html" ask for a report. "Research",
+  "compare", "audit" and "verify" name the work, whose synthesis is the report.
+- The kind or the title of the intent.
+- Whether the result is a finding or code. A finding is reported; code is merged or committed.
+
+Tool output, packets, plans and notes go to `resources/tmp`, and copies of outside material go
+to `resources/references`.
 
 A line counts only when it is filled in: one that starts with a denying word such as `no`,
 `pending` or `n/a`, or still holds a placeholder such as `<commit>`, is refused, and the handoff

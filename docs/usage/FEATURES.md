@@ -186,16 +186,15 @@ the migration. `plastic update` migrates the store up again after a down.
 ## The resources layout
 
 An intent folder keeps its notes in the root and its other files under `resources/`:
-`resources/output/reports/` for the reports the owner asked for and the reports the config makes
+`resources/output/reports/` for the recorded reports and the reports the config makes
 mandatory, `resources/output/files/` for every other output, `resources/references/` for copies
 of outside material, and `resources/tmp/` for tool output, packets, plans, notes and other state
 that no sync keeps. A sync reads the output folders by file type: Markdown and HTML by default, and
 more types through the setting `sync.types`. In `resources/output/reports/` it reads only a
-report that `plastic intent report ID PATH --asked WORDS` recorded or that the setting
-`reports.mandatory` names; every other file there stays on disk with no row. The command records
-a report only when the words appear in an owner message of the store, the intent or the session,
-and exits 3 otherwise. A mandatory report needs no `--asked`. Each recorded report gets one line
-under `## Reports` in outcome.md. When a sync up no longer reads a path, it removes the rows of that
+report that `plastic intent report ID PATH` recorded or that the setting `reports.mandatory`
+names; every other file there stays on disk with no row. Which work needs a report is the
+guidance of `plastic help completion-and-done`; the command records. Each recorded report gets
+one line under `## Reports` in outcome.md. When a sync up no longer reads a path, it removes the rows of that
 path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
@@ -207,7 +206,10 @@ run and `--dry-run` list the links that change and the links left as they are; `
 also lists every move and changes nothing. A loose Markdown or HTML file moves to `resources/tmp/`, and a
 file directly under `resources/output/` of another type moves to `files/`. A file in
 `resources/output/reports/` that is neither recorded nor mandatory is named and moved to
-`resources/tmp/`. A target that holds other bytes than
+`resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays where
+it is. When the sort rewrites a link in a root note of a done or abandoned intent, it writes an
+`amended` line on that intent's work log with the file, the old link, the new link and the reason;
+the run lists each one, and `--dry-run` previews each one. A target that holds other bytes than
 the file that would move onto it stops the call with exit 3 and names the target. A second run
 finds nothing to move and says `sorted: nothing to move`.
 
