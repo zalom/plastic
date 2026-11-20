@@ -45,14 +45,14 @@ class ResourcesSortCommandTest < Plastic::TestCase
     assert_equal 0, store_database.rows("SELECT count(*) AS n FROM work_log WHERE kind = 'amended'").first.fetch("n")
   end
 
-def test_the_command_says_it_writes_amended_work_log_lines
-  command = Plastic::Commands::Resources::Sort
+  def test_the_command_says_it_writes_amended_work_log_lines
+    command = Plastic::Commands::Resources::Sort
 
-  assert_includes command.changes.fetch(:work), "amended work log line"
-  assert_includes command.options.find { |option| option.name == :dry_run }.text, "amendments"
-end
+    assert_includes command.changes.fetch(:work), "amended work log line"
+    assert_includes command.options.find { |option| option.name == :dry_run }.text, "amendments"
+  end
 
-def test_a_second_run_says_there_is_nothing_to_move
+  def test_a_second_run_says_there_is_nothing_to_move
     sort
 
     assert_includes sort.out, "sorted: nothing to move"
