@@ -76,12 +76,18 @@ module Plastic
           end
         end
 
-        # Records a report of the intent with the owner's words that asked for it, or Reporter::MANDATORY.
-        def report_intent(intent, path, asked)
+        # Writes the `amended` lines of the links that the resource sort rewrote in the core files of closed intents, all in
+        # one transaction.
+        def amend_intents(amendments)
+          @log.recorded { amendments.each { |amendment| amendment.write(@log) } }
+        end
+
+        # Records a report of the intent; `text` is Reporter::MANDATORY for a report the setting names, else empty.
+        def report_intent(intent, path, text)
           intent_id = intent.intent_id
           @log.recorded do
-            reporter.write(intent, path, asked).tap do
-              @log.line(intent_id, "reported", asked, path:, body: reporter.body(intent, path))
+            reporter.write(intent, path, text).tap do
+              @log.line(intent_id, "reported", text, path:, body: reporter.body(intent, path))
             end
           end
         end

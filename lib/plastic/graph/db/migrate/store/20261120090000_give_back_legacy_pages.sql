@@ -1,0 +1,2 @@
+-- Migration 20261119190000 trimmed legacy.db but left the freed pages in the file.
+-- The data step of this version gives the free pages of legacy.db back to the disk; no table changes.

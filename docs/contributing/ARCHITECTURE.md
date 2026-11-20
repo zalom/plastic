@@ -294,7 +294,7 @@ disk and get no rows.
 | Place in an intent folder | Files | Read |
 | ------------------------- | ----- | ---- |
 | Intent root | Every Markdown file, `graph.json`, `context.json`, `work.log` and the legacy plan, checklist and `actions/` files | Always |
-| `resources/output/reports/` | The reports the owner asked for and the reports the config makes mandatory | A file of an included type, only when `plastic intent report` recorded it or `reports.mandatory` names it |
+| `resources/output/reports/` | The recorded reports and the reports the config makes mandatory | A file of an included type, only when `plastic intent report` recorded it or `reports.mandatory` names it |
 | `resources/output/files/` | Files of an included type | By `sync.types`, Markdown and HTML by default. `plastic init` offers images and videos picked. |
 | `resources/references/` | Copies of outside material | When `sync.references` is on |
 | `resources/tmp/` and every other place | Tool output, packets, plans, notes and every other file | Never |

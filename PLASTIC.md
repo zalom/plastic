@@ -20,9 +20,13 @@ Pull request: What, Why, How, Tests (`plastic help completion-and-done`).
 Record the delivery under Verification in outcome.md: `Merged:` for a merged pull request,
 `Committed:` for a direct commit, and `Delivered:` only for work that no version control holds.
 Delivered files go in the intent folder, under `resources/output/reports` or `resources/output/files`.
-`output/reports` holds only a report the owner asked for, recorded with `plastic intent report ID PATH
---asked WORDS`, or one that `reports.mandatory` names. Tool output, packets, plans and notes go to
-`resources/tmp`, and copies of outside material go to `resources/references`.
+Record a report with `plastic intent report ID PATH`. Research, a comparison of options, a review
+or audit that is the work, and a proposal for a ruling get a report with no ask. A plan, a delivery
+report or an explainer gets one only when asked or named by `reports.mandatory`. Tell by the
+request's words ("report", "artifact", "html" ask; "research", "compare", "audit", "verify" name
+the work), the intent's kind or title, and whether the result is a finding or code. Product files
+go to `resources/output/files`. Tool output, packets, plans, notes, link lists and parts of a
+research job go to `resources/tmp`, and copies of outside material go to `resources/references`.
 
 In guided work the owner's word to deliver is the go-ahead, and the agent records it with
 `plastic intent approve`. `plastic intent auto ID` hands the What, Why and How to agents, who

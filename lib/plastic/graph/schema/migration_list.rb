@@ -13,7 +13,8 @@ module Plastic
       ALPHA_STAMP = 1
       # The migrations held behind a switch, by version, with the config key that releases each. A held version runs
       # only once its switch is on, and a database that records it is still current. Docs: docs/contributing/MIGRATIONS.md.
-      HELD = { "20261119000000" => "migrate.drop_document_revisions", "20261119190000" => "migrate.drop_document_revisions" }.freeze
+      HELD = { "20261119000000" => "migrate.drop_document_revisions", "20261119190000" => "migrate.drop_document_revisions",
+               "20261120090000" => "migrate.drop_document_revisions" }.freeze
 
       def self.read(folder)
         new(Dir.glob(File.join(folder, "*", "*.sql")).map { |path| migration_at(path) })

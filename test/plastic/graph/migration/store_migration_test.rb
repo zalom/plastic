@@ -437,7 +437,7 @@ class StoreMigrationCompactionTest < Plastic::TestCase
     File.delete(store_path(home, "knowledge_graph.db"), store_path(home, "references.db"))
     run = migration(home, compaction: FULL_DISK)
 
-    assert_equal [:migrated, [FAILED]], [run.call, run.notes]
+    assert_equal [:migrated, [FAILED]], [run.call, run.notes.grep(/\Acompact:/)]
     assert_equal [[2]], knowledge(home, "SELECT count(*) FROM intents")
   end
 

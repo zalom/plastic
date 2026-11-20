@@ -94,8 +94,8 @@ class GraphMigrationDownTest < Plastic::TestCase
     assert_equal "migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back", down(previous_home).refusal
   end
 
-  # A migrated store whose trim went down, so the report migration is the newest it records.
-  def past_trim = migrated_previous_home.tap { |home| down(home).call }
+  # A migrated store whose page migration and trim went down, so the report migration is the newest it records.
+  def past_trim = migrated_previous_home.tap { |home| 2.times { down(home).call } }
 
   def test_the_report_migration_goes_down_by_removing_its_version_alone
     home = past_trim

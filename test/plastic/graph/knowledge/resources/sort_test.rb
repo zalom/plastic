@@ -66,6 +66,15 @@ class ResourcesSortTest < Plastic::TestCase
       .reject { |path, target| target == "missing.md" || File.exist?(File.expand_path(target.sub(/#.*/, ""), File.dirname(path))) }
   end
 
+  def test_the_search_rows_of_the_moved_files_go_with_their_rows
+    store_graphs.retrieval.reindex
+    fts = -> { store_database.rows("SELECT DISTINCT path FROM document_fts WHERE intent_id = '1' ORDER BY path").map { |row| row.fetch("path") } }
+    before = fts.call
+    sort
+
+    assert_equal [true, %w[spec.md]], [(HELD - before).empty?, fts.call.reject { |path| path == "intent.md" }]
+  end
+
   def test_every_rewritten_link_resolves
     sort
 

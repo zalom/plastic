@@ -9,7 +9,7 @@ module Plastic
     module Code
       module Resources
         class Sort
-          # Lists the moves and the links a sort would change, and writes nothing.
+          # Lists the moves, the links and the amendments a sort would change, and writes nothing.
           class Preview < CodeWorkflow
             clear_declarations
             summary "Previews a sort of the resources without moving a file."
@@ -19,9 +19,11 @@ module Plastic
 
               reports = Code::Resources::Sort.reports(context).recorded_from(context.database(:store))
 
-              plan = Plastic::Graph::Knowledge::Resources::SortPlan.new(Code::Resources::Sort.folder(context), reports:)
+              sort_plan = Plastic::Graph::Knowledge::Resources::SortPlan
+              plan = sort_plan.new(Code::Resources::Sort.folder(context), reports:, closed: sort_plan.closed(context.retrieval))
               plan.moves.each { |move| context.print(plan.preview(move)) }
               plan.changed.each { |link| context.print("preview: link would change #{link}") }
+              plan.amendments.each { |amendment| context.print(amendment.preview) }
               plan.unresolved.each { |link| context.print("preview: link left as it is #{link}") }
               context.print("preview complete; the original store was not changed")
             end

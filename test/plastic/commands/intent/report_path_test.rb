@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/graph/work/chat/writer"
 
 class IntentReportPathTest < Plastic::TestCase
   include ConfigHomes
 
   FOLDER = "resources/output/reports"
 
-  def call(path) = plastic("intent", "report", "1", path, "--asked", "delivery page", table: Plastic::CLI::TABLE)
+  def call(path) = plastic("intent", "report", "1", path, table: Plastic::CLI::TABLE)
 
   def reported = store_database.rows("SELECT path FROM work_log WHERE kind = 'reported'").map(&:values)
 
@@ -23,8 +22,6 @@ class IntentReportPathTest < Plastic::TestCase
     write("#{intent.dir}/#{FOLDER}/page.html", "<p>page</p>\n")
     write("secret.txt", "a secret outside every intent\n")
     sync_up
-    Plastic::Graph::Work::Chat::Writer.new(store_graphs.databases.fetch(:local), store: "global", clock: Time)
-      .record(session_id: "s-9", harness: nil, intent_id: nil, role: "user", text: "write the delivery page")
   end
 
   def refused(path)

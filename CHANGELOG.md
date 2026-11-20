@@ -5,6 +5,12 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.6
+
+- `plastic intent report ID PATH` records a report with no `--asked` flag and no check of chat words. It keeps its checks of the path, the file type and a closed intent, and adds the line `- PATH` under `## Reports` in `outcome.md`. `PLASTIC.md` and the help topic `completion-and-done` say which work records a report: research, a comparison of options, a review or audit that is the work, and a proposal for a ruling get one with no ask; a plan, a delivery report or an explainer gets one only when the owner asks or `reports.mandatory` names it.
+- `plastic resources sort` keeps every file that a recorded or mandatory report of any intent links to. When it rewrites a link in a root note of a done or abandoned intent, such as `outcome.md`, it writes one `amended` line in that intent's work log for each distinct old and new link, naming the file, the old link, the new link and the reason, and prints the intent's `work.log`. The output lists each amendment, and `--dry-run` shows each one before anything is written. A failed write puts the moves back.
+- A sync up rebuilds the search rows of the intents it reads in one pass, so `plastic search` finds a new or changed file right after it. Store migration `20261120090000` gives the free pages of `legacy.db` back to the disk; it waits behind `migrate.drop_document_revisions` with the trim.
+
 ## 3.0.0-beta.5
 
 - A sync reads a file in `resources/output/reports/` only when the owner asked for it or the config makes it mandatory. `plastic intent report ID PATH --asked WORDS` records an asked report: it checks the words against the owner messages of the store, the intent or the session, and refuses with exit 3 when no message holds them. It writes a `reported` line in the work log and one line under `## Reports` in `outcome.md`. The setting `reports.mandatory` names the mandatory reports and is empty by default. Every other file in that folder stays on disk with no row.
