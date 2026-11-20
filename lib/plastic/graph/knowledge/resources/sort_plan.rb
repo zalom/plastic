@@ -26,6 +26,9 @@ module Plastic
           # Every move of the store by old path, the unchecked plan the links are recomputed against.
           def moved = (@moved ||= intents.flat_map(&:moves).to_h { |move| [move.from, move.to] })
 
+          # The store paths that a recorded or mandatory report of any intent links to: none of them moves.
+          def kept = (@kept ||= intents.flat_map { |intent| intent.listed_targets.to_a }.to_set)
+
           def rewrites = intents.flat_map(&:rewrites)
 
           def unresolved = intents.flat_map(&:unresolved)
@@ -50,7 +53,7 @@ module Plastic
             raise Refused, conflicting.refusal if conflicting
           end
 
-          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, method(:moved), @reports) })
+          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, self, @reports) })
         end
       end
     end

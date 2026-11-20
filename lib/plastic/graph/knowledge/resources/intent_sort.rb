@@ -14,7 +14,8 @@ module Plastic
         # The sort of one intent folder: the files that move, and the text of the files whose links change.
         # Paths are relative to the store folder. Given the store's `reports`, a file of resources/output/reports/ that is
         # neither recorded nor mandatory moves to resources/tmp/; with none, the reports folder is left as it is. A recorded or
-        # mandatory report is never rewritten, and every file of the intent folder that it links to stays where it is.
+        # mandatory report is never rewritten. `plan` is the sort of the whole store: its moves by old path, and the paths it
+        # keeps, which a recorded or mandatory report of any intent links to. A kept file stays where it is.
         class IntentSort
           Rewrite = Data.define(:path, :text, :was) do
             def undo(folder) = (folder.write(path, was) if folder.exist?(path))
@@ -31,10 +32,10 @@ module Plastic
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
 
-          def initialize(folder, dir, moved, reports = nil)
+          def initialize(folder, dir, plan, reports = nil)
             @folder = folder
             @dir = dir
-            @moved = moved
+            @plan = plan
             @reports = reports
           end
 
@@ -43,11 +44,17 @@ module Plastic
           # The moves of the reports that are neither recorded nor mandatory.
           def unasked = moves.select { |move| Knowledge::Reports.report?(move.inside_from) }
 
-          def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @moved.call) }
+          def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @plan.moved) }
 
           def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
 
           def changed = results.flat_map { |linked| linked.changed_in(@dir) }
+
+          # The store paths that a recorded or mandatory report of this intent links to.
+          def listed_targets
+            @listed_targets ||= files.select { |rel| IntentSort.linked?(rel) && listed?(rel) }
+              .flat_map { |rel| LinkRewrite.targets("#{@dir}/#{rel}", text(rel)) }.to_set
+          end
 
           private
 
@@ -55,7 +62,7 @@ module Plastic
 
           def destinations = (@destinations ||= files.to_h { |rel| [rel, destination(rel)] }.compact)
 
-          def destination(rel) = (Classification.destination(rel) || unasked_destination(rel) unless linked_from_listed.include?(rel))
+          def destination(rel) = (Classification.destination(rel) || unasked_destination(rel) unless @plan.kept.include?("#{@dir}/#{rel}"))
 
           def unasked_destination(rel)
             return unless @reports && Knowledge::Reports.report?(rel) && !Classification.machine?(rel) && !listed?(rel)
@@ -67,16 +74,9 @@ module Plastic
 
           def listed?(rel) = !@reports.nil? && Knowledge::Reports.report?(rel) && @reports.listed?(intent_id, rel)
 
-          # The paths inside the intent folder that a recorded or mandatory report links to.
-          def linked_from_listed
-            @linked_from_listed ||= files.select { |rel| IntentSort.linked?(rel) && listed?(rel) }
-              .flat_map { |rel| LinkRewrite.targets("#{@dir}/#{rel}", text(rel)) }
-              .filter_map { |path| path.delete_prefix("#{@dir}/") if path.start_with?("#{@dir}/") }.to_set
-          end
-
           def text(rel) = @folder.read("#{@dir}/#{rel}").force_encoding(Encoding::UTF_8)
 
-          def rewriter = (@rewriter ||= LinkRewrite.new(@moved.call, KnownFiles.new(@folder)))
+          def rewriter = (@rewriter ||= LinkRewrite.new(@plan.moved, KnownFiles.new(@folder)))
 
           # A listed report keeps its bytes: its links are read against no move.
           def rewriter_of(rel) = listed?(rel) ? LinkRewrite.new({}, KnownFiles.new(@folder)) : rewriter
