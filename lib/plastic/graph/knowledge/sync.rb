@@ -6,6 +6,7 @@ require_relative "intent"
 require_relative "../printer"
 require_relative "prints"
 require_relative "store_folder"
+require_relative "sync_selection"
 require_relative "sync/plan"
 require_relative "sync/hand_edits"
 require_relative "sync/file_reads"
@@ -49,11 +50,14 @@ module Plastic
         end
 
         # Sync up: the rows of the folders that have none first, the archived intents the index lists, then every file
-        # changed, then the rows of the paths it no longer reads go, then the index is printed again from the rows.
+        # changed, then the rows of the paths it no longer reads go, then the index is printed again from the rows. Last,
+        # the search rows of each intent whose files it read are built again.
         def read_up(plan)
           write_folders
-          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths) + remove_unread(plan)
+          paths = plan.entries_for(:read).map(&:path) | plan.second_home.paths
+          lines = read(paths) + remove_unread(plan)
           printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
+          reindex(paths)
           lines
         end
 
@@ -79,6 +83,8 @@ module Plastic
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
 
         private
+
+        def reindex(paths) = paths.filter_map { |path| SyncSelection.intent_of(path) }.uniq.each { |intent_id| @retrieval.reindex(intent_id) }
 
         def file_reads = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer)
       end
