@@ -3,6 +3,7 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/graph/knowledge/resources/sort"
 require_relative "../../../../test_helpers/resources_homes"
+require "delegate"
 
 # A sort that rewrites a link in a core file of a closed intent says so on that intent's work log, in its output and in its preview.
 class ResourcesAmendmentSortTest < Plastic::TestCase
@@ -23,7 +24,16 @@ class ResourcesAmendmentSortTest < Plastic::TestCase
 
   def close(status) = store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
-  def amended = store_database.rows("SELECT path, text FROM work_log WHERE kind = 'amended' ORDER BY position").map(&:values)
+def amended = store_database.rows("SELECT path, text FROM work_log WHERE kind = 'amended' ORDER BY position").map(&:values)
+
+def work_log = File.join(store_root, INTENT, "work.log")
+
+def preview_lines = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).call
+
+# A work graph whose amended lines cannot be written, as a locked database fails.
+class FailingWork < SimpleDelegator
+  def amend_intents(_amendments) = raise(IOError, "the database is locked")
+end
 
   def setup
     super
@@ -64,7 +74,42 @@ class ResourcesAmendmentSortTest < Plastic::TestCase
     assert_equal [], amended
   end
 
-  def test_the_plan_names_each_amendment_before_anything_is_written
+def test_the_sort_prints_the_amended_lines_into_the_work_log_of_the_intent
+  close("done")
+  sort
+
+  assert_equal 2, File.read(work_log).lines.grep(/ amended spec\.md: link /).size
+end
+
+def test_after_the_sort_a_sync_up_has_nothing_pending_and_reads_a_hand_line
+  close("done")
+  sort
+  pending = preview_lines.last
+  File.write(work_log, "#{File.read(work_log)}- 2026-11-20T09:00:00+01:00 - - - noted - - a hand line\n")
+  up = plastic("sync", "up", table: Plastic::CLI::TABLE)
+
+  assert_equal ["preview: paths that would change: 0", 0], [pending, up.code]
+end
+
+def test_the_same_link_twice_in_one_note_gives_one_amended_line
+  write("#{INTENT}/spec.md", "# Spec\n\nSee [review](reviews/r1.md) and again [review](reviews/r1.md).\n")
+  close("done")
+  sort
+
+  assert_equal [AMENDED.first], amended
+end
+
+def test_a_failed_amendment_puts_the_files_and_the_rows_back
+  close("done")
+  before = [files_without_databases, row_digest]
+  graphs = store_graphs
+  failing = graphs.with(work: FailingWork.new(graphs.work))
+
+  assert_raises(IOError) { Resources::Sort.new(folder, failing).call }
+  assert_equal before, [files_without_databases, row_digest]
+end
+
+def test_the_plan_names_each_amendment_before_anything_is_written
     close("done")
     before = files_without_databases
     plan = Resources::SortPlan.new(folder, closed: Set["1"])
