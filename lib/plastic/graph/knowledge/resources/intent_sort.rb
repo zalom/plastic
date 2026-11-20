@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "amendment"
 require_relative "classification"
 require_relative "known_files"
 require_relative "link_rewrite"
@@ -28,6 +29,8 @@ module Plastic
             def unresolved_in(dir) = found.unresolved.map { |link| "#{dir}/#{rel}: #{link}" }
 
             def changed_in(dir) = found.changed.map { |link| "#{dir}/#{rel}: #{link}" }
+
+            def amendments(intent_id, dir) = found.changed.map { |change| Amendment.new(intent_id, dir, rel, change, found.text) }
           end
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
@@ -49,6 +52,9 @@ module Plastic
           def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
 
           def changed = results.flat_map { |linked| linked.changed_in(@dir) }
+
+          # The links the sort rewrites in the core files, the notes at the root of the intent folder.
+          def amendments = results.select { |linked| SyncSelection.root_note?(linked.rel) }.flat_map { |linked| linked.amendments(intent_id, @dir) }
 
           # The store paths that a recorded or mandatory report of this intent links to.
           def listed_targets
