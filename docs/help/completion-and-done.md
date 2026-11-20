@@ -32,8 +32,8 @@ intent with no node has nothing to revert. It writes no completion row.
 Once the intent is closed, it takes no more rulings, nodes or verdicts: a done intent is never
 moved back to active.
 
-One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
-no other step restates either.
+A delivery produces `outcome.md`. It adds a report only by the rule in "Which work records a
+report" below, and no other step restates either.
 
 ## You land the code
 
