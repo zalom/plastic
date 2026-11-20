@@ -10,7 +10,7 @@ module Plastic
         # intent folder; the answer is the path inside it too, or nil when the file stays where it is: a note,
         # a legacy file, machine state or a file already in a sorted folder. A file directly under
         # resources/output/ is sorted by its type. Reviews, packets, node files, loose Markdown and HTML files and
-        # scratch go to resources/tmp/, since resources/output/reports/ holds only a report the owner asked for or the
+        # scratch go to resources/tmp/, since resources/output/reports/ holds only a recorded report or one the
         # setting reports.mandatory names.
         module Classification
           SORTED = %w[resources/output/reports/ resources/output/files/ resources/references/ resources/tmp/].freeze

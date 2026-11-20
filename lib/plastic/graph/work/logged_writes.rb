@@ -82,12 +82,12 @@ module Plastic
           @log.recorded { @log.line(intent_id, "amended", text, path:, body:) }
         end
 
-        # Records a report of the intent with the owner's words that asked for it, or Reporter::MANDATORY.
-        def report_intent(intent, path, asked)
+        # Records a report of the intent; `text` is Reporter::MANDATORY for a report the setting names, else empty.
+        def report_intent(intent, path, text)
           intent_id = intent.intent_id
           @log.recorded do
-            reporter.write(intent, path, asked).tap do
-              @log.line(intent_id, "reported", asked, path:, body: reporter.body(intent, path))
+            reporter.write(intent, path, text).tap do
+              @log.line(intent_id, "reported", text, path:, body: reporter.body(intent, path))
             end
           end
         end

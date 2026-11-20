@@ -21,8 +21,8 @@ module Plastic
                 "Then add '- Merged: <branch> into <base> at <commit or pull request>', or '- Committed: <branch> at <commit>' " \
                 "when the project commits straight to its branch. " \
                 "Add '- Delivered: resources/output/<path> because <reason>' only for work that no version control holds: " \
-                "put a report the owner asked for in %{intent_folder}/resources/output/reports and record it with " \
-                "plastic intent report %{intent_id} PATH --asked WORDS, put other files in %{intent_folder}/resources/output/files, " \
+                "put a report of the work in %{intent_folder}/resources/output/reports and record it with " \
+                "plastic intent report %{intent_id} PATH, put other files in %{intent_folder}/resources/output/files, " \
                 "and name them in the line. Then run plastic sync up. Plastic runs no version control command; it records what you write."
             step "confirm the architecture map", done: ->(context) { context.map_recorded },
               say: "Now that the code is delivered, fetch the architecture map once more, with the tool you used before planning " \
