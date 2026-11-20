@@ -16,8 +16,8 @@ module Plastic
 
           def preview = "preview: would amend #{dir}/#{text}"
 
-          # Writes the `amended` line on the work log of the intent through `work`, the work graph.
-          def write(work) = work.amend_intent(intent_id, text, path: rel, body:)
+          # Writes the `amended` line on the work log of the intent through `log`, the log writer of the work graph.
+          def write(log) = log.line(intent_id, "amended", text, path: rel, body:)
         end
       end
     end

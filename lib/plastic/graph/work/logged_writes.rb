@@ -76,10 +76,10 @@ module Plastic
           end
         end
 
-        # Writes the `amended` line of one link that the resource sort rewrote in a core file of a closed intent.
-        # `path` is the file inside the intent folder and `body` its new text.
-        def amend_intent(intent_id, text, path:, body:)
-          @log.recorded { @log.line(intent_id, "amended", text, path:, body:) }
+        # Writes the `amended` lines of the links that the resource sort rewrote in the core files of closed intents, all in
+        # one transaction.
+        def amend_intents(amendments)
+          @log.recorded { amendments.each { |amendment| amendment.write(@log) } }
         end
 
         # Records a report of the intent; `text` is Reporter::MANDATORY for a report the setting names, else empty.
