@@ -39,6 +39,12 @@ class GraphLegacyPagesTest < Plastic::TestCase
     assert_equal [pages(apart), contents(apart)], [pages(together), contents(together)]
   end
 
+  def test_the_line_names_one_page_in_the_singular_and_no_page_not_at_all
+    lines = [1, 0].map { |pages| Plastic::Graph::LegacyPages::Result.new(pages:).line("alpha") }
+
+    assert_equal ["migrate: alpha gave 1 free page of legacy.db back to the disk", nil], lines
+  end
+
   def test_a_store_with_no_legacy_db_gets_none
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
