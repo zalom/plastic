@@ -89,7 +89,8 @@ commits.
   just before its SQL runs. A data step gets a `keep:` callable and keeps each row before it
   deletes it.
 - The store migration attaches `legacy.db` only while a version of `KEEPS` or `TRIMS` is pending,
-  so no other run makes the file.
+  or a version of `LegacyPages::VERSIONS` is pending and the file is there, so no other run
+  makes the file.
 - A backup copies `legacy.db` when the store has one, and a restore puts it back.
 
 A migration whose removed rows a sync up reads back keeps nothing. `LegacyKeep::ALONE` lists
@@ -105,6 +106,12 @@ current documents or that no sync reads. Every store then holds the same legacy 
 release ran the drop. It is in `ALONE` too: its down removes the version alone, and a down of
 `20261119000000` after it puts the trimmed keep back.
 
+A trim leaves the pages it freed in `legacy.db`. `LegacyPages::VERSIONS` lists the versions
+that give the free pages of an existing `legacy.db` back to the disk, in the transaction of the
+migration. Migration `20261120090000` does this after the trim, so a store that ran the trim
+in an earlier release ends the same as one that runs both in one run. A store with no
+`legacy.db` gets none. It is in `ALONE`: its down removes the version alone.
+
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
 
@@ -113,8 +120,8 @@ To add a migration that removes data, add its version to `KEEPS`, list the table
 A migration that changes stored data ships behind a config switch that is off by default, as
 `docs/release-lines.md` says. `MigrationList::HELD` in
 `lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
-`20261119000000` and its trim `20261119190000` are held behind `migrate.drop_document_revisions`,
-so the two run in the same `plastic update`.
+`20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
+behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`.
 
 - While the switch is off, a run leaves the held version out of the pending ones. A store that
   lacks only that version is current, so every command opens it and `plastic update` leaves it.

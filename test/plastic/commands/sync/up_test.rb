@@ -447,6 +447,33 @@ class SyncUpUnreadRowsTest < Plastic::TestCase
   end
 end
 
+# A sync up rebuilds the search rows of what it read, so a search finds it with no sync down and no doctor run.
+class SyncUpSearchTest < Plastic::TestCase
+  include BetaFolder
+
+  def found(words)
+    result = plastic("search", words, "--json", table: Plastic::CLI::TABLE)
+    JSON.parse(result.out).fetch("result").fetch("rows").map { |row| row.fetch("uri")[%r{\Aplastic://global/2/([^?]+)}, 1] }
+  end
+
+  def test_a_search_finds_a_new_file_right_after_the_sync_up
+    sync
+    write("store/2--beta/findings.md", "# Findings\n\nThe zanzibar route is the fastest.\n")
+    sync
+
+    assert_equal ["findings.md"], found("zanzibar")
+  end
+
+  def test_a_search_finds_the_new_words_of_a_changed_file_and_not_the_old_ones
+    write("store/2--beta/spec.md", "# Spec\n\nThe zanzibar plan.\n")
+    sync
+    write("store/2--beta/spec.md", "# Spec\n\nThe kilimanjaro plan.\n")
+    sync
+
+    assert_equal [["spec.md"], []], [found("kilimanjaro"), found("zanzibar")]
+  end
+end
+
 class SyncUpGraphArchiveKeptTest < Minitest::Test
   include DeliveredHomes
 

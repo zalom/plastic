@@ -10,8 +10,8 @@ module Plastic
   module Graph
     module Knowledge
       class Intent
-        # Records one report of an intent, a file in resources/output/reports/ that the owner asked for or the setting
-        # reports.mandatory names: its row in documents, so the sync reads it, and its line under Reports in the outcome.
+        # Records one report of an intent, a file in resources/output/reports/: its row in documents, so the sync reads it,
+        # and its line under Reports in the outcome.
         # The `reported` work log line that holds the record is written by Work::LoggedWrites.
         class Reporter
           FILE = "outcome.md"
@@ -38,11 +38,11 @@ module Plastic
           # The bytes of the report, for the sha256 of its log line.
           def body(intent, path) = @folder.read("#{intent.dir}/#{path}").force_encoding(Encoding::UTF_8)
 
-          # Writes the report row and the outcome line; `asked` is the owner's words, or MANDATORY.
-          def write(intent, path, asked)
+          # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
+          def write(intent, path, text)
             id = intent.intent_id
             writer.write(id, path, body(intent, path))
-            writer.write(id, FILE, OutcomeSection.for(@retrieval.fetch(id, FILE)&.body, HEADING).add(line(path, asked)))
+            writer.write(id, FILE, OutcomeSection.for(@retrieval.fetch(id, FILE)&.body, HEADING).add(line(path, text)))
             @retrieval.reference(id, path).fetch(:uri)
           end
 
@@ -65,7 +65,8 @@ module Plastic
 
           def text?(intent, path) = Retrieval::Evidence::Text.classify(path, @folder.read("#{intent.dir}/#{path}")) == :text
 
-          def line(path, asked) = (asked == MANDATORY) ? "- #{path} (#{MANDATORY})" : "- #{path}, asked: #{asked.inspect}"
+          # `- PATH`, or `- PATH (mandatory)` for a report the setting names.
+          def line(path, text) = "- #{path} (#{text})".delete_suffix(" ()")
 
           def store = @databases.fetch(:store)
 

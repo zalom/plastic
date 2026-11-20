@@ -20,13 +20,16 @@ module Plastic
         # Rebuilds the heads, the passages and the search entries from the current documents.
         def repair = integrity.repair
 
-        # Rebuilds the passages and the search entries of one intent, or of every intent when none is named.
-        def reindex(intent_id = nil) = Index.new(store, origin_id).rebuild_intent(intent_id)
+        # Rebuilds the passages and the search entries of the intents `intent_ids` in one pass, or of every intent when
+        # none is named.
+        def reindex(intent_ids = nil) = intent_ids ? index.rebuild_intents(intent_ids) : index.rebuild
 
         # Compares the derived rows with the current documents and changes none.
         def search_index_report = integrity.report
 
         private
+
+        def index = Index.new(store, origin_id)
 
         def integrity = Evidence::Integrity.new(store, origin_id)
 

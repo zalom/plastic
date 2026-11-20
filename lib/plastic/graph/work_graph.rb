@@ -10,7 +10,6 @@ require_relative "writers"
 require_relative "work/logged_writes"
 require_relative "work/session_intent"
 require_relative "knowledge/intent/noter"
-require_relative "work/chat/reader"
 
 module Plastic
   module Graph
@@ -31,7 +30,7 @@ module Plastic
       def_delegator "@logged.reporter", :problem, :report_problem
       def_delegator "@logged.reporter", :recorded?, :reported?
       def_delegators :@logged, :close_intent, :abandon_intent, :park_intent, :approve_intent, :add_ruling, :add_verdict,
-        :revise_intent, :note_intent, :report_intent, :add_node, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
+        :revise_intent, :note_intent, :report_intent, :amend_intents, :add_node, :claim_node, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
         :remove_node, :add_edge, :remove_edge
       def_delegators "@writers.nodes", :renew_claims
       def_delegators "@writers.verdicts", :rounds_left?
@@ -51,9 +50,6 @@ module Plastic
         @writers = Writers.new(databases, retrieval, folder, session, seams.fetch(:clock, Time))
         @logged = Work::LoggedWrites.new(@writers)
       end
-
-      # Whether an owner message of this store or of this session holds `words`.
-      def asked?(words) = Work::Chat::Reader.new(@writers.databases.fetch(:local)).asked?(words, store: @retrieval.store, session: @writers.session)
 
       # A command run is call memory, kept off the report.
       def save_command_run(command_run)

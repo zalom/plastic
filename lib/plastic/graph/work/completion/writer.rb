@@ -58,7 +58,7 @@ module Plastic
             reindex(intent_id)
           end
 
-          def reindex(intent_id) = @retrieval.reindex(intent_id)
+          def reindex(intent_id) = @retrieval.reindex([intent_id])
 
           def completion_row(intent_id, check)
             criteria = check.criteria

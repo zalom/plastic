@@ -61,6 +61,38 @@ class ResourcesReportSortTest < Plastic::TestCase
     assert_equal [true, true], [at("#{FOLDER}/.DS_Store"), at("#{FOLDER}/build.lock")]
   end
 
+  BETA = "store/2--beta"
+  ACROSS = "<p><a href=\"../../../../2--beta/#{FOLDER}/old.html\">old</a></p>\n".freeze
+
+  def across_intents
+    write("#{INTENT}/#{FOLDER}/across.html", ACROSS)
+    write("#{BETA}/#{FOLDER}/old.html", "<p>old</p>\n")
+    write("#{BETA}/#{FOLDER}/loose.html", "<p>loose</p>\n")
+    record("#{FOLDER}/across.html")
+  end
+
+  def test_a_recorded_report_keeps_a_file_of_another_intent_it_links_to_and_its_bytes
+    across_intents
+    sort
+
+    assert_equal [true, ACROSS], [at("#{FOLDER}/old.html", dir: BETA), read("#{FOLDER}/across.html")]
+  end
+
+  def test_a_report_of_another_intent_that_no_listed_report_links_to_still_moves
+    across_intents
+    sort
+
+    assert_equal [false, true], [at("#{FOLDER}/loose.html", dir: BETA), at("resources/tmp/loose.html", dir: BETA)]
+  end
+
+  def test_a_mandatory_report_keeps_a_file_of_another_intent_it_links_to
+    write("#{INTENT}/#{FOLDER}/across.html", ACROSS)
+    write("#{BETA}/#{FOLDER}/old.html", "<p>old</p>\n")
+    sort(reports: Plastic::Graph::Knowledge::Reports.new(mandatory: %w[across.html]))
+
+    assert at("#{FOLDER}/old.html", dir: BETA)
+  end
+
   def test_the_intent_id_of_a_folder_with_a_second_double_dash_is_its_first_part
     write("store/7--two--parts/#{FOLDER}/old.html", "<p>old</p>\n")
     record("#{FOLDER}/old.html", intent_id: "7")
