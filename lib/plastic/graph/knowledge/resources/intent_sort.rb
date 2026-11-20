@@ -30,7 +30,7 @@ module Plastic
 
             def changed_in(dir) = found.changed.map { |link| "#{dir}/#{rel}: #{link}" }
 
-            def amendments(intent_id, dir) = found.changed.map { |change| Amendment.new(intent_id, dir, rel, change, found.text) }
+            def amendments(intent_id, dir) = found.changed.uniq.map { |change| Amendment.new(intent_id, dir, rel, change, found.text) }
           end
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
