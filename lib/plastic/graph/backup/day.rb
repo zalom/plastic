@@ -71,7 +71,7 @@ module Plastic
 
         def failed_start_today?
           file = failed_start_file
-          File.file?(file) && Plastic.local_day(YAML.safe_load_file(file).to_h["at"]) == today
+          File.file?(file) && today?(Plastic.local_day(YAML.safe_load_file(file).to_h["at"]))
         end
 
         def finish
@@ -88,7 +88,7 @@ module Plastic
         # The backup row, or nil when another process took the folder name; only a written backup is followed by the purge.
         def write(reason)
           before = @folders.names
-          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call&.tap { purger.sweep(now: @now, keep: @folders.names.select { |name| today?(name) }) }
+          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call&.tap { purger.sweep(now: @now, keep: @folders.names.select { |name| today?(day_of(name)) }) }
         rescue
           remove_failed(@folders.names - before)
           raise
@@ -100,12 +100,10 @@ module Plastic
 
         # The folders of the day that are done and record the reason, oldest first.
         def done_today(reason)
-          @folders.names.select { |name| today?(name) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
+          @folders.names.select { |name| today?(day_of(name)) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
         end
 
-        def today?(name) = day_of(name) == today
-
-        def today = @now.getlocal.strftime("%F")
+        def today?(day) = day == @now.getlocal.strftime("%F")
 
         # The day in the taken_at time of the status file; a folder written before it was recorded reads its folder name.
         def day_of(name) = @folders.report(name)["taken_at"]&.then { |stamp| Plastic.local_day(stamp) } || FolderName.time(name).getlocal.strftime("%F")
