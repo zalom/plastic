@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../clock"
 require_relative "../record"
 
 module Plastic
@@ -27,7 +28,7 @@ module Plastic
 
         def self.parsed(found)
           fields = found.named_captures.transform_keys(&:to_sym)
-          fields.merge(at: unset(fields[:at]), session_id: unset(fields[:session_id]), sha256: bare(fields[:sha256]), text: fields[:text].to_s,
+          fields.merge(at: Plastic.utc(unset(fields[:at])), session_id: unset(fields[:session_id]), sha256: bare(fields[:sha256]), text: fields[:text].to_s,
             **fields.slice(:phase, :node, :path).transform_values { |word| blank(word) })
         end
 
