@@ -45,6 +45,9 @@ module PreviousStore
   # Undoes the time migration, the page migration, the trim and the report migration, the four newest, so the next down undoes the drop.
   def back_to_drop(home) = home.tap { 4.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
+  # Undoes the time migration, the newest, which keeps nothing in a store of the previous release, so the next down undoes the one before it.
+  def utc_down(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
+
   # A migrated store whose time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
   def migrated_to_drop = back_to_drop(migrated_previous_home)
 

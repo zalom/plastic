@@ -18,14 +18,14 @@ class GraphUtcTimesTest < Plastic::TestCase
   AFTER = [[["2026-10-05", "2026-10-05T08:00:00Z", "2026-10-05T08:00:00Z"], ["2026-10-06", nil, "2026-10-06T08:00:00Z"]],
     ["2026-10-05T08:00:00Z"]].freeze
 
-SHARED = <<~SQL
-  INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES
-    ('93', 'o', '93--c', 'C', 'open', '2026-10-07', '2026-10-07T09:00:00+01:00'),
-    ('94', 'o', '94--d', 'D', 'open', '2026-10-07', '2026-10-07T08:00:00Z');
-SQL
-UNREADABLE = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('95', 'o', '95--e', 'E', 'open', '2026-10-08', '2026-10-08T25:00:00+02:00')"
+  SHARED = <<~SQL
+    INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES
+      ('93', 'o', '93--c', 'C', 'open', '2026-10-07', '2026-10-07T09:00:00+01:00'),
+      ('94', 'o', '94--d', 'D', 'open', '2026-10-07', '2026-10-07T08:00:00Z');
+  SQL
+  UNREADABLE = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('95', 'o', '95--e', 'E', 'open', '2026-10-08', '2026-10-08T25:00:00+02:00')"
 
-# A store of the previous release whose rows hold times with an offset, a date, a time in UTC and no time.
+  # A store of the previous release whose rows hold times with an offset, a date, a time in UTC and no time.
   def seeded_home
     previous_home.tap do |home|
       SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(KNOWLEDGE) }
@@ -33,20 +33,9 @@ UNREADABLE = "INSERT INTO intents (intent_id, origin_id, slug, title, status, op
     end
   end
 
-def migrated = seeded_home.tap { |home| migrate_store(home) }
+  def migrated = seeded_home.tap { |home| migrate_store(home) }
 
-def with_rows(home, sql) = home.tap { SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(sql) } }
-
-# A store this release made, with the time migration taken off its records, so the migration runs on rows that hold no time with an offset.
-def store_before_utc_alone
-  home = File.join(Dir.mktmpdir, ".plastic")
-  FileUtils.mkdir_p(File.join(home, "stores", "alpha"))
-  File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{Dir.mktmpdir}\n")
-  Plastic::Graph.create(home:, store: "alpha")
-  forget(home)
-  SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [UTC]) }
-  home
-end
+  def with_rows(home, sql) = home.tap { SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(sql) } }
 
   def times(home)
     [alpha_rows(home, "knowledge_graph.db", "SELECT opened_at, closed_at, updated_at FROM intents WHERE intent_id IN ('91', '92') ORDER BY intent_id"),
@@ -87,43 +76,29 @@ end
       [undone.version, undone.moved, times(home), recorded(home).include?(UTC), legacy_tables(home).include?("changed_values_#{UTC}")]
   end
 
-def test_a_down_puts_an_old_text_back_only_on_the_row_it_came_from
-  home = with_rows(seeded_home, SHARED)
-  migrate_store(home)
-  down(home)
+  def test_a_down_puts_an_old_text_back_only_on_the_row_it_came_from
+    home = with_rows(seeded_home, SHARED)
+    migrate_store(home)
+    down(home)
 
-  assert_equal [["93", "2026-10-07T09:00:00+01:00"], ["94", "2026-10-07T08:00:00Z"]],
-    alpha_rows(home, "knowledge_graph.db", "SELECT intent_id, updated_at FROM intents WHERE intent_id IN ('93', '94') ORDER BY intent_id")
-end
+    assert_equal [["93", "2026-10-07T09:00:00+01:00"], ["94", "2026-10-07T08:00:00Z"]],
+      alpha_rows(home, "knowledge_graph.db", "SELECT intent_id, updated_at FROM intents WHERE intent_id IN ('93', '94') ORDER BY intent_id")
+  end
 
-def test_the_migration_leaves_a_time_it_cannot_read_as_it_was
-  home = with_rows(seeded_home, UNREADABLE)
-  migrate_store(home)
+  def test_the_migration_leaves_a_time_it_cannot_read_as_it_was
+    home = with_rows(seeded_home, UNREADABLE)
+    migrate_store(home)
 
-  assert_equal [["2026-10-08T25:00:00+02:00"]], alpha_rows(home, "knowledge_graph.db", "SELECT updated_at FROM intents WHERE intent_id = '95'")
-end
+    assert_equal [["2026-10-08T25:00:00+02:00"]], alpha_rows(home, "knowledge_graph.db", "SELECT updated_at FROM intents WHERE intent_id = '95'")
+  end
 
-def test_the_migration_names_each_time_it_cannot_read
-  notes = migrate_store(with_rows(seeded_home, UNREADABLE)).notes
+  def test_the_migration_names_each_time_it_cannot_read
+    notes = migrate_store(with_rows(seeded_home, UNREADABLE)).notes
 
-  assert_includes notes, "migrate: alpha wrote 3 times in UTC and left 1 unreadable time unchanged: main.intents.updated_at 2026-10-08T25:00:00+02:00"
-end
+    assert_includes notes, "migrate: alpha wrote 3 times in UTC and left 1 unreadable time unchanged: main.intents.updated_at 2026-10-08T25:00:00+02:00"
+  end
 
-def test_a_migration_with_no_time_to_change_makes_no_legacy_db
-  home = store_before_utc_alone
-  migrate_store(home)
-
-  refute_path_exists alpha_file(home, "legacy.db")
-end
-
-def test_a_migration_with_no_time_to_change_goes_down_by_removing_its_version_alone
-  home = store_before_utc_alone.tap { |fresh| migrate_store(fresh) }
-  undone = down(home)
-
-  assert_equal [UTC, {}, false, false], [undone.version, undone.moved, recorded(home).include?(UTC), File.exist?(alpha_file(home, "legacy.db"))]
-end
-
-def test_a_down_keeps_a_time_written_after_the_migration
+  def test_a_down_keeps_a_time_written_after_the_migration
     home = migrated
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("UPDATE intents SET updated_at = '2026-11-21T10:00:00Z' WHERE intent_id = '91'") }
     down(home)
@@ -145,17 +120,52 @@ def test_a_down_keeps_a_time_written_after_the_migration
 
     assert_equal [UTC, {}], down(home).then { |undone| [undone.version, undone.moved] }
   end
+end
 
+class GraphUtcTimesNothingToChangeTest < Plastic::TestCase
+  include PreviousStore
+
+  NOW = Time.utc(2026, 11, 21, 12, 0, 0)
+
+  # A store this release made, with the time migration taken off its records, so the migration runs on rows that hold no time with an offset.
+  def store_before_utc_alone
+    home = File.join(Dir.mktmpdir, ".plastic")
+    FileUtils.mkdir_p(File.join(home, "stores", "alpha"))
+    File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{Dir.mktmpdir}\n")
+    Plastic::Graph.create(home:, store: "alpha")
+    forget(home)
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [UTC]) }
+    home
+  end
+
+  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+
+  def test_a_migration_with_no_time_to_change_makes_no_legacy_db
+    home = store_before_utc_alone
+    migrate_store(home)
+
+    refute_path_exists alpha_file(home, "legacy.db")
+  end
+
+  def test_a_migration_with_no_time_to_change_goes_down_by_removing_its_version_alone
+    home = store_before_utc_alone.tap { |fresh| migrate_store(fresh) }
+    undone = down(home)
+
+    assert_equal [UTC, {}, false, false], [undone.version, undone.moved, recorded(home).include?(UTC), File.exist?(alpha_file(home, "legacy.db"))]
+  end
+end
+
+class GraphUtcTimesResultTest < Plastic::TestCase
   def test_the_line_names_one_time_in_the_singular_and_no_time_not_at_all
     lines = [1, 0].map { |changed| Plastic::Graph::UtcTimes::Result.new(changed:).line("alpha") }
 
-  assert_equal ["migrate: alpha wrote 1 time in UTC", nil], lines
-end
+    assert_equal ["migrate: alpha wrote 1 time in UTC", nil], lines
+  end
 
-def test_the_line_names_the_unreadable_times_with_or_without_a_time_written
-  lines = [3, 0].map { |changed| Plastic::Graph::UtcTimes::Result.new(changed:, unreadable: ["main.a.at x", "main.b.at y"]).line("alpha") }
+  def test_the_line_names_the_unreadable_times_with_or_without_a_time_written
+    lines = [3, 0].map { |changed| Plastic::Graph::UtcTimes::Result.new(changed:, unreadable: ["main.a.at x", "main.b.at y"]).line("alpha") }
 
-  assert_equal ["migrate: alpha wrote 3 times in UTC and left 2 unreadable times unchanged: main.a.at x, main.b.at y",
-    "migrate: alpha left 2 unreadable times unchanged: main.a.at x, main.b.at y"], lines
-end
+    assert_equal ["migrate: alpha wrote 3 times in UTC and left 2 unreadable times unchanged: main.a.at x, main.b.at y",
+      "migrate: alpha left 2 unreadable times unchanged: main.a.at x, main.b.at y"], lines
+  end
 end
