@@ -22,7 +22,8 @@ module Plastic
     # newest backup, and stays behind when that backup fails. The answer is :current, :migrated, or the reason it
     # stayed behind. `notes` holds the lines its data steps and its compaction report. The migration that keeps in sqlar
     # only the files a sync reads takes the sync `selection` of the machine. What a migration removes is kept in legacy.db
-    # in the same transaction, and `ledger` holds an entry for each migration that ran.
+    # in the same transaction, and `ledger` holds an entry for each migration that ran. A run that made legacy.db and kept
+    # nothing in it removes the file.
     class StoreMigration
       REFERENCES = "references.db"
       # The data steps by the version they belong to. Each runs once, while its version is pending.
@@ -88,13 +89,26 @@ module Plastic
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
         data = DATA_STEPS.select { |version, _step| pending?(version) }
-        migrating = Database::ConnectionPool.for(knowledge_file, attach: attachments)
+        attach = attachments
+        migrating = Database::ConnectionPool.for(knowledge_file, attach:)
         with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
-        Database::ConnectionPool.forget_created(File.join(root, LegacyKeep::FILE))
+        settle_legacy(attach.key?(:legacy) && kept_nothing?(migrating))
       rescue SQLite3::Exception, Database::Error, SystemCallError
         release
         Database::ConnectionPool.remove_created(File.join(root, ""))
         raise
+      end
+
+      def legacy_file = File.join(root, LegacyKeep::FILE)
+
+      def kept_nothing?(migrating) = migrating.get_first_value("SELECT count(*) FROM legacy.sqlite_master").zero?
+
+      # Removes legacy.db when this run made it and kept nothing in it, else keeps it from a later removal of made files.
+      def settle_legacy(empty)
+        return Database::ConnectionPool.forget_created(legacy_file) unless empty
+
+        release
+        Database::ConnectionPool.remove_created(legacy_file)
       end
 
       # legacy.db is attached only while a pending migration keeps what it removes, so no other run makes the file.

@@ -16,8 +16,8 @@ module Plastic
     # Undoes the newest migration of one current store. It backs the store up, puts the rows the migration kept in
     # legacy.db back into the live tables in their old shape, drops them from legacy.db and removes the version from the
     # store, all in one transaction. In it, a version of REBUILDS also builds the rows the older code expects, such as a
-    # revision row for each current document. A version of LegacyKeep::ALONE kept nothing, so its down removes the version
-    # alone. It adds a down row to the ledger in plastic.db. It refuses a store that lacks a migration older than its
+    # revision row for each current document. A version of LegacyKeep::ALONE kept nothing, and a version of
+    # LegacyKeep::VALUES that changed no value made no table, so the down of either removes the version alone. It adds a down row to the ledger in plastic.db. It refuses a store that lacks a migration older than its
     # newest, a migration that kept nothing, kept rows that are gone, and a live row that changed after the migration
     # kept it. A store an earlier down took back can go down again, one migration at a time. Docs: docs/contributing/MIGRATIONS.md.
     class MigrationDown
@@ -79,7 +79,7 @@ module Plastic
 
       def tables = alone? ? [] : @store.tables(version)
 
-      def alone? = LegacyKeep::ALONE.include?(version)
+      def alone? = LegacyKeep::ALONE.include?(version) || (LegacyKeep::VALUES.include?(version) && @store.tables(version).empty?)
 
       def check
         current

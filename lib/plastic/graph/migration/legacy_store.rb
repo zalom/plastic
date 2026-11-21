@@ -17,26 +17,31 @@ module Plastic
 
       def knowledge_file = File.join(@root, Schema.file(:knowledge))
 
-      def connection = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file).merge(legacy: legacy_file))
+      def connection = Database::ConnectionPool.for(knowledge_file, attach: Database::Store.attachments(knowledge_file).merge(legacy_attachment))
+
+      # Whether legacy.db is there.
+      def legacy? = File.file?(legacy_file)
 
       # The legacy tables the migration `version` kept, none when legacy.db is not there.
-      def tables(version) = File.file?(legacy_file) ? LegacyTable.of(connection, version) : []
+      def tables(version) = legacy? ? LegacyTable.of(connection, version) : []
 
       # The rows legacy.db holds, by version and then by table, none when legacy.db is not there.
       def kept
-        return {} unless File.file?(legacy_file)
+        return {} unless legacy?
 
         LegacyTable.all(connection).group_by(&:version).transform_values { |tables| tables.to_h { |table| [table.table, table.count] } }
       end
 
-      # Gives the pages that dropped legacy tables left back to the disk.
-      def give_back = connection.give_back_free_pages(LegacyTable::SCHEMA)
+      # Gives the pages that dropped legacy tables left back to the disk, when legacy.db is there.
+      def give_back = legacy? && connection.give_back_free_pages(LegacyTable::SCHEMA)
 
       def release = Database::ConnectionPool.release(@root)
 
       private
 
       def legacy_file = File.join(@root, LegacyKeep::FILE)
+
+      def legacy_attachment = legacy? ? { legacy: legacy_file } : {}
     end
   end
 end
