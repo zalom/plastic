@@ -14,6 +14,7 @@ require_relative "migration_reason"
 require_relative "report_rows"
 require_relative "store_age"
 require_relative "store_compaction"
+require_relative "utc_times"
 
 module Plastic
   module Graph
@@ -26,7 +27,7 @@ module Plastic
       REFERENCES = "references.db"
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup, "20261119180000" => ReportRows, "20261119190000" => LegacyTrim,
-                     "20261120090000" => LegacyPages }.freeze
+                     "20261120090000" => LegacyPages, "20261121090000" => UtcTimes }.freeze
 
       # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
       # their switch, which the run applies.

@@ -26,7 +26,7 @@ class MigrationPurgeTest < Plastic::TestCase
     home = migrated_previous_home
     purge(home, DROP, "--store", "alpha")
 
-    assert_equal [[], true], [legacy_tables(home), recorded(home).include?(DROP)]
+    assert_equal [["changed_values_#{UTC}"], true], [legacy_tables(home), recorded(home).include?(DROP)]
   end
 
   def test_a_purge_gives_the_space_of_the_removed_rows_back_to_the_disk
@@ -46,7 +46,7 @@ class MigrationPurgeTest < Plastic::TestCase
     refuse_ledger(home, "purge")
     result = purge(home, DROP, "--store", "alpha")
 
-    assert_equal [0, [], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (plastic.db: refused)"]],
+    assert_equal [0, ["changed_values_#{UTC}"], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (plastic.db: refused)"]],
       [result.code, legacy_tables(home), result.err.lines.map(&:chomp)]
   end
 

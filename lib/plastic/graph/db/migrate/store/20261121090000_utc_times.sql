@@ -1,0 +1,2 @@
+-- Every stored time is UTC, written with Z.
+-- The data step of this version writes each time with an offset in UTC and keeps its old text in legacy.db; no table changes.

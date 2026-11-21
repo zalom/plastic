@@ -29,7 +29,7 @@ class GraphLegacyTrimTest < Plastic::TestCase
   end
 
   # A store that ran the drop as release 3.0.0-beta.4 shipped it, before the trim.
-  def dropped_home = previous_home_with_revisions.tap { |home| migrate(home, [DROP]) }
+  def dropped_home = before_utc(previous_home_with_revisions) { |home| migrate(home, [DROP]) }
 
   def test_the_drop_keeps_every_revision_and_each_removed_sqlar_row_as_release_beta_4_did
     home = dropped_home
@@ -39,8 +39,7 @@ class GraphLegacyTrimTest < Plastic::TestCase
   end
 
   def test_the_trim_leaves_only_the_earlier_texts_of_read_paths_and_no_sqlar_row
-    home = dropped_home
-    migrate(home, [DROP, TRIM])
+    home = before_utc(dropped_home) { |dropped| migrate(dropped, [DROP, TRIM]) }
 
     assert_equal [["document_revisions_#{DROP}"], %w[sha], true], [legacy_tables(home), kept_revisions(home), recorded(home).include?(TRIM)]
   end
@@ -69,13 +68,14 @@ class GraphLegacyTrimTest < Plastic::TestCase
     home = dropped_home
     Plastic::Graph::MigrationPurge.new(home, "alpha", NOW).call(DROP)
     forget(home)
-    report = migrate(home, [DROP, TRIM])
+    report = nil
+    before_utc(home) { report = migrate(home, [DROP, TRIM]) }
 
     assert_equal [["alpha"], [], true], [report.migrated, legacy_tables(home), recorded(home).include?(TRIM)]
   end
 
   def test_the_trim_goes_down_by_removing_its_version_alone
-    home = dropped_home.tap { |dropped| migrate(dropped, [DROP, TRIM]) }
+    home = before_utc(dropped_home) { |dropped| migrate(dropped, [DROP, TRIM]) }
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

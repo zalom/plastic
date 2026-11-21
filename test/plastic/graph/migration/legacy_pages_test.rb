@@ -17,7 +17,7 @@ class GraphLegacyPagesTest < Plastic::TestCase
   def contents(home) = legacy_tables(home).to_h { |table| [table, alpha_rows(home, "legacy.db", "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
 
   # A store that ran the drop and the trim as release 3.0.0-beta.5 shipped them, which left the freed pages in legacy.db.
-  def trimmed_home = previous_home.tap { |home| migrate(home, [DROP, TRIM]) }
+  def trimmed_home = before_utc(previous_home) { |home| migrate(home, [DROP, TRIM]) }
 
   def test_the_trim_of_release_beta_5_left_free_pages_in_legacy_db
     assert_operator pages(trimmed_home).last, :>, 0
@@ -26,7 +26,8 @@ class GraphLegacyPagesTest < Plastic::TestCase
   def test_the_migration_gives_every_free_page_of_legacy_db_back_and_says_how_many
     home = trimmed_home
     free = pages(home).last
-    report = migrate(home, ALL)
+    report = nil
+    before_utc(home) { report = migrate(home, ALL) }
 
     assert_equal [0, true], [pages(home).last, recorded(home).include?(PAGES)]
     assert_includes report.notes, "migrate: alpha gave #{free} free pages of legacy.db back to the disk"
@@ -58,13 +59,13 @@ class GraphLegacyPagesTest < Plastic::TestCase
   def test_while_the_switch_is_off_the_migration_stays_held_with_the_trim
     home = trimmed_home
     free = pages(home)
-    migrate(home, [])
+    before_utc(home) { migrate(home, []) }
 
     assert_equal [false, free], [recorded(home).include?(PAGES), pages(home)]
   end
 
   def test_the_migration_goes_down_by_removing_its_version_alone
-    home = trimmed_home.tap { |trimmed| migrate(trimmed, ALL) }
+    home = before_utc(trimmed_home) { |trimmed| migrate(trimmed, ALL) }
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

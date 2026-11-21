@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../database"
+require_relative "legacy_values"
 
 module Plastic
   module Graph
@@ -19,12 +20,14 @@ module Plastic
       # The legacy tables that the migration `version` kept.
       def self.of(connection, version) = all(connection).select { |table| table.version == version }
 
-      # Every legacy table of legacy.db, by name.
+      # Every legacy table of legacy.db, by name; the old values of a migration that rewrote values in place are a LegacyValues.
       def self.all(connection)
         connection.execute("SELECT name FROM #{SCHEMA}.sqlite_master WHERE type = 'table' ORDER BY name")
           .filter_map { |row| NAME.match(row.fetch("name")) }
-          .map { |name| new(connection, name[:table], name[:version]) }
+          .map { |name| named(connection, name[:table], name[:version]) }
       end
+
+      def self.named(connection, table, version) = (table == LegacyValues::TABLE) ? LegacyValues.new(connection, version) : new(connection, table, version)
 
       attr_reader :table, :version
 
