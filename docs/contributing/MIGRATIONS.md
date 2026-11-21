@@ -115,6 +115,21 @@ in an earlier release ends the same as one that runs both in one run. A store wi
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
 
+A migration can also rewrite values in place. It keeps the old text of each value in one table
+named for the version, such as `changed_values_20261121090000`, with the schema, table and
+column of the value, its old text and its new text. `LegacyValues` in
+`lib/plastic/graph/migration/legacy_values.rb` makes that table, even when no value changed, so
+every store that ran the migration goes down the same way. Its data step calls `keep.values`
+before each `UPDATE`. A down writes each old text back where the live value still equals its new
+text, so a value written after the migration stays.
+
+Migration `20261121090000` writes every stored time that carries an offset in UTC, with `Z`, the
+form `Plastic.timestamp` writes. `UtcTimes::COLUMNS` in `lib/plastic/graph/migration/utc_times.rb`
+lists the time columns of the store. A date with no time, a time already in UTC and a blank stay
+as they are. It is in `KEEPS` and keeps each old text in `changed_values_20261121090000`. The
+home migration of the same version does the same for `plastic.db`. After `plastic update`, run
+`plastic sync down` so the printed files carry the UTC times too.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as
@@ -132,6 +147,9 @@ behind `migrate.drop_document_revisions`, so the three run in the same `plastic 
 
 To hold a new migration, add its version and its switch to `HELD`, and add the switch to
 `lib/plastic/config/defaults.rb`, off.
+
+Migration `20261121090000`, which writes every stored time in UTC, has no switch: it changes the
+text of a time and not the time it names, and the code that reads times expects UTC.
 
 ## The ledger
 
