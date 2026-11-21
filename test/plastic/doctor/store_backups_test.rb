@@ -7,13 +7,13 @@ class DoctorStoreBackupsTest < Plastic::TestCase
   include BackupHomes
   include BackupTriggers
 
-  def check(home, now, slug: "alpha") = in_zone("Asia/Tokyo") { Plastic::Doctor::StoreBackups.new(File.join(home, "stores", slug), slug, now:).check }
+  def check(home, now, slug: "alpha") = Plastic::Doctor::StoreBackups.new(File.join(home, "stores", slug), slug, now:).check
 
   def test_a_store_with_a_done_backup_says_its_age_and_that_integrity_passed_in_the_zone_of_the_machine
     home = stale_home
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal ["backups alpha:", "ok, newest 2026-01-01T19:00:00+09:00, 13 hours old, integrity passed, live check 2026-01-01T19:00:00+09:00 passed", nil], found.to_a
+    assert_equal ["backups alpha:", "ok, newest #{shown("2026-01-01T10:00:00Z")}, 13 hours old, integrity passed, live check #{shown("2026-01-01T10:00:00Z")} passed", nil], found.to_a
   end
 
   def test_a_store_with_no_backup_says_so_and_is_no_finding

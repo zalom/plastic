@@ -23,7 +23,11 @@ class WorkLogLineTest < Plastic::TestCase
     assert_equal line.to_h.slice(:at, :phase, :node, :session_id, :kind, :path, :sha256, :text), LogLine.parse(line.line).to_h
   end
 
-  def test_a_line_with_no_time_prints_a_dash_and_reads_back_with_no_time
+def test_a_line_an_earlier_release_wrote_with_an_offset_reads_back_in_utc
+  assert_equal "2026-10-01T08:00:00Z", LogLine.parse("- 2026-10-01T10:00:00+02:00 - - - noted - - old").fetch(:at)
+end
+
+def test_a_line_with_no_time_prints_a_dash_and_reads_back_with_no_time
     assert_nil LogLine.parse(row(at: nil, text: "free").line).fetch(:at)
   end
 
@@ -36,7 +40,7 @@ class WorkLogLineTest < Plastic::TestCase
   def test_a_shown_line_reads_its_time_in_the_zone_of_the_machine_and_the_printed_line_stays_utc
     line = row(text: "Spec written")
 
-    assert_equal ["- 2026-11-17T00:02:11+09:00 - - - noted - - Spec written", "- #{AT} - - - noted - - Spec written"], in_zone("Asia/Tokyo") { [line.shown, line.line] }
+    assert_equal ["- 2026-11-17T00:02:11+09:00 - - - noted - - Spec written", "- #{AT} - - - noted - - Spec written"], [line.shown("+09:00"), line.line]
   end
 
   def test_a_noted_row_made_from_a_loose_line_prints_a_line_that_parses

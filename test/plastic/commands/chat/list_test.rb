@@ -34,7 +34,7 @@ class ChatListTest < Plastic::TestCase
   def test_each_message_shows_its_time_in_the_zone_of_the_machine
     record("global", Time.utc(2026, 11, 17, 8, 0, 0), "a prompt")
 
-    assert_includes in_zone("Asia/Tokyo") { list.out }, "2026-11-17T17:00:00+09:00"
+    assert_includes list.out, shown("2026-11-17T08:00:00Z")
   end
 
   def test_since_leaves_out_older_prompts
@@ -51,6 +51,14 @@ class ChatListTest < Plastic::TestCase
 
       assert_includes list("--since", "2026-11-17").out, "just after midnight"
     end
+  end
+
+  def in_zone(name)
+    was = ENV.fetch("TZ", nil)
+    ENV["TZ"] = name
+    yield
+  ensure
+    ENV["TZ"] = was
   end
 
   def test_a_past_day_starts_at_midnight_of_that_day_across_a_change_of_summer_time

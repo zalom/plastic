@@ -21,7 +21,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
   def legacy(home, sql) = read_file(store_path(home, "legacy.db"), sql)
 
   def kept_counts(home)
-    tables = legacy(home, "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_#{DROP}' ORDER BY name").flatten
+    tables = legacy(home, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten
     tables.to_h { |name| [name.delete_suffix("_#{DROP}"), legacy(home, "SELECT count(*) FROM \"#{name}\"").flatten.first] }
   end
 

@@ -5,7 +5,8 @@ require_relative "../../../../lib/plastic/graph/backup/daily"
 
 # The two backups of a day: the first call of the day takes the start-of-day
 # backup of every store, and each session end after it replaces the day's
-# end-of-day backup. The day is the calendar day of the clock, in its offset.
+# end-of-day backup. The day is the calendar day in the zone it is read in,
+# here +01:00, whatever the zone of the machine that runs the case.
 class GraphBackupDailyTest < Plastic::TestCase
   include BackupHomes
   include BackupTriggers
@@ -17,7 +18,7 @@ class GraphBackupDailyTest < Plastic::TestCase
   NOON = Time.new(2026, 1, 2, 12, 0, 0, "+01:00")
   EVENING = Time.new(2026, 1, 2, 18, 0, 0, "+01:00")
 
-  def daily(home, now, session_end: false) = Daily.new(home:, now:).then { |day| session_end ? day.end_session : day.begin_day }
+  def daily(home, now, session_end: false) = Daily.new(home:, now:, zone: "+01:00").then { |day| session_end ? day.end_session : day.begin_day }
 
   def backed_up_yesterday = fresh_home.tap { |home| %w[alpha beta].each { |slug| backup_at(home, YESTERDAY, slug:) } }
 
@@ -58,7 +59,7 @@ class GraphBackupDailyTest < Plastic::TestCase
     assert_equal ["start of day", "start of day"], backup_reasons(home)
   end
 
-  def test_the_day_turns_at_midnight_of_the_clock_offset_not_of_utc
+  def test_the_day_turns_at_midnight_of_the_zone_it_is_read_in_not_of_utc
     home = fresh_home
     daily(home, Time.new(2026, 1, 2, 23, 30, 0, "+01:00"))
     daily(home, Time.new(2026, 1, 3, 0, 30, 0, "+01:00"))
@@ -143,7 +144,7 @@ class GraphBackupDailyNothingTest < Plastic::TestCase
 
   MORNING = Time.new(2026, 1, 2, 9, 0, 0, "+01:00")
 
-  def daily(home, now, session_end: false) = Daily.new(home:, now:).then { |day| session_end ? day.end_session : day.begin_day }
+  def daily(home, now, session_end: false) = Daily.new(home:, now:, zone: "+01:00").then { |day| session_end ? day.end_session : day.begin_day }
 
   def test_a_store_folder_with_no_database_takes_none
     home = fresh_home

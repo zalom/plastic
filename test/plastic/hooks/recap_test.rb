@@ -86,7 +86,7 @@ class RecapTest < Plastic::TestCase
     run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
     opened.work.save_command_run(run)
 
-    assert_includes in_zone("Asia/Tokyo") { recap }, "active: #{intent_id} Beta (open), last run intent show finished 2026-11-17T17:00:00+09:00, next: plastic intent start #{intent_id}"
+    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{shown(FixedClock::STAMP)}, next: plastic intent start #{intent_id}"
   end
 
   def test_an_intent_whose_next_step_is_the_agent_s_prints_the_last_run_with_no_next
@@ -94,7 +94,7 @@ class RecapTest < Plastic::TestCase
     run = Plastic::CommandRun.fresh("node done", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic node done #{intent_id} n1 TEXT")
     opened.work.save_command_run(run)
 
-    assert_includes in_zone("Asia/Tokyo") { recap }, "active: #{intent_id} Gamma (in_progress), last run node done finished 2026-11-17T17:00:00+09:00"
+    assert_includes recap, "active: #{intent_id} Gamma (in_progress), last run node done finished #{shown(FixedClock::STAMP)}"
     refute_includes recap.join("\n"), "next: plastic node done"
   end
 
@@ -152,10 +152,8 @@ class RecapClaimTest < Plastic::TestCase
 
   def test_an_own_claim_past_its_window_prints_the_lapsed_line_with_the_claim_command_in_the_zone_of_the_machine
     intent_id, node = claim_node
-    shown = Time.iso8601(node.seen_at).getlocal("+09:00").iso8601
-
-    assert_includes in_zone("Asia/Tokyo") { recap.lines(now: lapsed_after(node)) },
-      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{shown}); plastic node claim #{intent_id} n1 takes it again"
+    assert_includes recap.lines(now: lapsed_after(node)),
+      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{shown(node.seen_at)}); plastic node claim #{intent_id} n1 takes it again"
   end
 
   def test_an_own_claim_within_its_window_prints_no_lapsed_line

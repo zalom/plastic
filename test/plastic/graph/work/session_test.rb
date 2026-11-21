@@ -16,7 +16,7 @@ class WorkSessionTest < Plastic::TestCase
   UTC = "2026-10-05T08:00:00Z"
   SHOWN = "2026-10-05T17:00:00+09:00"
 
-  def summary(**fields) = in_zone("Asia/Tokyo") { session(last_turn_at: UTC, **fields).summary }
+  def summary(**fields) = session(last_turn_at: UTC, **fields).summary("+09:00")
 
   def test_an_ended_session_sums_up_as_when_and_why_it_ended_in_the_zone_of_the_machine
     assert_equal "session s-1 ended #{SHOWN} (clear)", summary(ended_at: UTC, end_reason: "clear")

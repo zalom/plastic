@@ -11,26 +11,25 @@ class BackupRestoreZoneTest < Plastic::TestCase
   BUILT = Time.utc(2026, 10, 5, 14, 0, 0)
   LATER = Time.utc(2026, 10, 5, 15, 0, 0)
 
-  # The clock of the machine, which reads the time in the zone of the machine.
-  def clock(time) = Struct.new(:now).new(time.getlocal)
+  TOKYO = "+09:00"
+  NEW_YORK = "-04:00"
 
-  def write(home, title, time) = Plastic::Graph.open(home:, store: "alpha", clock: clock(time)).work.write_intent(title:)
+  # The clock of a machine, which reads the time in the zone of that machine.
+  def clock(time, zone) = Struct.new(:now).new(time.getlocal(zone))
+
+  def write(home, title, time, zone) = Plastic::Graph.open(home:, store: "alpha", clock: clock(time, zone)).work.write_intent(title:)
 
   def built_in_tokyo
-    in_zone("Asia/Tokyo") do
-      fresh_home.tap do |home|
-        write(home, "Built", BUILT)
-        backup_at(home, BUILT + 60)
-      end
+    fresh_home.tap do |home|
+      write(home, "Built", BUILT, TOKYO)
+      backup_at(home, (BUILT + 60).getlocal(TOKYO))
     end
   end
 
   def restored_in_new_york
     built_in_tokyo.tap do |home|
-      in_zone("America/New_York") do
-        restore_call(home, "--store", "alpha", "--latest")
-        write(home, "Later", LATER)
-      end
+      restore_call(home, "--store", "alpha", "--latest")
+      write(home, "Later", LATER, NEW_YORK)
     end
   end
 
@@ -49,11 +48,11 @@ class BackupRestoreZoneTest < Plastic::TestCase
     assert_equal %w[Built Later], titles(restored_in_new_york)
   end
 
-  def test_a_restored_store_shows_its_times_in_the_zone_of_the_new_machine
+  def test_a_restored_store_shows_its_times_in_the_zone_of_the_machine_that_reads_them
     home = restored_in_new_york
     intent_id = rows(home, "knowledge_graph", "SELECT intent_id FROM intents WHERE title = 'Built'").flatten.first
-    out = in_zone("America/New_York") { plastic("intent", "show", intent_id, "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE).out }
+    out = plastic("intent", "show", intent_id, "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE).out
 
-    assert_includes out, "log: - 2026-10-05T10:00:00-04:00 "
+    assert_includes out, "log: - #{shown("2026-10-05T14:00:00Z")} "
   end
 end

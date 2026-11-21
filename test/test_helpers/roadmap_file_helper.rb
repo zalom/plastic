@@ -5,7 +5,7 @@ module RoadmapFileHelper
   RoadmapFile = Plastic::Graph::Knowledge::Reader::RoadmapFile
   FORM = "<!-- plastic roadmap form 2 -->"
   TRICKY = "# Not a title\n## Batch 9\n- [x] 3 Other \\ back — done\n  item: fake"
-  STAMP = Plastic::TestCase::STAMP
+  STAMP = "2026-10-05T08:00:00Z"
 
   def work = store_graphs.databases.fetch(:store)
 

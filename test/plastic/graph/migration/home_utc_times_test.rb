@@ -13,6 +13,7 @@ class SchemaHomeUtcTimesTest < Plastic::TestCase
       VALUES ('alpha', 'intent end', '9', 'judged', '[]', '{}', '2026-10-05T10:00:00+02:00', '2026-10-05T03:00:00-05:00');
     INSERT INTO chat_messages (session_id, role, at, text) VALUES ('s-9', 'user', '2026-10-05T10:00:00+02:00', 'hi');
     INSERT INTO printed (path, sha256, at, origin_id) VALUES ('9--a/spec.md', 'sha', '2026-10-05', 'o');
+    INSERT INTO sessions (session_id, started_at) VALUES ('s-8', '2026-10-05T25:00:00+02:00');
     DELETE FROM schema_migrations WHERE version = '#{UTC}';
   SQL
 
@@ -27,7 +28,9 @@ class SchemaHomeUtcTimesTest < Plastic::TestCase
     end
   end
 
-  def migrated = previous_home.tap { |home| in_zone("Asia/Tokyo") { Plastic::Graph::SchemaRunner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call } }
+def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+
+def migrated = previous_home.tap { |home| migrate(home) }
 
   def test_the_home_migration_writes_every_time_of_plastic_db_with_an_offset_in_utc
     home = migrated
@@ -38,7 +41,15 @@ class SchemaHomeUtcTimesTest < Plastic::TestCase
         rows(home, "SELECT at FROM chat_messages WHERE session_id = 's-9'"), rows(home, "SELECT at FROM printed WHERE path = '9--a/spec.md'")]
   end
 
-  def test_the_home_records_the_migration
+def test_the_home_migration_leaves_a_time_it_cannot_read_as_it_was
+  assert_equal [["2026-10-05T25:00:00+02:00"]], rows(migrated, "SELECT started_at FROM sessions WHERE session_id = 's-8'")
+end
+
+def test_the_home_migration_names_each_time_it_cannot_read
+  assert_includes migrate(previous_home).notes, "migrate: plastic.db left 1 unreadable time unchanged: main.sessions.started_at 2026-10-05T25:00:00+02:00"
+end
+
+def test_the_home_records_the_migration
     assert_includes rows(migrated, "SELECT version FROM schema_migrations").flatten, UTC
   end
 end

@@ -48,14 +48,6 @@ module PreviousStore
   # A migrated store whose time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
   def migrated_to_drop = back_to_drop(migrated_previous_home)
 
-  # Runs the block as a release before the time migration shipped did: the store records that version for the run.
-  def before_utc(home)
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("INSERT INTO schema_migrations (version) VALUES (?)", [UTC]) }
-    yield home
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [UTC]) }
-    home
-  end
-
   def forget(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
     Plastic::Graph::Database::ConnectionPool.created.clear

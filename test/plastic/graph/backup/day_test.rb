@@ -2,6 +2,9 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/backup/day"
+require_relative "../../../support/child_process"
+require "json"
+require "rbconfig"
 
 # The two backups of one store on one day. A start-of-day backup that failed
 # counts as tried for the rest of that day, and a failed copy leaves no
@@ -16,11 +19,12 @@ class GraphBackupDayTest < Plastic::TestCase
   NOON = Time.new(2026, 1, 2, 12, 0, 0, "+01:00")
   NEXT_MORNING = Time.new(2026, 1, 3, 9, 0, 0, "+01:00")
 
-  def machine_zone = "Europe/Berlin"
-
   def root(home) = File.join(home, "stores", "alpha")
 
-  def day(home, now, copy: Backup::Copy.new(now:)) = Backup::Day.new(root(home), "alpha", now:, copy:)
+  # Every case reads its days at +01:00, Berlin in winter, whatever the zone of the machine that runs it.
+  ZONE = "+01:00"
+
+  def day(home, now, copy: Backup::Copy.new(now:)) = Backup::Day.new(root(home), "alpha", now:, copy:, zone: ZONE)
 
   def failing_copy(now) = Backup::Copy.new(now:, copier: ->(_source, _target) { raise IOError, "disk full" })
 
@@ -109,7 +113,7 @@ class GraphBackupDayTest < Plastic::TestCase
     assert_nil day(home, MORNING).begin_day
   end
 
-  def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_in_the_zone_of_the_machine
+  def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_from_its_folder_name
     home = fresh_home
     day(home, AFTER_MIDNIGHT).begin_day
     forget_backup_time(home, stamp(AFTER_MIDNIGHT))
@@ -117,69 +121,89 @@ class GraphBackupDayTest < Plastic::TestCase
 
     assert_equal ["start of day"], backup_reasons(home)
   end
+
+  def write_failed_start(home, at)
+    FileUtils.mkdir_p(backups_dir(home))
+    File.write(File.join(backups_dir(home), Backup::Day::FAILED_START), { "at" => at }.to_yaml)
+  end
+
+  def test_a_failed_start_file_that_holds_an_impossible_time_is_reported_with_its_path
+    home = fresh_home
+    write_failed_start(home, "2026-01-02T25:00:00Z")
+    error = assert_raises(Backup::Day::Unreadable) { day(home, MORNING).begin_day }
+
+    assert_includes error.message, "#{Backup::Day::FAILED_START} holds 2026-01-02T25:00:00Z"
+  end
+
+  def test_a_backup_whose_status_holds_an_impossible_time_is_reported_with_its_path
+    home = fresh_home
+    day(home, AFTER_MIDNIGHT).begin_day
+    path = File.join(backups_dir(home), stamp(AFTER_MIDNIGHT), "status.yml")
+    File.write(path, YAML.safe_load_file(path).merge("taken_at" => "2026-01-02T25:00:00Z").to_yaml)
+    error = assert_raises(Backup::Day::Unreadable) { day(home, MORNING).begin_day }
+
+    assert_includes error.message, "#{stamp(AFTER_MIDNIGHT)}/status.yml holds 2026-01-02T25:00:00Z"
+  end
 end
 
-# The days the clocks change, read with the clock that Time.now gives under
-# TZ=Europe/Berlin: +01:00 in winter and +02:00 in summer. A backup's day is
-# the day of the clock when it was taken.
-class GraphBackupDayClockChangeTest < Plastic::TestCase
-  include BackupHomes
-  include BackupTriggers
+# The days the clocks change in Europe/Berlin: +01:00 in winter and +02:00 in
+# summer. A backup's day is the day of the clock when it was taken. Each case
+# runs in a child process with TZ=Europe/Berlin, the way a machine in Berlin
+# runs Plastic, since a fixed offset knows no summer time.
+class GraphBackupDayClockChangeTest < Minitest::Test
+  ROOT = File.expand_path("../../../..", __dir__)
 
-  Backup = Plastic::Graph::Backup
+  # Runs each moment in turn on store alpha of a fresh home, given as [method, Berlin wall-clock time] or
+  # ["add_intent"], and prints the reasons and the folder names of its backups.
+  SCRIPT = <<~'CHILD'
+    require "json"
+    require "plastic/graph"
+    require "plastic/graph/backup/day"
+    require "test_helpers/backup_homes"
+    require "test_helpers/backup_triggers"
+    include BackupHomes
+    include BackupTriggers
+    home = fresh_home
+    JSON.parse(ARGV.fetch(0)).each do |moment, time|
+      next add_intent(home) if moment == "add_intent"
 
-  # The summer time of Europe/Berlin in 2026, in UTC.
-  BERLIN_SUMMER = (Time.utc(2026, 3, 29, 1)...Time.utc(2026, 10, 25, 1))
+      Plastic::Graph::Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now: Time.new(*time)).public_send(moment)
+    end
+    puts JSON.generate(reasons: backup_reasons(home), folders: folder_names(home))
+  CHILD
 
-  # The day before the clocks go forward and that day: a start, a late session end, a start, and a session end.
-  SPRING_DAYS = [[:begin_day, [2026, 3, 28, 9, 0]], [:end_session, [2026, 3, 28, 23, 30]], [:begin_day, [2026, 3, 29, 10, 0]], [:end_session, [2026, 3, 29, 18, 0]]].freeze
+  # The day before the clocks go forward and that day: a start, a late session end, a start, a change, and a session end.
+  SPRING_DAYS = [["begin_day", [2026, 3, 28, 9, 0]], ["end_session", [2026, 3, 28, 23, 30]], ["begin_day", [2026, 3, 29, 10, 0]], ["add_intent"],
+    ["end_session", [2026, 3, 29, 18, 0]]].freeze
 
-  # A wall-clock time in Europe/Berlin, with the offset that applied then; the hour the clocks go back reads as summer.
-  def berlin(*day, hour, minute)
-    summer = Time.new(*day, hour, minute, 0, "+02:00")
-    BERLIN_SUMMER.cover?(summer) ? summer : Time.new(*day, hour, minute, 0, "+01:00")
+  def in_berlin(*moments)
+    out, err, status = ChildProcess.capture3({ "TZ" => "Europe/Berlin", "TMPDIR" => Dir.tmpdir }, RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "test"),
+      "-e", SCRIPT, JSON.generate(moments))
+    assert_predicate status, :success?, err
+    JSON.parse(out)
   end
-
-  # Runs each moment in turn on store alpha, given as [method, Berlin time], and adds an intent before the last one.
-  def run_day(home, *moments)
-    *before, (last_moment, last_time) = moments
-    before.each { |moment, time| day(home, berlin(*time)).public_send(moment) }
-    add_intent(home)
-    day(home, berlin(*last_time)).public_send(last_moment)
-  end
-
-  def machine_zone = "Europe/Berlin"
-
-  def day(home, now) = Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now:)
 
   def test_a_start_of_day_backup_taken_late_the_night_before_the_clocks_go_forward_does_not_count_for_that_day
-    home = fresh_home
-    day(home, berlin(2026, 3, 28, 23, 30)).begin_day
-    day(home, berlin(2026, 3, 29, 10, 0)).begin_day
+    found = in_berlin(["begin_day", [2026, 3, 28, 23, 30]], ["begin_day", [2026, 3, 29, 10, 0]])
 
-    assert_equal ["start of day", "start of day"], backup_reasons(home)
+    assert_equal ["start of day", "start of day"], found.fetch("reasons")
   end
 
   def test_an_end_of_day_backup_of_the_night_before_the_clocks_go_forward_is_not_replaced_as_that_day_s
-    home = fresh_home
-    run_day(home, *SPRING_DAYS)
+    night_before = Time.new(2026, 3, 28, 23, 30, 0, "+01:00").getutc.strftime("%Y%m%d%H%M%S")
 
-    assert_includes folder_names(home), stamp(berlin(2026, 3, 28, 23, 30))
+    assert_includes in_berlin(*SPRING_DAYS).fetch("folders"), night_before
   end
 
   def test_a_start_of_day_backup_taken_before_the_clocks_go_back_counts_for_that_day
-    home = fresh_home
-    day(home, berlin(2026, 10, 25, 0, 30)).begin_day
-    day(home, berlin(2026, 10, 25, 10, 0)).begin_day
+    found = in_berlin(["begin_day", [2026, 10, 25, 0, 30]], ["begin_day", [2026, 10, 25, 10, 0]])
 
-    assert_equal ["start of day"], backup_reasons(home)
+    assert_equal ["start of day"], found.fetch("reasons")
   end
 
   def test_the_session_end_of_the_25_hour_day_keeps_that_day_s_start_of_day_backup
-    home = fresh_home
-    day(home, berlin(2026, 10, 25, 0, 10)).begin_day
-    day(home, berlin(2026, 10, 25, 23, 30)).end_session
+    found = in_berlin(["begin_day", [2026, 10, 25, 0, 10]], ["end_session", [2026, 10, 25, 23, 30]])
 
-    assert_equal ["start of day", "end of day"], backup_reasons(home)
+    assert_equal ["start of day", "end of day"], found.fetch("reasons")
   end
 end

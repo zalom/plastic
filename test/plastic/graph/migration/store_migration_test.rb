@@ -488,7 +488,7 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     Pool.release(home)
     Pool.remove_created(alpha_file(home, ""))
 
-    assert_equal [false, ["changed_values_#{UTC}", "document_revisions_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
+    assert_equal [false, ["document_revisions_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
   end
 end
 
@@ -526,18 +526,18 @@ class StoreMigrationSwitchTest < Plastic::TestCase
 
   def revisions_table(home) = alpha_rows(home, "knowledge_graph.db", "SELECT name FROM sqlite_master WHERE name = 'document_revisions'").flatten
 
-  def test_while_the_switch_is_off_a_store_skips_the_drop_keeps_its_table_and_keeps_no_revision_in_legacy_db
+  def test_while_the_switch_is_off_a_store_runs_only_the_report_migration_keeps_its_table_and_makes_no_legacy_db
     home = previous_home
     report = migrate(home, [])
 
-    assert_equal [["alpha"], false, ["document_revisions"], ["changed_values_#{UTC}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+    assert_equal [["alpha"], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
   end
 
   def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
     home = previous_home
     report = migrate(home, Plastic::Graph::MigrationList::HELD.keys)
 
-    assert_equal [["alpha"], true, [], ["changed_values_#{UTC}", "document_revisions_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
   end
 end
 
@@ -633,6 +633,6 @@ class ReportRowsMigrationTest < Plastic::TestCase
     @home = synced_home
     migrate(@home)
 
-    assert_equal [true, ["changed_values_#{UTC}", "document_revisions_#{DROP}"]], [recorded(@home).include?(REPORTS), legacy_tables(@home)]
+    assert_equal [true, ["document_revisions_#{DROP}"]], [recorded(@home).include?(REPORTS), legacy_tables(@home)]
   end
 end
