@@ -13,15 +13,20 @@ class WorkSessionTest < Plastic::TestCase
     refute_predicate session(ended_at: ""), :ended?
   end
 
-  def test_an_ended_session_sums_up_as_when_and_why_it_ended
-    assert_equal "session s-1 ended #{STAMP} (clear)", session(ended_at: STAMP, end_reason: "clear").summary
+  UTC = "2026-10-05T08:00:00Z"
+  SHOWN = "2026-10-05T17:00:00+09:00"
+
+  def summary(**fields) = in_zone("Asia/Tokyo") { session(last_turn_at: UTC, **fields).summary }
+
+  def test_an_ended_session_sums_up_as_when_and_why_it_ended_in_the_zone_of_the_machine
+    assert_equal "session s-1 ended #{SHOWN} (clear)", summary(ended_at: UTC, end_reason: "clear")
   end
 
-  def test_a_running_session_sums_up_as_its_last_turn
-    assert_equal "session s-1 last turn #{STAMP}", session.summary
+  def test_a_running_session_sums_up_as_its_last_turn_in_the_zone_of_the_machine
+    assert_equal "session s-1 last turn #{SHOWN}", summary
   end
 
-  def test_a_session_with_no_turn_sums_up_as_when_it_started
-    assert_equal "session s-1 started #{STAMP}, no turn recorded", session(started_at: STAMP, last_turn_at: "").summary
+  def test_a_session_with_no_turn_sums_up_as_when_it_started_in_the_zone_of_the_machine
+    assert_equal "session s-1 started #{SHOWN}, no turn recorded", summary(started_at: UTC, last_turn_at: "")
   end
 end

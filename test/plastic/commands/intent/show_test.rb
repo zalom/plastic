@@ -44,6 +44,16 @@ class IntentShowTest < Plastic::TestCase
     assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "log:"]
   end
 
+  def shown_times(intent_id) = in_zone("Asia/Tokyo") { call(intent_id).out }.lines.grep(/\Alog: - /).map { |line| line.split[2] }
+
+  def stored_times(intent_id) = store_graphs.retrieval.structure.work_log(intent_id).map(&:at)
+
+  def test_the_log_lines_show_their_time_in_the_zone_of_the_machine_and_work_log_keeps_utc
+    intent_id = open_intent.intent_id
+
+    assert_equal [[], []], [shown_times(intent_id).grep_v(/09:00\z/), stored_times(intent_id).grep_v(/Z\z/)]
+  end
+
   def test_marks_a_superseded_ruling
     intent = open_intent
     plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)

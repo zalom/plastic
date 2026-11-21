@@ -150,11 +150,12 @@ class RecapClaimTest < Plastic::TestCase
 
   def lapsed_after(node) = Time.parse(node.seen_at) + Plastic::Graph::Work::Node::LAPSE + 1
 
-  def test_an_own_claim_past_its_window_prints_the_lapsed_line_with_the_claim_command
+  def test_an_own_claim_past_its_window_prints_the_lapsed_line_with_the_claim_command_in_the_zone_of_the_machine
     intent_id, node = claim_node
+    shown = Time.iso8601(node.seen_at).getlocal("+09:00").iso8601
 
-    assert_includes recap.lines(now: lapsed_after(node)),
-      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{node.seen_at}); plastic node claim #{intent_id} n1 takes it again"
+    assert_includes in_zone("Asia/Tokyo") { recap.lines(now: lapsed_after(node)) },
+      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{shown}); plastic node claim #{intent_id} n1 takes it again"
   end
 
   def test_an_own_claim_within_its_window_prints_no_lapsed_line

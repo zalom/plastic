@@ -16,6 +16,8 @@ class GraphBackupDayTest < Plastic::TestCase
   NOON = Time.new(2026, 1, 2, 12, 0, 0, "+01:00")
   NEXT_MORNING = Time.new(2026, 1, 3, 9, 0, 0, "+01:00")
 
+  def run = in_zone("Europe/Berlin") { super() }
+
   def root(home) = File.join(home, "stores", "alpha")
 
   def day(home, now, copy: Backup::Copy.new(now:)) = Backup::Day.new(root(home), "alpha", now:, copy:)
@@ -82,7 +84,32 @@ class GraphBackupDayTest < Plastic::TestCase
     File.write(path, YAML.safe_load_file(path).except("taken_at").to_yaml)
   end
 
-  def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_in_the_clock_s_offset
+  # Rewrites a folder's taken_at in UTC, the form every stored time takes.
+  def utc_backup_time(home, name)
+    path = File.join(backups_dir(home), name, "status.yml")
+    report = YAML.safe_load_file(path)
+    File.write(path, report.merge("taken_at" => Time.iso8601(report.fetch("taken_at")).getutc.iso8601).to_yaml)
+  end
+
+  def test_a_start_of_day_backup_taken_just_after_midnight_and_recorded_in_utc_counts_for_that_local_day
+    home = fresh_home
+    day(home, AFTER_MIDNIGHT).begin_day
+    utc_backup_time(home, stamp(AFTER_MIDNIGHT))
+    day(home, MORNING).begin_day
+
+    assert_equal ["start of day"], backup_reasons(home)
+  end
+
+  def test_a_failed_start_of_day_backup_just_after_midnight_recorded_in_utc_counts_for_that_local_day
+    home = fresh_home
+    damage(home)
+    FileUtils.mkdir_p(backups_dir(home))
+    File.write(File.join(backups_dir(home), Backup::Day::FAILED_START), { "at" => "2026-01-01T23:30:00Z" }.to_yaml)
+
+    assert_nil day(home, MORNING).begin_day
+  end
+
+  def test_a_start_of_day_backup_with_no_recorded_time_reads_its_day_in_the_zone_of_the_machine
     home = fresh_home
     day(home, AFTER_MIDNIGHT).begin_day
     forget_backup_time(home, stamp(AFTER_MIDNIGHT))
@@ -120,6 +147,8 @@ class GraphBackupDayClockChangeTest < Plastic::TestCase
     add_intent(home)
     day(home, berlin(*last_time)).public_send(last_moment)
   end
+
+  def run = in_zone("Europe/Berlin") { super() }
 
   def day(home, now) = Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now:)
 

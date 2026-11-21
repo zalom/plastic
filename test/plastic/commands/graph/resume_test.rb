@@ -110,6 +110,13 @@ class GraphResumeTest < Plastic::TestCase
     assert_equal 5, lines(call).count { |line| line.start_with?("log: - ") }
   end
 
+  def test_the_log_lines_show_their_time_in_the_zone_of_the_machine
+    intent_with_nodes_in_each_state
+    times = in_zone("Asia/Tokyo") { lines(call) }.grep(/\Alog: - /).map { |line| line.split[2] }
+
+    assert_equal [5, []], [times.size, times.grep_v(/09:00\z/)]
+  end
+
   def test_no_more_than_five_savepoint_lines_print
     intent_with_nodes_in_each_state
 

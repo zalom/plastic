@@ -31,6 +31,12 @@ class ChatListTest < Plastic::TestCase
     assert_equal [true, true], [texts.first.include?("earlier"), texts.last.include?("later")]
   end
 
+  def test_each_message_shows_its_time_in_the_zone_of_the_machine
+    record("global", Time.utc(2026, 11, 17, 8, 0, 0), "a prompt")
+
+    assert_includes in_zone("Asia/Tokyo") { list.out }, "2026-11-17T17:00:00+09:00"
+  end
+
   def test_since_leaves_out_older_prompts
     record("global", Time.new(2026, 11, 15, 9, 0, 0, "+01:00"), "stale")
     record("global", Time.new(2026, 11, 17, 9, 0, 0, "+01:00"), "fresh")
@@ -45,14 +51,6 @@ class ChatListTest < Plastic::TestCase
 
       assert_includes list("--since", "2026-11-17").out, "just after midnight"
     end
-  end
-
-  def in_zone(name)
-    was = ENV.fetch("TZ", nil)
-    ENV["TZ"] = name
-    yield
-  ensure
-    ENV["TZ"] = was
   end
 
   def test_a_past_day_starts_at_midnight_of_that_day_across_a_change_of_summer_time

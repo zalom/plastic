@@ -33,6 +33,12 @@ class WorkLogLineTest < Plastic::TestCase
     assert_equal ["noted", "2026-10-01T10:00:00+02:00  an old savepoint line", nil], parsed.values_at(:kind, :text, :at)
   end
 
+  def test_a_shown_line_reads_its_time_in_the_zone_of_the_machine_and_the_printed_line_stays_utc
+    line = row(text: "Spec written")
+
+    assert_equal ["- 2026-11-17T00:02:11+09:00 - - - noted - - Spec written", "- #{AT} - - - noted - - Spec written"], in_zone("Asia/Tokyo") { [line.shown, line.line] }
+  end
+
   def test_a_noted_row_made_from_a_loose_line_prints_a_line_that_parses
     printed = row(at: nil, text: "loose words").line
 
