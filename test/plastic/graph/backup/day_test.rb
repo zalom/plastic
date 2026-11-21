@@ -16,7 +16,7 @@ class GraphBackupDayTest < Plastic::TestCase
   NOON = Time.new(2026, 1, 2, 12, 0, 0, "+01:00")
   NEXT_MORNING = Time.new(2026, 1, 3, 9, 0, 0, "+01:00")
 
-  def run = in_zone("Europe/Berlin") { super() }
+  def machine_zone = "Europe/Berlin"
 
   def root(home) = File.join(home, "stores", "alpha")
 
@@ -148,7 +148,7 @@ class GraphBackupDayClockChangeTest < Plastic::TestCase
     day(home, berlin(*last_time)).public_send(last_moment)
   end
 
-  def run = in_zone("Europe/Berlin") { super() }
+  def machine_zone = "Europe/Berlin"
 
   def day(home, now) = Backup::Day.new(File.join(home, "stores", "alpha"), "alpha", now:)
 

@@ -6,11 +6,11 @@ require "plastic/installations/ledger"
 class LedgerTest < Plastic::TestCase
   def ledger = Plastic::Installations::Ledger.new(@plastic_home)
 
-  def test_a_row_carries_local_time_with_its_offset_and_no_harness_when_none_is_named
+  def test_a_row_carries_its_time_in_utc_and_no_harness_when_none_is_named
     ledger.append("2.0.3", "install")
     row = JSON.parse(File.read(File.join(@plastic_home, "versions.json")))
 
-    assert_equal [true, %w[version action at]], [row["at"].match?(/[+-]\d\d:\d\d\z/), row.keys]
+    assert_equal [true, %w[version action at]], [row["at"].end_with?("Z"), row.keys]
   end
 
   def test_the_rows_read_back_in_order_and_a_broken_or_blank_line_is_skipped

@@ -12,10 +12,10 @@ class ManifestTest < Plastic::TestCase
     names.map { |name| File.join(@home, name) }.each { |path| File.write(path, "text of #{File.basename(path)}") }.then { |paths| manifest.write(paths, FixedClock::AT) && paths }
   end
 
-  def test_a_manifest_carries_local_time_with_its_offset
+  def test_a_manifest_carries_its_time_in_utc
     manifest.write([], Time.new(2026, 10, 5, 10, 0, 0, "+02:00"))
 
-    assert_equal "2026-10-05T10:00:00+02:00", JSON.parse(File.read(File.join(@home, "manifest.json")))["created"]
+    assert_equal "2026-10-05T08:00:00Z", JSON.parse(File.read(File.join(@home, "manifest.json")))["created"]
   end
 
   def test_a_written_manifest_lists_the_files_that_exist_with_their_hashes
