@@ -22,5 +22,9 @@ module Plastic
   end
 
   # The calendar day of the machine on which the stored time falls; a blank or other text has no day.
-  def self.local_day(stamp) = STAMP.match?(stamp.to_s) ? Time.iso8601(stamp).getlocal.strftime("%F") : nil
+  def self.local_day(stamp)
+    Time.iso8601(stamp).getlocal.strftime("%F") if STAMP.match?(stamp.to_s)
+  rescue ArgumentError
+    nil
+  end
 end

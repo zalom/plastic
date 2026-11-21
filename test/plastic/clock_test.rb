@@ -26,4 +26,14 @@ class ClockTest < Plastic::TestCase
 
     assert_equal values, in_zone("Asia/Tokyo") { values.map { |value| Plastic.local(value) } }
   end
+
+  def test_a_utc_time_falls_on_the_calendar_day_of_the_machine
+    assert_equal "2026-10-06", in_zone("Asia/Tokyo") { Plastic.local_day("2026-10-05T20:00:00Z") }
+  end
+
+  def test_a_date_a_blank_and_an_unreadable_value_have_no_day
+    values = ["2026-10-05", "", nil, "then", "2026-13-45T99:00:00Z"]
+
+    assert_equal [nil] * 5, in_zone("Asia/Tokyo") { values.map { |value| Plastic.local_day(value) } }
+  end
 end
