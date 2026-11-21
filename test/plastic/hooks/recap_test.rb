@@ -86,7 +86,7 @@ class RecapTest < Plastic::TestCase
     run = Plastic::CommandRun.fresh("intent show", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic next")
     opened.work.save_command_run(run)
 
-    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic intent start #{intent_id}"
+    assert_includes in_zone("Asia/Tokyo") { recap }, "active: #{intent_id} Beta (open), last run intent show finished 2026-11-17T17:00:00+09:00, next: plastic intent start #{intent_id}"
   end
 
   def test_an_intent_whose_next_step_is_the_agent_s_prints_the_last_run_with_no_next
@@ -94,7 +94,7 @@ class RecapTest < Plastic::TestCase
     run = Plastic::CommandRun.fresh("node done", intent_id, FixedClock::AT).with(status: "finished", next_command: "plastic node done #{intent_id} n1 TEXT")
     opened.work.save_command_run(run)
 
-    assert_includes recap, "active: #{intent_id} Gamma (in_progress), last run node done finished #{run.updated_at}"
+    assert_includes in_zone("Asia/Tokyo") { recap }, "active: #{intent_id} Gamma (in_progress), last run node done finished 2026-11-17T17:00:00+09:00"
     refute_includes recap.join("\n"), "next: plastic node done"
   end
 

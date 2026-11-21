@@ -14,10 +14,11 @@ module Plastic
   module Graph
     module Backup
       # The two backups of one store on one day. The day of a backup is the
-      # calendar day of the clock when it was taken, so the days the clocks
-      # change count right. The first call of the day copies the store with
-      # the reason "start of day", changed or not. A session end on a day that
-      # has it copies the store with the reason "end of day", unless the day's
+      # calendar day in the zone of the machine when it was taken, read from
+      # its UTC time, so the days the clocks change count right. The first
+      # call of the day copies the store with the reason "start of day",
+      # changed or not. A session end on a day that has it copies the store
+      # with the reason "end of day", unless the day's
       # end-of-day backup holds the store as it is, and once the copy is
       # written deletes the day's earlier end-of-day backups. Each backup
       # written is followed by the purge of the folders older than one day,
@@ -70,7 +71,7 @@ module Plastic
 
         def failed_start_today?
           file = failed_start_file
-          File.file?(file) && YAML.safe_load_file(file).to_h["at"].to_s[0, 10] == @now.strftime("%F")
+          File.file?(file) && Plastic.local_day(YAML.safe_load_file(file).to_h["at"]) == today
         end
 
         def finish
@@ -102,10 +103,12 @@ module Plastic
           @folders.names.select { |name| today?(name) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
         end
 
-        def today?(name) = day_of(name) == @now.strftime("%F")
+        def today?(name) = day_of(name) == today
 
-        # The day in the taken_at time of the status file; a folder written before it was recorded reads in today's offset.
-        def day_of(name) = @folders.report(name)["taken_at"]&.slice(0, 10) || FolderName.time(name).getlocal(@now.utc_offset).strftime("%F")
+        def today = @now.getlocal.strftime("%F")
+
+        # The day in the taken_at time of the status file; a folder written before it was recorded reads its folder name.
+        def day_of(name) = @folders.report(name)["taken_at"]&.then { |stamp| Plastic.local_day(stamp) } || FolderName.time(name).getlocal.strftime("%F")
       end
     end
   end

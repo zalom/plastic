@@ -32,8 +32,8 @@ module Plastic
 
     FIELDS = members.freeze
 
-    # The run in one phrase: the tool, its status and when.
-    def summary = [tool, status, updated_at].join(" ")
+    # The run in one phrase: the tool, its status and when, in the zone of the machine.
+    def summary = [tool, status, Plastic.local(updated_at)].join(" ")
 
     def self.fresh(tool, subject, time)
       now = Plastic.timestamp(time)

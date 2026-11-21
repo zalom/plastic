@@ -11,7 +11,7 @@ module Plastic
           @count = count
         end
 
-        def lines(intent_id) = @retrieval.structure.work_log(intent_id).last(@count).map(&:line)
+        def lines(intent_id) = @retrieval.structure.work_log(intent_id).last(@count).map(&:shown)
       end
     end
   end

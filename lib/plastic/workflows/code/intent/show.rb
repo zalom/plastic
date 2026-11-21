@@ -44,7 +44,7 @@ module Plastic
           end
 
           def self.print_log(context)
-            context.retrieval.structure.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.line}") }
+            context.retrieval.structure.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.shown}") }
           end
 
           outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is shown"

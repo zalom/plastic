@@ -52,6 +52,9 @@ module Plastic
           ["-", *head, kind, form.word(path), hash_word, form.one_line(text)].reject(&:empty?).join(" ")
         end
 
+        # The line as a person reads it: its time in the zone of the machine. `line` stays the work.log form.
+        def shown = with(at: Plastic.local(at)).line
+
         private
 
         def hash_word = sha256.to_s.empty? ? EMPTY : "#{HASH_PREFIX}#{sha256}"

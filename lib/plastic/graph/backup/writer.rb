@@ -16,10 +16,10 @@ module Plastic
       # checked first, and none is copied when one fails. The folder carries a
       # status file: in-progress before the first copy, done after the last,
       # failed when a copy fails, with the schema version, the fingerprint of
-      # the live files, the reason, and the local time it was taken with its
-      # offset. An automatic backup writes nothing when the store is unchanged
-      # since the newest backup, or when another session took the folder
-      # first. A database that does not exist is never created.
+      # the live files, the reason, and the time it was taken in UTC. An
+      # automatic backup writes nothing when the store is unchanged since the
+      # newest backup, or when another session took the folder first. A
+      # database that does not exist is never created.
       class Writer
         # Nothing to copy, or a database that cannot be trusted.
         class Error < StandardError; end

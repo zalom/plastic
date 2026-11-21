@@ -49,7 +49,7 @@ module Plastic
 
       def lapsed_claim_lines(now)
         own = @retrieval.claimed_nodes.select { |node| node.claimed_by == @session_id && unfinished?(node.intent_id) }
-        own.select { |node| node.lapsed?(now) }.map { |node| format(LAPSED, **node.to_h) }
+        own.select { |node| node.lapsed?(now) }.map { |node| format(LAPSED, **node.shown_fields) }
       end
 
       # The intent exists and its work is not over.

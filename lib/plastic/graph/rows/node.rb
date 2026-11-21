@@ -59,6 +59,9 @@ module Plastic
           stamp && Time.parse(stamp)
         end
 
+        # The fields of the node as a person reads them: the last renewal in the zone of the machine.
+        def shown_fields = { **to_h, seen_at: Plastic.local(seen_at) }
+
         def held_by?(session) = state == "claimed" && claimed_by == session
 
         def serves?(key) = criterion == key
