@@ -17,14 +17,14 @@ class KnowledgeReaderLogFileTest < Plastic::TestCase
     refute_includes rows.map(&:last), "kept"
   end
 
-def test_a_savepoint_line_written_with_an_offset_is_stored_in_utc
-  file = LogFile.new("2026-10-01T10:00:00+02:00  old line\n", "1")
-  store_database.transaction { |batch| file.savepoint(batch, []) }
+  def test_a_savepoint_line_written_with_an_offset_is_stored_in_utc
+    file = LogFile.new("2026-10-01T10:00:00+02:00  old line\n", "1")
+    store_database.transaction { |batch| file.savepoint(batch, []) }
 
-  assert_equal ["2026-10-01T08:00:00Z"], store_database.rows("SELECT at FROM work_log WHERE intent_id = '1' AND text = 'old line'").map { |row| row["at"] }
-end
+    assert_equal ["2026-10-01T08:00:00Z"], store_database.rows("SELECT at FROM work_log WHERE intent_id = '1' AND text = 'old line'").map { |row| row["at"] }
+  end
 
-def test_a_work_log_replaces_the_rows_of_the_intent_one_per_line
+  def test_a_work_log_replaces_the_rows_of_the_intent_one_per_line
     file = LogFile.new("- 2026-10-01T10:00:00+02:00 Why n3 s-1 wrote spec.md sha256:#{"a" * 64} Spec\nfree\n", "1")
     store_database.transaction { |batch| file.work_log(batch) }
 

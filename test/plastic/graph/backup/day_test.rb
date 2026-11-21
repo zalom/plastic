@@ -155,7 +155,7 @@ class GraphBackupDayClockChangeTest < Minitest::Test
 
   # Runs each moment in turn on store alpha of a fresh home, given as [method, Berlin wall-clock time] or
   # ["add_intent"], and prints the reasons and the folder names of its backups.
-  SCRIPT = <<~'CHILD'
+  SCRIPT = <<~CHILD
     require "json"
     require "plastic/graph"
     require "plastic/graph/backup/day"
@@ -179,6 +179,7 @@ class GraphBackupDayClockChangeTest < Minitest::Test
   def in_berlin(*moments)
     out, err, status = ChildProcess.capture3({ "TZ" => "Europe/Berlin", "TMPDIR" => Dir.tmpdir }, RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "test"),
       "-e", SCRIPT, JSON.generate(moments))
+
     assert_predicate status, :success?, err
     JSON.parse(out)
   end

@@ -58,13 +58,13 @@ class ClockTest < Plastic::TestCase
     assert_equal values, values.map { |value| Plastic.utc(value) }
   end
 
-def test_the_time_fields_of_a_row_read_in_utc_and_its_other_fields_as_they_are
-  fields = { at: "2026-10-05T10:00:00+02:00", seen_at: "2026-10-05T10:00:00+02:00", title: "2026-10-05T10:00:00+02:00", batch: 1 }
+  def test_the_time_fields_of_a_row_read_in_utc_and_its_other_fields_as_they_are
+    fields = { at: "2026-10-05T10:00:00+02:00", seen_at: "2026-10-05T10:00:00+02:00", title: "2026-10-05T10:00:00+02:00", batch: 1 }
 
-  assert_equal({ at: "2026-10-05T08:00:00Z", seen_at: "2026-10-05T08:00:00Z", title: "2026-10-05T10:00:00+02:00", batch: 1 }, Plastic.utc_fields(fields))
-end
+    assert_equal({ at: "2026-10-05T08:00:00Z", seen_at: "2026-10-05T08:00:00Z", title: "2026-10-05T10:00:00+02:00", batch: 1 }, Plastic.utc_fields(fields))
+  end
 
-def test_an_impossible_time_read_from_a_file_raises_and_names_the_text
+  def test_an_impossible_time_read_from_a_file_raises_and_names_the_text
     error = assert_raises(Plastic::Invalid) { Plastic.utc("2026-11-21T25:00:00+02:00") }
 
     assert_includes error.message, "2026-11-21T25:00:00+02:00"

@@ -186,15 +186,15 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
       node_rows.map { |row| row.values_at(:id, :state, :updated_at, :origin_id) }
   end
 
-def test_sync_up_stores_the_times_of_a_graph_json_written_with_an_offset_in_utc
-  write(GRAPH, graph_text(nodes: [node_hash("n1", updated_at: "2026-10-20T10:00:00+02:00")]))
-  sync.apply(sync_up_plan)
+  def test_sync_up_stores_the_times_of_a_graph_json_written_with_an_offset_in_utc
+    write(GRAPH, graph_text(nodes: [node_hash("n1", updated_at: "2026-10-20T10:00:00+02:00")]))
+    sync.apply(sync_up_plan)
 
-  assert_equal [["2026-10-20T08:00:00Z"], [["2026-10-20T08:00:00Z", "2026-10-20T08:00:00Z"]]],
-    [node_rows.map { |row| row[:updated_at] }, structure.runs("1").map { |run| [run.started_at, run.ended_at] }]
-end
+    assert_equal [["2026-10-20T08:00:00Z"], [["2026-10-20T08:00:00Z", "2026-10-20T08:00:00Z"]]],
+      [node_rows.map { |row| row[:updated_at] }, structure.runs("1").map { |run| [run.started_at, run.ended_at] }]
+  end
 
-def test_sync_up_reads_the_runs_of_a_hand_edited_graph_json
+  def test_sync_up_reads_the_runs_of_a_hand_edited_graph_json
     write(GRAPH, graph_text(nodes: [node_hash("n1")]))
     sync.apply(sync_up_plan)
 

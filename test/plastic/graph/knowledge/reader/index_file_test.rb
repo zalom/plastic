@@ -25,13 +25,13 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
     assert_equal ["Renamed", [%w[Old 1]]], [read.intent("1").title, read.clusters.map { |c| [c.name, c.intent_id] }]
   end
 
-def test_the_times_of_an_index_written_with_an_offset_are_stored_in_utc
-  apply(index([entry(opened_at: "2026-10-01T10:00:00+02:00", closed_at: "2026-10-02T03:00:00-05:00")], []))
+  def test_the_times_of_an_index_written_with_an_offset_are_stored_in_utc
+    apply(index([entry(opened_at: "2026-10-01T10:00:00+02:00", closed_at: "2026-10-02T03:00:00-05:00")], []))
 
-  assert_equal ["2026-10-01T08:00:00Z", "2026-10-02T08:00:00Z"], retrieval.intent("1").to_h.values_at(:opened_at, :closed_at)
-end
+    assert_equal ["2026-10-01T08:00:00Z", "2026-10-02T08:00:00Z"], retrieval.intent("1").to_h.values_at(:opened_at, :closed_at)
+  end
 
-def test_an_intent_of_another_origin_is_refused
+  def test_an_intent_of_another_origin_is_refused
     file = IndexFile.new(index([{ "intent_id" => "1", "origin_id" => "beef" }], []), "a1b2")
     error = assert_raises(Plastic::Invalid) { file.apply(nil, FixedClock::STAMP) }
 
