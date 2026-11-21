@@ -14,8 +14,9 @@ module Plastic
   module Graph
     module Backup
       # The two backups of one store on one day. The day of a backup is the
-      # calendar day in the zone of the machine when it was taken, read from
-      # its UTC time, so the days the clocks change count right. The first
+      # calendar day in the zone it is read in, an offset such as +01:00 or
+      # else the zone of the machine, read from its UTC time, so the days the
+      # clocks change count right. The first
       # call of the day copies the store with the reason "start of day",
       # changed or not. A session end on a day that has it copies the store
       # with the reason "end of day", unless the day's
@@ -31,11 +32,15 @@ module Plastic
         FINISH = "end of day"
         FAILED_START = "failed-start-of-day.yml"
 
-        def initialize(root, slug, now:, copy: Copy.new(now:))
+        # A file under backups/ holds a time that is no time; the message names the file and the value.
+        class Unreadable < StandardError; end
+
+        def initialize(root, slug, now:, copy: Copy.new(now:), zone: nil)
           @root = root
           @slug = slug
           @now = now
           @copy = copy
+          @zone = zone
           @folders = Folders.new(root)
         end
 
@@ -71,7 +76,7 @@ module Plastic
 
         def failed_start_today?
           file = failed_start_file
-          File.file?(file) && today?(Plastic.local_day(YAML.safe_load_file(file).to_h["at"]))
+          File.file?(file) && today?(read_day(FAILED_START, YAML.safe_load_file(file).to_h["at"]))
         end
 
         def finish
@@ -103,10 +108,18 @@ module Plastic
           @folders.names.select { |name| today?(day_of(name)) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
         end
 
-        def today?(day) = day == @now.getlocal.strftime("%F")
+        def today?(day) = day == @now.getlocal(@zone).strftime("%F")
 
         # The day in the taken_at time of the status file; a folder written before it was recorded reads its folder name.
-        def day_of(name) = @folders.report(name)["taken_at"]&.then { |stamp| Plastic.local_day(stamp) } || FolderName.time(name).getlocal.strftime("%F")
+        def day_of(name)
+          @folders.report(name)["taken_at"]&.then { |stamp| read_day("#{name}/status.yml", stamp) } || FolderName.time(name).getlocal(@zone).strftime("%F")
+        end
+
+        def read_day(file, stamp)
+          Plastic.local_day(stamp, @zone)
+        rescue ArgumentError
+          raise Unreadable, "backups/#{file} holds #{stamp}, which is not a time; fix or delete the file"
+        end
       end
     end
   end

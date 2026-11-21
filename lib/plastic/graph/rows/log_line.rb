@@ -52,8 +52,8 @@ module Plastic
           ["-", *head, kind, form.word(path), hash_word, form.one_line(text)].reject(&:empty?).join(" ")
         end
 
-        # The line as a person reads it: its time in the zone of the machine. `line` stays the work.log form.
-        def shown = with(at: Plastic.local(at)).line
+        # The line as a person reads it: its time in `zone` or else the zone of the machine. `line` stays the work.log form.
+        def shown(zone = nil) = with(at: Plastic.local(at, zone)).line
 
         private
 
