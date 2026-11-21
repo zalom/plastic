@@ -124,7 +124,7 @@ class GraphBackupDayTest < Plastic::TestCase
 
   def write_failed_start(home, at)
     FileUtils.mkdir_p(backups_dir(home))
-    File.write(File.join(backups_dir(home), Backup::Day::FAILED_START), { "at" => at }.to_yaml)
+    File.write(File.join(backups_dir(home), Backup::Day::FAILED_START), "at: '#{at}'\n")
   end
 
   def test_a_failed_start_file_that_holds_an_impossible_time_is_reported_with_its_path
@@ -139,7 +139,7 @@ class GraphBackupDayTest < Plastic::TestCase
     home = fresh_home
     day(home, AFTER_MIDNIGHT).begin_day
     path = File.join(backups_dir(home), stamp(AFTER_MIDNIGHT), "status.yml")
-    File.write(path, YAML.safe_load_file(path).merge("taken_at" => "2026-01-02T25:00:00Z").to_yaml)
+    File.write(path, File.read(path).sub(/^taken_at: .*$/, "taken_at: '2026-01-02T25:00:00Z'"))
     error = assert_raises(Backup::Day::Unreadable) { day(home, MORNING).begin_day }
 
     assert_includes error.message, "#{stamp(AFTER_MIDNIGHT)}/status.yml holds 2026-01-02T25:00:00Z"
