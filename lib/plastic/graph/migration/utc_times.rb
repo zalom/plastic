@@ -35,7 +35,9 @@ module Plastic
 
         def update = %(UPDATE #{schema}."#{table}" SET "#{name}" = #{change} WHERE #{where})
 
-        def unreadable = %(SELECT '#{schema}.#{table}.#{name} ' || "#{name}" AS value FROM #{schema}."#{table}" WHERE #{shape} AND #{change} IS NULL ORDER BY 1)
+        def unreadable = %(SELECT "#{name}" AS value FROM #{schema}."#{table}" WHERE #{shape} AND #{change} IS NULL ORDER BY 1)
+
+        def label(value) = "#{schema}.#{table}.#{name} #{value}"
       end
 
       # The number of times it wrote in UTC, and each time it could not read, as its column and its text.
@@ -57,7 +59,7 @@ module Plastic
       def self.columns(paths = COLUMNS) = paths.map { |path| Column.new(*path.split(".")) }
 
       # Each time with an offset that the `paths` columns hold and that names no real moment.
-      def self.unreadable(connection, paths) = columns(paths).flat_map { |column| connection.execute(column.unreadable).map { |row| row.fetch("value") } }
+      def self.unreadable(connection, paths) = columns(paths).flat_map { |column| connection.execute(column.unreadable).map { |row| column.label(row.fetch("value")) } }
 
       # `keep` is the keep of the data step, which keeps the old text of each value it rewrites.
       def initialize(connection, _root, _selection, keep:)
