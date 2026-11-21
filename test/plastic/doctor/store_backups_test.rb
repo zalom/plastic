@@ -61,14 +61,14 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal "ok, newest 2026-01-02T08:00:00+09:00, 0 hours old, integrity passed, live check 2026-01-02T08:00:00+09:00 passed", found.to_a[1]
+    assert_equal "ok, newest #{shown("2026-01-01T23:00:00Z")}, 0 hours old, integrity passed, live check #{shown("2026-01-01T23:00:00Z")} passed", found.to_a[1]
   end
 
   def test_a_store_whose_live_check_was_never_recorded_prints_the_age_alone
     home = stale_home
     File.delete(File.join(backups_dir(home), "last-check.yml"))
 
-    assert_equal "ok, newest 2026-01-01T19:00:00+09:00, 13 hours old, integrity passed", check(home, THIRTEEN_HOURS_LATER).value
+    assert_equal "ok, newest #{shown("2026-01-01T10:00:00Z")}, 13 hours old, integrity passed", check(home, THIRTEEN_HOURS_LATER).value
   end
 
   def test_the_core_checks_carry_one_backups_check_for_each_store
