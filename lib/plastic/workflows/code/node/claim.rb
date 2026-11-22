@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../graph/work/packet"
 
 module Plastic
   module Workflows
@@ -79,9 +80,13 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
+            packet = Plastic::Graph::Work::Packet.new(context.retrieval, node)
             context.print("criterion: #{node.criterion}")
+            context.print(packet.criterion_line)
             context.print("input: #{node.input}") if node.input
             context.print("last reason: #{node.reason}") if node.reason
+            packet.need_lines.each { |line| context.print(line) }
+            context.data("packet", packet.to_h)
           end
 
           outcome :done, offers: "plastic node done %{intent_id} %{id} TEXT",

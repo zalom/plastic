@@ -61,8 +61,6 @@ class NodeClaimPacketTest < Plastic::TestCase
   end
 
   def test_a_node_that_needs_nothing_carries_an_empty_list_of_needs
-    cli("node", "claim", "1", "n1")
-
     assert_equal [], JSON.parse(cli("node", "claim", "1", "n1", "--json").out).dig("result", "packet", "needs")
   end
 
