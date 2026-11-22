@@ -36,17 +36,17 @@ module Plastic
 
       def failed_check
         file, at, reason, verdict = @folders.last_check.values_at("file", "at", "reason", "verdict")
-        "the live check of #{file} failed at #{at}: #{reason}" if verdict == "failed"
+        "the live check of #{file} failed at #{Plastic.local(at)}: #{reason}" if verdict == "failed"
       end
 
       def live_check
         at, verdict = @folders.last_check.values_at("at", "verdict")
-        ", live check #{at} #{verdict}" if verdict
+        ", live check #{Plastic.local(at)} #{verdict}" if verdict
       end
 
       def described(name)
         taken = Graph::Backup::FolderName.time(name)
-        "newest #{taken.utc.iso8601}, #{((@now - taken) / 3600).floor} hours old, integrity passed#{live_check}"
+        "newest #{Plastic.local(Plastic.timestamp(taken))}, #{((@now - taken) / 3600).floor} hours old, integrity passed#{live_check}"
       end
     end
   end

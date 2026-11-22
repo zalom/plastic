@@ -33,10 +33,10 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
       retrieval.structure.work_log("1").map { |line| line.to_h.values_at(:position, :kind, :node, :session_id, :text) }
   end
 
-  def test_an_old_savepoint_md_adds_its_lines_as_noted_rows
+  def test_an_old_savepoint_md_adds_its_lines_as_noted_rows_with_their_times_in_utc
     read_in("savepoint.md", "#{AT}  Spec written\nfree text\n")
 
-    assert_equal [[2, AT, "noted", "Spec written"], [3, nil, "noted", "free text"]],
+    assert_equal [[2, "2026-10-01T08:00:00Z", "noted", "Spec written"], [3, nil, "noted", "free text"]],
       retrieval.structure.work_log("1").drop(1).map { |line| line.to_h.values_at(:position, :at, :kind, :text) }
   end
 

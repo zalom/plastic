@@ -26,7 +26,7 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
     write("store/index.json", JSON.generate({ "intents" => [index_entry(status: "done", closed_at: STAMP, disposition: "delivered")], "clusters" => [] }))
     intent = folders.intents.first
 
-    assert_equal ["done", "build", "delivered", STAMP], [intent.status, intent.kind, intent.disposition, intent.closed_at]
+    assert_equal ["done", "build", "delivered", "2026-10-05T08:00:00Z"], [intent.status, intent.kind, intent.disposition, intent.closed_at]
   end
 
   def test_an_index_entry_for_another_folder_name_is_not_used

@@ -14,6 +14,10 @@ class CommandRunTest < Plastic::TestCase
     assert_equal run.started_at, run.updated_at
   end
 
+  def test_the_summary_shows_the_time_of_the_last_change_in_the_zone_of_the_machine
+    assert_equal "intent end running 2026-11-17T17:00:00+09:00", fresh.summary("+09:00")
+  end
+
   def test_a_command_run_needs_every_field
     error = assert_raises(ArgumentError) { Plastic::CommandRun.new(tool: "x") }
 

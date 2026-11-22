@@ -8,7 +8,7 @@ module TwoHomesStatusHelper
   include TwoHomesHelper
 
   FILE = "store/index.json"
-  CLOSED = { status: "done", disposition: "delivered", reason: "shipped on A", closed_at: Plastic::TestCase::STAMP }.freeze
+  CLOSED = { status: "done", disposition: "delivered", reason: "shipped on A", closed_at: "2026-10-05T08:00:00Z" }.freeze
 
   def seed(home)
     %w[Alpha Beta].each { |title| call_in(home, "intent", "new", title) }

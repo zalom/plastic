@@ -13,12 +13,12 @@ module Plastic
 
         def ended? = !ended_at.to_s.empty?
 
-        # The session in one phrase: when it ended and why, else its last turn.
-        def summary
-          return "session #{session_id} ended #{ended_at} (#{end_reason})" if ended?
-          return "session #{session_id} started #{started_at}, no turn recorded" if last_turn_at.to_s.empty?
+        # The session in one phrase, its times in `zone` or else the zone of the machine: when it ended and why, else its last turn.
+        def summary(zone = nil)
+          return "session #{session_id} ended #{Plastic.local(ended_at, zone)} (#{end_reason})" if ended?
+          return "session #{session_id} started #{Plastic.local(started_at, zone)}, no turn recorded" if last_turn_at.to_s.empty?
 
-          "session #{session_id} last turn #{last_turn_at}"
+          "session #{session_id} last turn #{Plastic.local(last_turn_at, zone)}"
         end
       end
     end

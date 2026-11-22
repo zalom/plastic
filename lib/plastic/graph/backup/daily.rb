@@ -13,9 +13,11 @@ module Plastic
         # A store whose backup failed, and the first line of why.
         Failure = Data.define(:slug, :reason)
 
-        def initialize(home:, now:)
+        # `zone` is the offset the days are read in, such as +01:00; nil reads them in the zone of the machine.
+        def initialize(home:, now:, zone: nil)
           @stores = File.join(home, "stores")
           @now = now
+          @zone = zone
         end
 
         # The failures of the start-of-day backups the day did not have yet.
@@ -34,7 +36,7 @@ module Plastic
 
         def each_store
           slugs.filter_map do |slug|
-            yield Day.new(File.join(@stores, slug), slug, now: @now)
+            yield Day.new(File.join(@stores, slug), slug, now: @now, zone: @zone)
             nil
           rescue => error
             Failure.new(slug, error.message.lines.first.to_s.strip)

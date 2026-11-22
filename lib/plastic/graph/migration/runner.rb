@@ -40,11 +40,18 @@ module Plastic
       def call
         migrations = store_slugs.to_h { |slug| [slug, StoreMigration.new(@home, slug, @now, run: @run)] }
         results = migrations.transform_values(&:call)
-        results["home"] = HomeMigration.new(@home, @now).call
-        Report.of(results, migrations.values.flat_map(&:notes) + ledger_notes(migrations.select { |slug, _| results[slug] == :migrated }, results["home"]))
+        home = HomeMigration.new(@home, @now)
+        results["home"] = home.call
+        Report.of(results, notes(migrations, home, results))
       end
 
       private
+
+      # The notes of the stores and of the home, then the line of a ledger write that failed.
+      def notes(migrations, home, results)
+        migrated = migrations.select { |slug, _| results[slug] == :migrated }
+        migrations.values.flat_map(&:notes) + home.notes + ledger_notes(migrated, results["home"])
+      end
 
       # Records the up rows of the stores that migrated, or answers the line that says which stores the ledger lacks.
       def ledger_notes(migrated, home)

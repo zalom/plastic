@@ -20,6 +20,15 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_equal first, printed
   end
 
+  def test_the_times_of_a_roadmap_written_with_an_offset_are_stored_in_utc
+    seed
+    text = printed.gsub(STAMP, "2026-10-05T10:00:00+02:00")
+    clear
+    read(text)
+
+    assert_equal [STAMP, [STAMP]], [roadmaps.find("plan").opened_at, roadmaps.log("plan").map(&:at)]
+  end
+
   def test_text_that_looks_like_a_heading_an_item_line_or_a_state_word_reads_back_whole
     seed
     text = printed

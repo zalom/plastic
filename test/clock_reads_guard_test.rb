@@ -20,6 +20,6 @@ class ClockReadsGuardTest < Minitest::Test
   end
 
   def test_a_timestamp_is_written_from_the_time_it_is_given
-    assert_equal "2026-10-05T10:00:00+02:00", Plastic.timestamp(Time.new(2026, 10, 5, 10, 0, 0, "+02:00"))
+    assert_equal "2026-10-05T08:00:00Z", Plastic.timestamp(Time.new(2026, 10, 5, 10, 0, 0, "+02:00"))
   end
 end
