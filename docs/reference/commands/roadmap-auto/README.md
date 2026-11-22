@@ -28,6 +28,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The item's intent is opened and the item points to it | the work graph database, in the store folder | goes with the store |
 | The intent goes in progress | the work graph database, in the store folder | goes with the store |
+| This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver | the work graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 | The files of the roadmap are rewritten | the store folder | goes with the store |
 
