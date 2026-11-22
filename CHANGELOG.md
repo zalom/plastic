@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic intent report ID PATH` records a report again, with its new sha256, when the file changed since it was recorded, and keeps its one line under Reports. When the file is unchanged it writes nothing and says so: `unchanged: PATH is already recorded with this sha256; nothing written`.
+
 ## 3.0.0-beta.10
 
 - `plastic project load` names the kind of tool that checks an architecture map: "an architecture mapping tool such as Enola", the same words as `plastic architecture status`. The instructions that tell the agent to use version control now give Git as the example, since Git is a hard dependency of Plastic. The guard on program names in the source now bans only `gh` and `npm`, and a second guard still forbids Plastic's code to start any process. The child process test ignores the `PKG_CONFIG_PATH` that mise's prebuilt Ruby sets at startup, so the suite passes on a machine with that Ruby.

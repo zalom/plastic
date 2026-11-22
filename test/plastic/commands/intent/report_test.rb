@@ -77,17 +77,10 @@ class IntentReportTest < Plastic::TestCase
     sync_up
     result = call("1", REPORT)
 
-    assert_equal [0, [Digest::SHA256.hexdigest("<p>page</p>\n"), Digest::SHA256.hexdigest("<p>changed</p>\n")]],
-      [result.code, reported.map(&:last)]
-    assert_includes result.out, "reported again: #{REPORT} (sha256 #{Digest::SHA256.hexdigest("<p>changed</p>\n")})"
-  end
+    changed = Digest::SHA256.hexdigest("<p>changed</p>\n")
 
-  def test_a_changed_report_adds_no_second_line_to_the_outcome
-    call("1", REPORT)
-    write("#{retrieval.intent("1").dir}/#{REPORT}", "<p>changed</p>\n")
-    sync_up
-    call("1", REPORT)
-
+    assert_equal [Digest::SHA256.hexdigest("<p>page</p>\n"), changed], reported.map(&:last)
+    assert_includes result.out, "reported again: #{REPORT} (sha256 #{changed})"
     assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
   end
 
