@@ -73,17 +73,18 @@ class OutputTest < Plastic::TestCase
 
   def test_failed_flushes_the_output_first_when_both_streams_share_one_pipe
     reader, writer = IO.pipe
-    writer.sync = false
     err = writer.dup
-    err.sync = true
-    printer = Plastic::CLI::TextOutput.new(out: writer, err: err)
+    printer = Plastic::CLI::TextOutput.new(out: unbuffered(writer, false), err: unbuffered(err, true))
     printer.raw("finding: x")
     printer.failed("see the findings above")
-    writer.close
-    err.close
+    [writer, err].each(&:close)
 
     assert_equal "finding: x\nplastic: see the findings above\n", reader.read
   ensure
     reader&.close
   end
+
+  private
+
+  def unbuffered(io, sync) = io.tap { |stream| stream.sync = sync }
 end
