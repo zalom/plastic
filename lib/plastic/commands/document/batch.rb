@@ -8,7 +8,7 @@ module Plastic
       # Fetches requested qualified documents in the exact request order.
       class Batch < Routine
         argument :references, label: "REF", text: "one or more plastic://STORE/INTENT/PATH?revision=SHA256 references", rest: true
-        reads :knowledge
+        reads :knowledge, :retrieval
 
         workflow :code_batch_documents, next: :noop
       end

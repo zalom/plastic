@@ -9,9 +9,9 @@ module Plastic
       class Discover < Routine
         subject :intent_id, :terms, :source_projects
         argument :intent_id, label: "ID", text: "the owning intent"
-        argument :terms, label: "TERMS", text: "literal search terms", rest: true
+        argument :terms, label: "TERMS", text: "the words of a question, ranked by BM25; quote a phrase to keep it whole", rest: true
         option :source_projects, switch: "--source-project SLUG", text: "a source store", repeatable: true
-        reads :knowledge
+        reads :knowledge, :retrieval
         writes :knowledge, :work
         prints :intent
 
