@@ -22,10 +22,9 @@ class PlanningDirectiveEdgeMeaningTest < Plastic::TestCase
   end
 
   def test_the_planner_agent_carries_the_edge_meaning_and_names_graph_check
-    text = File.read(File.expand_path("../../../../agents/plastic-planner.md", __dir__))
+    text = File.read(File.expand_path("../../../../agents/plastic-planner.md", __dir__)).gsub(/\s+/, " ")
 
     assert_includes text, MEANING
     assert_includes text, "plastic graph check"
   end
-
 end

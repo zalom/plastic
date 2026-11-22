@@ -19,7 +19,10 @@ you do none of these.
 1. **Draft the plan** - when the handoff asks for a plan, read the intent's goal, done criteria
    and rulings, then the code, and draft the spec text, one consolidated action with a
    failure-mode matrix (one row per operation: the failure and the test that catches it), and
-   the work nodes, each naming the done criterion key it proves and the nodes it needs. Every
+   the work nodes, each naming the done criterion key it proves and the nodes it needs. An edge
+   FROM TO means TO reads, changes or tests what FROM makes. Nodes with no path between them may
+   run at the same time. A red test node comes before the code it tests. The main session runs
+   plastic graph check after it records the edges, so list the edges in a form it can add. Every
    name given to a node, file, or field comes from the concept family it lives under, graph
    engineering, the Plastic concepts coined on top of it, and the software and AI engineering
    concepts those rest on; a gap is a design finding to raise, not a word to coin.

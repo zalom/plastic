@@ -49,7 +49,8 @@ module Plastic
             "possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. " \
             "Read the intent's goal and done criteria. Add work with " \
             "plastic node add #{@intent_id} TITLE --criterion KEY, then add dependencies with plastic edge add. " \
-            "Use plastic graph ready #{@intent_id} after the plan is recorded. #{PlanningDirective::TEXT}"]
+            "#{PlanningDirective::EDGE_MEANING} Run plastic graph check #{@intent_id} after the edges and repair each finding it names, " \
+            "then use plastic graph ready #{@intent_id}. #{PlanningDirective::TEXT}"]
         end
 
         def pending_action

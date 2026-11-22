@@ -53,7 +53,7 @@ module Plastic
           end
 
           outcome :done, offers: "plastic edge add %{intent_id} FROM TO",
-            because: "node %{id} is open; add the edges of the plan, then run plastic graph ready %{intent_id}"
+            because: "node %{id} is open; an edge FROM TO means TO reads, changes or tests what FROM makes; add the edges of the plan, then run plastic graph check %{intent_id}"
         end
       end
     end
