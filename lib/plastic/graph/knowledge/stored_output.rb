@@ -4,7 +4,7 @@ require "json"
 
 module Plastic
   module Graph
-    module Work
+    module Knowledge
       # The output a done node stored: JSON text, or nothing. A hand-edited graph.json that is synced up can hold
       # text that is not JSON, so a reader asks before it parses.
       module StoredOutput

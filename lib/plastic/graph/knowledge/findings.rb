@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "spec"
-require_relative "../work/stored_output"
+require_relative "stored_output"
 require_relative "findings/edge_findings"
 require_relative "findings/schema_findings"
 
@@ -48,7 +48,7 @@ module Plastic
         def findings_finding(node) = Findings.findings_finding(node)&.then { |text| Finding.new(text, nil) }
 
         def output_finding(node)
-          return nil if Work::StoredOutput.valid?(node.output)
+          return nil if StoredOutput.valid?(node.output)
 
           Finding.new("node #{node.id} holds output that is not JSON", nil)
         end

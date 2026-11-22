@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "../knowledge/spec"
-require_relative "stored_output"
+require_relative "../knowledge/stored_output"
 
 module Plastic
   module Graph
@@ -12,7 +12,7 @@ module Plastic
       class Packet
         # The first needed node that holds output that is not JSON, or nil. A claim asks before it writes a row.
         def self.output_problem(retrieval, node)
-          bad = new(retrieval, node, schemas: nil).needed.find { |need| !StoredOutput.valid?(need.output) }
+          bad = new(retrieval, node, schemas: nil).needed.find { |need| !Knowledge::StoredOutput.valid?(need.output) }
           "node #{bad.id} holds output that is not JSON" if bad
         end
 
