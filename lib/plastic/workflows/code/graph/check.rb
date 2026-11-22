@@ -2,6 +2,8 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/findings"
+require_relative "../../../graph/knowledge/store_folder"
+require_relative "../../../graph/work/schemas"
 
 module Plastic
   module Workflows
@@ -20,9 +22,14 @@ module Plastic
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
           read "find problems" do |context|
-            context[:findings] = Plastic::Graph::Knowledge::Findings.new(context.retrieval, context.intent_id).repaired
+            context[:findings] = Plastic::Graph::Knowledge::Findings.new(context.retrieval, context.intent_id, schemas: schemas(context)).repaired
             context[:repair] = context.findings.filter_map(&:repair).first || "plastic graph check #{context.intent_id}"
             print_findings(context)
+          end
+
+          def self.schemas(context)
+            folder = Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root)
+            Plastic::Graph::Work::Schemas.new(folder, context.intent.dir)
           end
 
           def self.print_findings(context)

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../graph/knowledge/store_folder"
 require_relative "../../../graph/work/packet"
+require_relative "../../../graph/work/schemas"
 
 module Plastic
   module Workflows
@@ -80,13 +82,18 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
-            packet = Plastic::Graph::Work::Packet.new(context.retrieval, node)
+            packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)
             context.print("input: #{node.input}") if node.input
             context.print("last reason: #{node.reason}") if node.reason
-            packet.need_lines.each { |line| context.print(line) }
+            [*packet.need_lines, *packet.schema_lines].each { |line| context.print(line) }
             context.data("packet", packet.to_h)
+          end
+
+          def self.packet_for(context, node)
+            folder = Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root)
+            Plastic::Graph::Work::Packet.new(context.retrieval, node, schemas: Plastic::Graph::Work::Schemas.new(folder, context.intent.dir))
           end
 
           outcome :done, offers: "plastic node done %{intent_id} %{id} TEXT",

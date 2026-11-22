@@ -9,14 +9,16 @@ module Plastic
       # What a worker needs to start one claimed node: the node, the done criterion it serves, its input, and the
       # stored output of each node it needs. A harness hands it to the worker, whatever the worker is.
       class Packet
-        def initialize(retrieval, node)
+        # `schemas` is the intent's Work::Schemas, or nil when the claim has no folder to read.
+        def initialize(retrieval, node, schemas: nil)
           @retrieval = retrieval
           @node = node
+          @schemas = schemas
         end
 
         def to_h
           { "node" => { "id" => @node.id, "title" => @node.title, "kind" => @node.kind, "state" => @node.state },
-            "criterion" => criterion, "input" => @node.input, "needs" => needs }
+            "criterion" => criterion, "input" => @node.input, "needs" => needs, "schema" => schema }
         end
 
         # The line of the text answer that gives the text of the criterion key.
@@ -25,7 +27,12 @@ module Plastic
         # The lines of the text answer that give the output of each needed node.
         def need_lines = needs.map { |need| need_line(need) }
 
+        # The line of the text answer that names the schema file, or none when the node has no schema.
+        def schema_lines = (schema ? ["schema: #{schema}"] : [])
+
         private
+
+        def schema = @schemas&.path(@node.id)
 
         def criterion
           key = @node.criterion

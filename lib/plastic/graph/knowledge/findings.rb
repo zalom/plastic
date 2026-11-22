@@ -2,6 +2,7 @@
 
 require_relative "spec"
 require_relative "findings/edge_findings"
+require_relative "findings/schema_findings"
 
 module Plastic
   module Graph
@@ -17,15 +18,17 @@ module Plastic
           "node #{node.id} retried #{runs} times" if runs > 3 && node.answer.to_s.empty?
         end
 
-        def initialize(retrieval, intent_id)
+        # `schemas` is the intent's Work::Schemas, or nil when the check has no folder to read.
+        def initialize(retrieval, intent_id, schemas: nil)
           @retrieval = retrieval
           @intent_id = intent_id
+          @schemas = schemas
         end
 
         def all = repaired.map(&:text)
 
         # The findings, each with the command that repairs it (nil when no command does).
-        def repaired = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding
+        def repaired = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding + schema_findings
 
         private
 
@@ -54,6 +57,8 @@ module Plastic
         end
 
         def touches?(node) = edges.any? { |edge| edge.touches?(node.id) }
+
+        def schema_findings = SchemaFindings.new(@intent_id, live.map(&:id), @schemas).all
 
         def criterion_finding
           return [] unless Spec.new(@retrieval, @intent_id).done_criteria.empty?
