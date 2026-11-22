@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../clock"
 require_relative "../record"
 
 module Plastic
@@ -21,7 +22,7 @@ module Plastic
           from_ref, to_ref, kind, at = entry.values_at("from_ref", "to_ref", "kind", "at")
           return unless [from_ref, to_ref].all? { |ref| ref.is_a?(String) && !ref.empty? } && Link::KINDS.include?(kind)
 
-          { from_ref:, to_ref:, kind:, at: at || now }
+          { from_ref:, to_ref:, kind:, at: Plastic.utc(at) || now }
         end
 
         def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
