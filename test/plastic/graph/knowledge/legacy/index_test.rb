@@ -76,6 +76,12 @@ class KnowledgeLegacyIndexTest < Plastic::TestCase
                    closed_at: "2026-08-31", updated_at: "now" }, row)
   end
 
+  def test_an_entry_stores_the_created_time_of_its_intent_file_in_utc
+    row = entries.fetch("307a").row({ "kind" => "research", "created" => "2026-08-01T10:00:00+02:00" }, "now")
+
+    assert_equal "2026-08-01T08:00:00Z", row[:opened_at]
+  end
+
   def parse_line(section, detail) = LegacyIndex.parse("## #{section}\n- [4 — Four](store/4--four/4--four.md)#{detail}\n").entries.first.to_h
 
   def test_a_parked_line_keeps_its_text_as_the_reason

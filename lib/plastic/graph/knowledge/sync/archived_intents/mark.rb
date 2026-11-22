@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../../../clock"
 require_relative "../../intent"
 require_relative "../../reader/index_file"
 
@@ -14,9 +15,9 @@ module Plastic
 
             def intent_row = Intent.from_h(Reader::IndexFile.intent_row(entry, Plastic.timestamp(clock.now))).new_row
 
-            def archive_row = { intent_id:, at: fields["at"], restored_at: nil, session_id: fields["session_id"] }
+            def archive_row = { intent_id:, at: Plastic.utc(fields["at"]), restored_at: nil, session_id: fields["session_id"] }
 
-            def completion_rows = [fields["completion"]].grep(Hash).map { |hash| Work::CompletionRow.stored(hash, intent_id) }
+            def completion_rows = [fields["completion"]].grep(Hash).map { |hash| Work::CompletionRow.stored(Plastic.utc_fields(hash), intent_id) }
 
             def put_all(batch)
               batch.put(:intents, intent_row)

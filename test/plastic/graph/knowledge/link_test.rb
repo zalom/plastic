@@ -23,6 +23,18 @@ class KnowledgeLinkTest < Plastic::TestCase
     assert_equal [true, false], [link.joins?(%w[1 2 chain]), link.joins?(%w[1 2 cites])]
   end
 
+  def test_a_link_read_from_the_index_stores_its_time_in_utc
+    link = Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "chain", "at" => "2026-10-05T10:00:00+02:00" }, "now")
+
+    assert_equal "2026-10-05T08:00:00Z", link[:at]
+  end
+
+  def test_a_link_read_from_the_index_with_an_impossible_time_is_refused
+    error = assert_raises(Plastic::Invalid) { Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "chain", "at" => "2026-10-05T25:00:00+02:00" }, "now") }
+
+    assert_equal "2026-10-05T25:00:00+02:00 is not a time", error.message
+  end
+
   def test_an_edge_is_complete_with_two_refs_and_a_known_kind
     assert_equal [{ from_ref: "1", to_ref: "2", kind: "chain", at: "now" }, nil, nil], [Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "chain" }, "now"), Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "", "kind" => "chain" }, "now"), Knowledge::Link.from_entry({ "from_ref" => "1", "to_ref" => "2", "kind" => "other" }, "now")]
   end
