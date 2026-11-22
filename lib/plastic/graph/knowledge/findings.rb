@@ -28,8 +28,11 @@ module Plastic
 
         def all = with_repairs.map(&:text)
 
+        # The findings that stop the first claim: a loop and a need on a removed node.
+        def blocking = EdgeFindings.new(@intent_id, nodes, edges).all
+
         # The findings, each with the command that repairs it (nil when no command does).
-        def with_repairs = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding + schema_findings
+        def with_repairs = node_findings + blocking + unlinked_finding + criterion_finding + schema_findings
 
         private
 
@@ -61,6 +64,12 @@ module Plastic
           return nil if live.size < 2 || touches?(node)
 
           Finding.new("node #{node.id} has no edge", "plastic edge add #{@intent_id} #{node.id} TO")
+        end
+
+        def unlinked_finding
+          return [] if live.size < 2 || !edges.empty?
+
+          [Finding.new("the graph has #{live.size} nodes and no edge at all", "plastic edge add #{@intent_id} FROM TO")]
         end
 
         def hand_edit(edit) = "#{edit}, then run plastic sync up and plastic graph check #{@intent_id} again"

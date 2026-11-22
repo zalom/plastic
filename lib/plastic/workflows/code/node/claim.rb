@@ -4,6 +4,7 @@ require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/store_folder"
 require_relative "../../../graph/work/packet"
 require_relative "../../../graph/work/schemas"
+require_relative "../../../graph/work/start_check"
 
 module Plastic
   module Workflows
@@ -19,7 +20,7 @@ module Plastic
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem
+          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem, :start_check, :graph_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -49,6 +50,16 @@ module Plastic
           gate "%{approval_problem}", stops: :refusal,
             words: "the intent has no go-ahead",
             pass: ->(context) { context.approval_problem.nil? }
+
+          read "check the graph before the first claim" do |context|
+            context[:start_check] = Plastic::Graph::Work::StartCheck.new(context.retrieval, context.intent, context.scope.root)
+            context[:graph_problem] = context.start_check.problem
+          end
+
+          gate "%{graph_problem}", stops: :refusal, offers: "plastic graph check %{intent_id}",
+            because: "a loop or a need on a removed node stops the first claim; repair it, then claim again",
+            words: "the graph holds a loop or a need on a removed node, and no node was claimed yet",
+            pass: ->(context) { context.graph_problem.nil? }
 
           read "check the output of the needed nodes" do |context|
             node = context.retrieval.node(context.intent_id, context.id)
@@ -95,6 +106,7 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
+            context.start_check.lines.each { |line| context.print(line) }
             packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)

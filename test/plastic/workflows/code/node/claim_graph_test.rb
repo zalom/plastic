@@ -39,8 +39,9 @@ class ClaimGraphTest < Plastic::TestCase
   def test_a_later_claim_is_not_refused_on_a_loop
     claim
     @work.release_node(intent_id: "1", id: "n1")
-    put_edge("n1", "n2")
-    put_edge("n2", "n1")
+    2.times { |index| @work.add_node(intent_id: "1", title: "Loop #{index}") }
+    put_edge("n3", "n4")
+    put_edge("n4", "n3")
 
     assert_equal :done, claim("n1").first
   end
@@ -56,6 +57,8 @@ class ClaimGraphTest < Plastic::TestCase
 
   def test_the_first_claim_of_a_clean_graph_prints_no_finding
     @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    write("#{retrieval.intent("1").dir}/spec.md", "## Done criteria\n- It works\n")
+    sync_up
 
     assert_empty claim.last.printed.grep(/\Afinding:/)
   end

@@ -57,7 +57,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     criteria
     2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
 
-    assert_equal ["node n1 has no edge", "node n2 has no edge"], findings
+    assert_equal ["node n1 has no edge", "node n2 has no edge", "the graph has 2 nodes and no edge at all"], findings
   end
 
   def test_linked_nodes_have_no_edge_finding
@@ -94,7 +94,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     criteria
     2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
 
-    assert_equal [["node n1 has no edge", "plastic edge add 1 n1 TO"], ["node n2 has no edge", "plastic edge add 1 n2 TO"]], repairs
+    assert_equal [["node n1 has no edge", "plastic edge add 1 n1 TO"], ["node n2 has no edge", "plastic edge add 1 n2 TO"], ["the graph has 2 nodes and no edge at all", "plastic edge add 1 FROM TO"]], repairs
   end
 
   def test_no_done_criterion_names_the_command_that_prints_how_to_write_one
