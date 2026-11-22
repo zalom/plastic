@@ -25,8 +25,7 @@ class IntentReportTest < Plastic::TestCase
   def test_a_report_records_with_no_words
     result = call("1", REPORT)
 
-    assert_equal [0, ""], [result.code, result.err]
-    assert_equal [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]], reported
+    assert_equal [0, "", [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]]], [result.code, result.err, reported]
     assert_includes result.out, "reported: #{REPORT}"
     refute_includes result.out, "reported again"
   end
