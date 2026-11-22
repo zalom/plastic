@@ -36,7 +36,7 @@ class CheckGraphTest < Plastic::TestCase
 
     error, context = failed_check
 
-    assert_equal ["finding: node n1 is done with no findings", Plastic::Workflows::Code::Graph::Check::HAND_EDIT], context.printed
+    assert_equal ["finding: node n1 is done with no findings", "hand edit: edit the findings of node n1 in graph.json, then run plastic sync up and plastic graph check 1 again"], context.printed
     assert_equal "see the findings above", error.message
   end
 

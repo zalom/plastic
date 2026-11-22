@@ -60,8 +60,9 @@ Checked with `claude --help` and `codex exec --help` on 22 November 2026:
   schema text.
 - Codex: `codex exec PROMPT --output-schema FILE --output-last-message OUT`.
 
-`plastic graph check ID` reports a schema file that names no live node, and offers
-`plastic graph show ID` to find the node. `plastic resources sort` leaves the files of
+`plastic graph check ID` reports a schema file that names no live node. It prints a `hand edit:` line
+under each finding that no command repairs, a `repair:` line under each finding that one does, and no
+`next:` line when only hand-edit findings remain. `plastic resources sort` leaves the files of
 `resources/tmp/schemas/` where they are.
 
 ## Sessions and claims
@@ -80,7 +81,32 @@ Checked with `claude --help` and `codex exec --help` on 22 November 2026:
 ## Build it on an SDK
 
 The loop does not change with the SDK. Each worker step is a call the SDK makes with the packet as
-its prompt, and the SDK's own pages say how.
+its prompt. The two calls below are Python, written from the SDK pages read on 22 November 2026.
 
-- Claude Agent SDK: <https://docs.claude.com/en/api/agent-sdk/overview>, read 2026-11-22.
-- OpenAI Agents SDK: <https://openai.github.io/openai-agents-python/>, read 2026-11-22.
+The Claude Agent SDK ([Python reference](https://code.claude.com/docs/en/agent-sdk/python), read 2026-11-22)
+takes the output format from the schema in `output_format` and returns the answer in
+`ResultMessage.structured_output`:
+
+```python
+from claude_agent_sdk import query, ClaudeAgentOptions, ResultMessage
+
+options = ClaudeAgentOptions(output_format={"type": "json_schema", "schema": schema})
+async for message in query(prompt=packet_json, options=options):
+    if isinstance(message, ResultMessage):
+        output = message.structured_output
+```
+
+The OpenAI Agents SDK ([Agents](https://openai.github.io/openai-agents-python/agents/) and
+[Results](https://openai.github.io/openai-agents-python/results/), read 2026-11-22) takes the
+output type on the agent, and `result.final_output` is an object of that type. The pages show a
+Pydantic model as the type and do not show a JSON schema file, so the driver builds the model from the schema:
+
+```python
+from agents import Agent, Runner
+
+agent = Agent(name="worker", instructions="Do the node", output_type=NodeOutput)
+result = await Runner.run(agent, packet_json)
+output = result.final_output
+```
+
+In both calls the driver writes the output to a file and passes it to `plastic node done ID NODE TEXT --output PATH`.

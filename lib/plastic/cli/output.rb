@@ -73,7 +73,11 @@ module Plastic
 
       attr_reader :out, :result
 
-      def diagnose(*lines) = @err.puts(*lines)
+      # Flushes the output first, so one pipe for both streams keeps the order of the lines.
+      def diagnose(*lines)
+        @out.flush
+        @err.puts(*lines)
+      end
 
       def error_document(_message, _kind, offer) = offer.apply(self)
     end
