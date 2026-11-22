@@ -8,7 +8,7 @@ module Plastic
       # Closes a delivered intent once the rows, the verdict and outcome.md allow it, and hands over what is missing.
       class End < Routine
         intent_subject
-        writes :work
+        writes :work, :retrieval
         prints :intent
         reads :knowledge
         backs_up_first

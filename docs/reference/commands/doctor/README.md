@@ -18,6 +18,8 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 ## What one call changes
 
-This command changes nothing.
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The search index is rebuilt from the documents when it is out of step with them | the search index, in the store folder | stays on this machine |
 
 The command is `Plastic::Commands::Doctor`, in [`commands/doctor.rb`](../../../../lib/plastic/commands/doctor.rb).

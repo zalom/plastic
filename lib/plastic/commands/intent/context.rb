@@ -9,7 +9,7 @@ module Plastic
       class Context < Routine
         argument :intent_id, label: "ID", text: "the owning intent"
         option :from, switch: "--from FILE", text: "JSON file holding the arrays evidence, facts, interpretations, gaps and rulings"
-        reads :knowledge
+        reads :knowledge, :retrieval
         writes :knowledge, :work
         prints :intent
 

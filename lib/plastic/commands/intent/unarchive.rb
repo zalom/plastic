@@ -9,7 +9,7 @@ module Plastic
       class Unarchive < Routine
         subject :intent_id
         argument :intent_id, label: "ID", text: "the archived intent to restore"
-        writes :work, :knowledge
+        writes :work, :knowledge, :retrieval
         prints :index
         previews
 

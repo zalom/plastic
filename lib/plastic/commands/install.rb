@@ -8,6 +8,8 @@ module Plastic
     # the global store. `plastic init` installs Plastic into the harnesses.
     class Install < Routine
       opens_no_store
+      writes :retrieval
+      keeps_no_command_run
 
       option :reinstall, switch: "--reinstall", default: false,
         text: "sync the files again and make the global store and plastic.db when they are missing or behind"

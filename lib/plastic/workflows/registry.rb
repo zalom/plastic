@@ -132,7 +132,10 @@ module Plastic
       code_sort_resources: "Code::Resources::Sort",
 
       # Statuses: parking started work with its reason.
-      code_park_intent: "Code::Intent::Park"
+      code_park_intent: "Code::Intent::Park",
+
+      # Review rounds: the owner grants one extra round.
+      code_grant_round: "Code::Intent::Grant"
     }.freeze
   end
 end

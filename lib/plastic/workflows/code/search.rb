@@ -9,7 +9,7 @@ require_relative "../retrieval_repair"
 module Plastic
   module Workflows
     module Code
-      # Searches literal indexed passages in the selected local stores and
+      # Searches the indexed passages of the selected local stores for the words of a question and
       # reports them as one fused list.
       class Search < CodeWorkflow
         clear_declarations

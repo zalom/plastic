@@ -1,6 +1,6 @@
 # plastic search
 
-Search literal indexed passages across selected stores.
+Search indexed passages across selected stores for the words of a question, best match first.
 
 ```sh
 plastic search TERMS... [--source-project SLUG] [--limit N]
@@ -8,7 +8,7 @@ plastic search TERMS... [--source-project SLUG] [--limit N]
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
-| `TERMS` | literal search terms | |
+| `TERMS` | the words of a question, ranked by BM25; quote a phrase to keep it whole | |
 | `--source-project SLUG` | a source store | `[]` |
 | `--limit N` | maximum passages | `20` |
 

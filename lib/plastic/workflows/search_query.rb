@@ -9,7 +9,7 @@ require_relative "search_scope"
 
 module Plastic
   module Workflows
-    # Runs a literal search over the selected stores and returns the fused passages.
+    # Runs a ranked search over the selected stores and returns the fused passages.
     class SearchQuery
       def initialize(context)
         @context = context

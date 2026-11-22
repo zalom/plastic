@@ -2,6 +2,13 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/intent/new"
+require_relative "../../../lib/plastic/commands/search"
+require_relative "../../../lib/plastic/commands/document/get"
+require_relative "../../../lib/plastic/commands/document/batch"
+require_relative "../../../lib/plastic/commands/intent/discover"
+require_relative "../../../lib/plastic/commands/intent/context"
+require_relative "../../../lib/plastic/commands/project/load"
+%w[doctor update install].each { |name| require_relative "../../../lib/plastic/commands/#{name}" }
 
 class DeclarationsTest < Plastic::TestCase
   class Declared
@@ -89,5 +96,41 @@ class DeclarationsTest < Plastic::TestCase
     require_relative "../../../lib/plastic/commands/config"
 
     assert_equal [:home], Plastic::Commands::Config.changes.keys
+  end
+end
+
+class RetrievalReadsDeclarationTest < Minitest::Test
+  READERS = %w[Search Document::Get Document::Batch Intent::Discover Intent::Context Project::Load].freeze
+
+  def test_every_command_that_reads_the_retrieval_database_declares_it
+    READERS.each do |name|
+      klass = Plastic::Commands.const_get(name)
+
+      assert_includes klass.reads, :retrieval, "#{name} reads retrieval_graph.db and declares reads :retrieval"
+    end
+  end
+end
+
+class KeepsNoCommandRunTest < Minitest::Test
+  def keeps?(klass, **parsed)
+    klass.allocate.tap { |routine| routine.define_singleton_method(:parsed) { parsed } }.send(:keeps_command_run?)
+  end
+
+  def test_a_command_that_writes_keeps_its_command_run
+    assert keeps?(Class.new(Plastic::Routine) { writes :retrieval })
+  end
+
+  def test_a_command_that_opts_out_writes_the_graph_and_keeps_no_command_run
+    klass = Class.new(Plastic::Routine) { writes(:retrieval).then { keeps_no_command_run } }
+
+    assert_includes klass.writes, :retrieval
+    refute keeps?(klass)
+  end
+
+  def test_doctor_update_and_install_declare_the_write_and_keep_no_command_run
+    [Plastic::Commands::Doctor, Plastic::Commands::Update, Plastic::Commands::Install].each do |klass|
+      assert_includes klass.writes, :retrieval
+      assert_predicate klass, :keeps_no_command_run?, "#{klass} keeps no command run"
+    end
   end
 end

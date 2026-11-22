@@ -35,7 +35,7 @@ outer one. With neither, the global store answers.
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
-| `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress, the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
+| `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress with the best passages of the retrieval graph for each (at most 3 intents and 2 passages each, on `context:` lines), the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
 | `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
 | `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and prints the count. |
 
@@ -51,6 +51,7 @@ intent instead.
 | `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
 | `plastic roadmap auto SLUG` | Starts the roadmap's first free item with an intent, or opens its first ready item and starts it. An item is free when it is not parked and no other session claimed one of its nodes or ran a command on its intent within 15 minutes. With no item free yet it offers `plastic roadmap show SLUG` and names the items it waits on, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
+| `plastic intent grant ID REASON --owner` | Grants one extra review round, on the owner's word, to an intent whose review rounds are used and not accepted. It writes one `granted` work log line with the reason; each line adds one round, and a call while a round is left is refused. Without `--owner` it exits 2 and writes nothing. |
 
 `plastic intent new` writes a future intent, and `plastic roadmap open` writes an open one.
 `plastic intent start` and `plastic intent auto` run no version control command: they print the

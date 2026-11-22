@@ -21,7 +21,7 @@ module Plastic
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
-        "search" => ["Commands::Search", "Search literal indexed passages across selected stores"]
+        "search" => ["Commands::Search", "Search indexed passages across selected stores for the words of a question, best match first"]
       },
       "intent" => {
         "intent abandon" => ["Commands::Intent::Abandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
@@ -37,6 +37,7 @@ module Plastic
         "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; no node of it is claimed without it"],
         "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
         "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],
+        "intent grant" => ["Commands::Intent::Grant", "Grant one extra review round, on the owner's word, to an intent whose rounds are used"],
         "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md"],
         "intent discover" => ["Commands::Intent::Discover", "Record deterministic retrieval candidates for an intent"],
         "intent context" => ["Commands::Intent::Context", "Read or submit selected retrieval context for an intent"],

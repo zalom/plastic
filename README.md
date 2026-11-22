@@ -184,6 +184,7 @@ plastic intent new "TITLE"            # Create a future intent
 plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
 plastic intent start 12               # Set it in progress for guided work and print the code worktree
 plastic intent park 12 "TEXT"         # Park started work with the reason it waits
+plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
@@ -229,7 +230,7 @@ plastic intent brief 12                # Print the brief an agent starts from
 
 ### Search
 ```bash
-plastic search recovery flow --source-project blog --limit 20  # Ranked passages
+plastic search recovery flow --source-project blog --limit 20  # Ranked passages for the words of a question; quote a phrase to keep it whole
 plastic document get REFERENCE --json                           # One immutable document
 plastic document batch REFERENCE... --json                      # Documents in request order
 plastic intent discover 12 recovery flow                         # Save candidate provenance
@@ -242,7 +243,7 @@ plastic architecture refresh --project blog                      # Tell the agen
 ```bash
 plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
 plastic project list                  # The registered projects with their paths
-plastic project load blog shop        # A short digest of each project: paths, files to read, work in play, last deliveries
+plastic project load blog shop        # A short digest of each project: paths, files to read, work in play with its passages, last deliveries
 plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
 plastic project links                 # List the links that name an intent or a ruling this store lacks
 plastic sync up --dry-run             # Show what would change
