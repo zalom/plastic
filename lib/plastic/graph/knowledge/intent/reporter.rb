@@ -17,7 +17,17 @@ module Plastic
           FILE = "outcome.md"
           HEADING = "## Reports"
           MANDATORY = "mandatory"
-          RECORDED = "SELECT 1 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path"
+          LATEST = "SELECT sha256 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path " \
+                   "ORDER BY position DESC LIMIT 1"
+          # What the record of a report says about the file now: :new, :changed or :unchanged, and the sha256 of the file.
+          State = Data.define(:kind, :sha256) do
+            # `latest` is the row of the latest `reported` line, or nil when there is none.
+            def self.of(latest, digest)
+              kind = latest.nil? ? :new : :changed
+              kind = :unchanged if latest&.fetch("sha256") == digest
+              new(kind, digest)
+            end
+          end
 
           def initialize(databases, retrieval, folder)
             @databases = databases
@@ -32,8 +42,11 @@ module Plastic
               ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(intent, path))
           end
 
-          # A `reported` line of any origin counts, as it does for the sync (Reports::RECORDED).
-          def recorded?(intent_id, path) = !store.row(RECORDED, intent_id:, path:).nil?
+          # Compares the file with the latest `reported` line of any origin, as the sync counts them (Reports::RECORDED).
+          def state(intent, path)
+            digest = Digest::SHA256.hexdigest(body(intent, path))
+            State.of(store.row(LATEST, intent_id: intent.intent_id, path:), digest)
+          end
 
           # The bytes of the report, for the sha256 of its log line.
           def body(intent, path) = @folder.read("#{intent.dir}/#{path}").force_encoding(Encoding::UTF_8)
@@ -42,11 +55,19 @@ module Plastic
           def write(intent, path, text)
             id = intent.intent_id
             writer.write(id, path, body(intent, path))
-            writer.write(id, FILE, OutcomeSection.for(@retrieval.fetch(id, FILE)&.body, HEADING).add(line(path, text)))
+            outcome(id, line(path, text))
             @retrieval.reference(id, path).fetch(:uri)
           end
 
           private
+
+          # Adds `line` under Reports, unless the outcome lists it already: a report recorded again keeps its one line.
+          def outcome(id, line)
+            current = @retrieval.fetch(id, FILE)&.body
+            return if current.to_s.lines.map(&:chomp).include?(line)
+
+            writer.write(id, FILE, OutcomeSection.for(current, HEADING).add(line))
+          end
 
           def type_problem(path, selection)
             "the sync does not read .#{SyncSelection.type_of(path)} files; #{path} cannot be a report" unless selection.reads_type?(path)

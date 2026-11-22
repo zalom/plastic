@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic intent report ID PATH` records a report again, with its new sha256, when the file changed since it was recorded, and keeps its one line under Reports. When the file is unchanged it writes nothing and says so: `unchanged: PATH is already recorded with this sha256; nothing written`.
 - `plastic intent grant ID REASON --owner` gives one extra review round, on the owner's word, to an intent whose two review rounds are used and not accepted. It writes one `granted` work log line with the reason, and each such line adds one round to `plastic intent judge` and `plastic intent verdict`. Without `--owner` the call exits 2, and while a round is left it exits 3, so an agent cannot stack grants. The command adds no table and changes no stored data; it writes only a work log line, and nothing calls it unless the owner's word does.
 
 ## 3.0.0-beta.10
