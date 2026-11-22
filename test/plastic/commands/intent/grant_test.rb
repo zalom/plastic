@@ -99,4 +99,18 @@ class IntentGrantTest < Plastic::TestCase
 
     assert_equal [0, 2, 4], [result.code, granted.size, verdicts.size]
   end
+
+  def close_with(status)
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
+  end
+
+  %w[done abandoned].each do |status|
+    define_method(:"test_a_grant_on_a_#{status}_intent_with_its_rounds_used_exits_1_with_no_line") do
+      used_up
+      close_with(status)
+      result = grant("Too late", "--owner")
+
+      assert_equal [1, []], [result.code, granted]
+    end
+  end
 end
