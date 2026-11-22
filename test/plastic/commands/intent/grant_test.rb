@@ -105,12 +105,12 @@ class IntentGrantTest < Plastic::TestCase
   end
 
   %w[done abandoned].each do |status|
-    define_method(:"test_a_grant_on_a_#{status}_intent_with_its_rounds_used_exits_1_with_no_line") do
+    define_method(:"test_a_grant_on_a_#{status}_intent_with_its_rounds_used_exits_3_with_no_line") do
       used_up
       close_with(status)
       result = grant("Too late", "--owner")
 
-      assert_equal [1, []], [result.code, granted]
+      assert_equal [3, []], [result.code, granted]
     end
   end
 end
