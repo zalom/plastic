@@ -138,21 +138,4 @@ class WorkDriverWriterTest < Plastic::TestCase
 
     assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the claim lapsed"], driver_lines
   end
-
-  def test_releasing_the_claims_of_a_session_opens_its_claimed_nodes_and_closes_their_runs_as_released
-    node = work.add_node(intent_id: "1", title: "Build", criterion: "it works")
-    work.claim_node(intent_id: "1", id: node.id, by: "s-1")
-    at(2)
-    work.release_claims("s-1")
-
-    assert_equal [["open", nil], ["released"]], [retrieval.node("1", node.id).to_h.values_at(:state, :claimed_by), retrieval.structure.runs("1").map(&:result)]
-  end
-
-  def test_releasing_the_claims_of_a_session_leaves_the_nodes_of_another_session
-    node = work.add_node(intent_id: "1", title: "Build", criterion: "it works")
-    work.claim_node(intent_id: "1", id: node.id, by: "s-2")
-    work.release_claims("s-1")
-
-    assert_equal ["claimed", "s-2"], retrieval.node("1", node.id).to_h.values_at(:state, :claimed_by)
-  end
 end

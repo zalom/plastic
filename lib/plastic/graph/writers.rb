@@ -6,7 +6,6 @@ require_relative "work/session/writer"
 require_relative "knowledge/intent/writer"
 require_relative "knowledge/intent/reviser"
 require_relative "work/node/writer"
-require_relative "work/driver/writer"
 require_relative "work/edge/writer"
 require_relative "work/approval/writer"
 require_relative "work/verdict/writer"
@@ -41,8 +40,6 @@ module Plastic
       def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval, clock:) }
 
       def nodes = built(:nodes) { Work::Node::Writer.new(databases, retrieval, clock:) }
-
-      def drivers = built(:drivers) { Work::Driver::Writer.new(databases, retrieval, clock:) }
 
       def edges = built(:edges) { Work::Edge::Writer.new(databases, retrieval) }
 

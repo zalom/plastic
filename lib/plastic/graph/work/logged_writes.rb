@@ -16,7 +16,7 @@ module Plastic
 
         attr_reader :grants
 
-        def_delegators :@nodes, :add_node, :claim_node, :record_run, :add_edge, :remove_edge, *LoggedNodes::NODE_KINDS.keys
+        def_delegators :@nodes, :add_node, :claim_node, :record_run, :add_edge, :remove_edge, :drive_intent, :driver_problem, :renew_claims, :release_claims, *LoggedNodes::NODE_KINDS.keys
 
         def initialize(writers)
           @writers = writers
@@ -42,24 +42,6 @@ module Plastic
             given = @writers.retrieval.structure.approval(intent_id)
             @writers.approvals.approve(intent_id, **options).tap { given || @log.line(intent_id, "approved", "Go-ahead given") }
           end
-        end
-
-        # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
-        def drive_intent(intent_id:, by:, take_over: nil)
-          @log.recorded do
-            status, holder, line = @writers.drivers.claim(intent_id:, by:, take_over:)
-            @log.line(intent_id, "driver", line) if line
-            [status, holder]
-          end
-        end
-
-        def renew_claims(session)
-          @log.recorded { [@writers.nodes.renew_claims(session), @writers.drivers.renew(session)] }
-        end
-
-        # The session ended: its node claims and its driver claims go at once.
-        def release_claims(session)
-          @log.recorded { [@writers.nodes.release_session(session), @writers.drivers.release(session)] }
         end
 
         def park_intent(intent_id, reason) = @log.logged(intent_id, "parked", "Parked: #{reason}") { @writers.intents.park(intent_id, reason) }
