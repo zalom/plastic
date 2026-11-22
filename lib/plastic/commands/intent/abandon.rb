@@ -8,7 +8,7 @@ module Plastic
       # Abandons an intent that will not ship once outcome.md records the revert, and hands over the revert steps until then.
       class Abandon < Routine
         intent_subject
-        writes :work
+        writes :work, :retrieval
         prints :index
         reads :knowledge
 

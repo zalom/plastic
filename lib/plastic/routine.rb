@@ -130,6 +130,6 @@ module Plastic
 
     # A command that writes keeps its command run, so a resumed write finds
     # its facts. A read, and a dry run, keep none.
-    def keeps_command_run? = self.class.writes.any? && !parsed[:dry_run]
+    def keeps_command_run? = self.class.writes.any? && !self.class.keeps_no_command_run? && !parsed[:dry_run]
   end
 end

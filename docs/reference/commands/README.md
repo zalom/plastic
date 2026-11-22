@@ -15,7 +15,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |
 | [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
-| [`plastic search`](search/README.md) | Search literal indexed passages across selected stores |
+| [`plastic search`](search/README.md) | Search indexed passages across selected stores for the words of a question, best match first |
 
 ## intent
 

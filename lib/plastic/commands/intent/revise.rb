@@ -12,7 +12,7 @@ module Plastic
         argument :line, label: "LINE", text: "the new What, the intent line"
         option :why, switch: "--why TEXT", text: "the new Why, the lead text of ## Context"
         option :dry_run, switch: "--dry-run", default: false, text: "print the change and write nothing"
-        writes :work, :knowledge
+        writes :work, :knowledge, :retrieval
         prints :intent
 
         workflow :code_revise_intent, next: :noop

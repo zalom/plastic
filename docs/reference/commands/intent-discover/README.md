@@ -9,7 +9,7 @@ plastic intent discover ID TERMS... [--source-project SLUG]
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the owning intent | |
-| `TERMS` | literal search terms | |
+| `TERMS` | the words of a question, ranked by BM25; quote a phrase to keep it whole | |
 | `--source-project SLUG` | a source store | `[]` |
 
 ## The workflows of one call

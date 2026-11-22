@@ -13,7 +13,7 @@ module Plastic
         argument :text, label: "TEXT", text: "the note, one line"
         option :kind, switch: "--kind KIND", default: "Report", text: "Review, Commit or Report"
         reads :work
-        writes :knowledge
+        writes :knowledge, :retrieval
         prints :intent
 
         def call

@@ -4,7 +4,7 @@ module Plastic
   module Graph
     module Retrieval
       class Search
-        # Produces a bounded source-text excerpt around a literal search match.
+        # Produces a bounded source-text excerpt around a search match.
         class Excerpt
           LIMIT = 320
           HALF_LIMIT = LIMIT / 2

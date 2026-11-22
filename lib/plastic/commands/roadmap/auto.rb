@@ -12,7 +12,7 @@ module Plastic
 
         subject :slug
         argument :slug, label: "SLUG", text: "the roadmap"
-        writes :work, :knowledge
+        writes :work, :knowledge, :retrieval
         prints :roadmap, :intent
 
         workflow :code_auto_roadmap, next: :noop do
