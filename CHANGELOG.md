@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic project load [SLUG...]` prints a short digest of each named project, so a session has the project in its context before the owner's next prompt: the store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress, the count of open intents, the last 3 delivered intents with the day each closed, an architecture line and the search command for the rest. One `then:` line says to check each architecture map, start the servers and apps that each `AGENTS.md` names, keep the digests and wait for the owner; no `next:` line follows. A new session in a project store starts with "Run plastic project load SLUG before anything else", and the global store keeps `plastic next`. `PLASTIC.md` names the command for "Load project X" and "Load projects X, Y, Z".
+
 ## 3.0.0-beta.8
 
 - A command flushes its output before it writes an error line, so `plastic graph check` prints its findings before "see the findings above" when standard output and standard error share one pipe, as they do in an agent's shell.
