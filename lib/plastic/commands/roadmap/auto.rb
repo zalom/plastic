@@ -8,7 +8,7 @@ module Plastic
       # Starts a roadmap's next item for agent delivery: its first free item in
       # flight, or its first ready item, opened first.
       class Auto < Routine
-        def self.given_facts = { start_words: "intent auto" }
+        def self.given_facts = { start_words: "intent auto", take_over: "" }
 
         subject :slug
         argument :slug, label: "SLUG", text: "the roadmap"

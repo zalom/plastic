@@ -174,7 +174,7 @@ class IntentStartDriverTest < Plastic::TestCase
     drive("s-1")
     result = drive("s-2", minutes: 5)
 
-    assert_includes result.out, "--take-over"
+    assert_includes result.err, "--take-over REASON"
   end
 
   def test_a_second_session_starts_once_the_claim_lapsed
