@@ -70,4 +70,20 @@ class OutputTest < Plastic::TestCase
 
     assert_equal "plastic: it broke\n", @err.string
   end
+
+  def test_failed_flushes_the_output_first_when_both_streams_share_one_pipe
+    reader, writer = IO.pipe
+    writer.sync = false
+    err = writer.dup
+    err.sync = true
+    printer = Plastic::CLI::TextOutput.new(out: writer, err: err)
+    printer.raw("finding: x")
+    printer.failed("see the findings above")
+    writer.close
+    err.close
+
+    assert_equal "finding: x\nplastic: see the findings above\n", reader.read
+  ensure
+    reader&.close
+  end
 end
