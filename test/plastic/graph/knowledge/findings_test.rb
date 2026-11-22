@@ -44,6 +44,22 @@ class KnowledgeFindingsTest < Plastic::TestCase
     assert_equal ["node n1 is done with no findings"], findings
   end
 
+def test_a_done_node_with_blank_findings_names_its_hand_edit
+  criteria
+  @work.add_node(intent_id: "1", title: "Build")
+  finish("n1", findings: " ")
+  finding = Findings.new(retrieval, "1").with_repairs.first
+
+  assert_equal ["node n1 is done with no findings", nil, "edit the findings of node n1 in graph.json, then run plastic sync up and plastic graph check 1 again"],
+    [finding.text, finding.repair, finding.hand]
+end
+
+def test_a_finding_with_a_repair_command_has_no_hand_edit
+  finding = Findings::Finding.new("text", "plastic status")
+
+  assert_nil finding.hand
+end
+
   def test_a_node_with_no_edge_among_several_is_named
     criteria
     2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
