@@ -44,6 +44,24 @@ module Plastic
           end
         end
 
+        # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
+        def drive_intent(intent_id:, by:, take_over: nil)
+          @log.recorded do
+            status, holder, line = @writers.drivers.claim(intent_id:, by:, take_over:)
+            @log.line(intent_id, "driver", line) if line
+            [status, holder]
+          end
+        end
+
+        def renew_claims(session)
+          @log.recorded { [@writers.nodes.renew_claims(session), @writers.drivers.renew(session)] }
+        end
+
+        # The session ended: its node claims and its driver claims go at once.
+        def release_claims(session)
+          @log.recorded { [@writers.nodes.release_session(session), @writers.drivers.release(session)] }
+        end
+
         def park_intent(intent_id, reason) = @log.logged(intent_id, "parked", "Parked: #{reason}") { @writers.intents.park(intent_id, reason) }
 
         def archive_intent(intent_id) = @log.logged(intent_id, "archived", "Archived") { @writers.archives.archive(intent_id) }

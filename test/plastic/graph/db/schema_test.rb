@@ -46,7 +46,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed chat_messages store_migrations]],
-      work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
+      work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs drivers]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
         document_heads retrieval_contexts retrieval_discoveries
         rulings links printed sqlar]],
@@ -73,7 +73,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261123090000", ""], [status.success?, out, err]
+    assert_equal [true, "20261123100000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy
