@@ -32,6 +32,9 @@ module Plastic
           Harnesses::Innermost.new(env:, processes:, plastic_home:).session || terminal_session
         end
 
+        # The harness whose session variable names the session of the call, or an empty text when none does (PLASTIC_SESSION alone, a terminal).
+        def harness_name = Harnesses.sessions(env).find { |_name, id| id == session }&.first.to_s
+
         def terminal_session
           login = (env["USER"] || env["LOGNAME"]).to_s.strip
           login.empty? ? nil : "terminal-#{login}"

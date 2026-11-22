@@ -5,6 +5,8 @@ require_relative "../../../../../lib/plastic/harnesses/run_record"
 
 # A run keeps the agent and harness it was claimed with, and takes the usage of its record when it ends.
 class WorkNodeRunUsageTest < Plastic::TestCase
+  fixtures :empty
+
   Clock = Struct.new(:now)
 
   START = Time.utc(2026, 11, 17, 8, 0, 0)
@@ -19,7 +21,7 @@ class WorkNodeRunUsageTest < Plastic::TestCase
 
   def work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1", clock: @clock).work
 
-  def run = retrieval.structure.runs("1").first
+  def last_run = retrieval.structure.runs("1").first
 
   def usage(**fields)
     base = { worker_session: "agent-a1", model: "claude-opus-5-5", input_tokens: 3, output_tokens: 4, cache_read_tokens: 5, cache_write_tokens: 6, cost_usd: 0.25, note: "" }
@@ -38,20 +40,20 @@ class WorkNodeRunUsageTest < Plastic::TestCase
   def test_a_claim_opens_a_run_with_the_agent_and_the_harness
     claim
 
-    assert_equal %w[plastic-executor claude-code], [run.agent, run.harness]
+    assert_equal %w[plastic-executor claude-code], [last_run.agent, last_run.harness]
   end
 
   def test_the_usage_of_a_finished_run_is_stored_on_it
     finish_with(usage)
 
     assert_equal ["agent-a1", "claude-opus-5-5", 3, 4, 5, 6, 0.25, ""],
-      run.to_h.values_at(:worker_session, :model, :input_tokens, :output_tokens, :cache_read_tokens, :cache_write_tokens, :cost_usd, :usage_note)
+      last_run.to_h.values_at(:worker_session, :model, :input_tokens, :output_tokens, :cache_read_tokens, :cache_write_tokens, :cost_usd, :usage_note)
   end
 
   def test_the_usage_note_of_a_record_that_was_not_found_is_stored
     finish_with(usage(model: nil, input_tokens: nil, output_tokens: nil, cache_read_tokens: nil, cache_write_tokens: nil, cost_usd: nil, note: "no Claude Code transcript for session s-1"))
 
-    assert_equal [nil, "no Claude Code transcript for session s-1"], [run.model, run.usage_note]
+    assert_equal [nil, "no Claude Code transcript for session s-1"], [last_run.model, last_run.usage_note]
   end
 
   def test_the_usage_goes_to_the_last_run_of_the_node_only
@@ -69,6 +71,6 @@ class WorkNodeRunUsageTest < Plastic::TestCase
   def test_the_run_window_comes_from_the_run_row_for_the_reader
     finish_with(usage)
 
-    assert_equal [START, START + 600], [Time.parse(run.started_at), Time.parse(run.ended_at)]
+    assert_equal [START, START + 600], [Time.parse(last_run.started_at), Time.parse(last_run.ended_at)]
   end
 end

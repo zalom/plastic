@@ -18,6 +18,26 @@ module Plastic
         claimant ? ", held by #{claimant}" : ""
       end
 
+      # One run of a node: its agent, the harness and the session that claimed it, how it ended, then what the harness record held
+      # (the worker, the model, the tokens and the cost) and what it did not.
+      def self.run(run)
+        state = run.open? ? "open" : run.result
+        head = "run: #{run.node_id} ##{run.number} agent #{run.agent.to_s.empty? ? "none" : run.agent}, #{harness(run)}, #{state}"
+        [head, usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
+      end
+
+      def self.harness(run) = run.harness.to_s.empty? ? "session #{run.session_id}" : "#{run.harness} session #{run.session_id}"
+
+      def self.usage(run)
+        figures = [run.model, tokens(run), (format("$%.2f", run.cost_usd) if run.cost_usd), ("worker #{run.worker_session}" unless run.worker_session.to_s.empty?)]
+        figures.compact.join(", ")
+      end
+
+      def self.tokens(run)
+        counts = { "in" => run.input_tokens, "out" => run.output_tokens, "cache read" => run.cache_read_tokens, "cache write" => run.cache_write_tokens }
+        counts.filter_map { |name, count| "#{count} #{name}" if count }.join(", ").then { |text| text unless text.empty? }
+      end
+
       def self.ready_node(node) = "ready: #{node.id} #{node.title}"
 
       def self.rulings(rulings)

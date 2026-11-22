@@ -7,7 +7,7 @@ module Plastic
   module Workflows
     module Code
       module Graph
-        # Prints each node and edge from the rows. It never reads or writes graph.json.
+        # Prints each node, edge and run from the rows. It never reads or writes graph.json.
         class Show < CodeWorkflow
           clear_declarations
 
@@ -22,6 +22,7 @@ module Plastic
           read "print each node and edge" do |context|
             context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
             context.retrieval.structure.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run(run)) }
           end
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"

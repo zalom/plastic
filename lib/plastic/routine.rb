@@ -91,7 +91,7 @@ module Plastic
     # arguments and options always win, nil included.
     def context(command_run)
       klass = self.class
-      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope, settings), clock: environment.clock)
+      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope, settings, environment.harness_name, environment.home), clock: environment.clock)
     end
 
     def chain = self.class.chain

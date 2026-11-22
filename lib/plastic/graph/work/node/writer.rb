@@ -4,6 +4,7 @@ require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
 require_relative "claim"
+require_relative "run_usage"
 
 module Plastic
   module Graph
@@ -44,6 +45,7 @@ module Plastic
             @retrieval = retrieval
             @clock = clock
             @claim = Claim.new(databases, retrieval, clock)
+            @usage = RunUsage.new(databases, retrieval)
           end
 
           def add_node(intent_id:, **fields)
@@ -60,14 +62,17 @@ module Plastic
           end
 
           # Returns [:claimed, node], [:held, node], [:capped, node], [:blocked, node] or [:refused, node].
-          def claim_node(intent_id:, id:, by:, agent: "")
+          def claim_node(intent_id:, id:, by:, agent: "", harness: "")
             current = @retrieval.node(intent_id, id)
             return [:refused, nil] unless current
             return [:blocked, current] if current.waiting?(@retrieval.ready_nodes(intent_id))
             return capped(intent_id:, id:) if current.capped?(@retrieval.structure.runs(intent_id), RETRY_CAP)
 
-            @claim.call(current, by:, agent:)
+            @claim.call(current, by:, agent:, harness:)
           end
+
+          # Stores the usage of a harness record on the last run of the node.
+          def record_run(**fields) = @usage.call(**fields)
 
           def renew_claims(session)
             now = Plastic.timestamp(@clock.now)

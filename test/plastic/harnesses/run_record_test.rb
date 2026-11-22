@@ -63,7 +63,7 @@ class HarnessesRunRecordTest < Plastic::TestCase
     ), under: ["s-1", "subagents"])
     usage = read
 
-    assert_equal ["agent-a1", "claude-haiku-5-5", 80], [usage.worker_session, usage.model, usage.output_tokens + 40]
+    assert_equal ["agent-a1", "claude-haiku-5-5"], [usage.worker_session, usage.model]
     assert_equal 50, usage.output_tokens
   end
 
