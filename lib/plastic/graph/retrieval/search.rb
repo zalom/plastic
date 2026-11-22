@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "errors"
+require_relative "search/query"
 
 module Plastic
   module Graph
     module Retrieval
-      # Searches indexed passages with bounded literal FTS terms. A hit whose hash is not the current head of its document is dropped.
+      # Searches indexed passages for the words of a question, ranked by BM25 (see Search::Query). A hit whose hash is not the current head of its document is dropped.
       class Search
         SEARCH_LIMIT = 100
         SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
@@ -26,7 +27,7 @@ module Plastic
           current(store.rows(SEARCH_SQL, query: self.class.fts_query(terms), origin: origin.id, limit:))
         end
 
-        def self.fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
+        def self.fts_query(terms) = Query.new(terms).to_s
 
         private
 
