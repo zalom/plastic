@@ -23,7 +23,7 @@ class RecapTest < Plastic::TestCase
 
   def test_a_new_session_in_a_project_store_names_project_load_and_waits_for_the_owner
     retrieval = Plastic::Graph.create(home: @plastic_home, store: "widgets").retrieval
-    first = Plastic::Hooks::Recap.new(retrieval, session_id: "s-1", source: nil, directory: @home).lines(now: Time.now).first
+    first = Plastic::Hooks::Recap.new(retrieval, session_id: "s-1", source: nil, directory: @home).lines(now: Time.utc(2026, 11, 22, 12)).first
 
     assert_equal "Plastic: a new session in store widgets. Run plastic project load widgets before anything else; " \
       "the next work waits for the owner's ask.", first

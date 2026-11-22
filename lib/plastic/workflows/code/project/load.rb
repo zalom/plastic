@@ -35,7 +35,10 @@ module Plastic
             scope = context.scope
             return [scope.slug] unless words
 
-            words.split(/[\s,]+/).reject(&:empty?).uniq.each { |name| refuse_unregistered(scope, name) }
+            names = words.split(/[\s,]+/).reject(&:empty?).uniq
+            raise Usage, "name at least one project" if names.empty?
+
+            names.each { |name| refuse_unregistered(scope, name) }
           end
 
           def self.refuse_unregistered(scope, name)
@@ -47,11 +50,29 @@ module Plastic
 
           def self.digest(context, slug)
             scope = context.scope
-            home = scope.plastic_home
-            store = File.join(home, "stores", slug)
-            retrieval = (Plastic::Graph.open(home:, store: slug, session: context.session, clock: context.clock).retrieval if File.directory?(store))
-            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: scope.projects[slug], retrieval:)
+            store = File.join(scope.plastic_home, "stores", slug)
+            intents, note = read_store(context, slug, store)
+            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: repo_path(scope, slug), intents:, note:)
           end
+
+          # The registered path as the project lookup reads it: an empty one is no path, and the rest is expanded.
+          def self.repo_path(scope, slug)
+            path = scope.projects[slug].to_s
+            File.expand_path(path) unless path.empty?
+          end
+
+          # The store's intents, or nil and a note that says why they cannot be read. A store opens only when every
+          # database file is there, since opening builds a missing one, and a store out of step stops only its own digest.
+          def self.read_store(context, slug, store)
+            return [nil, "missing"] unless File.directory?(store)
+            return [nil, "holds no database files"] unless database_files?(store)
+
+            [Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval.intents, nil]
+          rescue Plastic::Graph::OutOfStep => error
+            [nil, "out of step with this code; run #{error.next_command}"]
+          end
+
+          def self.database_files?(store) = Plastic::Graph::Database::Store::FILES.all? { |name| File.file?(File.join(store, name)) }
         end
       end
     end

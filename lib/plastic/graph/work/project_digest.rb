@@ -14,19 +14,20 @@ module Plastic
         READ = %w[AGENTS.md README.md].freeze
         ARCHITECTURE = "when the repository holds code, check its architecture map with a tool such as Enola"
 
-        # `retrieval` is nil when the store folder is missing; `repo` is nil when no path is registered.
-        def initialize(slug:, store:, repo:, retrieval:)
+        # `intents` is nil when the store cannot be read, and `note` then says why; `repo` is nil when no path is registered.
+        def initialize(slug:, store:, repo:, intents:, note: nil)
           @slug = slug
           @store = store
           @repo = repo
-          @retrieval = retrieval
+          @intents = intents
+          @note = note
         end
 
         def rows = [*place_rows, *read_rows, *work_rows, *architecture_rows, ["search:", "plastic search TERMS --source-project #{@slug}"]]
 
         private
 
-        def place_rows = [["project:", @slug], ["store:", marked(@store, @retrieval)], ["repo:", repo_text]]
+        def place_rows = [["project:", @slug], ["store:", @note ? "#{@store} (#{@note})" : @store], ["repo:", repo_text]]
 
         def repo_text = @repo ? marked(@repo, File.directory?(@repo)) : "none registered"
 
@@ -41,9 +42,9 @@ module Plastic
         def architecture_rows = (@repo && File.directory?(@repo)) ? [["architecture:", ARCHITECTURE]] : []
 
         def work_rows
-          return [] unless @retrieval
+          intents = @intents
+          return [] unless intents
 
-          intents = @retrieval.intents
           [*in_play_rows(intents), waiting_row(intents), *delivered_rows(intents)]
         end
 

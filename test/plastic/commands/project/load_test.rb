@@ -2,6 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/project/load"
+require_relative "../../../test_helpers/schema_versions"
 
 # Calls and fixtures the project load tests share.
 module ProjectLoadHelper
@@ -80,12 +81,11 @@ class ProjectLoadTest < Plastic::TestCase
 
   def test_a_project_with_no_store_folder_says_so_and_lists_no_work
     register("blog")
-    FileUtils.rm_rf(@repos.fetch("blog"))
 
     result = load("blog")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal ["store: #{File.join(@plastic_home, "stores", "blog")} (missing)", "repo: #{@repos.fetch("blog")} (missing)"], lines(result)[1, 2]
+    assert_equal ["#{File.join(@plastic_home, "stores", "blog")} (missing)"], values(result, "store:")
     assert_empty values(result, "in play:")
   end
 
@@ -173,5 +173,69 @@ class ProjectLoadCallTest < Plastic::TestCase
 
     assert_equal [2, ""], [result.code, result.out]
     assert_includes result.err, "--project does not apply"
+  end
+end
+
+# A store or a repository that cannot be read, and names that hold no project.
+class ProjectLoadEdgeTest < Plastic::TestCase
+  include ProjectLoadHelper
+  include SchemaVersions
+
+  def test_a_repository_that_is_gone_is_marked_missing_and_gets_no_read_or_architecture_line
+    register("blog")
+    work("blog")
+    FileUtils.rm_rf(@repos.fetch("blog"))
+
+    result = load("blog")
+
+    assert_equal ["#{@repos.fetch("blog")} (missing)"], values(result, "repo:")
+    assert_empty values(result, "read:") + values(result, "architecture:")
+  end
+
+  def test_an_empty_store_folder_is_named_and_left_empty
+    register("blog")
+    store = File.join(@plastic_home, "stores", "blog")
+    FileUtils.mkdir_p(store)
+
+    assert_equal ["#{store} (holds no database files)"], values(load("blog"), "store:")
+    assert_empty Dir.children(store)
+  end
+
+  def test_a_store_out_of_step_is_named_and_the_next_project_still_loads
+    register("blog", "shop")
+    %w[blog shop].each { |slug| work(slug) }
+    record_unknown_version(File.join(@plastic_home, "stores", "blog", "knowledge_graph.db"))
+
+    result = load("blog", "shop")
+
+    assert_equal [0, %w[blog shop]], [result.code, values(result, "project:")]
+    assert_equal "#{File.join(@plastic_home, "stores", "blog")} (out of step with this code; run plastic update)", values(result, "store:").first
+  end
+
+  def test_a_project_registered_with_no_path_has_no_repository
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  blog:\n")
+    work("blog")
+
+    result = load("blog")
+
+    assert_equal ["none registered"], values(result, "repo:")
+    assert_empty values(result, "read:")
+  end
+
+  def test_names_that_hold_no_project_exit_2
+    register("blog")
+
+    result = load(",")
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_includes result.err, "name at least one project"
+  end
+
+  def test_deliveries_closed_in_different_zones_are_ordered_by_the_moment
+    register("blog")
+    later = store_intent("blog", "Late in New York", status: "done", closed_at: "2026-11-20T23:30:00-05:00")
+    earlier = store_intent("blog", "Early in UTC", status: "done", closed_at: "2026-11-21T02:00:00Z")
+
+    assert_equal [later.intent_id, earlier.intent_id], values(load("blog"), "delivered:").map { |line| line.split[1] }
   end
 end
