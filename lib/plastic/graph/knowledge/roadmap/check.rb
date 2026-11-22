@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../edge_walk"
 require_relative "../roadmap"
 
 module Plastic
@@ -32,16 +33,9 @@ module Plastic
           end
 
           def loop_findings
-            item_ids.select { |name| loop?(name, name, []) }.map { |name| "item #{name} loops back to itself" }
+            looped = EdgeWalk.new(edges.map { |edge| [edge.from, edge.to] }).cyclic
+            item_ids.select { |name| looped.include?(name) }.map { |name| "item #{name} loops back to itself" }
           end
-
-          def loop?(start, item, seen)
-            return false if seen.include?(item)
-
-            successors(item).any? { |next_item| next_item == start || loop?(start, next_item, seen + [item]) }
-          end
-
-          def successors(item) = edges.select { |edge| edge.from == item }.map(&:to)
 
           def missing_intent_findings
             items.map { |item| [item.item, item.intent_id] }

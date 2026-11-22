@@ -54,8 +54,8 @@ module Plastic
 
           def loop_problem(item, needs)
             reach = Reach.new(@databases, @retrieval, @slug)
-            looped = needs.find { |from| reach.loop?(from, item) }
-            ["an edge from #{looped} to #{item} would loop", :refusal] if looped
+            from, path = needs.lazy.map { |need| [need, reach.loop_path(need, item)] }.find(&:last)
+            ["an edge from #{from} to #{item} would loop: #{path.join(" -> ")}", :refusal] if path
           end
 
           def items = @retrieval.roadmaps.items(@slug)
