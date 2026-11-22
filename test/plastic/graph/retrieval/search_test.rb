@@ -63,3 +63,58 @@ class RetrievalSearchOrderTest < Plastic::TestCase
       "ORDER BY score, intent_id, path, position LIMIT :limit"
   end
 end
+
+class RetrievalSearchPlainWordsTest < Plastic::TestCase
+  def test_a_question_in_plain_words_finds_a_passage_that_holds_only_some_of_the_words
+    writer.write("1", "a.md", "the retrieval graph gives context to work")
+    reindex
+
+    assert_equal [["1", "a.md"]], retrieval.search("what does the retrieval graph give to my deployment").map { |row| row.values_at("intent_id", "path") }
+  end
+
+  def test_the_passage_that_holds_more_of_the_words_ranks_first
+    writer.write("1", "few.md", "context about deployment")
+    writer.write("2", "most.md", "retrieval graph context for deployment of the store")
+    reindex
+
+    assert_equal %w[most.md few.md], retrieval.search("retrieval graph context deployment").map { |row| row.fetch("path") }
+  end
+
+  def test_a_quoted_phrase_ranks_the_passage_that_holds_the_phrase_first
+    writer.write("1", "apart.md", "graph one, and later a retrieval note")
+    writer.write("2", "phrase.md", "the retrieval graph is derived")
+    reindex
+
+    assert_equal "phrase.md", retrieval.search('"retrieval graph"').first.fetch("path")
+  end
+
+  def test_the_words_of_a_quoted_phrase_do_not_match_apart_as_the_phrase
+    writer.write("1", "apart.md", "graph one, and later a retrieval note")
+    reindex
+
+    assert_empty retrieval.search('"retrieval graph"')
+  end
+
+  def test_a_stop_word_alone_does_not_match_every_passage
+    writer.write("1", "a.md", "the store holds documents")
+    writer.write("2", "b.md", "the index holds passages")
+    reindex
+
+    assert_equal ["b.md"], retrieval.search("what is the index").map { |row| row.fetch("path") }
+  end
+
+  def test_a_search_of_stop_words_only_still_searches_them
+    writer.write("1", "a.md", "the end")
+    reindex
+
+    assert_equal ["a.md"], retrieval.search("the").map { |row| row.fetch("path") }
+  end
+
+  def test_the_fts_query_joins_terms_with_or_and_keeps_a_phrase_whole
+    assert_equal '"retrieval graph" OR "context"', Plastic::Graph::Retrieval::Search.fts_query('"retrieval graph" what is the context')
+  end
+
+  private
+
+  def writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK)
+end

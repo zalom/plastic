@@ -2,6 +2,12 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/intent/new"
+require_relative "../../../lib/plastic/commands/search"
+require_relative "../../../lib/plastic/commands/document/get"
+require_relative "../../../lib/plastic/commands/document/batch"
+require_relative "../../../lib/plastic/commands/intent/discover"
+require_relative "../../../lib/plastic/commands/intent/context"
+require_relative "../../../lib/plastic/commands/project/load"
 
 class DeclarationsTest < Plastic::TestCase
   class Declared
@@ -89,5 +95,17 @@ class DeclarationsTest < Plastic::TestCase
     require_relative "../../../lib/plastic/commands/config"
 
     assert_equal [:home], Plastic::Commands::Config.changes.keys
+  end
+end
+
+class RetrievalReadsDeclarationTest < Minitest::Test
+  READERS = %w[Search Document::Get Document::Batch Intent::Discover Intent::Context Project::Load].freeze
+
+  def test_every_command_that_reads_the_retrieval_database_declares_it
+    READERS.each do |name|
+      klass = Plastic::Commands.const_get(name)
+
+      assert_includes klass.reads, :retrieval, "#{name} reads retrieval_graph.db and declares reads :retrieval"
+    end
   end
 end
