@@ -42,6 +42,8 @@ module Plastic
 
         def park_intent(intent_id, reason) = @log.logged(intent_id, "parked", "Parked: #{reason}") { @writers.intents.park(intent_id, reason) }
 
+        def grant_round(intent_id, reason) = @log.recorded { @log.line(intent_id, Verdict::Rounds::GRANT_KIND, "Granted by the owner: #{reason}") }
+
         def archive_intent(intent_id) = @log.logged(intent_id, "archived", "Archived") { @writers.archives.archive(intent_id) }
 
         def unarchive_intent(intent_id) = @log.logged(intent_id, "unarchived", "Unarchived") { @writers.archives.restore(intent_id) }

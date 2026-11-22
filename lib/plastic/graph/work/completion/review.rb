@@ -2,6 +2,7 @@
 
 require "time"
 require_relative "../../rows/verdict"
+require_relative "../verdict/rounds"
 
 module Plastic
   module Graph
@@ -18,7 +19,7 @@ module Plastic
 
           def counting? = latest&.verdict == "accept" && live_times.all? { |time| time <= Time.parse(latest.at) }
 
-          def used_up? = @retrieval.structure.verdicts(@intent_id).size >= Verdict::ROUNDS && !counting?
+          def used_up? = !Verdict::Rounds.new(@retrieval, @intent_id).left? && !counting?
 
           def problem = ("No accepted review counts yet. Run plastic intent judge #{@intent_id}." unless counting?)
 
