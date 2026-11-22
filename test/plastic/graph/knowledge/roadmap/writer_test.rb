@@ -62,7 +62,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
     item("a")
     item("b", needs: "a")
 
-    assert_equal [nil, "an edge from b to a would loop", :refusal], item("a", needs: "b")
+    assert_equal [nil, "an edge from b to a would loop: b -> a -> b", :refusal], item("a", needs: "b")
     assert_equal [%w[a b]], edges
   end
 
