@@ -2,17 +2,16 @@
 
 require "json"
 require_relative "../knowledge/spec"
+require_relative "packet_rules"
 require_relative "../knowledge/stored_output"
 
 module Plastic
   module Graph
     module Work
       # What a worker needs to start one claimed node: the node, the done criterion it serves, its input, and the
-      # stored output of each node it needs, the intent's rulings in force and the constraints of its spec, each
-      # list kept to LIMIT entries. A harness hands it to the worker, whatever the worker is.
+      # stored output of each node it needs, and the rules of the intent: its rulings in force and the constraints
+      # of its spec. A harness hands it to the worker, whatever the worker is.
       class Packet
-        LIMIT = 20
-
         # The first needed node that holds output that is not JSON, or nil. A claim asks before it writes a row.
         def self.output_problem(retrieval, node)
           bad = new(retrieval, node, schemas: nil).needed.find { |need| !Knowledge::StoredOutput.valid?(need.output) }
@@ -29,7 +28,7 @@ module Plastic
         def to_h
           { "node" => { "id" => @node.id, "title" => @node.title, "kind" => @node.kind, "state" => @node.state },
             "criterion" => criterion, "input" => @node.input, "needs" => needs, "schema" => schema,
-            "rulings" => kept_rulings, "constraints" => kept_constraints, "omitted" => omitted }
+            "rulings" => rules.rulings, "constraints" => rules.constraints, "omitted" => rules.omitted }
         end
 
         # The line of the text answer that gives the text of the criterion key.
@@ -38,11 +37,11 @@ module Plastic
         # The lines of the text answer that give the output of each needed node.
         def need_lines = needs.map { |need| need_line(need) }
 
-        # The lines of the text answer that give each ruling in force and each constraint, then what was left out.
-        def rule_lines
-          [*kept_rulings.map { |ruling| "ruling: #{ruling.fetch("id")} #{ruling.fetch("text")}" },
-           *kept_constraints.map { |text| "constraint: #{text}" }, *omitted_lines]
-        end
+        # The lines of the text answer after the input: the needs, the rulings and constraints, the schema.
+        def answer_lines = [*need_lines, *rule_lines, *schema_lines]
+
+        # The lines of the text answer that give the rulings in force, the constraints and what was left out.
+        def rule_lines = rules.lines
 
         # The line of the text answer that names the schema file, or none when the node has no schema.
         def schema_lines = (schema ? ["schema: #{schema}"] : [])
@@ -57,25 +56,7 @@ module Plastic
 
         def schema = @schemas.path(@node.id)
 
-        # Rulings no other ruling supersedes, oldest first.
-        def rulings_in_force
-          all = @retrieval.rulings(@node.intent_id)
-          superseded = all.filter_map(&:supersedes).to_set
-          all.reject { |ruling| superseded.include?(ruling.id) }.sort_by { |ruling| ruling.id[/\d+/].to_i }
-        end
-
-        # The newest LIMIT rulings in force.
-        def kept_rulings = rulings_in_force.last(LIMIT).map { |ruling| { "id" => ruling.id, "text" => ruling.text } }
-
-        def constraints = Knowledge::Spec.new(@retrieval, @node.intent_id).constraints
-
-        def kept_constraints = constraints.first(LIMIT)
-
-        def omitted = { "rulings" => rulings_in_force.size - LIMIT, "constraints" => constraints.size - LIMIT }.select { |_kind, count| count.positive? }
-
-        def omitted_lines
-          omitted.map { |kind, count| "omitted: #{count} #{kind}; plastic intent brief #{@node.intent_id} lists them all" }
-        end
+        def rules = @rules ||= PacketRules.new(@retrieval, @node.intent_id)
 
         def criterion
           key = @node.criterion

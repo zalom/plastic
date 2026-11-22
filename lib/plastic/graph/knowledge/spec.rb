@@ -15,7 +15,6 @@ module Plastic
 
         DONE = /\A#+\s*(Done criteria|Acceptance Criteria|Acceptance)\s*\z/i
         OPEN = /\A#+\s*(Open Questions|Open decisions)\s*\z/i
-        CONSTRAINTS = /\A#+\s*Constraints?\s*\z/i
         GOAL = /\A#+\s*Goals?\s*\z/i
 
         def initialize(retrieval, intent_id)
@@ -44,7 +43,7 @@ module Plastic
         def open_decisions = bullets_under(OPEN)
 
         # The bullets under the Constraints heading: what the work must keep true.
-        def constraints = bullets_under(CONSTRAINTS)
+        def constraints = bullets_under(/\A#+\s*Constraints?\s*\z/i)
 
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
 
