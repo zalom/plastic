@@ -11,6 +11,8 @@ module Plastic
 
         reads_files
 
+        option :output, switch: "--output PATH", text: "a file of JSON to store as the output of the node, which the nodes that need it read; refused when it is not JSON"
+
         workflow :code_done_node, next: :noop
       end
     end

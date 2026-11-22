@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
+require_relative "node_output"
 
 module Plastic
   module Workflows
@@ -43,6 +44,7 @@ module Plastic
         shape = MOVES.fetch(verb)
         sets :intent, :problem, :moved, :held_elsewhere
         intent_steps
+        output_steps if verb == :done_node
         move_steps(verb, shape)
         result_steps(shape)
       end
@@ -50,6 +52,19 @@ module Plastic
       def self.intent_steps
         read("find the intent") { |context| context[:intent] = context.retrieval.intent(context.intent_id) }
         gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { context.intent }
+      end
+
+      # The file of `--output`, read and checked before the node moves: output that is not JSON leaves the node claimed.
+      def self.output_steps
+        sets :output_text, :output_problem
+        read("read the output file") { |context| read_output(context) }
+        gate "%{output_problem}", stops: :failure, offers: "plastic node fail %{intent_id} %{id} TEXT",
+          because: "output that is not JSON is not stored; node %{id} stays claimed, so finish it again or fail it",
+          pass: ->(context) { context.output_problem.nil? }
+      end
+
+      def self.read_output(context)
+        context[:output_text], context[:output_problem] = context.output ? NodeOutput.read(context.output) : [nil, nil]
       end
 
       def self.move_steps(verb, shape)
@@ -78,7 +93,7 @@ module Plastic
       end
 
       def self.run_move(context, verb, shape)
-        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape), **files(context, verb))
+        node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape), **files(context, verb), **stored_output(context, verb))
         settle(context, node || (verb == :done_node && repeated_done?(context)), shape.fetch(:state))
       end
 
@@ -89,6 +104,8 @@ module Plastic
       end
 
       def self.fields(context, shape) = shape.fetch(:fields).to_h { |name, source| [name, context.public_send(source || name)] }
+
+      def self.stored_output(context, verb) = (verb == :done_node && context.output_text) ? { output: context.output_text } : {}
 
       def self.files(context, verb) = RESULT_VERBS.include?(verb) ? { files: context.files } : {}
 

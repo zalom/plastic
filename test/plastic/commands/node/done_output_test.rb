@@ -2,6 +2,7 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/done"
+require_relative "../../../test_helpers/two_homes"
 
 class NodeDoneOutputTest < Plastic::TestCase
   include LifecycleHelper
@@ -45,8 +46,7 @@ class NodeDoneOutputTest < Plastic::TestCase
   def test_output_that_is_not_json_exits_1_and_names_node_fail
     result = cli("node", "done", "1", "n1", "built", "--output", output_file("not json"))
 
-    assert_call result, code: 1, out: "", err: /not JSON/
-    assert_includes result.out + result.err, "plastic node fail 1 n1 TEXT"
+    assert_call result, code: 1, out: /next: plastic node fail 1 n1 TEXT/, err: /not JSON/
   end
 
   def test_output_that_is_not_json_leaves_the_node_claimed_with_no_output
@@ -58,7 +58,7 @@ class NodeDoneOutputTest < Plastic::TestCase
   def test_a_missing_output_file_exits_1_and_leaves_the_node_claimed
     result = cli("node", "done", "1", "n1", "built", "--output", File.join(@home, "nothing.json"))
 
-    assert_call result, code: 1, err: /nothing\.json/
+    assert_call result, code: 1, out: /plastic node fail/, err: /cannot be read.*nothing\.json/
     assert_equal "claimed", node.state
   end
 
@@ -101,12 +101,22 @@ class NodeDoneOutputTest < Plastic::TestCase
 
     assert_equal [JSON_TEXT.b, printed], [node.output.b, File.binread(graph_path)]
   end
+end
 
-  def test_a_rebuild_from_the_graph_file_alone_brings_the_output_back
-    cli("node", "done", "1", "n1", "built", "--output", output_file)
-    store_database.transaction { |batch| batch.write(:nodes, "UPDATE nodes SET output = NULL") }
-    cli("sync", "up")
+# A machine that holds only the files rebuilds the rows from them.
+class NodeDoneOutputSecondHomeTest < Minitest::Test
+  include TwoHomes
 
-    assert_equal JSON_TEXT.b, node.output.b
+  def test_a_second_home_rebuilds_the_output_from_the_graph_file_with_the_same_bytes
+    with_two_homes do |first, second|
+      path = File.join(first.home, "output.json")
+      File.binwrite(path, NodeDoneOutputTest::JSON_TEXT)
+      first.command!("node", "claim", "1", "n2")
+      first.command!("node", "done", "1", "n2", "built", "--output", path)
+      move_files(first, second)
+      second.command!("sync", "up")
+
+      assert_equal [[NodeDoneOutputTest::JSON_TEXT]], query(second, "SELECT output FROM nodes WHERE id = 'n2'")
+    end
   end
 end
