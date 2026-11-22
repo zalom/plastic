@@ -2,32 +2,19 @@
 
 require_relative "../../rows/edge"
 require_relative "../../sql"
+require_relative "../../edge_walk"
 
 module Plastic
   module Graph
     module Work
       class Edge
-        # Writes one intent's edges: one guarded INSERT that refuses a self
-        # edge, an edge touching a missing or removed node, or an edge that
-        # would close a loop back to its own start.
+        # Writes one intent's edges. An edge is added inside one immediate transaction that first reads the intent's
+        # nodes and edges and refuses a self edge, a missing or removed node, a duplicate edge and an edge that would
+        # close a loop, so two sessions cannot close a loop between them. An EdgeWalk finds the loop, not a query.
         class Writer
           ADD_SQL = <<~SQL
             INSERT INTO edges (intent_id, "from", "to", kind, origin_id)
-            SELECT :intent_id, :from, :to, :kind, :origin
-            WHERE :from != :to
-              AND EXISTS (SELECT 1 FROM nodes WHERE intent_id = :intent_id AND id = :from
-                            AND origin_id = :origin AND state != 'removed')
-              AND EXISTS (SELECT 1 FROM nodes WHERE intent_id = :intent_id AND id = :to
-                            AND origin_id = :origin AND state != 'removed')
-              AND NOT EXISTS (
-                WITH RECURSIVE reach(id) AS (
-                  SELECT "to" FROM edges WHERE intent_id = :intent_id AND origin_id = :origin AND "from" = :to
-                  UNION
-                  SELECT edges."to" FROM edges, reach
-                  WHERE edges.intent_id = :intent_id AND edges.origin_id = :origin AND edges."from" = reach.id
-                )
-                SELECT 1 FROM reach WHERE id = :from
-              )
+            VALUES (:intent_id, :from, :to, :kind, :origin)
             RETURNING "from"
           SQL
 
@@ -36,13 +23,23 @@ module Plastic
             RETURNING "from"
           SQL
 
+          NODE_SQL = "SELECT state FROM nodes WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin"
+
+          EDGES_SQL = <<~SQL
+            SELECT "from", "to" FROM edges WHERE intent_id = :intent_id AND origin_id = :origin AND kind = 'needs'
+          SQL
+
           def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
           end
 
+          # Returns [true, nil] when the edge is written, or [false, the reason it is refused].
           def add_edge(intent_id:, from:, to:)
-            moved(ADD_SQL, intent_id:, from:, to:)
+            store.atomically do
+              problem = refusal(intent_id, from, to)
+              problem ? [false, problem] : [moved(ADD_SQL, intent_id:, from:, to:), nil]
+            end
           end
 
           def remove_edge(intent_id:, from:, to:)
@@ -51,11 +48,37 @@ module Plastic
 
           private
 
+          def store = @databases.fetch(:store)
+
           def moved(sql, **edge)
-            rows = @databases.fetch(:store).transaction do |batch|
+            rows = store.transaction do |batch|
               batch.write(:edges, sql, **edge, kind: "needs", origin: @retrieval.origin_id)
             end
             rows.any?
+          end
+
+          def refusal(intent_id, from, to)
+            reason = self_reason(from, to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
+            reason && "edge #{from} to #{to} is refused: #{reason}"
+          end
+
+          def self_reason(from, to) = ("a node cannot need itself" if from == to)
+
+          def node_reason(intent_id, from, to)
+            [from, to].each do |id|
+              state = store.row(NODE_SQL, intent_id:, id:, origin: @retrieval.origin_id)&.fetch("state")
+              return "#{id} is not a node of intent #{intent_id}" if state.nil?
+              return "#{id} is removed" if state == "removed"
+            end
+            nil
+          end
+
+          def edge_reason(intent_id, from, to)
+            pairs = store.rows(EDGES_SQL, intent_id:, origin: @retrieval.origin_id).map { |row| [row.fetch("from"), row.fetch("to")] }
+            return "it is already there" if pairs.include?([from, to])
+
+            path = EdgeWalk.new(pairs).path(to, from)
+            "it would loop, #{[from, *path].join(" -> ")}" if path
           end
         end
       end
