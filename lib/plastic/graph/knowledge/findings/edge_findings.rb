@@ -20,9 +20,17 @@ module Plastic
             @removed = nodes.select { |node| node.state == "removed" }.to_set(&:id)
             @live = nodes.reject { |node| node.state == "removed" }.to_set(&:id)
             @needs = edges.select { |edge| edge.kind == "needs" }
+            @edge_count = edges.size
           end
 
           def all = removed_findings + loop_findings
+
+          # A graph of several live nodes with no edge at all: the planner likely forgot the edges. It stops nothing.
+          def unlinked
+            return [] if @live.size < 2 || @edge_count.positive?
+
+            [Finding.new("the graph has #{@live.size} nodes and no edge at all", "plastic edge add #{@intent_id} FROM TO")]
+          end
 
           private
 

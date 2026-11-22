@@ -46,12 +46,16 @@ class ClaimGraphTest < Plastic::TestCase
     assert_equal :done, claim("n1").first
   end
 
-  def test_the_first_claim_prints_the_other_findings_and_claims
-    outcome, context = claim
+  def test_the_first_claim_prints_the_other_findings
+    printed = claim.last.printed
 
-    assert_equal :done, outcome
-    assert_includes context.printed, "finding: node n1 has no edge"
-    assert_includes context.printed, "finding: the graph has 2 nodes and no edge at all"
+    assert_includes printed, "finding: node n1 has no edge"
+    assert_includes printed, "finding: the graph has 2 nodes and no edge at all"
+  end
+
+  def test_the_first_claim_claims_though_it_prints_findings
+    claim
+
     assert_equal "claimed", retrieval.node("1", "n1").state
   end
 
