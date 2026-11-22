@@ -54,6 +54,21 @@ class EdgeWalkTest < Minitest::Test
     assert_equal %w[n1 n1], walk(%w[n1 n1]).cycle("n1")
   end
 
+  def test_the_nodes_on_a_cycle_are_all_found_in_one_pass_and_the_others_left_out
+    edges = walk(%w[a b], %w[b c], %w[c a], %w[c d], %w[d e], %w[e d], %w[f f], %w[g a])
+
+    assert_equal %w[a b c d e f], edges.cyclic.to_a.sort
+  end
+
+  def test_no_node_is_on_a_cycle_in_a_chain_or_a_diamond
+    assert_empty walk(%w[a b], %w[a c], %w[b d], %w[c d]).cyclic
+    assert_empty Plastic::Graph::EdgeWalk.new(chain(5000)).cyclic
+  end
+
+  def test_every_node_of_a_closed_chain_of_5000_edges_is_on_a_cycle
+    assert_equal 5000, Plastic::Graph::EdgeWalk.new(chain(4999) << %w[n5000 n1]).cyclic.size
+  end
+
   def test_a_cycle_in_a_chain_of_5000_edges_ends_without_an_exception
     cycle = Plastic::Graph::EdgeWalk.new(chain(5000) << %w[n5001 n1]).cycle("n1")
 
