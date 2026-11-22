@@ -148,7 +148,8 @@ offset still gives UTC rows.
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as
-`docs/release-lines.md` says. `MigrationList::HELD` in
+`docs/release-lines.md` says, with one exception: the UTC migration named at the end of this
+section. `MigrationList::HELD` in
 `lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
 `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
 behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`.
@@ -163,8 +164,9 @@ behind `migrate.drop_document_revisions`, so the three run in the same `plastic 
 To hold a new migration, add its version and its switch to `HELD`, and add the switch to
 `lib/plastic/config/defaults.rb`, off.
 
-Migration `20261121090000`, which writes every stored time in UTC, has no switch: it changes the
-text of a time and not the time it names, and the code that reads times expects UTC.
+Migration `20261121090000`, which writes every stored time in UTC, is the one exception to this
+rule. The owner ruled on 22 November 2026 that it has no switch: it changes the text of a time
+and not the time it names, and the code that reads times expects UTC.
 
 ## The ledger
 

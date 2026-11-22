@@ -130,7 +130,8 @@ written.
   A beta is a snapshot of `alpha`, cut only on the owner's word. `beta` takes no commits of
   its own, and `main` is frozen until the shaping ends. A change to stored data, the storage
   layer or the lock, or one that may be dropped, ships behind a config switch that is off by
-  default. Read `docs/release-lines.md` for the rules, how to cut a beta and the stable-line
+  default. The one exception is the migration that writes every stored time in UTC, which has no
+  switch (the owner ruled so on 22 November 2026). Read `docs/release-lines.md` for the rules, how to cut a beta and the stable-line
   guarantees.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
