@@ -49,16 +49,16 @@ class RoleFilesTest < Plastic::TestCase
     assert_equal [], Plastic::Installations::RoleFiles.new(root).call(File.join(@home, "agents"))
   end
 
-def test_the_worker_limit_replaces_its_placeholder_in_the_role_text
-  roles = { "demo-role" => "---\nmodel: sonnet\n---\nRun {{driver.max_workers}} workers.\n" }
-  Plastic::Installations::RoleFiles.new(package(roles:), workers: 4).call(File.join(@home, "agents"))
+  def test_the_worker_limit_replaces_its_placeholder_in_the_role_text
+    roles = { "demo-role" => "---\nmodel: sonnet\n---\nRun {{driver.max_workers}} workers.\n" }
+    Plastic::Installations::RoleFiles.new(package(roles:), workers: 4).call(File.join(@home, "agents"))
 
-  assert_includes installed("demo-role"), "Run 4 workers.\n"
-end
+    assert_includes installed("demo-role"), "Run 4 workers.\n"
+  end
 
-def test_the_shipped_driver_role_names_the_limit_by_its_placeholder
-  text = File.read(File.join(PackageFixture::REAL_PACKAGE, "agents", "plastic-driver.md"))
+  def test_the_shipped_driver_role_names_the_limit_by_its_placeholder
+    text = File.read(File.join(PackageFixture::REAL_PACKAGE, "agents", "plastic-driver.md"))
 
-  assert_includes text, "{{driver.max_workers}}"
-end
+    assert_includes text, "{{driver.max_workers}}"
+  end
 end

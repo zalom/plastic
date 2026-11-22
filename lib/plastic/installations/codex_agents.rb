@@ -13,8 +13,7 @@ module Plastic
       def initialize(package_root, models: {}, efforts: {}, skip: [], workers: nil)
         @package_root = package_root
         @workers = workers
-        @models = models
-        @efforts = efforts
+        @picks = { model: models, effort: efforts }
         @skip = skip
       end
 
@@ -27,7 +26,7 @@ module Plastic
       def write(root, source)
         FileUtils.mkdir_p(root)
         name = File.basename(source, ".md")
-        CodexToml.write(root, source, @models[name], @efforts[name], @workers) unless @skip.include?(name)
+        CodexToml.write(root, source, @picks[:model][name], @picks[:effort][name], @workers) unless @skip.include?(name)
       end
     end
   end

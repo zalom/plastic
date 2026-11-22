@@ -18,8 +18,7 @@ module Plastic
       def initialize(package_root, models: {}, efforts: {}, skip: [], workers: nil)
         @package_root = package_root
         @workers = workers
-        @models = models
-        @efforts = efforts
+        @picks = { "model" => models, "effort" => efforts }
         @skip = skip
       end
 
@@ -37,7 +36,7 @@ module Plastic
       end
 
       def rewritten(text, name)
-        { "model" => @models[name], "effort" => @efforts[name] }.compact.reduce(text) { |kept, (key, value)| RoleFiles.set_line(kept, key, value) }
+        @picks.transform_values { |picked| picked[name] }.compact.reduce(text) { |kept, (key, value)| RoleFiles.set_line(kept, key, value) }
       end
     end
   end

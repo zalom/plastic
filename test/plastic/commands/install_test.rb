@@ -98,23 +98,23 @@ class InstallReinstallHarnessesTest < Plastic::TestCase
     assert_equal [true, false], [File.exist?(File.join(@home, ".codex", "agents", "plastic-executor.toml")), File.exist?(File.join(@home, ".claude", "plastic"))]
   end
 
-def test_the_driver_role_installs_for_both_harnesses_with_the_default_worker_limit
-  %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-  call("init", "a")
+  def test_the_driver_role_installs_for_both_harnesses_with_the_default_worker_limit
+    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
+    call("init", "a")
 
-  assert_includes File.read(File.join(@home, ".claude", "agents", "plastic-driver.md")), "at most 3 workers at once"
-  assert_includes File.read(File.join(@home, ".codex", "agents", "plastic-driver.toml")), "at most 3 workers at once"
-end
+    assert_includes File.read(File.join(@home, ".claude", "agents", "plastic-driver.md")), "at most 3 workers at once"
+    assert_includes File.read(File.join(@home, ".codex", "agents", "plastic-driver.toml")), "at most 3 workers at once"
+  end
 
-def test_the_driver_role_prints_the_worker_limit_the_owner_set
-  %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-  call("init", "a")
-  call("config", "set", "driver.max_workers", "2")
-  call("install", "--reinstall")
+  def test_the_driver_role_prints_the_worker_limit_the_owner_set
+    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
+    call("init", "a")
+    call("config", "set", "driver.max_workers", "2")
+    call("install", "--reinstall")
 
-  assert_includes File.read(File.join(@home, ".claude", "agents", "plastic-driver.md")), "at most 2 workers at once"
-  assert_includes File.read(File.join(@home, ".codex", "agents", "plastic-driver.toml")), "at most 2 workers at once"
-end
+    assert_includes File.read(File.join(@home, ".claude", "agents", "plastic-driver.md")), "at most 2 workers at once"
+    assert_includes File.read(File.join(@home, ".codex", "agents", "plastic-driver.toml")), "at most 2 workers at once"
+  end
 
   def test_a_reinstall_syncs_an_existing_hermes_install
     claude_folder

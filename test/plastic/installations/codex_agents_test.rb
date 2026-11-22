@@ -37,10 +37,10 @@ class CodexAgentsTest < Plastic::TestCase
     assert_equal [[], false], [generate({}), File.exist?(File.join(@home, "agents"))]
   end
 
-def test_the_worker_limit_reaches_the_codex_document
-  roles = { "demo-role" => "---\nname: demo-role\ndescription: Demo\n---\nRun {{driver.max_workers}} workers.\n" }
-  generate(roles, workers: 2)
+  def test_the_worker_limit_reaches_the_codex_document
+    roles = { "demo-role" => "---\nname: demo-role\ndescription: Demo\n---\nRun {{driver.max_workers}} workers.\n" }
+    generate(roles, workers: 2)
 
-  assert_includes File.read(File.join(@home, "agents", "demo-role.toml")), "Run 2 workers."
-end
+    assert_includes File.read(File.join(@home, "agents", "demo-role.toml")), "Run 2 workers."
+  end
 end
