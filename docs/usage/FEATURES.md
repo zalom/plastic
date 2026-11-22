@@ -60,6 +60,14 @@ the spec offers no command: in guided work the owner gives the go-ahead, and in 
 fails for an intent that is not in progress, offers `plastic next` for a done or abandoned one, and
 refuses one without the go-ahead.
 
+## Drive a graph from any harness
+
+`plastic graph ready ID --json` lists the ready nodes as fields, and `plastic node claim ID NODE --json`
+returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, and
+the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
+the node's output and refuses a file that is not JSON. `plastic graph check` finds a schema file that
+names no live node. [Drive a graph from any harness](drive-a-graph.md) shows the loop.
+
 ## Rulings and revisions
 
 | Command | Result |

@@ -420,6 +420,7 @@ stores under `~/.plastic` stay.
 - **[INSTALL.md](INSTALL.md)**: every install path.
 - **[docs/reference/commands/](docs/reference/commands/README.md)**: one page for each `plastic` command.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
+- **[Drive a graph from any harness](docs/usage/drive-a-graph.md)**: the loop a script or an SDK runs to work a graph.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 

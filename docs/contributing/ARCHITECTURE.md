@@ -194,6 +194,8 @@ holds the node and lapses after 900 seconds without a renewal; each command of t
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
+A driver outside the session can run the same steps. `Graph::Work::Packet` builds the claim's packet from the retrieval graph, and `Graph::Work::Schemas` finds the schema file of a node at `resources/tmp/schemas/NODE.json`. Plastic names the file and never checks JSON against it: the harness does. `NodeOutput` reads the file that `plastic node done --output` stores. [Drive a graph from any harness](../usage/drive-a-graph.md) shows the loop.
+
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
 every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
 is newer than the last node change, and `outcome.md` has a `## Verification` section with one
