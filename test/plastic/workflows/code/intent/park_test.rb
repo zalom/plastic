@@ -35,7 +35,7 @@ class WorkflowParkIntentTest < Plastic::TestCase
     started_intent
     park
 
-    error = assert_raises(Plastic::Failed) { park(reason: "second") }
+    error = assert_raises(Plastic::Refused) { park(reason: "second") }
 
     assert_equal ["intent 1 is parked; only an intent in progress parks", 1, "waits on review"],
       [error.message, kinds.count("parked"), retrieval.intent("1").reason]
@@ -44,7 +44,7 @@ class WorkflowParkIntentTest < Plastic::TestCase
   def test_an_intent_that_is_not_in_progress_fails_and_stays_as_it_was
     open_intent
 
-    error = assert_raises(Plastic::Failed) { park }
+    error = assert_raises(Plastic::Refused) { park }
 
     assert_equal ["intent 1 is open; only an intent in progress parks", "open", []], [error.message, retrieval.intent("1").status, kinds - ["opened"]]
   end

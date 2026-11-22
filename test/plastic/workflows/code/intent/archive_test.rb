@@ -19,7 +19,7 @@ class ArchiveIntentTest < Plastic::TestCase
   def test_an_open_intent_is_not_archived
     open_intent
 
-    stop_workflow(Plastic::Workflows::Code::Intent::Archive, intent_id: "1", older_than: nil)
+    stop_workflow(Plastic::Workflows::Code::Intent::Archive, Plastic::Refused, intent_id: "1", older_than: nil)
 
     refute archived?("1")
   end

@@ -23,7 +23,7 @@ class NodeFailTest < Plastic::TestCase
   def test_failing_an_open_node_is_refused
     result = cli("node", "fail", "1", "n1", "boom")
 
-    assert_call result, code: 1, err: "plastic: node n1 is open; it cannot move to failed\n"
+    assert_call result, code: 3, err: "plastic: refused, node n1 is open; it cannot move to failed\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
   end
 
   def test_a_refused_move_moves_on_the_next_call

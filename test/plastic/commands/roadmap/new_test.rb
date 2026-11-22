@@ -27,12 +27,12 @@ class RoadmapNewTest < Plastic::TestCase
     assert_path_exists store_path("roadmaps/r1.md")
   end
 
-  def test_new_on_an_existing_roadmap_exits_1_and_changes_nothing
+  def test_new_on_an_existing_roadmap_exits_3_and_changes_nothing
     call("r1", "--title", "First")
 
     result = call("r1", "--title", "Second")
 
-    assert_equal [1, "First"], [result.code, store_graphs.retrieval.roadmaps.find("r1").title]
+    assert_equal [3, "First"], [result.code, store_graphs.retrieval.roadmaps.find("r1").title]
     assert_includes result.err, "roadmap r1 already exists"
     assert_includes result.out, "next: plastic roadmap show r1"
   end

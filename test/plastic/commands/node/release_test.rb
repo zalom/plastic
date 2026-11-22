@@ -31,6 +31,6 @@ class NodeReleaseTest < Plastic::TestCase
   def test_releasing_an_open_node_is_refused
     result = cli("node", "release", "1", "n1")
 
-    assert_call result, code: 1, err: "plastic: node n1 is open; it cannot move to open\n"
+    assert_call result, code: 3, err: "plastic: refused, node n1 is open; it cannot move to open\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
   end
 end

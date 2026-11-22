@@ -51,23 +51,23 @@ class IntentStartTest < Plastic::TestCase
     assert_empty result.err
   end
 
-  def test_a_done_intent_exits_1_and_offers_plastic_next
+  def test_a_done_intent_exits_3_and_offers_plastic_next
     open_intent
     set_status("1", "done")
 
     result = start("1")
 
-    assert_equal [1, "next: plastic next", "done"], [result.code, next_line(result), status_of("1")]
+    assert_equal [3, "next: plastic next", "done"], [result.code, next_line(result), status_of("1")]
     assert_includes result.err, "intent 1 is done"
   end
 
-  def test_an_abandoned_intent_exits_1_and_offers_plastic_next
+  def test_an_abandoned_intent_exits_3_and_offers_plastic_next
     open_intent
     set_status("1", "abandoned")
 
     result = start("1")
 
-    assert_equal [1, "next: plastic next", "abandoned"], [result.code, next_line(result), status_of("1")]
+    assert_equal [3, "next: plastic next", "abandoned"], [result.code, next_line(result), status_of("1")]
     assert_includes result.err, "intent 1 is abandoned"
   end
 
@@ -76,12 +76,12 @@ class IntentStartTest < Plastic::TestCase
     as_session("intent", "archive", "1", env: {})
   end
 
-  def test_an_archived_intent_exits_1_offers_unarchive_and_changes_nothing
+  def test_an_archived_intent_exits_3_offers_unarchive_and_changes_nothing
     archived_future_intent
 
     result = start("1")
 
-    assert_call result, code: 1, err: "plastic: intent 1 is archived\n",
+    assert_call result, code: 3, err: "plastic: refused, intent 1 is archived\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n",
       out: "next: plastic intent unarchive 1\nbecause: an archived intent cannot start; unarchive it first\n"
     assert_equal ["future", []], [status_of("1"), retrieval.unarchived_intents]
   end

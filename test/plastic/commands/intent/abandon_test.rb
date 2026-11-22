@@ -19,11 +19,11 @@ class IntentAbandonCaseTest < Plastic::TestCase
       "Plastic runs none of them and stops none of them."]
   end
 
-  def test_abandoning_an_abandoned_intent_exits_1_and_says_it_cannot
+  def test_abandoning_an_abandoned_intent_exits_3_and_says_it_cannot
     abandoned
     ran("intent abandon 1")
 
-    assert_case line("intent abandon 1"), code: 1, out: "", err: ["intent 1 is abandoned; it can no longer be abandoned"]
+    assert_case line("intent abandon 1"), code: 3, out: "", err: ["intent 1 is abandoned; it can no longer be abandoned"]
   end
 
   def test_abandoning_a_missing_intent_exits_1_and_names_it
@@ -137,7 +137,7 @@ class IntentAbandonTest < Plastic::TestCase
     define_method(:"test_a_#{status}_intent_fails") do
       open_intent(status:)
 
-      assert_equal 1, abandon.code
+      assert_equal 3, abandon.code
     end
   end
 

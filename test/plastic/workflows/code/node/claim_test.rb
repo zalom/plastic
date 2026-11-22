@@ -31,7 +31,7 @@ class ClaimNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Ship", criterion: "it ships")
     store_graphs.work.add_edge(intent_id: "1", from: "n1", to: "n2")
 
-    error = assert_raises(Plastic::Failed) { claim("n2") }
+    error = assert_raises(Plastic::Refused) { claim("n2") }
 
     assert_match(/node n2 needs a node that is not done/, error.message)
     assert_equal "open", retrieval.node("1", "n2").state

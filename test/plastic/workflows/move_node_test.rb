@@ -21,7 +21,7 @@ class MoveNodeTest < Plastic::TestCase
   end
 
   def test_a_refused_move_is_tried_again_on_the_next_call
-    context = stop_workflow(Plastic::Workflows::Code::Node::Release, intent_id: "1", id: "n1").last
+    context = stop_workflow(Plastic::Workflows::Code::Node::Release, Plastic::Refused, intent_id: "1", id: "n1").last
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
 
     outcome = Plastic::Workflows::Code::Node::Release.call(context)

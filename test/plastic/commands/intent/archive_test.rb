@@ -11,10 +11,10 @@ class IntentArchiveCaseTest < Plastic::TestCase
     assert_case line("intent archive 1"), code: 0, out: ["intent: 1 archived", "next: plastic status"]
   end
 
-  def test_archiving_an_open_intent_exits_1_and_names_the_end_command
+  def test_archiving_an_open_intent_exits_3_and_names_the_end_command
     open_intent("Alpha")
 
-    assert_case line("intent archive 1"), code: 1, out: ["next: plastic intent end 1"],
+    assert_case line("intent archive 1"), code: 3, out: ["next: plastic intent end 1"],
       err: ["intent 1 is open; only done, abandoned and future intents archive"]
   end
 end
@@ -76,12 +76,12 @@ class IntentArchiveTest < Plastic::TestCase
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
-  def test_an_open_intent_exits_1_naming_its_state_and_offers_intent_end
+  def test_an_open_intent_exits_3_naming_its_state_and_offers_intent_end
     intent = open_intent("Target")
 
     result = call(intent.intent_id)
 
-    assert_equal [1, true], [result.code, result.err.include?("open")]
+    assert_equal [3, true], [result.code, result.err.include?("open")]
     assert_match(/^next: plastic intent end 1/, result.out)
   end
 
@@ -102,7 +102,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     refute archived?(intent.intent_id)
   end
 

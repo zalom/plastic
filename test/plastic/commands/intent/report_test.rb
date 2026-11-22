@@ -36,10 +36,10 @@ class IntentReportTest < Plastic::TestCase
     assert_equal [2, [], OUTCOME], [result.code, reported, outcome]
   end
 
-  def test_a_closed_intent_exits_1_and_writes_nothing
+  def test_a_closed_intent_exits_3_and_writes_nothing
     store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
 
-    assert_equal [1, [], OUTCOME], [call("1", REPORT).code, reported, outcome]
+    assert_equal [3, [], OUTCOME], [call("1", REPORT).code, reported, outcome]
   end
 
   def test_an_older_line_with_the_asked_words_stays_beside_the_new_line

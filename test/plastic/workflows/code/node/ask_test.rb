@@ -22,6 +22,6 @@ class WorkflowAskNodeTest < Plastic::TestCase
   end
 
   def test_an_open_node_cannot_be_asked_about
-    assert_equal "node n1 is open; it cannot move to needs_info", assert_raises(Plastic::Failed) { ask }.message
+    assert_equal "node n1 is open; it cannot move to needs_info", assert_raises(Plastic::Refused) { ask }.message
   end
 end

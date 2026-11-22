@@ -133,7 +133,7 @@ class PrepareEndingTest < PrepareEndingFixture
   def test_an_abandoned_intent_fails_the_call
     open_intent(status: "abandoned")
 
-    assert_raises(Plastic::Failed) { prepare }
+    assert_raises(Plastic::Refused) { prepare }
   end
 end
 
