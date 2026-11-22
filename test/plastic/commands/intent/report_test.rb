@@ -27,6 +27,8 @@ class IntentReportTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     assert_equal [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]], reported
+    assert_includes result.out, "reported: #{REPORT}"
+    refute_includes result.out, "reported again"
   end
 
   def test_the_asked_option_is_a_usage_error_and_writes_nothing
@@ -116,7 +118,10 @@ class IntentReportTest < Plastic::TestCase
       batch.put(:work_log, { intent_id: "1", position: 90, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: REPORT, sha256: Digest::SHA256.hexdigest("<p>page</p>\n"), text: "on another machine", origin_id: "other-machine" })
     end
 
-    assert_equal [0, OUTCOME], [call("1", REPORT).code, outcome]
+    result = call("1", REPORT)
+
+    assert_equal [0, OUTCOME, 1], [result.code, outcome, reported.size]
+    assert_includes result.out, "unchanged: #{REPORT} is already recorded with this sha256; nothing written"
   end
 
   def test_an_unknown_intent_exits_1_and_writes_nothing
