@@ -12,7 +12,7 @@ module Plastic
       class ProjectDigest
         DELIVERED = 3
         READ = %w[AGENTS.md README.md].freeze
-        ARCHITECTURE = "when the repository holds code, check its architecture map with a tool such as Enola"
+        ARCHITECTURE = "when the repository holds code, check its architecture map with an architecture mapping tool such as Enola"
 
         # `intents` is nil when the store cannot be read, and `note` then says why; `repo` is nil when no path is registered.
         def initialize(slug:, store:, repo:, intents:, note: nil)
