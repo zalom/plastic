@@ -3,6 +3,7 @@
 require "forwardable"
 require_relative "log_writer"
 require_relative "logged_nodes"
+require_relative "round_grant"
 require_relative "../knowledge/intent/reporter"
 
 module Plastic
@@ -13,12 +14,15 @@ module Plastic
       class LoggedWrites
         extend Forwardable
 
+        attr_reader :grants
+
         def_delegators :@nodes, :add_node, :claim_node, :add_edge, :remove_edge, *LoggedNodes::NODE_KINDS.keys
 
         def initialize(writers)
           @writers = writers
           @log = LogWriter.new(writers)
           @nodes = LoggedNodes.new(writers, @log)
+          @grants = RoundGrant.new(@log)
         end
 
         def write_intent(**intent)
@@ -41,8 +45,6 @@ module Plastic
         end
 
         def park_intent(intent_id, reason) = @log.logged(intent_id, "parked", "Parked: #{reason}") { @writers.intents.park(intent_id, reason) }
-
-        def grant_round(intent_id, reason) = @log.recorded { @log.line(intent_id, Verdict::Rounds::GRANT_KIND, "Granted by the owner: #{reason}") }
 
         def archive_intent(intent_id) = @log.logged(intent_id, "archived", "Archived") { @writers.archives.archive(intent_id) }
 
