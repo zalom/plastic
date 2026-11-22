@@ -8,7 +8,7 @@ require_relative "../../../lib/plastic/commands/document/batch"
 require_relative "../../../lib/plastic/commands/intent/discover"
 require_relative "../../../lib/plastic/commands/intent/context"
 require_relative "../../../lib/plastic/commands/project/load"
-%w[sync/up intent/end intent/abandon intent/archive intent/unarchive resources/sort].each { |name| require_relative "../../../lib/plastic/commands/#{name}" }
+%w[doctor update install].each { |name| require_relative "../../../lib/plastic/commands/#{name}" }
 
 class DeclarationsTest < Plastic::TestCase
   class Declared
@@ -111,12 +111,26 @@ class RetrievalReadsDeclarationTest < Minitest::Test
   end
 end
 
-class RetrievalWritesDeclarationTest < Minitest::Test
-  WRITERS = %w[Sync::Up Intent::End Intent::Abandon Intent::Archive Intent::Unarchive Resources::Sort].freeze
+class KeepsNoCommandRunTest < Minitest::Test
+  def keeps?(klass, **parsed)
+    klass.allocate.tap { |routine| routine.define_singleton_method(:parsed) { parsed } }.send(:keeps_command_run?)
+  end
 
-  def test_every_command_that_rebuilds_the_retrieval_database_declares_it
-    WRITERS.each do |name|
-      assert_includes Plastic::Commands.const_get(name).writes, :retrieval, "#{name} writes retrieval_graph.db and declares writes :retrieval"
+  def test_a_command_that_writes_keeps_its_command_run
+    assert keeps?(Class.new(Plastic::Routine) { writes :retrieval })
+  end
+
+  def test_a_command_that_opts_out_writes_the_graph_and_keeps_no_command_run
+    klass = Class.new(Plastic::Routine) { writes :retrieval; keeps_no_command_run }
+
+    assert_includes klass.writes, :retrieval
+    refute keeps?(klass)
+  end
+
+  def test_doctor_update_and_install_declare_the_write_and_keep_no_command_run
+    [Plastic::Commands::Doctor, Plastic::Commands::Update, Plastic::Commands::Install].each do |klass|
+      assert_includes klass.writes, :retrieval
+      assert klass.keeps_no_command_run?, "#{klass} keeps no command run"
     end
   end
 end

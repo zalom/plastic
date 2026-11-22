@@ -17,3 +17,11 @@ class ArchitectureFiguresGraphsTest < Minitest::Test
     refute(drawn.any? { |text| text.include?("both live in knowledge_graph.db") })
   end
 end
+
+class ArchitectureFiguresGraphsArrowTest < Minitest::Test
+  def test_the_knowledge_rows_arrow_lands_on_the_top_of_its_database_with_no_offset
+    arrow = ArchitectureFigures::Graphs::ARROWS.find { |from, _to, _words| from == "knowledge.bottom" }
+
+    assert_equal "knowledge_db.top", arrow[1]
+  end
+end
