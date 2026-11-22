@@ -197,6 +197,16 @@ class ProjectLoadEdgeTest < Plastic::TestCase
     assert_empty values(result, "read:") + values(result, "architecture:")
   end
 
+  def test_a_store_that_lost_only_its_retrieval_file_names_that_file
+    register("blog")
+    work("blog")
+    store = File.join(@plastic_home, "stores", "blog")
+    FileUtils.rm_f(File.join(store, "retrieval_graph.db"))
+
+    assert_equal ["#{store} (missing retrieval_graph.db)"], values(load("blog"), "store:")
+    refute File.exist?(File.join(store, "retrieval_graph.db"))
+  end
+
   def test_an_empty_store_folder_is_named_and_left_empty
     register("blog")
     store = File.join(@plastic_home, "stores", "blog")
