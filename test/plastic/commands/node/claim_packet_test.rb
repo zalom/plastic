@@ -115,7 +115,9 @@ class NodeClaimPacketTest < Plastic::TestCase
 
   def test_a_packet_with_no_rulings_and_no_constraints_carries_empty_lists
     finish_first
-    assert_equal [[], [], {}], [packet.fetch("rulings"), packet.fetch("constraints"), packet.fetch("omitted")]
+    claimed = packet
+
+    assert_equal [[], [], {}], [claimed.fetch("rulings"), claimed.fetch("constraints"), claimed.fetch("omitted")]
   end
 
   def test_the_text_claim_prints_each_ruling_in_force_and_each_constraint
@@ -141,7 +143,9 @@ class NodeClaimPacketTest < Plastic::TestCase
     finish_first
     22.times { |number| rule("Ruling #{number}") }
 
-    assert_equal [20, "D22", { "rulings" => 2 }], [packet.fetch("rulings").size, packet.fetch("rulings").last.fetch("id"), packet.fetch("omitted")]
+    claimed = packet
+
+    assert_equal [20, "D22", { "rulings" => 2 }], [claimed.fetch("rulings").size, claimed.fetch("rulings").last.fetch("id"), claimed.fetch("omitted")]
   end
 
   def test_the_text_claim_says_how_many_rulings_it_left_out
