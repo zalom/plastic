@@ -51,6 +51,7 @@ intent instead.
 | `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
 | `plastic roadmap auto SLUG` | Starts the roadmap's first free item with an intent, or opens its first ready item and starts it. An item is free when it is not parked and no other session claimed one of its nodes or ran a command on its intent within 15 minutes. With no item free yet it offers `plastic roadmap show SLUG` and names the items it waits on, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
+| `plastic intent grant ID REASON --owner` | Grants one extra review round, on the owner's word, to an intent whose review rounds are used and not accepted. It writes one `granted` work log line with the reason; each line adds one round, and a call while a round is left is refused. Without `--owner` it exits 2 and writes nothing. |
 
 `plastic intent new` writes a future intent, and `plastic roadmap open` writes an open one.
 `plastic intent start` and `plastic intent auto` run no version control command: they print the

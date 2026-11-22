@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic intent grant ID REASON --owner` gives one extra review round, on the owner's word, to an intent whose two review rounds are used and not accepted. It writes one `granted` work log line with the reason, and each such line adds one round to `plastic intent judge` and `plastic intent verdict`. Without `--owner` the call exits 2, and while a round is left it exits 3, so an agent cannot stack grants. The command adds no table and changes no stored data; it writes only a work log line, and nothing calls it unless the owner's word does.
+
 ## 3.0.0-beta.10
 
 - `plastic project load` names the kind of tool that checks an architecture map: "an architecture mapping tool such as Enola", the same words as `plastic architecture status`. The instructions that tell the agent to use version control now give Git as the example, since Git is a hard dependency of Plastic. The guard on program names in the source now bans only `gh` and `npm`, and a second guard still forbids Plastic's code to start any process. The child process test ignores the `PKG_CONFIG_PATH` that mise's prebuilt Ruby sets at startup, so the suite passes on a machine with that Ruby.
