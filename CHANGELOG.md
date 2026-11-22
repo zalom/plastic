@@ -5,6 +5,11 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.8
+
+- A command flushes its output before it writes an error line, so `plastic graph check` prints its findings before "see the findings above" when standard output and standard error share one pipe, as they do in an agent's shell.
+- Each `plastic graph check` finding that no command repairs names its own repair on a `hand edit:` line under it, and the one shared hand edit line is gone. A finding with a repair command keeps its `repair:` line, and the first one is still the `next:` line. A schema file that names no live node now reads "schema PATH names no live node", and its hand edit says to rename or delete the file. The page `docs/usage/drive-from-any-harness.md` says what the check prints and shows a worker call for the Claude Agent SDK and the OpenAI Agents SDK.
+
 ## 3.0.0-beta.7
 
 - Plastic writes every stored time in UTC and shows each time in the zone of the machine. Migration `20261121090000`, for `plastic.db` and for the three databases of each store, converts the times already stored, and its down puts the old text of each changed value back from `legacy.db`. A time that names no real moment, such as hour 25, stays as it is, and the migration names it. It is the one migration that changes stored data and runs with no config switch. A sync up stores in UTC the times of the links and archives in `index.json`, the `created:` line of an intent file and the log of an old `roadmaps/SLUG.savepoint.md`, and refuses an impossible time.
