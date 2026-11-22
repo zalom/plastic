@@ -121,7 +121,7 @@ class KeepsNoCommandRunTest < Minitest::Test
   end
 
   def test_a_command_that_opts_out_writes_the_graph_and_keeps_no_command_run
-    klass = Class.new(Plastic::Routine) { writes :retrieval; keeps_no_command_run }
+    klass = Class.new(Plastic::Routine) { writes(:retrieval).then { keeps_no_command_run } }
 
     assert_includes klass.writes, :retrieval
     refute keeps?(klass)
@@ -130,7 +130,7 @@ class KeepsNoCommandRunTest < Minitest::Test
   def test_doctor_update_and_install_declare_the_write_and_keep_no_command_run
     [Plastic::Commands::Doctor, Plastic::Commands::Update, Plastic::Commands::Install].each do |klass|
       assert_includes klass.writes, :retrieval
-      assert klass.keeps_no_command_run?, "#{klass} keeps no command run"
+      assert_predicate klass, :keeps_no_command_run?, "#{klass} keeps no command run"
     end
   end
 end

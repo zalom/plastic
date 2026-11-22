@@ -98,7 +98,7 @@ class IntentNewTest < Plastic::TestCase
   end
 
   def test_the_command_writes_the_three_store_graphs_through_one_workflow
-    assert_equal [%i[work knowledge], true, [:code_write_intent]], [description[:writes], IntentNew.verify, IntentNew.chain.keys]
+    assert_equal [%i[work knowledge retrieval], true, [:code_write_intent]], [description[:writes], IntentNew.verify, IntentNew.chain.keys]
   end
 
   def test_the_intent_gets_a_document_row_and_a_file_named_intent_md

@@ -58,10 +58,13 @@ class RetrievalWritesGuardTest < Minitest::Test
     assert_empty declared - COMMANDS_OF.values.flatten
   end
 
+  def architecture_row = File.readlines(File.expand_path("../../docs/contributing/ARCHITECTURE.md", __dir__)).find { |line| line.start_with?("| Retrieval graph") }
+
+  def words_of(klass) = klass.name.delete_prefix("Plastic::Commands::").split("::").map(&:downcase).join(" ")
+
   def test_the_architecture_row_names_every_writer_and_reader_from_the_declarations
-    row = File.readlines(File.expand_path("../../docs/contributing/ARCHITECTURE.md", __dir__)).find { |line| line.start_with?("| Retrieval graph") }
-    named = table_commands.select { |klass| [*klass.writes, *klass.reads].include?(:retrieval) }.map { |klass| klass.name.delete_prefix("Plastic::Commands::").split("::").map(&:downcase).join(" ") }
-    missing = ["search", *named].uniq.reject { |words| row.include?("`plastic #{words}`") }
+    named = table_commands.select { |klass| [*klass.writes, *klass.reads].include?(:retrieval) }.map { |klass| words_of(klass) }
+    missing = ["search", *named].uniq.reject { |words| architecture_row.include?("`plastic #{words}`") }
 
     assert_empty missing
   end
