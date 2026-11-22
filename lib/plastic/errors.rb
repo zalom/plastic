@@ -29,12 +29,18 @@ module Plastic
 
   # A step broke, its done check still fails, or a gate stopped the call as a failure. Exit 1.
   class Failed < Error
-    def self.raised(workflow, step, error) = new(describe(error), source: "#{workflow}, #{step}")
+    def self.raised(workflow, step, error) = Crashed.new(describe(error), source: "#{workflow}, #{step}")
 
     def self.describe(error) = [("#{error.class}: " unless error.is_a?(Failed)), error.message].join
 
     def exit_code = 1
 
+    # A stop the workflow designed says only its message; the place that raised it stays in the run log.
+    def tell(output, offer) = output.failed(message, offer)
+  end
+
+  # A step raised an exception nobody planned for. Exit 1, and the answer names the place that broke.
+  class Crashed < Failed
     def tell(output, offer) = output.failed(message, offer, source:)
   end
 

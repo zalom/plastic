@@ -18,6 +18,22 @@ class FailedTest < Plastic::TestCase
     assert_equal "code_a, step: broke", JSON.parse(out.string).dig("result", "error", "message")
   end
 
+  def test_a_stop_a_workflow_designed_tells_its_message_with_no_workflow_key
+    out = StringIO.new
+    error = Plastic::Failed.new("see the findings above", source: "code_a, gate")
+    error.tell(Plastic::CLI::JsonOutput.new(out:, err: StringIO.new), Plastic::CLI::Offer.none("x"))
+
+    assert_equal "see the findings above", JSON.parse(out.string).dig("result", "error", "message")
+  end
+
+  def test_a_step_that_raised_tells_the_workflow_key
+    out = StringIO.new
+    error = Plastic::Failed.raised(:code_a, "step", ArgumentError.new("bad"))
+    error.tell(Plastic::CLI::JsonOutput.new(out:, err: StringIO.new), Plastic::CLI::Offer.none("x"))
+
+    assert_equal "code_a, step: ArgumentError: bad", JSON.parse(out.string).dig("result", "error", "message")
+  end
+
   def test_a_failed_call_prints_no_stderr_line_with_a_workflow_key
     result = plastic("graph", "check", "9", table: Plastic::CLI::TABLE)
 

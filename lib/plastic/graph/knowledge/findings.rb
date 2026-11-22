@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "spec"
+require_relative "findings/edge_findings"
 
 module Plastic
   module Graph
     module Knowledge
-      # The five checks `plastic graph check` runs on one intent's live nodes
-      # (every node but a removed one) and its spec.
+      # The checks `plastic graph check` runs on one intent's live nodes
+      # (every node but a removed one), its edges and its spec. Each finding carries the command that repairs it.
       class Findings
         def self.findings_finding(node)
           "node #{node.id} is done with no findings" if node.state == "done" && node.findings.to_s.strip.empty?
@@ -21,11 +22,16 @@ module Plastic
           @intent_id = intent_id
         end
 
-        def all = node_findings + criterion_finding
+        def all = repaired.map(&:text)
+
+        # The findings, each with the command that repairs it (nil when no command does).
+        def repaired = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding
 
         private
 
-        def live = @live ||= @retrieval.structure.nodes(@intent_id).reject { |node| node.state == "removed" }
+        def nodes = @nodes ||= @retrieval.structure.nodes(@intent_id)
+
+        def live = @live ||= nodes.reject { |node| node.state == "removed" }
 
         def run_counts = @run_counts ||= @retrieval.structure.runs(@intent_id).group_by(&:node_id).transform_values(&:size).tap { |counts| counts.default = 0 }
 
@@ -33,12 +39,18 @@ module Plastic
 
         def node_findings = live.flat_map { |node| findings_for(node) }
 
-        def findings_for(node) = [Findings.findings_finding(node), edge_finding(node), Findings.retry_finding(node, run_counts[node.id])].compact
+        def findings_for(node) = [findings_finding(node), edge_finding(node), retry_finding(node)].compact
+
+        def findings_finding(node) = Findings.findings_finding(node)&.then { |text| Finding.new(text, nil) }
+
+        def retry_finding(node)
+          Findings.retry_finding(node, run_counts[node.id])&.then { |text| Finding.new(text, "plastic node resolve #{@intent_id} #{node.id} TEXT") }
+        end
 
         def edge_finding(node)
           return nil if live.size < 2 || touches?(node)
 
-          "node #{node.id} has no edge"
+          Finding.new("node #{node.id} has no edge", "plastic edge add #{@intent_id} #{node.id} TO")
         end
 
         def touches?(node) = edges.any? { |edge| edge.touches?(node.id) }
@@ -46,7 +58,7 @@ module Plastic
         def criterion_finding
           return [] unless Spec.new(@retrieval, @intent_id).done_criteria.empty?
 
-          ["intent #{@intent_id} names no done criterion"]
+          [Finding.new("intent #{@intent_id} names no done criterion", "plastic intent spec #{@intent_id}")]
         end
       end
     end
