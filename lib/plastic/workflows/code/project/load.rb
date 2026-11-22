@@ -68,7 +68,8 @@ module Plastic
           # missing one, and a store out of step stops only its own digest.
           def self.read_store(context, slug, store)
             return [nil, "missing"] unless File.directory?(store)
-            return [nil, "holds no database files"] unless database_files?(store)
+            lacking = missing_files(store)
+            return [nil, lost(lacking)] if lacking.any?
 
             retrieval = Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval
             [Plastic::Graph::Work::PlayRows.new(retrieval, slug).rows, nil]
@@ -76,7 +77,9 @@ module Plastic
             [nil, "out of step with this code; run #{error.next_command}"]
           end
 
-          def self.database_files?(store) = Plastic::Graph::Database::Store::FILES.all? { |name| File.file?(File.join(store, name)) }
+          def self.missing_files(store) = Plastic::Graph::Database::Store::FILES.reject { |name| File.file?(File.join(store, name)) }
+
+          def self.lost(lacking) = (lacking.size == Plastic::Graph::Database::Store::FILES.size) ? "holds no database files" : "missing #{lacking.join(", ")}"
         end
       end
     end

@@ -8,7 +8,7 @@ require_relative "../../../lib/plastic/commands/document/batch"
 require_relative "../../../lib/plastic/commands/intent/discover"
 require_relative "../../../lib/plastic/commands/intent/context"
 require_relative "../../../lib/plastic/commands/project/load"
-%w[sync/up sync/down intent/end intent/abandon intent/archive intent/unarchive resources/sort doctor].each { |name| require_relative "../../../lib/plastic/commands/#{name}" }
+%w[sync/up intent/end intent/abandon intent/archive intent/unarchive resources/sort doctor].each { |name| require_relative "../../../lib/plastic/commands/#{name}" }
 
 class DeclarationsTest < Plastic::TestCase
   class Declared
@@ -112,7 +112,7 @@ class RetrievalReadsDeclarationTest < Minitest::Test
 end
 
 class RetrievalWritesDeclarationTest < Minitest::Test
-  WRITERS = %w[Sync::Up Sync::Down Intent::End Intent::Abandon Intent::Archive Intent::Unarchive Resources::Sort Doctor].freeze
+  WRITERS = %w[Sync::Up Intent::End Intent::Abandon Intent::Archive Intent::Unarchive Resources::Sort Doctor].freeze
 
   def test_every_command_that_rebuilds_the_retrieval_database_declares_it
     WRITERS.each do |name|
