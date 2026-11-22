@@ -18,10 +18,10 @@ class EdgeAddCaseTest < Plastic::TestCase
     assert_case line("edge add 1 n1 n1"), code: 3, out: "", err: ["edge n1 to n1 is refused: a node cannot need itself"]
   end
 
-  def test_an_edge_to_a_missing_node_exits_3_and_names_the_edge
+  def test_an_edge_to_a_missing_node_exits_1_and_names_the_edge
     alpha_with_node(approved: false)
 
-    assert_case line("edge add 1 n1 n9"), code: 3, out: "", err: ["edge n1 to n9 is refused: n9 is not a node of intent 1"]
+    assert_case line("edge add 1 n1 n9"), code: 1, out: "", err: ["edge n1 to n9 is refused: n9 is not a node of intent 1"]
   end
 
   def test_an_edge_in_a_missing_intent_exits_1_and_names_it
