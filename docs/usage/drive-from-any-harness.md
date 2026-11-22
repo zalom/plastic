@@ -5,6 +5,25 @@ program that can run `plastic` commands and start a model: a shell script, Claud
 mode, Codex in `exec` mode, or an agent built on an SDK. Plastic starts no model itself. This page
 shows the loop a driver runs.
 
+## The driver role
+
+When the driver is the open Claude Code or Codex session, `plastic install` writes the role
+`plastic-driver` for it, next to the planner and executor roles. The role tells the session to run
+the loop below: start one subagent or background worker for each ready node, of the role that fits
+the node's kind, and hand it the claim packet.
+
+| Node kind | Worker |
+| --------- | ------ |
+| `orchestrator` | The planner role, `plastic-planner`. |
+| `work` | The executor role, `plastic-executor`. |
+| `retrieval` | A read-only worker that searches and reports. |
+
+The worker finishes with `plastic node done ID NODE TEXT --output PATH`, so the next node reads its
+output in its packet. At most 3 workers run at once. The setting `driver.max_workers` holds the
+limit: change it with `plastic config set driver.max_workers N` and run `plastic install --reinstall`,
+and the installed role prints the new number. When the harness cannot start workers, the session
+works the nodes itself, one at a time. Plastic starts no worker.
+
 ## The loop
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready. Each is
