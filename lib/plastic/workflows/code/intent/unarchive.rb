@@ -10,19 +10,23 @@ module Plastic
         class Unarchive < CodeWorkflow
           clear_declarations
 
-          sets :problem, :ok
+          sets :problem, :kind, :ok
 
-          forget_stop :problem, :ok
+          forget_stop :problem, :kind, :ok
 
           step "restore the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? },
             changes: { work: "The intent leaves the archive", knowledge: "The files kept for the intent are restored" } do |context|
-            ok, problem, = context.work.unarchive_intent(context.intent_id)
+            ok, problem, kind = context.work.unarchive_intent(context.intent_id)
             context[:ok] = ok
             context[:problem] = problem
+            context[:kind] = kind
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the intent is not archived or cannot be restored",
+            words: "a file of the intent cannot be restored",
+            pass: ->(context) { context.kind != :failure }
+          gate "%{problem}", stops: :refusal,
+            words: "the intent is not archived, or its snapshot is on the first home",
             pass: ->(context) { context.problem.nil? }
 
           read "say it was restored" do |context|

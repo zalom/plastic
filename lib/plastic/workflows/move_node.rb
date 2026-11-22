@@ -73,8 +73,15 @@ module Plastic
         gate "%{problem}", stops: :refusal,
           words: "another session took the claim of the node after it lapsed",
           pass: ->(context) { !context.held_elsewhere }
+        move_gates
+      end
+
+      def self.move_gates
         gate "%{problem}", stops: :failure,
-          words: "the node is not in the intent, or its state does not allow this move",
+          words: "the node is not in the intent",
+          pass: ->(context) { moved?(context) || !context.retrieval.node(context.intent_id, context.id).nil? }
+        gate "%{problem}", stops: :refusal,
+          words: "the state of the node does not allow this move",
           pass: method(:moved?)
       end
 

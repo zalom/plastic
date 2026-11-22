@@ -509,7 +509,7 @@ class SyncUpGraphArchiveRefusalTest < Minitest::Test
       second.command!("sync", "up")
       call = second.command("intent", "unarchive", "1")
 
-      assert_equal [1, [[nil]], false], [call.code, query(second, "SELECT restored_at FROM archives"), File.exist?(second.path(DIR))]
+      assert_equal [3, [[nil]], false], [call.code, query(second, "SELECT restored_at FROM archives"), File.exist?(second.path(DIR))]
       assert_match(/snapshot is on the first home/, call.reason)
     end
   end

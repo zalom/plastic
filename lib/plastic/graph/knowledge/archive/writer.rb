@@ -28,7 +28,7 @@ module Plastic
           # Returns [ok, problem, kind]; kind is :failure, :unfinished or :refusal, nil on success.
           def archive(intent_id) = self.class.attempt { archive_operation.call(intent_id) }
 
-          # Returns [ok, problem, kind]; kind is :failure, nil on success.
+          # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
           def restore(intent_id) = self.class.attempt { restore_operation.call(intent_id) }
 
           def self.attempt

@@ -92,7 +92,7 @@ class NodeAddTest < Plastic::TestCase
   def test_refused_on_a_done_intent
     open_intent(status: "done")
 
-    assert_equal 1, call("1", "do the thing", "--criterion", KEY).code
+    assert_equal 3, call("1", "do the thing", "--criterion", KEY).code
   end
 
   def test_refused_on_a_missing_intent

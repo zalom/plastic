@@ -189,7 +189,7 @@ class IntentVerdictRefusalTest < Plastic::TestCase
       open_intent(status:)
       result = cli("intent", "verdict", "1", "accept", "x")
 
-      assert_equal [1, []], [result.code, work_rows("verdicts")]
+      assert_equal [3, []], [result.code, work_rows("verdicts")]
     end
   end
 end

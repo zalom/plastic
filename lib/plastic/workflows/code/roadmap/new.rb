@@ -10,7 +10,7 @@ module Plastic
         class New < CodeWorkflow
           clear_declarations
 
-          gate "roadmap %{slug} already exists", stops: :failure, offers: "plastic roadmap show %{slug}",
+          gate "roadmap %{slug} already exists", stops: :refusal, offers: "plastic roadmap show %{slug}",
             because: "roadmap new creates a roadmap once",
             pass: ->(context) { context.retrieval.roadmaps.find(context.slug).nil? }
 

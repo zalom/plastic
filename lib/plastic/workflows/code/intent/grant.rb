@@ -7,18 +7,12 @@ module Plastic
   module Workflows
     module Code
       module Intent
-        # Writes one `granted` work log line, which adds one review round. A missing or closed intent fails; an intent that still has a round left, or holds an accepted review, is refused.
+        # Writes one `granted` work log line, which adds one review round. A missing intent fails; a done or abandoned one is refused; an intent that still has a round left, or holds an accepted review, is refused.
         class Grant < CodeWorkflow
           clear_declarations
           summary "Grants one extra review round to an intent whose rounds are used."
 
-          sets :problem
-
-          read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "grant")
-          end
-
-          gate "%{problem}", stops: :failure, words: "the intent is missing, done or abandoned", pass: ->(context) { context.problem.nil? }
+          open_intent_gates "grant"
           gate "intent %{intent_id} still has a review round left or holds an accepted review; a grant needs the rounds used", stops: :refusal,
             pass: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).used_up? }
 

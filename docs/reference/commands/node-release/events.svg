@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 516" width="834" height="516" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 570" width="834" height="570" role="img" xml:space="preserve">
 <title>The events of one call of plastic node release, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -107,37 +107,42 @@
 <text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
 <text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="260" class="t" text-anchor="start">Release the node.</text>
-<path d="M 424 230 L 438 230 L 438 249 L 480 249" class="wire-refusal"/>
+<path d="M 424 230 L 444 230 L 444 249 L 480 249" class="wire-refusal"/>
 <path d="M 472 244 L 480 249 L 472 254 Z" class="head"/>
 <rect x="480" y="218" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="236" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="254" class="t" text-anchor="start">Another session took the claim of the node</text>
 <text x="492" y="270" class="t" text-anchor="start">after it lapsed.</text>
-<path d="M 424 244 L 432 244 L 432 319 L 480 319" class="wire-failure"/>
-<path d="M 472 314 L 480 319 L 472 324 Z" class="head"/>
-<rect x="480" y="288" width="330" height="62" rx="6" class="stop-failure"/>
+<path d="M 424 243 L 438 243 L 438 311 L 480 311" class="wire-failure"/>
+<path d="M 472 306 L 480 311 L 472 316 Z" class="head"/>
+<rect x="480" y="288" width="330" height="46" rx="6" class="stop-failure"/>
 <text x="492" y="306" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="324" class="t" text-anchor="start">The node is not in the intent, or its state</text>
-<text x="492" y="340" class="t" text-anchor="start">does not allow this move.</text>
-<path d="M 64 269 L 64 376" class="wire"/>
-<path d="M 59 368 L 64 376 L 69 368 Z" class="head"/>
-<rect x="24" y="376" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="395" r="8" class="badge"/>
-<text x="44" y="399" class="badge-t" text-anchor="middle">4</text>
-<text x="64" y="398" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="418" class="t" text-anchor="start">Say what was released.</text>
-<path d="M 424 407 L 480 407" class="wire-end"/>
-<path d="M 472 402 L 480 407 L 472 412 Z" class="head"/>
-<rect x="480" y="376" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="394" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="412" class="t" text-anchor="start">Node &lt;id&gt; is open.</text>
-<text x="492" y="428" class="t" text-anchor="start">next: plastic node claim &lt;intent id&gt; &lt;id&gt;</text>
-<rect x="24" y="468" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="480" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="468" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="480" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="468" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="296" y="480" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="414" y="468" width="14" height="14" rx="3" class="stop-end"/>
-<text x="434" y="480" class="k" text-anchor="start">Ends</text>
+<text x="492" y="324" class="t" text-anchor="start">The node is not in the intent.</text>
+<path d="M 424 256 L 432 256 L 432 373 L 480 373" class="wire-refusal"/>
+<path d="M 472 368 L 480 373 L 472 378 Z" class="head"/>
+<rect x="480" y="342" width="330" height="62" rx="6" class="stop-refusal"/>
+<text x="492" y="360" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="378" class="t" text-anchor="start">The state of the node does not allow this</text>
+<text x="492" y="394" class="t" text-anchor="start">move.</text>
+<path d="M 64 269 L 64 430" class="wire"/>
+<path d="M 59 422 L 64 430 L 69 422 Z" class="head"/>
+<rect x="24" y="430" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="449" r="8" class="badge"/>
+<text x="44" y="453" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="452" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="472" class="t" text-anchor="start">Say what was released.</text>
+<path d="M 424 461 L 480 461" class="wire-end"/>
+<path d="M 472 456 L 480 461 L 472 466 Z" class="head"/>
+<rect x="480" y="430" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="448" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="466" class="t" text-anchor="start">Node &lt;id&gt; is open.</text>
+<text x="492" y="482" class="t" text-anchor="start">next: plastic node claim &lt;intent id&gt; &lt;id&gt;</text>
+<rect x="24" y="522" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="534" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="522" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="534" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="522" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="534" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="522" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="534" class="k" text-anchor="start">Ends</text>
 </svg>

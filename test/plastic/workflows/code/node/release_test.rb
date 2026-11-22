@@ -22,6 +22,6 @@ class WorkflowReleaseNodeTest < Plastic::TestCase
   end
 
   def test_an_open_node_is_refused_with_its_state
-    assert_equal "node n1 is open; it cannot move to open", assert_raises(Plastic::Failed) { release }.message
+    assert_equal "node n1 is open; it cannot move to open", assert_raises(Plastic::Refused) { release }.message
   end
 end

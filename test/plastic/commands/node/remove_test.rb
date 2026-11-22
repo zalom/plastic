@@ -28,16 +28,16 @@ class NodeRemoveTest < Plastic::TestCase
 
   def remove(*args) = plastic("node", "remove", *args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
-  def test_removing_a_claimed_node_exits_1
+  def test_removing_a_claimed_node_exits_3
     open_keyed_intent
     add_node("a")
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = remove("1", "n1")
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_empty result.out
-    assert_equal "plastic: node n1 is claimed; it cannot move to removed\n", result.err
+    assert_equal "plastic: refused, node n1 is claimed; it cannot move to removed\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", result.err
   end
 
   def test_removing_an_open_node_moves_it_to_removed

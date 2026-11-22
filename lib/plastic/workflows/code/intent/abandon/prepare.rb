@@ -23,7 +23,7 @@ module Plastic
             end
 
             gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
-            gate "intent %{intent_id} is %{status}; it can no longer be abandoned", stops: :failure,
+            gate "intent %{intent_id} is %{status}; it can no longer be abandoned", stops: :refusal,
               pass: ->(context) { !%w[done abandoned].include?(context.status) }
 
             read "check delivery ownership" do |context|

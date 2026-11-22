@@ -19,6 +19,6 @@ class UnarchiveIntentTest < Plastic::TestCase
   def test_an_intent_that_is_not_archived_fails_the_call
     open_intent
 
-    assert_raises(Plastic::Failed) { restore }
+    assert_raises(Plastic::Refused) { restore }
   end
 end

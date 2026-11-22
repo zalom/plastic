@@ -86,11 +86,12 @@ class CommandReferenceEventsFigureTest < Minitest::Test
     end
   end
 
-  def test_the_events_of_node_add_hold_its_failure_stop_with_the_words_of_its_gate
+  def test_the_events_of_node_add_hold_its_failure_stop_and_its_refusal_with_the_words_of_their_gates
     words = events_of("node add").map(&:last)
 
     assert_includes words, "STOPS, EXIT 1"
-    assert_includes words.join(" ").downcase, "the intent is missing, done or abandoned"
+    assert_includes words, "STOPS, EXIT 3"
+    assert_includes words.join(" ").downcase, "the intent is done or abandoned"
   end
 
   def test_the_events_of_node_add_hold_its_step_and_its_ending_with_the_next_line

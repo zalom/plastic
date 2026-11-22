@@ -30,12 +30,12 @@ class IntentUnarchiveTest < Plastic::TestCase
     assert_equal before, digest_of(intent)
   end
 
-  def test_restoring_an_intent_that_was_never_archived_exits_1
+  def test_restoring_an_intent_that_was_never_archived_exits_3
     intent = open_intent("Target")
 
     result = restore_call(intent.intent_id)
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
   end
 
   def test_a_failed_restore_succeeds_once_the_intent_is_archived
@@ -118,7 +118,7 @@ class IntentUnarchiveTest < Plastic::TestCase
 
     result = restore_call(intent.intent_id)
 
-    assert_equal [1, ""], [result.code, result.out]
+    assert_equal [3, ""], [result.code, result.out]
     assert_includes result.err, "intent #{intent.intent_id} is not archived"
     refute archived?(intent.intent_id)
   end

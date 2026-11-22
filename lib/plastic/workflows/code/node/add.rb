@@ -12,15 +12,17 @@ module Plastic
         class Add < CodeWorkflow
           clear_declarations
 
-          sets :problem, :id
+          sets :id, :input_problem
 
-          read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || kind_problem(context) || criterion_problem(context)
+          open_intent_gates "nodes"
+
+          read "check the kind and the criterion" do |context|
+            context[:input_problem] = kind_problem(context) || criterion_problem(context)
           end
 
-          gate "%{problem}", stops: :failure,
-            words: "the intent is missing, done or abandoned, the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
-            pass: ->(context) { context.problem.nil? }
+          gate "%{input_problem}", stops: :failure,
+            words: "the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
+            pass: ->(context) { context.input_problem.nil? }
 
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|

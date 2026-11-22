@@ -30,10 +30,10 @@ class NodeClaimCaseTest < Plastic::TestCase
       out: ["node: n2 Test", "criterion: suite-green", "next: plastic node done 1 n2 TEXT"]
   end
 
-  def test_claiming_a_node_that_needs_an_undone_node_exits_1_and_names_the_ready_list
+  def test_claiming_a_node_that_needs_an_undone_node_exits_3_and_names_the_ready_list
     chained
 
-    assert_case line("node claim 1 n1"), code: 1, out: "",
+    assert_case line("node claim 1 n1"), code: 3, out: "",
       err: ["node n1 needs a node that is not done; plastic graph ready 1 lists the nodes to claim"]
   end
 
@@ -107,7 +107,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n2")
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_includes result.err, "node n2 needs a node that is not done"
     assert_empty result.out
   end
@@ -190,9 +190,9 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_empty result.out
-    assert_equal "plastic: node n1 is done; it cannot move to claimed\n", result.err
+    assert_equal "plastic: refused, node n1 is done; it cannot move to claimed\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", result.err
   end
 
   def test_claiming_a_needs_info_node_is_refused
@@ -203,9 +203,9 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_empty result.out
-    assert_equal "plastic: node n1 is needs_info; it cannot move to claimed\n", result.err
+    assert_equal "plastic: refused, node n1 is needs_info; it cannot move to claimed\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", result.err
   end
 
   def test_claiming_a_removed_node_is_refused
@@ -215,9 +215,9 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_empty result.out
-    assert_equal "plastic: node n1 is removed; it cannot move to claimed\n", result.err
+    assert_equal "plastic: refused, node n1 is removed; it cannot move to claimed\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", result.err
   end
 
   def test_claiming_an_already_claimed_node_is_refused
@@ -252,48 +252,48 @@ class NodeClaimStartTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "done")
   end
 
-  def refusal(status) = "plastic: intent 1 is #{status}; start it with plastic intent start 1, or with plastic intent auto 1 for agent delivery\n"
+  def refusal(status) = "plastic: refused, intent 1 is #{status}; start it with plastic intent start 1, or with plastic intent auto 1 for agent delivery\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
 
-  def test_a_node_of_a_future_intent_exits_1_and_offers_intent_start
+  def test_a_node_of_a_future_intent_exits_3_and_offers_intent_start
     intent_with_node("future")
 
     result = claim
 
-    assert_equal [1, refusal("future"), "open", "future"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_equal [3, refusal("future"), "open", "future"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
     assert_match(/^next: plastic intent start 1$/, result.out)
   end
 
-  def test_a_node_of_a_parked_intent_exits_1_and_offers_intent_start
+  def test_a_node_of_a_parked_intent_exits_3_and_offers_intent_start
     intent_with_node("parked")
 
     result = claim
 
-    assert_equal [1, refusal("parked"), "open", "parked"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
+    assert_equal [3, refusal("parked"), "open", "parked"], [result.code, result.err, retrieval.node("1", "n1").state, retrieval.intent("1").status]
     assert_match(/^next: plastic intent start 1$/, result.out)
   end
 
-  def test_a_node_of_a_done_intent_exits_1_and_offers_plastic_next
+  def test_a_node_of_a_done_intent_exits_3_and_offers_plastic_next
     intent_with_node("done")
 
     result = claim
 
-    assert_call result, code: 1, err: "plastic: intent 1 is done\n", out: "next: plastic next\nbecause: a node of a closed intent is never claimed; pick other work\n"
+    assert_call result, code: 3, err: "plastic: refused, intent 1 is done\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", out: "next: plastic next\nbecause: a node of a closed intent is never claimed; pick other work\n"
     assert_equal %w[open done], [retrieval.node("1", "n1").state, retrieval.intent("1").status]
   end
 
-  def test_a_node_of_an_abandoned_intent_exits_1_and_offers_plastic_next
+  def test_a_node_of_an_abandoned_intent_exits_3_and_offers_plastic_next
     intent_with_node("abandoned")
 
     result = claim
 
-    assert_call result, code: 1, err: "plastic: intent 1 is abandoned\n", out: ["next: plastic next\n"]
+    assert_call result, code: 3, err: "plastic: refused, intent 1 is abandoned\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", out: ["next: plastic next\n"]
     assert_equal "abandoned", retrieval.intent("1").status
   end
 
-  def test_a_node_of_an_open_intent_that_never_started_exits_1
+  def test_a_node_of_an_open_intent_that_never_started_exits_3
     intent_with_node("open")
 
-    assert_equal [1, "open"], [claim.code, retrieval.node("1", "n1").state]
+    assert_equal [3, "open"], [claim.code, retrieval.node("1", "n1").state]
   end
 
   def test_a_node_of_an_in_progress_intent_is_claimed

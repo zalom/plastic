@@ -3,10 +3,10 @@
 require_relative "../../../test_helper"
 
 class NodeResolveCaseTest < Plastic::TestCase
-  def test_resolving_a_node_that_is_open_exits_1_and_names_its_status
+  def test_resolving_a_node_that_is_open_exits_3_and_names_its_status
     alpha_with_node(approved: false)
 
-    assert_case line('node resolve 1 n1 "Claude Code"'), code: 1, out: "", err: ["node n1 is open; it cannot move to open"]
+    assert_case line('node resolve 1 n1 "Claude Code"'), code: 3, out: "", err: ["node n1 is open; it cannot move to open"]
   end
 end
 
@@ -47,6 +47,6 @@ class NodeResolveTest < Plastic::TestCase
   def test_resolving_a_claimed_node_is_refused
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 1, err: "plastic: node n1 is claimed; it cannot move to open\n"
+    assert_call result, code: 3, err: "plastic: refused, node n1 is claimed; it cannot move to open\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
   end
 end

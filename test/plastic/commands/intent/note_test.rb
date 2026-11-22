@@ -121,7 +121,7 @@ class IntentNoteTest < Plastic::TestCase
 
       result = call("1", "late thought")
 
-      assert_equal [1, before], [result.code, outcome_rows]
+      assert_equal [3, before], [result.code, outcome_rows]
       assert_includes result.err, "is #{status}"
       assert_match(/^next: plastic next/, result.out)
     end

@@ -95,10 +95,10 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">Archive the intent.</text>
-<path d="M 424 153 L 444 153 L 444 180 L 480 180" class="wire-failure"/>
+<path d="M 424 153 L 444 153 L 444 180 L 480 180" class="wire-refusal"/>
 <path d="M 472 175 L 480 180 L 472 185 Z" class="head"/>
-<rect x="480" y="141" width="330" height="78" rx="6" class="stop-failure"/>
-<text x="492" y="159" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<rect x="480" y="141" width="330" height="78" rx="6" class="stop-refusal"/>
+<text x="492" y="159" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="177" class="t" text-anchor="start">Only a done, abandoned or future intent</text>
 <text x="492" y="193" class="t" text-anchor="start">archives; end it first.</text>
 <text x="492" y="209" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>

@@ -25,7 +25,7 @@ class AddNodeTest < Plastic::TestCase
   def test_a_done_intent_takes_no_nodes
     open_intent(status: "done")
 
-    error = assert_raises(Plastic::Failed) { add }
+    error = assert_raises(Plastic::Refused) { add }
 
     assert_equal "intent 1 is done; it takes no nodes", error.message
     assert_empty retrieval.structure.nodes("1")

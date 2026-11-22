@@ -27,7 +27,7 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     finish
 
     before = node.to_h
-    stop_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text: "rechecked", files: [], output: nil)
+    stop_workflow(Plastic::Workflows::Code::Node::Done, Plastic::Refused, intent_id: "1", id: "n1", text: "rechecked", files: [], output: nil)
 
     assert_equal before, node.to_h
   end

@@ -102,7 +102,7 @@ class IntentJudgeRefusalTest < Plastic::TestCase
     define_method(:"test_a_#{status}_intent_fails") do
       open_intent(status:)
 
-      assert_equal 1, cli("intent", "judge", "1").code
+      assert_equal 3, cli("intent", "judge", "1").code
     end
   end
 end
