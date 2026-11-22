@@ -77,7 +77,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     assert_nil Findings.retry_finding(node, 5)
   end
 
-  def repairs = Findings.new(retrieval, "1").repaired.map { |finding| [finding.text, finding.repair] }
+  def repairs = Findings.new(retrieval, "1").with_repairs.map { |finding| [finding.text, finding.repair] }
 
   def put_edge(from, to) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:edges, { intent_id: "1", from:, to:, kind: "needs" }, statement: :insert) }
 

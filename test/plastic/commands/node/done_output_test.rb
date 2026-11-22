@@ -80,6 +80,7 @@ class NodeDoneOutputTest < Plastic::TestCase
     texts = Plastic::Commands::Node::Done.options.to_h { |option| [option.name, option.text] }
 
     assert_match(/JSON/, texts.fetch(:output))
+    assert_match(/relative to the current directory/, texts.fetch(:output))
     assert_match(/intent folder/, texts.fetch(:files))
   end
 
