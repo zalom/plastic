@@ -15,7 +15,7 @@ module Plastic
               "check each done criterion against the delivered work and decide: accept when every criterion holds, " \
               "revise when something falls short. It records the verdict with " \
               "plastic intent verdict %{intent_id} accept|revise TEXT. " \
-              "A revise starts a second review round, and a second revise stops the intent for the owner."
+              "A revise starts a second review round, and a second revise stops the intent for the owner, who can grant one more round with plastic intent grant."
 
           outcome :handoff, offers: "plastic intent verdict %{intent_id} accept|revise TEXT",
             because: "the agent judges the delivery and records the verdict"
