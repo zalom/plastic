@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../graph/knowledge/ruling_order"
+
 module Plastic
   module Workflows
     # The print lines the show workflows share: one node, one ready node,
@@ -19,8 +21,8 @@ module Plastic
       def self.ready_node(node) = "ready: #{node.id} #{node.title}"
 
       def self.rulings(rulings)
-        superseded = rulings.filter_map(&:supersedes).to_set
-        rulings.sort_by { |ruling| ruling.id[/\d+/].to_i }.map { |ruling| ruling_line(ruling, superseded) }
+        superseded = Plastic::Graph::Knowledge::RulingOrder.superseded_ids(rulings)
+        Plastic::Graph::Knowledge::RulingOrder.sorted(rulings).map { |ruling| ruling_line(ruling, superseded) }
       end
 
       def self.ruling_line(ruling, superseded)

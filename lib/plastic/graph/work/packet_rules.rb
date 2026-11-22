@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../knowledge/ruling_order"
 require_relative "../knowledge/spec"
 
 module Plastic
@@ -13,8 +14,7 @@ module Plastic
 
         def initialize(retrieval, intent_id)
           @intent_id = intent_id
-          @retrieval = retrieval
-          @in_force = in_force
+          @in_force = Knowledge::RulingOrder.in_force(retrieval.rulings(intent_id))
           @constraints = Knowledge::Spec.new(retrieval, intent_id).constraints
         end
 
@@ -37,12 +37,6 @@ module Plastic
         private
 
         def kept = @in_force.last(LIMIT)
-
-        def in_force
-          all = @retrieval.rulings(@intent_id)
-          superseded = all.filter_map(&:supersedes).to_set
-          all.sort_by { |ruling| ruling.id[/\d+/].to_i }.reject { |other| superseded.include?(other.id) }
-        end
       end
     end
   end

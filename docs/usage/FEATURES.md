@@ -65,8 +65,8 @@ refuses one without the go-ahead.
 ## Drive a graph from any harness
 
 `plastic graph ready ID --json` lists the ready nodes as fields, and `plastic node claim ID NODE --json`
-returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, and
-the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
+returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, the
+rulings in force, the spec's constraints, what the lists left out, and the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
 the node's output and refuses a file that is not JSON. `plastic graph check` finds a schema file that
 names no live node and prints a `hand edit:` line for each finding no command repairs. [Drive a graph from any harness](drive-from-any-harness.md) shows the loop.
 
