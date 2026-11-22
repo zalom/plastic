@@ -6,8 +6,11 @@ module Plastic
   module Graph
     module Knowledge
       class Findings
-        # A finding is its words and the command that repairs it, or nil when no command does.
-        Finding = Data.define(:text, :repair)
+        # A finding is its words, the command that repairs it, and the hand edit that repairs it when no command does.
+        # Either is nil when it does not apply.
+        Finding = Data.define(:text, :repair, :hand) do
+          def initialize(text:, repair:, hand: nil) = super
+        end
 
         # The findings about the edges of one intent: a need on a removed node, and a loop that a hand-edited
         # graph.json can hold, though `edge add` refuses to write one.
