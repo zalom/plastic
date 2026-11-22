@@ -17,7 +17,7 @@ module Plastic
 
             File.read(@path, encoding: "UTF-8").each_line.filter_map do |line|
               at, text = line.strip.split(/\s+/, 2)
-              Roadmap::Parse::LogLine.new(at:, text: text.to_s.squeeze(" ")) if at
+              Roadmap::Parse::LogLine.new(at: Plastic.utc(at), text: text.to_s.squeeze(" ")) if at
             end
           end
         end
