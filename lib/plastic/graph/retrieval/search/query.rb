@@ -15,7 +15,7 @@ module Plastic
             @parts = text.to_s.scan(PARTS)
           end
 
-          def to_s = terms.uniq.map { |term| %("#{term}") }.join(" OR ")
+          def to_s = terms.uniq(&:downcase).map { |term| %("#{term}") }.join(" OR ")
 
           private
 

@@ -253,7 +253,7 @@ class ProjectLoadRetrievalTest < Plastic::TestCase
     register("blog")
     started = store_intent("blog", "Write the about page", status: "in_progress")
     index("blog", "7", "spec.md", "the about page uses a two column grid")
-    index("blog", "8", "notes.md", "unrelated words about deployment")
+    index("blog", "8", "notes.md", "unrelated words on deployment")
 
     assert_equal ["for #{started.intent_id}: 7/spec.md - the about page uses a two column grid"], values(load("blog"), "context:")
   end

@@ -3,13 +3,14 @@
 require_relative "../../../code_workflow"
 require_relative "../../../graph"
 require_relative "../../../graph/work/project_digest"
+require_relative "../../../graph/retrieval/work_context"
 
 module Plastic
   module Workflows
     module Code
       module Project
         # Prints a short digest of each named project, then what the agent
-        # checks, starts and keeps before the owner's next ask. It reads the rows
+        # checks, starts and keeps before the owner's next ask. It reads the rows, the retrieval graph
         # and the repository's files and writes nothing.
         class Load < CodeWorkflow
           THEN = "Check the architecture map of each coding project with an architecture mapping tool such as Enola, and " \
@@ -52,8 +53,8 @@ module Plastic
           def self.digest(context, slug)
             scope = context.scope
             store = File.join(scope.plastic_home, "stores", slug)
-            intents, note = read_store(context, slug, store)
-            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: repo_path(scope, slug), intents:, note:)
+            intents, note, passages = read_store(context, slug, store)
+            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: repo_path(scope, slug), intents:, note:, context: passages)
           end
 
           # The registered path as the project lookup reads it: an empty one is no path, and the rest is expanded.
@@ -62,15 +63,18 @@ module Plastic
             File.expand_path(path) unless path.empty?
           end
 
-          # The store's intents, or nil and a note that says why they cannot be read. A store opens only when every
-          # database file is there, since opening builds a missing one, and a store out of step stops only its own digest.
+          # The store's intents with the rows the retrieval graph gives for the work in play, or nil and a note that says
+          # why they cannot be read. A store opens only when every database file is there, since opening builds a missing
+          # one, and a store out of step stops only its own digest.
           def self.read_store(context, slug, store)
-            return [nil, "missing"] unless File.directory?(store)
-            return [nil, "holds no database files"] unless database_files?(store)
+            return [nil, "missing", []] unless File.directory?(store)
+            return [nil, "holds no database files", []] unless database_files?(store)
 
-            [Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval.intents, nil]
+            retrieval = Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval
+            intents = retrieval.intents
+            [intents, nil, Plastic::Graph::Retrieval::WorkContext.new(retrieval, intents).rows]
           rescue Plastic::Graph::OutOfStep => error
-            [nil, "out of step with this code; run #{error.next_command}"]
+            [nil, "out of step with this code; run #{error.next_command}", []]
           end
 
           def self.database_files?(store) = Plastic::Graph::Database::Store::FILES.all? { |name| File.file?(File.join(store, name)) }
