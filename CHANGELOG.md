@@ -5,6 +5,10 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.10
+
+- `plastic project load` names the kind of tool that checks an architecture map: "an architecture mapping tool such as Enola", the same words as `plastic architecture status`. The instructions that tell the agent to use version control now give Git as the example, since Git is a hard dependency of Plastic. The guard on program names in the source now bans only `gh` and `npm`, and a second guard still forbids Plastic's code to start any process. The child process test ignores the `PKG_CONFIG_PATH` that mise's prebuilt Ruby sets at startup, so the suite passes on a machine with that Ruby.
+
 ## 3.0.0-beta.9
 
 - `plastic project load [SLUG...]` prints a short digest of each named project, so a session has the project in its context before the owner's next prompt: the store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress, the count of open intents, the last 3 delivered intents with the day each closed, an architecture line and the search command for the rest. One `then:` line says to check each architecture map, start the servers and apps that each `AGENTS.md` names, keep the digests and wait for the owner; no `next:` line follows. A new session in a project store starts with "Run plastic project load SLUG before anything else", and the global store keeps `plastic next`. A store opens only when its three database files exist, so the load writes nothing, and a store out of step with the code is named on its `store:` line while the other projects still load. `PLASTIC.md` names the command for "Load project X" and "Load projects X, Y, Z".

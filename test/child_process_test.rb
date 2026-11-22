@@ -7,10 +7,11 @@ require "json"
 class ChildProcessTest < Minitest::Test
   RUBY = RbConfig.ruby
   HELPER = File.expand_path("support/child_process.rb", __dir__)
-  MACOS_ADDS = "__CF_USER_TEXT_ENCODING"
+  # macOS adds the first to every process, and the RubyGems plugin of mise's prebuilt Ruby sets the second when Ruby starts.
+  STARTUP_ADDS = %w[__CF_USER_TEXT_ENCODING PKG_CONFIG_PATH].freeze
   REPORT = "print JSON.generate(ENV.to_h.merge('encoding' => Encoding.default_external.name))"
 
-  def report(env = {}) = JSON.parse(ChildProcess.capture2(env, RUBY, "-rjson", "-e", REPORT).first).except(MACOS_ADDS)
+  def report(env = {}) = JSON.parse(ChildProcess.capture2(env, RUBY, "-rjson", "-e", REPORT).first).except(*STARTUP_ADDS)
 
   def test_a_child_sees_only_the_values_the_test_passes_and_the_fixed_ones
     seen = report("PLASTIC_HOME" => "/p", "HOME" => "/h")

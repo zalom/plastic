@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../clock"
+require_relative "intent_rows"
 
 module Plastic
   module Graph
@@ -10,28 +10,29 @@ module Plastic
       # is for, the work in play and the last deliveries. It names paths in place
       # of their contents, so the digest stays small.
       class ProjectDigest
-        DELIVERED = 3
         READ = %w[AGENTS.md README.md].freeze
-        ARCHITECTURE = "when the repository holds code, check its architecture map with a tool such as Enola"
+        ARCHITECTURE = "when the repository holds code, check its architecture map with an architecture mapping tool such as Enola"
 
         # `intents` is nil when the store cannot be read, and `note` then says why; `repo` is nil when no path is registered.
         def initialize(slug:, store:, repo:, intents:, note: nil)
           @slug = slug
-          @store = store
+          @store = note ? "#{store} (#{note})" : store
           @repo = repo
-          @intents = intents
-          @note = note
+          @work = intents && IntentRows.new(intents, slug)
         end
 
-        def rows = [*place_rows, *read_rows, *work_rows, *architecture_rows, ["search:", "plastic search TERMS --source-project #{@slug}"]]
+        def rows = [*place_rows, *read_rows, *@work&.rows, *architecture_rows, ["search:", "plastic search TERMS --source-project #{@slug}"]]
 
         private
 
-        def place_rows = [["project:", @slug], ["store:", @note ? "#{@store} (#{@note})" : @store], ["repo:", repo_text]]
+        def place_rows = [["project:", @slug], ["store:", @store], ["repo:", repo_text]]
 
-        def repo_text = @repo ? marked(@repo, File.directory?(@repo)) : "none registered"
+        def repo_text
+          repo = @repo
+          return "none registered" unless repo
 
-        def marked(path, present) = present ? path : "#{path} (missing)"
+          File.directory?(repo) ? repo : "#{repo} (missing)"
+        end
 
         def read_rows
           return [] unless @repo
@@ -40,32 +41,6 @@ module Plastic
         end
 
         def architecture_rows = (@repo && File.directory?(@repo)) ? [["architecture:", ARCHITECTURE]] : []
-
-        def work_rows
-          intents = @intents
-          return [] unless intents
-
-          [*in_play_rows(intents), waiting_row(intents), *delivered_rows(intents)]
-        end
-
-        def in_play_rows(intents)
-          started = intents.select { |intent| intent.status == "in_progress" }
-          started.empty? ? [["in play:", "none"]] : started.map { |intent| ["in play:", intent.label] }
-        end
-
-        def waiting_row(intents)
-          count = intents.count { |intent| intent.status == "open" }
-          ["waiting:", "#{count} open #{(count == 1) ? "intent" : "intents"}; plastic status --project #{@slug} lists them"]
-        end
-
-        # The day a stored time falls on here; an older date-only value shows as it is.
-        def day(stamp) = Plastic.local_day(stamp) || stamp.to_s[0, 10]
-
-        def delivered_rows(intents)
-          done = intents.select { |intent| intent.status == "done" && intent.closed_at }
-          done.max_by(DELIVERED) { |intent| Plastic.utc(intent.closed_at).to_s }
-            .map { |intent| ["delivered:", "#{day(intent.closed_at)} #{intent.label}"] }
-        end
       end
     end
   end

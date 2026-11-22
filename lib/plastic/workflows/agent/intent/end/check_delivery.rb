@@ -15,7 +15,8 @@ module Plastic
             summary "Has the agent record how the work of the intent was delivered."
             step "record the delivery", done: ->(context) { context.delivery_recorded },
               say: "%{delivery_found}Record the delivery of intent %{intent_id} under ## Verification in %{intent_folder}/outcome.md with one line. " \
-                "For code, use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
+                "For code, use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, " \
+                "or as the project's history shows when neither does: " \
                 "merge the pull request of intent %{intent_id} into the intent's base, " \
                 "and leave it open only when the owner asked. %{template_found}" \
                 "Then add '- Merged: <branch> into <base> at <commit or pull request>', or '- Committed: <branch> at <commit>' " \

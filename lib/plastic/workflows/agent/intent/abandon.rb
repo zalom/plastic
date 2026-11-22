@@ -10,7 +10,8 @@ module Plastic
         class Abandon < AgentWorkflow
           summary "Has the agent undo what the intent changed and record it in outcome.md."
           step "revert what intent %{intent_id} changed", done: ->(context) { context.reverted },
-            say: "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
+            say: "Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, " \
+              "or as the project's history shows when neither does: " \
               "undo what intent %{intent_id} changed, close or delete its branch and worktree, " \
               "and revert any commit that reached the base. " \
               "Plastic runs no version control command; it records what you write."

@@ -12,7 +12,8 @@ module Plastic
         # checks, starts and keeps before the owner's next ask. It reads the rows
         # and the repository's files and writes nothing.
         class Load < CodeWorkflow
-          THEN = "Check the architecture map of each coding project with a tool such as Enola, and start the MCP servers " \
+          THEN = "Check the architecture map of each coding project with an architecture mapping tool such as Enola, and " \
+            "start the MCP servers " \
             "and apps that each project's AGENTS.md names for its work; Plastic starts nothing. Keep these digests as the " \
             "projects' context, look up the rest with plastic search, and run plastic project load again to refresh them. " \
             "Wait for the owner's next prompt before picking any work."
