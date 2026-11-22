@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 640" role="img" aria-labelledby="graphs-title graphs-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="graphs-title">The three graphs and their databases</title>
-  <desc id="graphs-desc">Graph::WorkGraph writes the rows of every graph and Graph::RetrievalGraph reads them. The work graph lives in work_graph.db. The knowledge graph and the retrieval graph both live in knowledge_graph.db. Graph::Printer prints the rows as files in the store folder.</desc>
+  <desc id="graphs-desc">Graph::WorkGraph writes the rows of every graph and Graph::RetrievalGraph reads them. The work graph lives in work_graph.db. The knowledge graph lives in knowledge_graph.db, and the retrieval graph lives in retrieval_graph.db. Graph::Printer prints the rows as files in the store folder.</desc>
   <defs><marker id="graphs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -33,10 +33,14 @@
 <ellipse class="box" cx="195.0" cy="309" rx="165.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="195.0" y="336" text-anchor="middle">work_graph.db</text>
 <text class="s" x="195.0" y="354" text-anchor="middle">intents, nodes, edges</text>
-<path class="box" d="M 490 309 L 490 358 A 325.0 9 0 0 0 1140 358 L 1140 309 Z"/>
-<ellipse class="box" cx="815.0" cy="309" rx="325.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
-<text class="m" x="815.0" y="336" text-anchor="middle">knowledge_graph.db</text>
-<text class="s" x="815.0" y="354" text-anchor="middle">documents, rulings, links, document_heads</text>
+<path class="box" d="M 490 309 L 490 358 A 165.0 9 0 0 0 820 358 L 820 309 Z"/>
+<ellipse class="box" cx="655.0" cy="309" rx="165.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="655.0" y="336" text-anchor="middle">knowledge_graph.db</text>
+<text class="s" x="655.0" y="354" text-anchor="middle">documents, rulings, links, document_heads</text>
+<path class="box" d="M 850 309 L 850 358 A 145.0 9 0 0 0 1140 358 L 1140 309 Z"/>
+<ellipse class="box" cx="995.0" cy="309" rx="145.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="995.0" y="336" text-anchor="middle">retrieval_graph.db</text>
+<text class="s" x="995.0" y="354" text-anchor="middle">document_passages, document_fts</text>
 <rect class="box" x="30" y="420" width="1110" height="79" rx="8"/><rect x="30" y="420" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="46" y="444">Graph::RetrievalGraph</text><text class="s" x="46" y="461">[class]</text>
 <text class="s" x="46" y="481">The read side: it reads the rows of every graph and writes nothing.</text>
@@ -54,14 +58,16 @@
 <text class="al" x="995" y="149" text-anchor="middle">writes</text>
 <path class="flow" d="M 195.0 254 L 195.0 300" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="195" y="281" text-anchor="middle">rows</text>
-<path class="flow" d="M 655.0 254 L 655.0 300" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="655" y="281" text-anchor="middle">rows</text>
+<path class="flow" d="M 655.0 254 L 655.0 277 L 573.7705 277 L 573.7705 300" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="614" y="270" text-anchor="middle">rows</text>
 <path class="flow" d="M 995.0 254 L 995.0 300" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="995" y="281" text-anchor="middle">rows</text>
 <path class="flow" d="M 196.5 420 L 196.5 393 L 195.0 393 L 195.0 367" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="197" y="411" text-anchor="middle">reads</text>
-<path class="flow" d="M 585.0 420 L 585.0 393 L 815.0 393 L 815.0 367" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="700" y="386" text-anchor="middle">reads</text>
+<path class="flow" d="M 585.0 420 L 585.0 393 L 655.0 393 L 655.0 367" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="620" y="386" text-anchor="middle">reads</text>
+<path class="flow" d="M 973.5 420 L 973.5 393 L 995.0 393 L 995.0 367" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="974" y="411" text-anchor="middle">reads</text>
 <path class="flow" d="M 360 579.5 L 425 579.5 L 425 571.5 L 490 571.5" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="393" y="573" text-anchor="middle">prints</text>
 </svg>
