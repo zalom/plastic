@@ -50,7 +50,7 @@ class CheckDeliveryTest < Plastic::TestCase
   def test_the_delivery_step_tells_the_agent_to_use_version_control_as_the_project_defines_it
     step = check.steps.first
 
-    assert_includes step, "use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
+    assert_includes step, "use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
       "merge the pull request of intent 1 into the intent's base, and leave it open only when the owner asked."
     refute_includes step, "your own"
   end
