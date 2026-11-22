@@ -42,6 +42,9 @@ module Plastic
 
         def open_decisions = bullets_under(OPEN)
 
+        # The bullets under the Constraints heading: what the work must keep true.
+        def constraints = bullets_under(/\A#+\s*Constraints?\s*\z/i)
+
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
 
         def self.bullet(line) = line[BULLET, 1]&.strip
