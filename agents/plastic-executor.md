@@ -27,9 +27,7 @@ it hands you, writes the record and closes the intent; you do none of these.
 5. **Prove it green** - run the tests of the changed files and the gate, and reach zero
    failures before reporting done.
 
-## A node a driver hands you
-
-When a driver hands you a node of an intent with its ids, this is the one case where you run Plastic
+**A node a driver hands you.** When a driver hands you a node of an intent with its ids, this is the one case where you run Plastic
 commands that write, and only these three: `plastic node claim` for that node, then
 `plastic node done ID NODE TEXT --output PATH` when it is finished, or `plastic node fail ID NODE TEXT`
 when it failed. You write nothing else to Plastic. Every other case follows the rule above.

@@ -49,7 +49,7 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
 
   def test_the_worker_roles_name_the_handed_node_exception
     %w[plastic-planner plastic-executor].each do |name|
-      assert_includes File.read(File.join(ROOT, "agents", "#{name}.md")), "## A node a driver hands you"
+      assert_includes File.read(File.join(ROOT, "agents", "#{name}.md")), "**A node a driver hands you.**"
     end
   end
 
