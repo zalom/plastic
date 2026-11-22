@@ -39,9 +39,7 @@ class ProjectLoadTest < Plastic::TestCase
     result = load("blog")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes lines(result), "project: blog"
-    assert_includes lines(result), "store: #{File.join(@plastic_home, "stores", "blog")}"
-    assert_includes lines(result), "repo: #{@repos.fetch("blog")}"
+    assert_equal ["project: blog", "store: #{File.join(@plastic_home, "stores", "blog")}", "repo: #{@repos.fetch("blog")}"], lines(result).first(3)
   end
 
   def test_the_agents_and_readme_files_that_exist_are_named_to_read
@@ -87,8 +85,7 @@ class ProjectLoadTest < Plastic::TestCase
     result = load("blog")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes lines(result), "store: #{File.join(@plastic_home, "stores", "blog")} (missing)"
-    assert_includes lines(result), "repo: #{@repos.fetch("blog")} (missing)"
+    assert_equal ["store: #{File.join(@plastic_home, "stores", "blog")} (missing)", "repo: #{@repos.fetch("blog")} (missing)"], lines(result)[1, 2]
     assert_empty values(result, "in play:")
   end
 
@@ -124,17 +121,37 @@ class ProjectLoadTest < Plastic::TestCase
 
     assert_equal %w[blog shop wiki], values(load("blog", "shop,wiki"), "project:")
   end
+end
 
-  def test_one_then_line_follows_the_digests_and_no_next_line_is_printed
+# The digest of several projects, the then line, and the refusals.
+class ProjectLoadCallTest < Plastic::TestCase
+  include ProjectLoadHelper
+
+  def two_projects
     register("blog", "shop")
     %w[blog shop].each { |slug| work(slug) }
+    lines(load("blog", "shop")).reject(&:empty?)
+  end
 
-    result = load("blog", "shop")
+  def test_one_then_line_follows_the_digests_of_every_project
+    printed = two_projects
 
-    assert_equal 1, values(result, "then:").size
-    assert_match(/\Athen: /, lines(result).reject { |line| line.empty? || line.start_with?("because:") }.last)
-    refute lines(result).any? { |line| line.start_with?("next:") }
-    assert_includes lines(result), "because: the projects are loaded; the next work waits for the owner's ask"
+    assert_equal 1, printed.count { |line| line.start_with?("then: ") }
+    assert_match(/\Athen: /, printed[-2])
+  end
+
+  def test_no_next_line_is_printed_because_the_next_work_waits_for_the_owner
+    printed = two_projects
+
+    refute printed.any? { |line| line.start_with?("next:") }
+    assert_equal "because: the projects are loaded; the next work waits for the owner's ask", printed.last
+  end
+
+  def test_one_open_intent_is_counted_in_the_singular
+    register("blog")
+    store_intent("blog", "Idea")
+
+    assert_equal ["1 open intent; plastic status --project blog lists them"], values(load("blog"), "waiting:")
   end
 
   def test_an_unregistered_name_exits_2_and_names_the_registered_projects

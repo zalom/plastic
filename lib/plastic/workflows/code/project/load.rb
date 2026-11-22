@@ -32,9 +32,10 @@ module Plastic
 
           def self.slugs(context)
             words = context.slugs
-            return [context.scope.slug] unless words
+            scope = context.scope
+            return [scope.slug] unless words
 
-            words.split(/[\s,]+/).reject(&:empty?).uniq.each { |name| refuse_unregistered(context.scope, name) }
+            words.split(/[\s,]+/).reject(&:empty?).uniq.each { |name| refuse_unregistered(scope, name) }
           end
 
           def self.refuse_unregistered(scope, name)
@@ -45,15 +46,11 @@ module Plastic
           end
 
           def self.digest(context, slug)
-            home = context.scope.plastic_home
+            scope = context.scope
+            home = scope.plastic_home
             store = File.join(home, "stores", slug)
-            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: context.scope.projects[slug], retrieval: retrieval(context, slug, store))
-          end
-
-          def self.retrieval(context, slug, store)
-            return unless File.directory?(store)
-
-            Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval
+            retrieval = (Plastic::Graph.open(home:, store: slug, session: context.session, clock: context.clock).retrieval if File.directory?(store))
+            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: scope.projects[slug], retrieval:)
           end
         end
       end
