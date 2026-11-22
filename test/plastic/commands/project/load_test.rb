@@ -97,7 +97,7 @@ class ProjectLoadTest < Plastic::TestCase
     register("blog")
     work("blog")
 
-    assert_equal ["when the repository holds code, check its architecture map with a tool such as Enola"], values(load("blog"), "architecture:")
+    assert_equal ["when the repository holds code, check its architecture map with an architecture mapping tool such as Enola"], values(load("blog"), "architecture:")
   end
 
   def test_the_global_store_with_no_repository_gets_no_architecture_line
@@ -134,6 +134,10 @@ class ProjectLoadCallTest < Plastic::TestCase
 
     assert_equal 1, printed.count { |line| line.start_with?("then: ") }
     assert_match(/\Athen: /, printed[-2])
+  end
+
+  def test_the_then_line_names_the_kind_of_tool_that_checks_the_architecture_map
+    assert_includes two_projects.find { |line| line.start_with?("then: ") }, "with an architecture mapping tool such as Enola"
   end
 
   def test_no_next_line_is_printed_because_the_next_work_waits_for_the_owner

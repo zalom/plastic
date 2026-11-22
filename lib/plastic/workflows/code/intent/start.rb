@@ -81,7 +81,8 @@ module Plastic
 
           def self.instruction(context, worktree)
             "Create the worktree at #{worktree.path} on branch #{worktree.branch}, then run plastic #{context.start_words} #{context.intent_id} again. " \
-              "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."
+              "Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, " \
+              "or as the project's history shows when neither does."
           end
 
           outcome :worktree_missing, if: ->(context) { context.worktree_missing }, offers: "%{start_command} %{intent_id}",

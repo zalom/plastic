@@ -111,6 +111,6 @@ class IntentStartTest < Plastic::TestCase
     worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
 
     assert_call result, code: 0, err: "", out: ["worktree: #{worktree}\n", "branch: plastic/1--alpha\n", "next: plastic intent start 1",
-      "Create the worktree at #{worktree} on branch plastic/1--alpha, then run plastic intent start 1 again. Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."]
+      "Create the worktree at #{worktree} on branch plastic/1--alpha, then run plastic intent start 1 again. Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."]
   end
 end

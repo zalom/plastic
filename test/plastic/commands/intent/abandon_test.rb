@@ -93,7 +93,7 @@ class IntentAbandonTest < Plastic::TestCase
 
     refute_includes result.out, "your own"
     assert_call result, code: 0, out: [
-      "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
+      "Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
       "Plastic runs no version control command; it records what you write.",
       "Write in store/1--alpha/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. Run plastic sync up and then plastic intent abandon 1 again."
     ]
