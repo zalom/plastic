@@ -5,6 +5,7 @@ require_relative "errors"
 require_relative "code_workflow/gate"
 require_relative "code_workflow/read"
 require_relative "code_workflow/step"
+require_relative "code_workflow/open_intent_gates"
 
 module Plastic
   # A workflow of Ruby steps. The steps run in order, each one once per
@@ -21,6 +22,8 @@ module Plastic
     # How a gate stops the call: exit 3 or exit 1.
     STOPS = %i[refusal failure].freeze
     GATE_OPTIONS = %i[stops pass offers because words].freeze
+
+    extend OpenIntentGates
 
     class << self
       def lane = "code"
@@ -41,18 +44,6 @@ module Plastic
         raise Invalid, "#{name}: a gate stops as :refusal or :failure" unless STOPS.include?(stops)
 
         steps << Gate.new(reason, stops, rule.fetch(:pass), *rule.values_at(:offers, :because, :words))
-      end
-
-      # The gates of a workflow that writes into an intent that takes `takes`: a missing intent fails, an intent
-      # that is done or abandoned is refused. One place gives every such workflow the same two exits.
-      def open_intent_gates(takes)
-        sets :problem, :intent_missing
-        read("check the intent") do |context|
-          context[:intent_missing] = context.retrieval.intent(context.intent_id).nil?
-          context[:problem] = context.work.open_intent_problem(context.intent_id, takes)
-        end
-        gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent_missing }
-        gate "%{problem}", stops: :refusal, words: "the intent is done or abandoned", pass: ->(context) { context.problem.nil? }
       end
 
       # A step that changes nothing on disk. It runs on every call, rerun
