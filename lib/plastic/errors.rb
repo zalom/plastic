@@ -42,6 +42,9 @@ module Plastic
   # A step raised an exception nobody planned for. Exit 1, and the answer names the place that broke.
   class Crashed < Failed
     def tell(output, offer) = output.failed(message, offer, source:)
+
+    # The command run keeps the status of every failed call: the crash is a kind of failure, not a new status.
+    def status = "failed"
   end
 
   # The owner holds this step: a gate stopped the call as a refusal. Exit 3.
