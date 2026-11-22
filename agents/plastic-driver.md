@@ -1,9 +1,7 @@
 ---
 name: plastic-driver
 description: |
-  Use to run one intent's work graph from the open session: read the ready
-  nodes, start one worker for each, hand each its claim packet, and collect what
-  each node finishes with.
+  Use to run an intent's graph loop from the open session and dispatch workers.
 model: sonnet
 effort: medium
 ---

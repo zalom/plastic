@@ -7,13 +7,20 @@ require "minitest/autorun"
 # agent file names one of those commands, or another Plastic write, as a step.
 class DispatchedAgentStepsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SUBJECTS = Dir[File.join(ROOT, "agents", "*.md")].sort
+  # The driver role is the one agent that runs the graph loop, so it names these commands by design.
+  DRIVER = File.join(ROOT, "agents", "plastic-driver.md")
+  SUBJECTS = (Dir[File.join(ROOT, "agents", "*.md")] - [DRIVER]).sort
   ORCHESTRATOR = /plastic (?:roadmap )?auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node \w+|node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
 
   def orchestrator_steps(text) = text.each_line.with_index(1).filter_map { |line, number| "#{number}: #{line.strip}" if line.match?(ORCHESTRATOR) }
 
   def test_the_subjects_are_read_from_the_disk
     assert(SUBJECTS.any? { |path| path.end_with?("agents/plastic-executor.md") })
+  end
+
+  def test_the_driver_role_is_the_one_agent_left_out
+    assert_path_exists DRIVER
+    refute_includes SUBJECTS, DRIVER
   end
 
   def test_no_agent_file_names_an_orchestrator_step

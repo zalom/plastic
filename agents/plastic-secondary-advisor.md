@@ -5,8 +5,7 @@ description: |
   Consultation-only, dispatched deliberately by the user or main
   session, never by the auto pipeline. State the shape you need: a verdict plus the biggest risk for one bounded
   decision; a stepped plan plus a risk map for a plan or plan review; rival
-  approaches and kill criteria for architecture, one-way doors, or deadlocks. Model is set by config (agents.models.claude.plastic-secondary-advisor);
-  fable is the shipped default.
+  approaches and kill criteria for architecture, one-way doors, or deadlocks.
 model: fable
 effort: high
 ---
