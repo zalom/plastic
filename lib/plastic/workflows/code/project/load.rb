@@ -3,7 +3,7 @@
 require_relative "../../../code_workflow"
 require_relative "../../../graph"
 require_relative "../../../graph/work/project_digest"
-require_relative "../../../graph/retrieval/work_context"
+require_relative "../../../graph/work/play_rows"
 
 module Plastic
   module Workflows
@@ -53,8 +53,8 @@ module Plastic
           def self.digest(context, slug)
             scope = context.scope
             store = File.join(scope.plastic_home, "stores", slug)
-            intents, note, passages = read_store(context, slug, store)
-            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: repo_path(scope, slug), intents:, note:, context: passages)
+            work, note = read_store(context, slug, store)
+            Plastic::Graph::Work::ProjectDigest.new(slug:, store:, repo: repo_path(scope, slug), work:, note:)
           end
 
           # The registered path as the project lookup reads it: an empty one is no path, and the rest is expanded.
@@ -63,18 +63,17 @@ module Plastic
             File.expand_path(path) unless path.empty?
           end
 
-          # The store's intents with the rows the retrieval graph gives for the work in play, or nil and a note that says
-          # why they cannot be read. A store opens only when every database file is there, since opening builds a missing
-          # one, and a store out of step stops only its own digest.
+          # The rows of the work in play, with the passages the retrieval graph gives for it, or nil and a note that says
+          # why the store cannot be read. A store opens only when every database file is there, since opening builds a
+          # missing one, and a store out of step stops only its own digest.
           def self.read_store(context, slug, store)
-            return [nil, "missing", []] unless File.directory?(store)
-            return [nil, "holds no database files", []] unless database_files?(store)
+            return [nil, "missing"] unless File.directory?(store)
+            return [nil, "holds no database files"] unless database_files?(store)
 
             retrieval = Plastic::Graph.open(home: context.scope.plastic_home, store: slug, session: context.session, clock: context.clock).retrieval
-            intents = retrieval.intents
-            [intents, nil, Plastic::Graph::Retrieval::WorkContext.new(retrieval, intents).rows]
+            [Plastic::Graph::Work::PlayRows.new(retrieval, slug).rows, nil]
           rescue Plastic::Graph::OutOfStep => error
-            [nil, "out of step with this code; run #{error.next_command}", []]
+            [nil, "out of step with this code; run #{error.next_command}"]
           end
 
           def self.database_files?(store) = Plastic::Graph::Database::Store::FILES.all? { |name| File.file?(File.join(store, name)) }

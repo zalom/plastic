@@ -14,22 +14,23 @@ module Plastic
         CANDIDATES = 8
         LENGTH = 200
 
+        # The passage lines of one intent in progress.
+        Lines = Data.define(:retrieval, :intent) do
+          def to_a = hits.first(PASSAGES).map { |hit| "for #{intent.intent_id}: #{hit.fetch("intent_id")}/#{hit.fetch("path")} - #{text(hit)}" }
+
+          private
+
+          def hits = retrieval.search_current(intent.title, limit: CANDIDATES).reject { |hit| hit.fetch("intent_id") == intent.intent_id }
+
+          def text(hit) = Search::Excerpt.new(intent.title).call(hit.fetch("body")).split.join(" ")[0, LENGTH]
+        end
+
         def initialize(retrieval, intents)
           @retrieval = retrieval
           @started = intents.select { |intent| intent.status == "in_progress" }.first(INTENTS)
         end
 
-        def rows = @started.flat_map { |intent| passages(intent).map { |passage| ["context:", passage] } }
-
-        private
-
-        def passages(intent)
-          excerpt = Search::Excerpt.new(intent.title)
-          hits = @retrieval.search_current(intent.title, limit: CANDIDATES).reject { |hit| hit.fetch("intent_id") == intent.intent_id }
-          hits.first(PASSAGES).map { |hit| "for #{intent.intent_id}: #{hit.fetch("intent_id")}/#{hit.fetch("path")} - #{short(excerpt.call(hit.fetch("body")))}" }
-        end
-
-        def short(text) = text.split.join(" ")[0, LENGTH]
+        def rows = @started.flat_map { |intent| Lines.new(@retrieval, intent).to_a }.map { |text| ["context:", text] }
       end
     end
   end

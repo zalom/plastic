@@ -13,16 +13,16 @@ module Plastic
         READ = %w[AGENTS.md README.md].freeze
         ARCHITECTURE = "when the repository holds code, check its architecture map with an architecture mapping tool such as Enola"
 
-        # `intents` is nil when the store cannot be read, and `note` then says why; `context` holds the rows of the retrieval graph for the work in play; `repo` is nil when no path is registered.
-        def initialize(slug:, store:, repo:, intents:, note: nil, context: [])
+        # `work` holds the rows of the work in play and is nil when the store cannot be read, and `note` then says why;
+        # `repo` is nil when no path is registered.
+        def initialize(slug:, store:, repo:, work:, note: nil)
           @slug = slug
           @store = note ? "#{store} (#{note})" : store
           @repo = repo
-          @work = intents && IntentRows.new(intents, slug)
-          @context = context
+          @work = work
         end
 
-        def rows = [*place_rows, *read_rows, *@work&.rows, *@context, *architecture_rows, ["search:", "plastic search TERMS --source-project #{@slug}"]]
+        def rows = [*place_rows, *read_rows, *@work, *architecture_rows, ["search:", "plastic search TERMS --source-project #{@slug}"]]
 
         private
 

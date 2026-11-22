@@ -8,7 +8,8 @@ module Plastic
         # syntax. The words are joined with OR and BM25 ranks the passage that holds more of them first. A quoted
         # phrase stays one phrase. Common words drop out, unless they are all the question holds.
         class Query
-          PARTS = /"([^"]*)"|([\p{Alnum}_]+)/
+          WORD = /[\p{Alnum}_]+/
+          PARTS = /"([^"]*)"|(#{WORD})/
           STOP_WORDS = %w[a an and are as at be by do does for from how i in is it my of on or that the this to was what when where which who why with].freeze
 
           def initialize(text)
@@ -20,14 +21,13 @@ module Plastic
           private
 
           def terms
-            phrases = @parts.filter_map { |phrase, _word| words(phrase) if phrase }
-            singles = @parts.filter_map { |_phrase, word| word }
+            singles = @parts.filter_map(&:last)
             kept = singles.reject { |word| STOP_WORDS.include?(word.downcase) }
             kept = singles if kept.empty? && phrases.empty?
             [*phrases, *kept]
           end
 
-          def words(phrase) = phrase.scan(/[\p{Alnum}_]+/).join(" ").then { |joined| joined unless joined.empty? }
+          def phrases = @parts.filter_map(&:first).map { |phrase| phrase.scan(WORD).join(" ") }.reject(&:empty?)
         end
       end
     end
