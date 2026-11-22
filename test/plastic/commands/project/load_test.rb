@@ -93,19 +93,15 @@ class ProjectLoadTest < Plastic::TestCase
     assert_includes lines(load("global")), "repo: none registered"
   end
 
-  def test_a_repository_with_git_is_a_coding_project_and_gets_an_architecture_line
+  def test_a_project_with_a_repository_gets_an_architecture_line_for_the_agent_to_judge
     register("blog")
     work("blog")
-    FileUtils.mkdir_p(File.join(@repos.fetch("blog"), ".git"))
 
-    assert_equal 1, values(load("blog"), "architecture:").size
+    assert_equal ["when the repository holds code, check its architecture map with a tool such as Enola"], values(load("blog"), "architecture:")
   end
 
-  def test_a_repository_without_git_gets_no_architecture_line
-    register("blog")
-    work("blog")
-
-    assert_empty values(load("blog"), "architecture:")
+  def test_the_global_store_with_no_repository_gets_no_architecture_line
+    assert_empty values(load("global"), "architecture:")
   end
 
   def test_each_project_names_the_search_that_reaches_the_rest_of_its_knowledge

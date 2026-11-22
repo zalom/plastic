@@ -12,7 +12,7 @@ module Plastic
       class ProjectDigest
         DELIVERED = 3
         READ = %w[AGENTS.md README.md].freeze
-        ARCHITECTURE = "a coding project: check its architecture map with a tool such as Enola"
+        ARCHITECTURE = "when the repository holds code, check its architecture map with a tool such as Enola"
 
         # `retrieval` is nil when the store folder is missing; `repo` is nil when no path is registered.
         def initialize(slug:, store:, repo:, retrieval:)
@@ -38,7 +38,7 @@ module Plastic
           READ.map { |name| File.join(@repo, name) }.select { |path| File.file?(path) }.map { |path| ["read:", path] }
         end
 
-        def architecture_rows = (@repo && File.exist?(File.join(@repo, ".git"))) ? [["architecture:", ARCHITECTURE]] : []
+        def architecture_rows = (@repo && File.directory?(@repo)) ? [["architecture:", ARCHITECTURE]] : []
 
         def work_rows
           return [] unless @retrieval
