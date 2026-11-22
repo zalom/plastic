@@ -40,7 +40,7 @@
 <path class="box" d="M 850 309 L 850 358 A 145.0 9 0 0 0 1140 358 L 1140 309 Z"/>
 <ellipse class="box" cx="995.0" cy="309" rx="145.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="995.0" y="336" text-anchor="middle">retrieval_graph.db</text>
-<text class="s" x="995.0" y="354" text-anchor="middle">document_passages, document_fts</text>
+<text class="s" x="995.0" y="354" text-anchor="middle">document_passages</text>
 <rect class="box" x="30" y="420" width="1110" height="79" rx="8"/><rect x="30" y="420" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="46" y="444">Graph::RetrievalGraph</text><text class="s" x="46" y="461">[class]</text>
 <text class="s" x="46" y="481">The read side: it reads the rows of every graph and writes nothing.</text>

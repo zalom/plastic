@@ -14,7 +14,7 @@ module ArchitectureFigures
       retrieval | | 850 160 290 | Retrieval graph | graph | end | | What is found: the search index / over the documents.
       work_db | cylinder | 30 300 330 | work_graph.db | | | | intents, nodes, edges
       knowledge_db | cylinder | 490 300 330 | knowledge_graph.db | | | | documents, rulings, links, document_heads
-      retrieval_db | cylinder | 850 300 290 | retrieval_graph.db | | | | document_passages, document_fts
+      retrieval_db | cylinder | 850 300 290 | retrieval_graph.db | | | | document_passages
       reader | | 30 420 1110 | Graph::RetrievalGraph | class | line | mono | The read side: it reads the rows of every graph and writes nothing.
       printer | | 30 540 330 | Graph::Printer | class | line | mono | Prints the rows as files.
       files | | 490 540 650 | Files in the store folder | | line | | spec.md, graph.json, work.log, outcome.md
@@ -34,7 +34,7 @@ module ArchitectureFigures
     NAMES = [
       *%w[Graph::WorkGraph Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
       *%w[work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] },
-      *%w[intents nodes edges documents rulings links document_heads document_passages document_fts].map { |name| ["table", name, name] }
+      *%w[intents nodes edges documents rulings links document_heads document_passages].map { |name| ["table", name, name] }
     ].freeze
 
     def self.diagrams = [Diagram.new(META, BOXES, ARROWS)]
