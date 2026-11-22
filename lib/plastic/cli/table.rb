@@ -49,6 +49,7 @@ module Plastic
       },
       "project" => {
         "project list" => ["Commands::Project::List", "List the registered projects with their paths"],
+        "project load" => ["Commands::Project::Load", "Print a short digest of each named project to warm the context before the next ask"],
         "project new" => ["Commands::Project::New", "Register a project and leave its store ready for intent new"],
         "project links" => ["Commands::Project::Links", "List the links that name an intent or a ruling this store lacks"]
       },

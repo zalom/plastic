@@ -5,6 +5,7 @@ require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/delivery_action"
 require_relative "../graph/work/last_log_lines"
 require_relative "../graph/work/session_intent"
+require_relative "../scope"
 require_relative "compact_recap"
 require_relative "predecessor_session"
 
@@ -38,8 +39,15 @@ module Plastic
 
       def compact_lines = CompactRecap.new(@retrieval, session_id: @session_id).lines
 
-      def first_line
-        FIRST_LINES.fetch(@source) { "Plastic: a new session in store #{@retrieval.store}. Run plastic next before anything else." }
+      def first_line = FIRST_LINES.fetch(@source) { "Plastic: a new session in store #{store}. #{first_step}" }
+
+      def store = @retrieval.store
+
+      # A project's session loads the project first and waits for the owner's ask; the global store runs plastic next.
+      def first_step
+        return "Run plastic next before anything else." if store == Scope::GLOBAL
+
+        "Run plastic project load #{store} before anything else; the next work waits for the owner's ask."
       end
 
       def open_intent_lines

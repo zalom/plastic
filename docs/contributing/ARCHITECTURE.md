@@ -274,7 +274,7 @@ order, and later hooks read it from the session row.
 
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
-| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
+| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node claims, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |
