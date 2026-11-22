@@ -21,6 +21,14 @@ class RecapTest < Plastic::TestCase
     assert_equal ["Plastic: a new session in store global. Run plastic next before anything else."], recap
   end
 
+  def test_a_new_session_in_a_project_store_names_project_load_and_waits_for_the_owner
+    retrieval = Plastic::Graph.create(home: @plastic_home, store: "widgets").retrieval
+    first = Plastic::Hooks::Recap.new(retrieval, session_id: "s-1", source: nil, directory: @home).lines(now: Time.now).first
+
+    assert_equal "Plastic: a new session in store widgets. Run plastic project load widgets before anything else; " \
+      "the next work waits for the owner's ask.", first
+  end
+
   def test_a_new_session_prints_the_previous_session_and_what_it_touched
     opened.work.open_session("s-1", harness: "claude-code", directory: @home)
     intent_id = printed_intent

@@ -18,3 +18,12 @@ class PlasticMdPointerTest < Minitest::Test
     assert_includes normalized_body, "git is a hard dependency"
   end
 end
+
+# PLASTIC.md tells the agent to load the named projects when a person asks for them.
+class PlasticMdProjectLoadTest < Minitest::Test
+  def normalized_body = File.read(PlasticMdPointerTest::PLASTIC_MD).gsub(/\s+/, " ")
+
+  def test_plastic_md_names_project_load_for_the_load_projects_phrase
+    assert_includes normalized_body, %("Load projects X, Y, Z", run plastic project load)
+  end
+end

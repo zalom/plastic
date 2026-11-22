@@ -72,6 +72,12 @@ class StartTest < Plastic::TestCase
     assert_call result, code: 0, out: /\APlastic: a new session in store widgets\./
   end
 
+  def test_a_new_session_in_a_project_is_told_to_load_the_project_first
+    result = plastic("hook", "start", input: JSON.generate({ cwd: widgets_project }), env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+    assert_call result, code: 0, out: /\APlastic: a new session in store widgets\. Run plastic project load widgets before anything else;/
+  end
+
   def test_a_directory_inside_a_project_picks_that_projects_store
     out = StringIO.new
     environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
