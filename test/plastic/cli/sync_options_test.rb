@@ -18,7 +18,7 @@ class SyncOptionsTest < Plastic::TestCase
   end
 
   def test_sync_up_says_that_overwrite_reads_files_into_rows
-    assert_equal [expected(:up), %i[work knowledge]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
+    assert_equal [expected(:up), %i[work knowledge retrieval]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
   end
 
   def test_sync_down_says_that_overwrite_prints_rows_over_files

@@ -118,7 +118,8 @@ class PrintsDeclarationTest < Minitest::Test
     "Backup::Purge" => "it removes backup records, which no printed file holds",
     "Backup::Restore" => "it restores databases and hands the files to sync down",
     "Sync::Up" => "sync prints through its own plan",
-    "Sync::Down" => "sync prints through its own plan"
+    "Sync::Down" => "sync prints through its own plan",
+    "Resources::Sort" => "it moves the files itself, and no print writes them"
   }.freeze
 
   def routines
