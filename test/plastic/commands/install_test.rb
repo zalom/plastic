@@ -100,7 +100,7 @@ class InstallReinstallHarnessesTest < Plastic::TestCase
 
 def test_the_driver_role_installs_for_both_harnesses_with_the_default_worker_limit
   %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-  call("init", "2")
+  call("init", "a")
 
   assert_includes File.read(File.join(@home, ".claude", "agents", "plastic-driver.md")), "at most 3 workers at once"
   assert_includes File.read(File.join(@home, ".codex", "agents", "plastic-driver.toml")), "at most 3 workers at once"
@@ -108,7 +108,7 @@ end
 
 def test_the_driver_role_prints_the_worker_limit_the_owner_set
   %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-  call("init", "2")
+  call("init", "a")
   call("config", "set", "driver.max_workers", "2")
   call("install", "--reinstall")
 

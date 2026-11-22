@@ -39,7 +39,7 @@ module Plastic
 
       def role_files
         choices = package.choices
-        RoleFiles.new(package.root, models: choices.models, efforts: choices.efforts, skip: choices.skipped_roles).call(File.join(record.root, "agents"))
+        RoleFiles.new(package.root, models: choices.models, efforts: choices.efforts, skip: choices.skipped_roles, workers: choices.max_workers).call(File.join(record.root, "agents"))
       end
 
       def advisor_exclusions = package.choices.advisor? ? [] : ["agent-advisor"]
