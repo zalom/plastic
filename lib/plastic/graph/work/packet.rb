@@ -9,8 +9,8 @@ module Plastic
       # What a worker needs to start one claimed node: the node, the done criterion it serves, its input, and the
       # stored output of each node it needs. A harness hands it to the worker, whatever the worker is.
       class Packet
-        # `schemas` is the intent's Work::Schemas, or nil when the claim has no folder to read.
-        def initialize(retrieval, node, schemas: nil)
+        # `schemas` is the intent's Work::Schemas.
+        def initialize(retrieval, node, schemas:)
           @retrieval = retrieval
           @node = node
           @schemas = schemas
@@ -32,7 +32,7 @@ module Plastic
 
         private
 
-        def schema = @schemas&.path(@node.id)
+        def schema = @schemas.path(@node.id)
 
         def criterion
           key = @node.criterion
