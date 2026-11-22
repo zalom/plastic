@@ -11,7 +11,7 @@ module Plastic
         class Add < CodeWorkflow
           clear_declarations
 
-          sets :intent, :problem, :added
+          sets :intent, :problem, :kind, :added
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -23,13 +23,15 @@ module Plastic
 
           step "add the edge", done: ->(context) { !context.added.nil? },
             changes: { work: "An edge between two nodes of the intent is added" } do |context|
-            added, problem = context.work.add_edge(intent_id: context.intent_id, from: context.from, to: context.to)
-            context[:added] = added
-            context[:problem] = problem
+            context[:added], context[:problem], context[:kind] = context.work.add_edge(intent_id: context.intent_id, from: context.from, to: context.to)
           end
 
+          gate "%{problem}", stops: :failure,
+            words: "an end of the edge is not a node of the intent",
+            pass: ->(context) { context.kind != :failure }
+
           gate "%{problem}", stops: :refusal,
-            words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is not a live node of the intent",
+            words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is a removed node",
             pass: ->(context) { context.problem.nil? }
 
           read "say what was added" do |context|

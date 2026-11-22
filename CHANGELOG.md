@@ -6,7 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - `plastic intent report ID PATH` records a report again, with its new sha256, when the file changed since it was recorded, and keeps its one line under Reports. When the file is unchanged it writes nothing and says so: `unchanged: PATH is already recorded with this sha256; nothing written`.
-- Every refusal exits 3. A claim on a blocked node, a claim or a change on a closed intent, a node that cannot take a move, an intent that cannot start, park, end or abandon, an edge that is refused, an intent that cannot be unarchived and a roadmap that already exists now end with exit 3 and the same words. A missing intent, node or file still exits 1. A guard test fails when a gate that names a refusal stops as a failure.
+- Every refusal exits 3. A claim on a blocked node, a claim or a change on a closed intent, a node that cannot take a move, an intent that cannot start, park, end or abandon, an edge that is a self edge, a duplicate, a loop or on a removed node, an intent that cannot be unarchived and a roadmap that already exists now end with exit 3 and the same words. A missing intent, node (also an end of an edge) or file still exits 1. A guard test fails when a gate that names a refusal stops as a failure.
 
 ## 3.0.0-beta.10
 
