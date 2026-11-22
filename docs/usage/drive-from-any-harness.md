@@ -10,7 +10,8 @@ shows the loop a driver runs.
 When the driver is the open Claude Code or Codex session, `plastic install` writes the role
 `plastic-driver` for it, next to the planner and executor roles. The role tells the session to run
 the loop below: start one subagent or background worker for each ready node, of the role that fits
-the node's kind, and hand it the claim packet.
+the node's kind, and hand it the intent id and the node id. The worker claims its node, which
+prints the claim packet, and finishes it itself.
 
 | Node kind | Worker |
 | --------- | ------ |

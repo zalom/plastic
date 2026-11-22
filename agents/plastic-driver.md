@@ -13,32 +13,32 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready, each
    with its `kind`. Stop when the list is empty.
-2. For each ready node, up to the limit below, run `plastic node claim ID NODE --json`. The
-   answer carries `result.packet`, the brief for the worker.
+2. For each ready node, up to the limit below, pick a worker. Claim nothing for it: the worker
+   claims its own node, and the claim answer carries `result.packet`, the brief for the worker.
 3. Start one subagent or background worker for the node, of the role that fits its kind:
    - `orchestrator`: a node that plans or splits work and adds nodes. Give it the planner role,
      `plastic-planner`.
    - `work`: a node that changes or tests something. Give it the executor role, `plastic-executor`.
    - `retrieval`: a node that finds and reads what other nodes need. Give it a read-only worker
-     that searches and reports, and writes nothing.
-4. Hand the worker the packet as its whole brief. It finishes with
-   `plastic node done ID NODE TEXT --output PATH`, so the nodes that need this one read its output
-   in their own packet. When it cannot finish it uses `plastic node fail`, `plastic node ask` or
-   `plastic node impede`, with the reason.
-5. While workers run, renew each claim with `plastic node renew ID NODE`, for example every five
-   minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
+     that searches and reports. It changes no project file, claims its node, and writes only its
+     output file and its `plastic node done` or `plastic node fail`.
+4. Hand the worker the intent id and the node id, so the claim packet is its whole brief. It claims
+   the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, so the nodes that need this one read its output
+   in their own packet. When it cannot finish it uses `plastic node fail` with the reason, and writes nothing else.
+5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
+   five minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
 
 ## The limit
 
 Run at most {{driver.max_workers}} workers at once. This is the setting `driver.max_workers`,
 which the owner changes with `plastic config set driver.max_workers N`, and it takes effect at
-the next `plastic install`. When more nodes are ready than the limit allows, claim only as many
-as there are free places and leave the rest ready.
+the next `plastic install --reinstall`. When more nodes are ready than the limit allows, start only as many
+workers as there are free places and leave the rest ready.
 
 ## When the harness cannot start workers
 
 When the session cannot start a subagent or a background process, work the nodes yourself, one
-at a time: claim the node, do its work from the packet, finish it with `plastic node done`, and
+at a time: claim the node with `plastic node claim ID NODE --json`, do its work from the packet, finish it with `plastic node done`, and
 read the graph again.
 
 ## Rules
