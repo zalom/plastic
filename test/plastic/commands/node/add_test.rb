@@ -38,13 +38,21 @@ class NodeAddTest < Plastic::TestCase
     assert_equal [KEY], nodes.map { |row| row.fetch("criterion") }
   end
 
-  def test_the_next_line_offers_the_edge_add_command_and_the_because_names_graph_ready
+  def test_the_next_line_offers_the_edge_add_command_and_the_because_names_graph_check
     specified
 
     out = call("1", "do the thing", "--criterion", KEY).out
 
     assert_match(/^next: plastic edge add 1 FROM TO/, out)
-    assert_match(/^because:.*plastic graph ready 1/, out)
+    assert_match(/^because:.*then run plastic graph check 1/, out)
+  end
+
+  def test_the_because_line_says_what_an_edge_means
+    specified
+
+    out = call("1", "do the thing", "--criterion", KEY).out
+
+    assert_match(/^because:.*an edge FROM TO means TO reads, changes or tests what FROM makes/, out)
   end
 
   def test_two_nodes_read_n1_and_n2
