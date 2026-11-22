@@ -91,6 +91,7 @@ module Plastic
       code_migration_list: "Code::Migration::List",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
+      code_load_projects: "Code::Project::Load",
       code_list_projects: "Code::Project::List",
       code_list_chat: "Code::Chat::List",
       # Settings: the config file read and written one key at a time.

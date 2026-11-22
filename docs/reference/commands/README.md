@@ -49,6 +49,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | Command | What it does |
 | --- | --- |
 | [`plastic project list`](project-list/README.md) | List the registered projects with their paths |
+| [`plastic project load`](project-load/README.md) | Print a short digest of each named project to warm the context before the next ask |
 | [`plastic project new`](project-new/README.md) | Register a project and leave its store ready for intent new |
 | [`plastic project links`](project-links/README.md) | List the links that name an intent or a ruling this store lacks |
 

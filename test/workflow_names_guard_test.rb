@@ -81,6 +81,7 @@ module WorkflowNameTable
     code_migration_purge: "Code::Migration::Purge",
     code_migration_list: "Code::Migration::List",
     code_resume_graph: "Code::Graph::Resume",
+    code_load_projects: "Code::Project::Load",
     code_list_projects: "Code::Project::List",
     code_list_chat: "Code::Chat::List",
     code_list_config: "Code::Config::List",
@@ -141,8 +142,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_one_hundred_and_three_keys_in_order
-    assert_equal 103, MAPPING.size
+  def test_the_registry_holds_the_one_hundred_and_four_keys_in_order
+    assert_equal 104, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 
