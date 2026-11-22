@@ -204,7 +204,7 @@ class ProjectLoadEdgeTest < Plastic::TestCase
     FileUtils.rm_f(File.join(store, "retrieval_graph.db"))
 
     assert_equal ["#{store} (missing retrieval_graph.db)"], values(load("blog"), "store:")
-    refute File.exist?(File.join(store, "retrieval_graph.db"))
+    refute_path_exists File.join(store, "retrieval_graph.db")
   end
 
   def test_an_empty_store_folder_is_named_and_left_empty
