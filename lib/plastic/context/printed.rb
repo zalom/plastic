@@ -14,6 +14,11 @@ module Plastic
         def print_to(output) = output.row(label, value)
       end
 
+      # A value only a JSON answer carries, as data beside its text lines.
+      Datum = Struct.new(:label, :value) do
+        def print_to(output) = output.data(label, value)
+      end
+
       # A line for standard error: a note on what the call could not finish, beside what it did.
       Warning = Struct.new(:text) do
         def print_to(output) = output.warn(text)
@@ -26,6 +31,8 @@ module Plastic
       def line(text) = @entries << Line.new(text)
 
       def row(label, value) = @entries << Row.new(label, value)
+
+      def data(label, value) = @entries << Datum.new(label, value)
 
       def warning(text) = @entries << Warning.new(text)
 

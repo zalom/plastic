@@ -14,6 +14,8 @@ module Plastic
       # A warning joins the lines of the document, since JSON output writes nothing to standard error.
       def warn(text) = raw(text)
 
+      def data(label, value) = row(label, value)
+
       def rows(entries) = row("rows", entries.map { |label, value| { label.delete_suffix(":") => value } })
 
       private
