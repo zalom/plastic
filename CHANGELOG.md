@@ -5,6 +5,13 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.7
+
+- Plastic writes every stored time in UTC and shows each time in the zone of the machine. Migration `20261121090000`, for `plastic.db` and for the three databases of each store, converts the times already stored, and its down puts the old text of each changed value back from `legacy.db`. A time that names no real moment, such as hour 25, stays as it is, and the migration names it. It is the one migration that changes stored data and runs with no config switch. A sync up stores in UTC the times of the links and archives in `index.json`, the `created:` line of an intent file and the log of an old `roadmaps/SLUG.savepoint.md`, and refuses an impossible time.
+- Plastic offers its work graph to any harness that has none. `plastic graph ready --json` carries each ready node as data: id, title, kind, criterion, state and needs. `plastic node claim` prints the packet a worker needs and carries it at `result.packet`: the node, its criterion text, its input, the output of each node it needs, and the path of its output schema, `resources/tmp/schemas/NODE.json`. `plastic node done ID NODE TEXT --output PATH` stores the JSON of the file as the node's output and refuses output that is not JSON. The worker never runs `plastic`. The page `docs/usage/drive-from-any-harness.md` shows the driver loop for four harnesses.
+- `plastic edge add` refuses a self edge, a missing or removed node, a duplicate edge and a loop, each with its own message, and a loop names its path. `plastic graph check` names a repair command for each finding, and the first repair is its `next:` line. New findings cover a need on a removed node, a loop in a hand-edited `graph.json`, a schema file with no live node, and a stored output that is not JSON. No loop check uses a recursive query or method.
+- A designed stop no longer puts the workflow and step names in its message, so the JSON `result.error.message` of such a stop loses its `workflow, step:` prefix. No JSON key changes.
+
 ## 3.0.0-beta.6
 
 - `plastic intent report ID PATH` records a report with no `--asked` flag and no check of chat words. It keeps its checks of the path, the file type and a closed intent, and adds the line `- PATH` under `## Reports` in `outcome.md`. `PLASTIC.md` and the help topic `completion-and-done` say which work records a report: research, a comparison of options, a review or audit that is the work, and a proposal for a ruling get one with no ask; a plan, a delivery report or an explainer gets one only when the owner asks or `reports.mandatory` names it.

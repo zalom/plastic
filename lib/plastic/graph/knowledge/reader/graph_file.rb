@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../../clock"
 require_relative "../../../invalid"
 require_relative "graph_file/document"
 require_relative "graph_file/problems"
@@ -51,7 +52,7 @@ module Plastic
 
           def row(record, entry)
             keys = record.members - [:origin_id]
-            keys.to_h { |key| [key, entry[key.to_s]] }.merge(intent_id: @intent_id, origin_id: @origin_id)
+            Plastic.utc_fields(keys.to_h { |key| [key, entry[key.to_s]] }).merge(intent_id: @intent_id, origin_id: @origin_id)
           end
         end
       end

@@ -64,4 +64,22 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
 
     assert_equal [%w[2026-10-01 Opened], ["2026-10-02", "Started it"]], retrieval.roadmaps.log("plan").map { |line| [line.at, line.text] }
   end
+
+  def savepoint_rows(line)
+    write("roadmaps/plan.savepoint.md", "#{line} Started\n")
+    rows(result, folder.path("roadmaps/plan.savepoint.md"))
+  end
+
+  def test_a_savepoint_line_with_an_offset_reaches_the_roadmap_log_in_utc
+    savepoint_rows("2026-08-01T10:00:00+02:00")
+
+    assert_equal ["2026-08-01T08:00:00Z"], retrieval.roadmaps.log("plan").map(&:at)
+  end
+
+  def test_a_savepoint_line_with_an_impossible_time_is_refused_and_writes_no_roadmap_log_row
+    error = assert_raises(Plastic::Invalid) { savepoint_rows("2026-08-01T25:00:00+02:00") }
+
+    assert_equal "2026-08-01T25:00:00+02:00 is not a time", error.message
+    assert_empty retrieval.roadmaps.log("plan")
+  end
 end

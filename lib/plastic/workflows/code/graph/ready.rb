@@ -22,6 +22,17 @@ module Plastic
             context[:nodes] = context.retrieval.ready_nodes(context.intent_id)
             context[:first] = context.nodes.first&.id
             context.nodes.each { |node| context.print("ready: #{node.id} #{node.title}") }
+            context.data("nodes", node_fields(context))
+          end
+
+          # The ready nodes as data for a JSON answer: the fields of each and the ids of the nodes it needs.
+          def self.node_fields(context)
+            needs = context.retrieval.structure.edges(context.intent_id).select { |edge| edge.kind == "needs" }.group_by(&:to)
+            context.nodes.map { |node| node_data(node, needs.fetch(node.id, []).map(&:from)) }
+          end
+
+          def self.node_data(node, needs)
+            node.to_h.slice(:id, :title, :kind, :criterion, :state).transform_keys(&:to_s).merge("needs" => needs)
           end
 
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"

@@ -110,6 +110,13 @@ class GraphResumeTest < Plastic::TestCase
     assert_equal 5, lines(call).count { |line| line.start_with?("log: - ") }
   end
 
+  def test_the_log_lines_show_their_time_in_the_zone_of_the_machine
+    intent_with_nodes_in_each_state
+    times = lines(call).grep(/\Alog: - /).map { |line| line.split[2] }
+
+    assert_equal [5, []], [times.size, times.grep(/Z\z/)]
+  end
+
   def test_no_more_than_five_savepoint_lines_print
     intent_with_nodes_in_each_state
 
@@ -130,7 +137,9 @@ class GraphResumeTest < Plastic::TestCase
     result = call
 
     assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
-      "then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
+      "then add dependencies with plastic edge add. An edge FROM TO means TO reads, changes or tests what FROM makes. " \
+      "Nodes with no path between them may run at the same time. A red test node comes before the code it tests. " \
+      "Run plastic graph check 1 after the edges and repair each finding it names, then use plastic graph ready 1."
     refute_includes result.out, "then: (because"
   end
 

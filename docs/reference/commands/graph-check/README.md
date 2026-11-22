@@ -1,6 +1,6 @@
 # plastic graph check
 
-Find a done node with no findings, an isolated node, a retry cap or no done criterion.
+Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node.
 
 ```sh
 plastic graph check ID

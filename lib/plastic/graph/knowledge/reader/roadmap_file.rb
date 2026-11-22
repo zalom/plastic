@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../../clock"
 require_relative "../../../invalid"
 require_relative "../roadmap"
 require_relative "../roadmap/form"
@@ -56,7 +57,7 @@ module Plastic
 
           def header
             title, goal, opened_at = @records.head.values_at("title", "goal", "opened_at")
-            { slug: @slug, title:, goal: RoadmapRecords.blank(goal), opened_at: RoadmapRecords.blank(opened_at) }
+            { slug: @slug, title:, goal: RoadmapRecords.blank(goal), opened_at: Plastic.utc(RoadmapRecords.blank(opened_at)) }
           end
 
           def rows(kind, now)
@@ -74,7 +75,7 @@ module Plastic
 
           def log_row(record) = base(record, "at", "text", "session_id").merge(position: number(record, "position"))
 
-          def base(record, *names) = names.to_h { |name| [name.to_sym, RoadmapRecords.blank(record[name])] }.merge(roadmap: @slug)
+          def base(record, *names) = Plastic.utc_fields(names.to_h { |name| [name.to_sym, RoadmapRecords.blank(record[name])] }).merge(roadmap: @slug)
 
           def number(record, name)
             Integer(record[name], 10)

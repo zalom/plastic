@@ -44,7 +44,7 @@ so they are never versioned. The files printed from them are.
 | `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
 | `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows, outside the backups and rebuilt by `plastic doctor` |
-| `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`; made by the first migration that keeps rows, and read only by `plastic migration down` and `plastic migration purge` |
+| `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`, and the old text of each value a migration rewrote, in `changed_values_VERSION`; made by the first migration that keeps rows or values, and read only by `plastic migration down` and `plastic migration purge` |
 
 The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
 as of the last print. No table logs the history of a row.
@@ -53,7 +53,17 @@ A node move writes four kinds of row in one transaction: the node's state, its r
 and the changed files of the intent folder it read.
 
 Every row carries `origin_id`, the id of the installation that wrote it. The id sits in a file
-at the home and is made on first use. Every stored time is UTC.
+at the home and is made on first use.
+
+Every time Plastic stores is UTC, written as ISO 8601 with `Z`, such as `2026-11-21T09:00:00Z`.
+This holds for every database row and every printed file, and one writer makes the text:
+`Plastic.timestamp` in `lib/plastic/clock.rb`. A time shown to a person, in a command's output or
+a hook's reply, is converted to the zone of the machine when it is printed, with its offset, such
+as `2026-11-21T10:00:00+01:00`. `Plastic.local` does that conversion, and `--json` carries the same
+text as the screen. The zone is the one `TZ` names, or the zone of the system; no setting changes
+it. A date with no time, such as the day an intent opened, stays a date. So a store restored on a
+machine in another zone keeps its times in order, and shows them in that machine's zone.
+A backup belongs to the calendar day of the machine on which its UTC time falls.
 
 An intent row has its number in `id`, its Luhmann id in `intent_id`, the Luhmann id of its
 parent in `parent_id`, and an optional `ref` to an intent it follows. Its status is one of six:
@@ -183,6 +193,8 @@ holds the node and lapses after 900 seconds without a renewal; each command of t
 `hook stop` renew it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
+
+A driver outside the session can run the same steps. `Graph::Work::Packet` builds the claim's packet from the retrieval graph, and `Graph::Work::Schemas` finds the schema file of a node at `resources/tmp/schemas/NODE.json`. Plastic names the file and never checks JSON against it: the harness does. `Workflows::NodeOutput` reads the file that `plastic node done --output` stores. [Drive a graph from any harness](../usage/drive-from-any-harness.md) shows the loop.
 
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
 every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
@@ -386,8 +398,10 @@ its row commit in one transaction, so a failure leaves the database as it was ba
 A migration that removes data keeps it in `legacy.db` in the same transaction, and the ledger in
 `plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
 newest migration the store records from those rows. A migration that changes stored data waits
-behind a config switch that is off by default, such as `migrate.drop_document_revisions`. `docs/contributing/MIGRATIONS.md` says how to add a
-migration and how a down works.
+behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
+one exception is the migration that writes every stored time in UTC, which has no switch; the
+owner ruled so on 22 November 2026. `docs/contributing/MIGRATIONS.md`
+says how to add a migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,
 skips a missing database by name, copies the other files of the home, and checks that the real

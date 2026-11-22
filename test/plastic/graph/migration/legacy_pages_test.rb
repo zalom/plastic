@@ -64,7 +64,7 @@ class GraphLegacyPagesTest < Plastic::TestCase
   end
 
   def test_the_migration_goes_down_by_removing_its_version_alone
-    home = trimmed_home.tap { |trimmed| migrate(trimmed, ALL) }
+    home = utc_down(trimmed_home.tap { |trimmed| migrate(trimmed, ALL) })
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

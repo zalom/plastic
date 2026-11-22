@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../clock"
 require_relative "../record"
 
 module Plastic
@@ -27,7 +28,7 @@ module Plastic
 
         def self.parsed(found)
           fields = found.named_captures.transform_keys(&:to_sym)
-          fields.merge(at: unset(fields[:at]), session_id: unset(fields[:session_id]), sha256: bare(fields[:sha256]), text: fields[:text].to_s,
+          fields.merge(at: Plastic.utc(unset(fields[:at])), session_id: unset(fields[:session_id]), sha256: bare(fields[:sha256]), text: fields[:text].to_s,
             **fields.slice(:phase, :node, :path).transform_values { |word| blank(word) })
         end
 
@@ -51,6 +52,9 @@ module Plastic
           head = [at, phase, node, session_id].map { |value| form.word(value) }
           ["-", *head, kind, form.word(path), hash_word, form.one_line(text)].reject(&:empty?).join(" ")
         end
+
+        # The line as a person reads it: its time in `zone` or else the zone of the machine. `line` stays the work.log form.
+        def shown(zone = nil) = with(at: Plastic.local(at, zone)).line
 
         private
 

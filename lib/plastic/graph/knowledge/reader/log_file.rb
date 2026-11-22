@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../../../clock"
 require_relative "../../rows/log_line"
 require_relative "../../rows/savepoint"
 
@@ -35,7 +36,7 @@ module Plastic
 
           def old_row(line)
             at, said = Work::Savepoint.parse(line)
-            { intent_id: @intent_id, at:, kind: "noted", text: said }
+            { intent_id: @intent_id, at: Plastic.utc(at), kind: "noted", text: said }
           end
         end
       end

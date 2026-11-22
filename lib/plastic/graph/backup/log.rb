@@ -15,7 +15,7 @@ module Plastic
         # event and its fields as key=value pairs.
         def self.line(time, event, **fields)
           pairs = fields.map { |key, value| "#{key}=#{value.to_s.tr("\n", " ")}" }
-          [time.getutc.strftime("%Y-%m-%dT%H:%M:%SZ"), event, *pairs].join(" ")
+          [Plastic.timestamp(time), event, *pairs].join(" ")
         end
 
         def initialize(folder, now:, live: ->(_line) {})

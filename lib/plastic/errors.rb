@@ -29,13 +29,22 @@ module Plastic
 
   # A step broke, its done check still fails, or a gate stopped the call as a failure. Exit 1.
   class Failed < Error
-    def self.raised(workflow, step, error) = new(describe(error), source: "#{workflow}, #{step}")
+    def self.raised(workflow, step, error) = Crashed.new(describe(error), source: "#{workflow}, #{step}")
 
     def self.describe(error) = [("#{error.class}: " unless error.is_a?(Failed)), error.message].join
 
     def exit_code = 1
 
+    # A stop the workflow designed says only its message. The command run keeps the workflow and the status, not the step.
+    def tell(output, offer) = output.failed(message, offer)
+  end
+
+  # A step raised an exception nobody planned for. Exit 1, and the answer names the place that broke.
+  class Crashed < Failed
     def tell(output, offer) = output.failed(message, offer, source:)
+
+    # The command run keeps the status of every failed call: the crash is a kind of failure, not a new status.
+    def status = "failed"
   end
 
   # The owner holds this step: a gate stopped the call as a refusal. Exit 3.

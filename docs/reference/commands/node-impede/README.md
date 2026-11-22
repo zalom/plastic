@@ -11,7 +11,7 @@ plastic node impede ID NODE TEXT [--file PATH]
 | `ID` | the intent | |
 | `NODE` | the node | |
 | `TEXT` | the impediment | |
-| `--file PATH` | a file of the intent folder to read as the result; repeat for more; every changed file when left out | `[]` |
+| `--file PATH` | a document of the intent folder that the sync reads in as the result; repeat for more; every changed file when left out | `[]` |
 
 ## The events of one call, step by step
 

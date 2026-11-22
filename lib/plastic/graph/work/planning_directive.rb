@@ -4,6 +4,9 @@ module Plastic
   module Graph
     module Work
       module PlanningDirective
+        EDGE_MEANING = "An edge FROM TO means TO reads, changes or tests what FROM makes. " \
+          "Nodes with no path between them may run at the same time. A red test node comes before the code it tests."
+
         TEXT = "Every plan and every planned code change follows the Principle of Least Surprise: a name does what " \
           "it says, a word means the same thing everywhere, nothing has hidden side effects, and standard conventions " \
           "come first. The work graph handles every ambiguity, newly found issue and blocker. Resolve an ambiguity " \

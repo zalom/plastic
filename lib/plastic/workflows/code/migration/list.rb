@@ -21,7 +21,7 @@ module Plastic
 
           def self.ledger(context) = Plastic::Graph::MigrationLedger.new(Plastic::Graph::Database.open_local(context.scope.plastic_home).fetch(:local), context.now)
 
-          def self.event(row) = row.values_at("at", "event", "version").push(Migration.counted(JSON.parse(row.fetch("moved")))).join("  ")
+          def self.event(row) = [Plastic.local(row.fetch("at")), *row.values_at("event", "version")].push(Migration.counted(JSON.parse(row.fetch("moved")))).join("  ")
 
           def self.store(context) = Plastic::Graph::LegacyStore.new(context.scope.plastic_home, context.store)
 

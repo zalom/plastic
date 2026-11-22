@@ -21,6 +21,7 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/knowledge/prints/contents.rb
     plastic/graph/source.rb
     plastic/graph/retrieval/store_read.rb
+    plastic/graph/migration/utc_times.rb
   ].map { |path| File.join(KERNEL, path) }.freeze
   DECLARATION = /create_table\s+:(\w+)[^\n]*legacy:\s*true/
 

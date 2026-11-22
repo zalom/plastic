@@ -12,9 +12,9 @@ class MigrationListTest < Plastic::TestCase
 
   def down(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
-  def test_a_list_prints_each_ledger_row_of_the_store
+  def test_a_list_prints_each_ledger_row_of_the_store_in_the_zone_of_the_machine
     assert_call list(migrated_to_drop), code: 0,
-      out: ["2026-11-19T12:00:00Z  up  #{DROP}  1 row of document_revisions"]
+      out: ["#{shown("2026-11-19T12:00:00Z")}  up  #{DROP}  1 row of document_revisions"]
   end
 
   def test_a_list_names_what_a_down_would_undo_now
@@ -27,7 +27,7 @@ class MigrationListTest < Plastic::TestCase
     down(home)
     result = list(home)
 
-    assert_call result, code: 0, out: ["2026-11-19T13:00:00Z  down  #{DROP}  1 row of document_revisions"]
+    assert_call result, code: 0, out: ["#{shown("2026-11-19T13:00:00Z")}  down  #{DROP}  1 row of document_revisions"]
     refute_includes result.out, "would undo"
   end
 

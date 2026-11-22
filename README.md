@@ -203,7 +203,7 @@ plastic intent abandon 12               # Close as abandoned
 ```bash
 plastic graph show 12                 # The work graph of intent 12
 plastic graph ready 12                # The nodes ready to start
-plastic graph check 12                # Find a done node with no findings, an isolated node or a retry cap
+plastic graph check 12                # Find a done node with no findings, an isolated node, a retry cap, a loop or a stray schema file
 plastic node claim 12 n3              # Claim a ready node
 plastic node done 12 n3 "TEXT"        # Close a claimed node with its findings
 plastic node resolve 12 n3 "TEXT"     # Reopen a node that needs info or is impeded
@@ -420,6 +420,7 @@ stores under `~/.plastic` stay.
 - **[INSTALL.md](INSTALL.md)**: every install path.
 - **[docs/reference/commands/](docs/reference/commands/README.md)**: one page for each `plastic` command.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
+- **[Drive a graph from any harness](docs/usage/drive-from-any-harness.md)**: the loop a script or an SDK runs to work a graph.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 

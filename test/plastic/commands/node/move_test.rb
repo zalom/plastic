@@ -35,7 +35,8 @@ class NodeMoveTest < Plastic::TestCase
   def test_only_the_moves_that_give_a_result_take_the_file_option
     names = ->(move) { move.options.map(&:name) }
 
-    assert_equal [[:files]] * 4, [Node::Ask, Node::Done, Node::Fail, Node::Impede].map(&names)
+    assert_equal [[:files]] * 3, [Node::Ask, Node::Fail, Node::Impede].map(&names)
+    assert_equal [%i[files output]], [Node::Done].map(&names)
     assert_equal [[]], [Node::Resolve].map(&names).uniq
   end
 

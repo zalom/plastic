@@ -115,10 +115,41 @@ in an earlier release ends the same as one that runs both in one run. A store wi
 To add a migration that removes data, add its version to `KEEPS`, list the tables it drops in
 `WHOLE`, and make its data step call `keep` before each delete. Then write the test of its down.
 
+A migration can also rewrite values in place. `LegacyKeep::VALUES` lists such versions. It
+keeps the old text of each value it changes in one table named for the version, such as
+`changed_values_20261121090000`, with the schema, table and column of the value, the key of its
+row, its old text and its new text. The key is a JSON array of the columns of the first full
+unique index of the table, which `RowKey` in `lib/plastic/graph/migration/row_key.rb` builds.
+Its data step calls `keep.values` before each `UPDATE`.
+
+- `LegacyValues` in `lib/plastic/graph/migration/legacy_values.rb` makes the table only when a
+  value changed. A run that made `legacy.db` and kept nothing in it removes the file.
+- A down writes each old text back on its own row, where the live value still equals its new
+  text. The values the migration changed come back byte for byte, and a value written after the
+  migration stays.
+- A version of `VALUES` that changed no value has no table, so its down removes the version
+  alone.
+
+Migration `20261121090000` writes every stored time that carries an offset in UTC, with `Z`, the
+form `Plastic.timestamp` writes. `UtcTimes::COLUMNS` in `lib/plastic/graph/migration/utc_times.rb`
+lists the time columns of the store. A date with no time, a time already in UTC and a blank stay
+as they are. A time with an offset that names no real moment, such as hour 25, stays as it is
+too, and the migrate notes name each one by its column and its text, so a person can fix it. The
+migration is in `KEEPS` and `VALUES` and keeps each old text in `changed_values_20261121090000`.
+
+The home migration of the same version does the same for `plastic.db` and names its unreadable
+times too. `plastic.db` has no down. The way back is the copy that the home migration writes to
+`backups/plastic-<UTC timestamp>.db` before it runs.
+
+After `plastic update`, run `plastic sync down` so the printed files carry the UTC times too. A
+sync up reads each time in the files into UTC, so a file an earlier release printed with an
+offset still gives UTC rows.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as
-`docs/release-lines.md` says. `MigrationList::HELD` in
+`docs/release-lines.md` says, with one exception: the UTC migration named at the end of this
+section. `MigrationList::HELD` in
 `lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
 `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
 behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`.
@@ -132,6 +163,10 @@ behind `migrate.drop_document_revisions`, so the three run in the same `plastic 
 
 To hold a new migration, add its version and its switch to `HELD`, and add the switch to
 `lib/plastic/config/defaults.rb`, off.
+
+Migration `20261121090000`, which writes every stored time in UTC, is the one exception to this
+rule. The owner ruled on 22 November 2026 that it has no switch: it changes the text of a time
+and not the time it names, and the code that reads times expects UTC.
 
 ## The ledger
 
@@ -159,7 +194,8 @@ A down refuses with exit 3 and changes nothing in these cases:
 
 - The store records a version newer than this release, or lacks one older than the newest it records.
 - The newest migration kept nothing and is not in `LegacyKeep::ALONE`.
-- The rows it kept are not in `legacy.db`.
+- The rows it kept are not in `legacy.db`. A version of `VALUES` with no table is not refused:
+  it changed no value, so its down removes the version alone.
 - A live row it would overwrite changed after the migration kept it.
 
 A failed backup stops the down with exit 1 before it changes anything. After a down, the store

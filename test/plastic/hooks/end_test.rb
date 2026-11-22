@@ -84,8 +84,8 @@ class EndDailyBackupTest < Plastic::TestCase
 
   def test_a_session_end_after_the_start_of_day_backup_takes_the_end_of_day_backup
     home = fresh_home.tap { |path| seed_config(path, "global:\n  backup:\n    daily: true\n") }
-    end_at(home, Time.new(2026, 1, 2, 9, 0, 0, "+01:00"))
-    result = end_at(home, Time.new(2026, 1, 2, 18, 0, 0, "+01:00"))
+    end_at(home, local_at(2026, 1, 2, 9, 0))
+    result = end_at(home, local_at(2026, 1, 2, 18, 0))
 
     assert_equal [0, ""], [result.code, result.err]
     assert_equal ["start of day", "end of day"], backup_reasons(home, "beta")

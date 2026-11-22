@@ -38,7 +38,7 @@ module Plastic
           outcome :done, offers: nil, because: "the chat history is listed"
 
           def self.line(message)
-            [message["at"], message["store"] || "-", message["intent_id"] || "-", message["text"]].join("  ")
+            [Plastic.local(message["at"]), message["store"] || "-", message["intent_id"] || "-", message["text"]].join("  ")
           end
 
           def self.start_of(text, clock)

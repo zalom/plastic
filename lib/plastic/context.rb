@@ -51,6 +51,9 @@ module Plastic
     # A labelled value the call reports as a row, such as the passages a search found.
     def row(label, value) = tap { @printed.row(label, value) }
 
+    # A value the call reports as data in a JSON answer only; the text answer prints its lines instead.
+    def data(label, value) = tap { @printed.data(label, value) }
+
     # A line the call writes to standard error, such as a ledger write that failed after the change committed.
     def warn(line) = tap { @printed.warning(line) }
 

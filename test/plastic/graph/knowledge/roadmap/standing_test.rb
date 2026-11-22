@@ -46,7 +46,7 @@ class KnowledgeRoadmapStandingTest < Plastic::TestCase
   end
 
   def test_an_item_after_itself_is_a_loop_refusal
-    assert_equal ["an edge from a to a would loop", :refusal], standing.addition_problem("a", 1, ["a"])
+    assert_equal ["an edge from a to a would loop: a -> a", :refusal], standing.addition_problem("a", 1, ["a"])
   end
 
   def test_an_item_that_breaks_nothing_has_no_problem

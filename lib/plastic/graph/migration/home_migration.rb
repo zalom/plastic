@@ -7,16 +7,22 @@ require_relative "home_rename"
 require_relative "../schema/migrator"
 require_relative "../schema/state"
 require_relative "migration_reason"
+require_relative "utc_times"
 
 module Plastic
   module Graph
     # Brings the home database to the newest version. A database behind is copied into backups first, and the former
-    # name local.db is renamed to plastic.db. The answer is :current, :migrated, or the reason it stayed behind.
+    # name local.db is renamed to plastic.db. The answer is :current, :migrated, or the reason it stayed behind. `notes`
+    # names, after each migration, every time the UTC migration left as it was because it names no real moment. plastic.db
+    # has no down: the copy in backups/ is the way back.
     class HomeMigration
       def initialize(home, now)
         @home = home
         @now = now
+        @notes = []
       end
+
+      attr_reader :notes
 
       def call
         path = [current, former].find { |file| File.exist?(file) }
@@ -39,7 +45,13 @@ module Plastic
 
       def migrated
         local.migrate
+        note_unreadable
         :migrated
+      end
+
+      def note_unreadable
+        unreadable = UtcTimes.unreadable(Database::ConnectionPool.for(current), UtcTimes::HOME_COLUMNS)
+        UtcTimes::Result.new(changed: 0, unreadable:).line("plastic.db")&.then { |line| @notes << line }
       end
 
       def preparation_failure(path)

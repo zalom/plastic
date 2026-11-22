@@ -75,7 +75,7 @@ class GraphLegacyTrimTest < Plastic::TestCase
   end
 
   def test_the_trim_goes_down_by_removing_its_version_alone
-    home = dropped_home.tap { |dropped| migrate(dropped, [DROP, TRIM]) }
+    home = utc_down(dropped_home.tap { |dropped| migrate(dropped, [DROP, TRIM]) })
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

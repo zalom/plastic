@@ -7,8 +7,8 @@ require_relative "../../../../lib/plastic/graph/work/chat/writer"
 class ChatListTest < Plastic::TestCase
   fixtures :empty
 
-  ZoneClock = Struct.new(:now) do
-    def local(*day) = Time.local(*day)
+  ZoneClock = Struct.new(:now, :offset) do
+    def local(*day) = offset ? Time.new(*day, 0, 0, 0, offset) : Time.local(*day)
   end
 
   NOW = ZoneClock.new(Time.new(2026, 11, 17, 12, 0, 0, "+01:00"))
@@ -31,6 +31,12 @@ class ChatListTest < Plastic::TestCase
     assert_equal [true, true], [texts.first.include?("earlier"), texts.last.include?("later")]
   end
 
+  def test_each_message_shows_its_time_in_the_zone_of_the_machine
+    record("global", Time.utc(2026, 11, 17, 8, 0, 0), "a prompt")
+
+    assert_includes list.out, shown("2026-11-17T08:00:00Z")
+  end
+
   def test_since_leaves_out_older_prompts
     record("global", Time.new(2026, 11, 15, 9, 0, 0, "+01:00"), "stale")
     record("global", Time.new(2026, 11, 17, 9, 0, 0, "+01:00"), "fresh")
@@ -40,29 +46,17 @@ class ChatListTest < Plastic::TestCase
   end
 
   def test_a_date_without_a_zone_is_read_in_the_zone_of_the_clock
-    in_zone("Europe/Berlin") do
-      record("global", Time.new(2026, 11, 17, 0, 30, 0, "+01:00"), "just after midnight")
+    record("global", Time.new(2026, 11, 17, 0, 30, 0, "+01:00"), "just after midnight")
 
-      assert_includes list("--since", "2026-11-17").out, "just after midnight"
-    end
+    assert_includes list("--since", "2026-11-17", clock: ZoneClock.new(NOW.now, "+01:00")).out, "just after midnight"
   end
 
-  def in_zone(name)
-    was = ENV.fetch("TZ", nil)
-    ENV["TZ"] = name
-    yield
-  ensure
-    ENV["TZ"] = was
-  end
+  def test_a_past_day_starts_at_midnight_in_the_offset_the_clock_gives_that_day
+    record("global", Time.utc(2026, 10, 19, 22, 30), "after midnight in summer time")
+    record("global", Time.utc(2026, 10, 19, 21, 30), "before midnight in summer time")
+    out = list("--since", "2026-10-20", clock: ZoneClock.new(NOW.now, "+02:00")).out
 
-  def test_a_past_day_starts_at_midnight_of_that_day_across_a_change_of_summer_time
-    in_zone("Europe/Berlin") do
-      record("global", Time.utc(2026, 10, 19, 22, 30), "after midnight in summer time")
-      record("global", Time.utc(2026, 10, 19, 21, 30), "before midnight in summer time")
-      out = list("--since", "2026-10-20").out
-
-      assert_equal [true, false], [out.include?("after midnight in summer time"), out.include?("before midnight in summer time")]
-    end
+    assert_equal [true, false], [out.include?("after midnight in summer time"), out.include?("before midnight in summer time")]
   end
 
   def test_a_bad_date_is_usage_with_exit_2

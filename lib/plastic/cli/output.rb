@@ -30,6 +30,9 @@ module Plastic
 
       def rows(entries) = tap { entries.each { |label, value| row(label, value) } }
 
+      # Data belongs to a JSON answer; a text answer says the same in its lines.
+      def data(_label, _value) = self
+
       def next_step(command, because:) = tap { @result.offer(command, because) }
 
       # Prints the answer once. `project` is the store the call named, so a

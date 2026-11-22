@@ -60,6 +60,6 @@ class HookDailyBackupOrderTest < Plastic::TestCase
     plastic("hook", "stop", env: env_for(home).merge("PLASTIC_SESSION" => "s-1"), input: event, table: Plastic::CLI::TABLE, clock: Clock.new(MORNING))
     copy = File.join(backups_dir(home), stamp(MORNING), "work_graph-#{stamp(MORNING)}.db")
 
-    assert_equal [["2026-01-02T09:00:00+01:00"]], SQLite3::Database.new(copy).execute("SELECT seen_at FROM nodes WHERE claimed_by = ?", ["s-1"])
+    assert_equal [["2026-01-02T08:00:00Z"]], SQLite3::Database.new(copy).execute("SELECT seen_at FROM nodes WHERE claimed_by = ?", ["s-1"])
   end
 end
