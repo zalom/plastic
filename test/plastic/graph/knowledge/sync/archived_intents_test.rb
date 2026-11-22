@@ -35,6 +35,15 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
     assert_equal [["done", "delivered"]], work_rows("SELECT status, disposition FROM intents").map(&:values)
   end
 
+  def test_an_archive_entry_stores_its_time_and_the_time_of_its_completion_in_utc
+    write_index
+    read_in
+
+    found = ["archives", "completions"].map { |table| work_rows("SELECT at FROM #{table}").map(&:values) }
+
+    assert_equal [[["2026-10-05T08:00:00Z"]]] * 2, found
+  end
+
   def test_an_index_that_is_not_json_lists_no_archive
     write("store/index.json", "{not json")
     read_in

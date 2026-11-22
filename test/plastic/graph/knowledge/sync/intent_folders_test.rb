@@ -9,11 +9,11 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
 
   def folders = IntentFolders.new(folder, retrieval)
 
-  def test_a_folder_with_no_row_gives_a_row_with_the_fields_of_its_intent_file
+  def test_a_folder_with_no_row_gives_a_row_with_the_fields_of_its_intent_file_and_its_created_time_in_utc
     write("store/2--beta/2--beta.md", page("2", "Beta"))
     intent = folders.intents.first
 
-    assert_equal ["2", "beta", "Beta", "open", STAMP, nil], [intent.intent_id, intent.slug, intent.title, intent.status, intent.opened_at, intent.reason]
+    assert_equal ["2", "beta", "Beta", "open", "2026-10-05T08:00:00Z", nil], [intent.intent_id, intent.slug, intent.title, intent.status, intent.opened_at, intent.reason]
   end
 
   def index_entry(**fields)
