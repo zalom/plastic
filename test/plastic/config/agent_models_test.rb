@@ -33,4 +33,8 @@ class AgentModelsTest < Plastic::TestCase
   def test_an_agent_with_no_shipped_effort_takes_the_default
     assert_equal ["high", "medium"], [Plastic::Config::AgentModels.shipped_effort_for("plastic-secondary-advisor"), Plastic::Config::AgentModels.shipped_effort_for("plastic-executor")]
   end
+
+def test_the_driver_tier_is_sonnet
+  assert_equal "sonnet", Plastic::Config::AgentModels.shipped_model_for("plastic-driver")
+end
 end
