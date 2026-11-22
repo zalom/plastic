@@ -73,6 +73,29 @@ class ProjectLoadTest < Plastic::TestCase
     assert_equal expected, values(load("blog"), "delivered:")
   end
 
+  def test_a_delivery_closed_on_a_date_only_shows_that_date
+    register("blog")
+    intent = store_intent("blog", "Old post", status: "done", closed_at: "2025-03-04")
+
+    assert_equal ["2025-03-04 #{intent.intent_id} Old post"], values(load("blog"), "delivered:")
+  end
+
+  def test_a_project_with_no_store_folder_says_so_and_lists_no_work
+    register("blog")
+    FileUtils.rm_rf(@repos.fetch("blog"))
+
+    result = load("blog")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes lines(result), "store: #{File.join(@plastic_home, "stores", "blog")} (missing)"
+    assert_includes lines(result), "repo: #{@repos.fetch("blog")} (missing)"
+    assert_empty values(result, "in play:")
+  end
+
+  def test_the_global_store_has_no_repository
+    assert_includes lines(load("global")), "repo: none registered"
+  end
+
   def test_a_repository_with_git_is_a_coding_project_and_gets_an_architecture_line
     register("blog")
     work("blog")
@@ -109,7 +132,7 @@ class ProjectLoadTest < Plastic::TestCase
     result = load("blog", "shop")
 
     assert_equal 1, values(result, "then:").size
-    assert_match(/\Athen: /, lines(result).reject { |line| line.start_with?("because:") }.last)
+    assert_match(/\Athen: /, lines(result).reject { |line| line.empty? || line.start_with?("because:") }.last)
     refute lines(result).any? { |line| line.start_with?("next:") }
     assert_includes lines(result), "because: the projects are loaded; the next work waits for the owner's ask"
   end
