@@ -35,7 +35,7 @@ module Plastic
 
     def exit_code = 1
 
-    # A stop the workflow designed says only its message; the place that raised it stays in the run log.
+    # A stop the workflow designed says only its message. The command run keeps the workflow and the status, not the step.
     def tell(output, offer) = output.failed(message, offer)
   end
 

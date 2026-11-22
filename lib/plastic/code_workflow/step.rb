@@ -19,7 +19,7 @@ module Plastic
 
       # The done check must hold after the body, or the step failed.
       def confirm(ctx, workflow)
-        raise Failed.new("the step ran and its done check still fails", source: "#{workflow.key}, #{name}") unless done?(ctx)
+        raise Crashed.new("the step ran and its done check still fails", source: "#{workflow.key}, #{name}") unless done?(ctx)
       end
     end
   end

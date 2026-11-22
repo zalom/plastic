@@ -32,12 +32,12 @@ class NodeClaimBadOutputTest < Plastic::TestCase
   def test_a_claim_with_a_needed_node_that_holds_output_that_is_not_json_fails_and_names_the_node
     result = cli("node", "claim", "1", "n2")
 
-    assert_equal [1, ""], [result.code, result.out]
+    assert_equal 1, result.code
     assert_equal "plastic: node n1 holds output that is not JSON\n", result.err.lines.first
   end
 
   def test_the_refused_claim_offers_graph_check
-    assert_includes cli("node", "claim", "1", "n2").err, "next: plastic graph check 1"
+    assert_includes cli("node", "claim", "1", "n2").out, "next: plastic graph check 1\n"
   end
 
   def test_the_refused_claim_writes_no_run_and_leaves_the_node_open

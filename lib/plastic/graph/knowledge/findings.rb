@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "spec"
+require_relative "../work/stored_output"
 require_relative "findings/edge_findings"
 require_relative "findings/schema_findings"
 
@@ -25,10 +26,10 @@ module Plastic
           @schemas = schemas
         end
 
-        def all = repaired.map(&:text)
+        def all = with_repairs.map(&:text)
 
         # The findings, each with the command that repairs it (nil when no command does).
-        def repaired = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding + schema_findings
+        def with_repairs = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding + schema_findings
 
         private
 
@@ -42,9 +43,15 @@ module Plastic
 
         def node_findings = live.flat_map { |node| findings_for(node) }
 
-        def findings_for(node) = [findings_finding(node), edge_finding(node), retry_finding(node)].compact
+        def findings_for(node) = [findings_finding(node), output_finding(node), edge_finding(node), retry_finding(node)].compact
 
         def findings_finding(node) = Findings.findings_finding(node)&.then { |text| Finding.new(text, nil) }
+
+        def output_finding(node)
+          return nil if Work::StoredOutput.valid?(node.output)
+
+          Finding.new("node #{node.id} holds output that is not JSON", nil)
+        end
 
         def retry_finding(node)
           Findings.retry_finding(node, run_counts[node.id])&.then { |text| Finding.new(text, "plastic node resolve #{@intent_id} #{node.id} TEXT") }

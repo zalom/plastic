@@ -13,6 +13,8 @@ module Plastic
         class Check < CodeWorkflow
           clear_declarations
 
+          HAND_EDIT = "hand edit: no command repairs these findings; edit graph.json by hand, then run plastic sync up and plastic graph check again"
+
           sets :intent, :findings, :first, :repair
 
           read "find the intent" do |context|
@@ -22,8 +24,8 @@ module Plastic
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
           read "find problems" do |context|
-            context[:findings] = Plastic::Graph::Knowledge::Findings.new(context.retrieval, context.intent_id, schemas: schemas(context)).repaired
-            context[:repair] = context.findings.filter_map(&:repair).first || "plastic graph check #{context.intent_id}"
+            context[:findings] = Plastic::Graph::Knowledge::Findings.new(context.retrieval, context.intent_id, schemas: schemas(context)).with_repairs
+            context[:repair] = context.findings.filter_map(&:repair).first
             print_findings(context)
           end
 
@@ -40,7 +42,10 @@ module Plastic
               context.print("finding: #{finding.text}")
               context.print("repair: #{finding.repair}") if finding.repair
             end
+            context.print(HAND_EDIT) if context.repair.nil?
           end
+
+          gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? || !context.repair.nil? }
 
           gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? },
             offers: "%{repair}", because: "repair the findings above, then run plastic graph check %{intent_id} again"

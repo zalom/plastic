@@ -18,7 +18,7 @@ module Plastic
             return [] unless @schemas
 
             @schemas.ids.reject { |id| @live_ids.include?(id) }.map do |id|
-              Finding.new("schema #{@schemas.relative(id)} names no live node", "plastic graph show #{@intent_id}")
+              Finding.new("schema #{@schemas.relative(id)} names no live node; rename it to a live node id or delete it", nil)
             end
           end
         end

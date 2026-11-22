@@ -50,9 +50,9 @@ class GraphCheckOutputTest < Plastic::TestCase
     assert_equal 1, result.code
   end
 
-  def test_the_because_line_says_the_findings_need_a_hand_edit_and_a_sync_up
+  def test_the_answer_says_the_findings_need_a_hand_edit_and_a_sync_up
     hold_output("not json")
 
-    assert_match(/^because: .*hand.*plastic sync up/, check.out)
+    assert_match(/^hand edit: .*graph\.json.*plastic sync up/, check.out)
   end
 end
