@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../workflow"
+
 module Plastic
   class CodeWorkflow < Workflow
     # The gates of a workflow that writes into an intent that takes `takes`: a missing intent fails, an intent
