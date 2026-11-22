@@ -97,7 +97,7 @@ module Plastic
             context.print(packet.criterion_line)
             context.print("input: #{node.input}") if node.input
             context.print("last reason: #{node.reason}") if node.reason
-            [*packet.need_lines, *packet.rule_lines, *packet.schema_lines].each { |line| context.print(line) }
+            packet.answer_lines.each { |line| context.print(line) }
             context.data("packet", packet.to_h)
           end
 
