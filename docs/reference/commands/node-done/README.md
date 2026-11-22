@@ -12,7 +12,7 @@ plastic node done ID NODE TEXT [--file PATH] [--output PATH]
 | `NODE` | the node | |
 | `TEXT` | what the work showed | |
 | `--file PATH` | a document of the intent folder that the sync reads in as the result; repeat for more; every changed file when left out | `[]` |
-| `--output PATH` | a file of JSON to store as the output of the node, which the nodes that need it read; refused when it is not JSON |  |
+| `--output PATH` | a file of JSON to store as the output of the node, which the nodes that need it read; refused when it is not JSON; the path is read relative to the current directory |  |
 
 ## The events of one call, step by step
 

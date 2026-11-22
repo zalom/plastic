@@ -54,6 +54,8 @@ Plastic does not check JSON against a schema. The harness does. To give a node a
 to `resources/tmp/schemas/NODE.json` in the intent folder, for example `n3.json`. The claim names
 that path in `result.packet.schema`, and the driver passes the file to the harness:
 
+Checked with `claude --help` and `codex exec --help` on 22 November 2026:
+
 - Claude Code: `claude -p PROMPT --output-format json --json-schema SCHEMA`, where SCHEMA is the
   schema text.
 - Codex: `codex exec PROMPT --output-schema FILE --output-last-message OUT`.
@@ -64,10 +66,11 @@ that path in `result.packet.schema`, and the driver passes the file to the harne
 
 ## Sessions and claims
 
-- Set `PLASTIC_SESSION` to a name for the driver. `plastic node claim` fails without a session,
-  and the claim holds the name of the session that took it.
-- A claim lapses after 900 seconds without a renewal. A worker that runs longer renews it with
-  `plastic node renew ID NODE`.
+- Give each driver its own `PLASTIC_SESSION`. The claim holds the name of the session that took it. When
+  `PLASTIC_SESSION` is not set, Plastic uses the session of the harness, and then `terminal-` and the login
+  at a terminal. Two drivers that share a name share a claim.
+- A claim lapses after 900 seconds without a renewal. The worker never runs `plastic`, so the driver
+  renews the claim with `plastic node renew ID NODE`, for example every five minutes, while the worker runs.
 - Exit code 3 means Plastic refused the call, for example when another session took a lapsed
   claim. Stop that node and do not retry with other options.
 - After three runs of one node, the next claim moves it to `needs_info` with a question for the

@@ -137,7 +137,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 
 | Command | What it does |
 | --- | --- |
-| [`plastic graph check`](graph-check/README.md) | Find a done node with no findings, an isolated node, a retry cap or no done criterion |
+| [`plastic graph check`](graph-check/README.md) | Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node |
 | [`plastic graph ready`](graph-ready/README.md) | List the nodes ready to claim |
 | [`plastic graph resume`](graph-resume/README.md) | Say where each named store's work stopped and what runs next |
 | [`plastic graph show`](graph-show/README.md) | Print every node and edge of an intent |
