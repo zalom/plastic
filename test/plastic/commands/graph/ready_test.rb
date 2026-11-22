@@ -68,6 +68,44 @@ class GraphReadyTest < Plastic::TestCase
     refute_match(/^next:/, result.out)
   end
 
+  def ready_nodes_json = JSON.parse(call("1", "--json").out).dig("result", "nodes")
+
+  def test_the_json_answer_carries_each_ready_node_as_fields
+    open_keyed_intent
+    add_node("a")
+
+    assert_equal [{ "id" => "n1", "title" => "a", "kind" => "work", "criterion" => "done", "state" => "open", "needs" => [] }], ready_nodes_json
+  end
+
+  def test_the_json_answer_names_the_nodes_a_ready_node_needs
+    two_linked_nodes
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+
+    assert_equal [["n2", ["n1"]]], ready_nodes_json.map { |node| [node["id"], node["needs"]] }
+  end
+
+  def test_the_json_answer_keeps_the_text_lines_beside_the_nodes
+    open_keyed_intent
+    add_node("a")
+
+    assert_equal ["ready: n1 a"], JSON.parse(call("1", "--json").out).dig("result", "output")
+  end
+
+  def test_the_json_answer_for_no_ready_node_carries_an_empty_list
+    open_keyed_intent
+
+    assert_equal [], ready_nodes_json
+  end
+
+  def test_the_text_answer_prints_no_node_fields
+    open_keyed_intent
+    add_node("a")
+
+    assert_equal "ready: n1 a\n", call("1").out.lines.first
+    refute_includes call("1").out, "criterion"
+  end
+
   def test_claimed_work_says_why_nothing_is_ready
     two_linked_nodes
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })

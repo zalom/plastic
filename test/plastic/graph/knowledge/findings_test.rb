@@ -76,4 +76,56 @@ class KnowledgeFindingsTest < Plastic::TestCase
 
     assert_nil Findings.retry_finding(node, 5)
   end
+
+  def repairs = Findings.new(retrieval, "1").with_repairs.map { |finding| [finding.text, finding.repair] }
+
+  def put_edge(from, to) = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:edges, { intent_id: "1", from:, to:, kind: "needs" }, statement: :insert) }
+
+  def test_a_node_with_no_edge_names_the_command_that_adds_one
+    criteria
+    2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+
+    assert_equal [["node n1 has no edge", "plastic edge add 1 n1 TO"], ["node n2 has no edge", "plastic edge add 1 n2 TO"]], repairs
+  end
+
+  def test_no_done_criterion_names_the_command_that_prints_how_to_write_one
+    assert_equal [["intent 1 names no done criterion", "plastic intent spec 1"]], repairs
+  end
+
+  def test_a_node_retried_over_the_cap_names_the_command_that_answers_it
+    criteria
+    @work.add_node(intent_id: "1", title: "Build")
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      (1..4).each { |number| batch.put(:runs, { intent_id: "1", node_id: "n1", number:, agent: "", session_id: "s-1", started_at: "2026-11-17T01:00:00Z", ended_at: "2026-11-17T01:01:00Z", result: "failed" }) }
+    end
+
+    assert_equal [["node n1 retried 4 times", "plastic node resolve 1 n1 TEXT"]], repairs
+  end
+
+  def test_a_need_on_a_removed_node_is_named_with_the_command_that_removes_the_edge
+    criteria
+    2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    @work.remove_node(intent_id: "1", id: "n1", reason: "gone")
+
+    assert_equal [["node n2 needs n1, which is removed", "plastic edge remove 1 n1 n2"]], repairs
+  end
+
+  def test_a_loop_in_a_hand_edited_graph_is_named_once_with_its_path_and_the_closing_edge_to_remove
+    criteria
+    3.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    put_edge("n2", "n3")
+    put_edge("n3", "n1")
+
+    assert_equal [["nodes loop: n1 -> n2 -> n3 -> n1", "plastic edge remove 1 n3 n1"]], repairs
+  end
+
+  def test_an_edge_list_with_no_loop_names_none
+    criteria
+    2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+
+    assert_empty repairs
+  end
 end

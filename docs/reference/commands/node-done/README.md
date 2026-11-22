@@ -3,7 +3,7 @@
 Mark a claimed node done, with its findings as TEXT.
 
 ```sh
-plastic node done ID NODE TEXT [--file PATH]
+plastic node done ID NODE TEXT [--file PATH] [--output PATH]
 ```
 
 | Argument or option | What it gives | Default |
@@ -11,7 +11,8 @@ plastic node done ID NODE TEXT [--file PATH]
 | `ID` | the intent | |
 | `NODE` | the node | |
 | `TEXT` | what the work showed | |
-| `--file PATH` | a file of the intent folder to read as the result; repeat for more; every changed file when left out | `[]` |
+| `--file PATH` | a document of the intent folder that the sync reads in as the result; repeat for more; every changed file when left out | `[]` |
+| `--output PATH` | a file of JSON to store as the output of the node, which the nodes that need it read; refused when it is not JSON; the path is read relative to the current directory |  |
 
 ## The events of one call, step by step
 

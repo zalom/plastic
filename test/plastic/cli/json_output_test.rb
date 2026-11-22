@@ -34,6 +34,19 @@ class JsonOutputTest < Plastic::TestCase
     assert_equal({ "result" => { "id" => "7", "output" => ["line"] }, "next" => "plastic next", "because" => "why" }, document)
   end
 
+  def test_data_joins_the_result_as_a_key
+    output.data("nodes", [{ "id" => "n1" }]).flush
+
+    assert_equal({ "nodes" => [{ "id" => "n1" }] }, document.fetch("result"))
+  end
+
+  def test_data_prints_nothing_in_a_text_answer
+    out = StringIO.new
+    Plastic::CLI::TextOutput.new(out:, err: StringIO.new).data("nodes", [{ "id" => "n1" }]).flush
+
+    assert_equal "", out.string
+  end
+
   def test_json_is_on
     assert_predicate output, :json?
   end

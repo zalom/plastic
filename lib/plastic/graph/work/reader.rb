@@ -32,9 +32,8 @@ module Plastic
           @origin = origin
         end
 
-        # Nodes of `intent_id` ready to run: state nil, empty or pending, with
-        # every `needs` edge into them satisfied (graph/edge.rb: `to` waits
-        # until `from` is done).
+        # Nodes of `intent_id` ready to run: state open, with every `needs` edge
+        # into them satisfied (work/edge.rb: `to` waits until `from` is done).
         def ready_nodes(intent_id)
           @databases.fetch(:store).rows(READY_NODES_SQL, intent_id:, origin: origin_id).map { |row| Node.from_h(row) }
         end

@@ -21,6 +21,6 @@ class CodeWorkflowStepTest < Plastic::TestCase
   def test_a_step_whose_done_check_still_fails_after_the_body_fails
     error = assert_raises(Plastic::Failed) { step(done: ->(_c) { false }) { |_c| nil }.call(ctx, Flows::Stamp) }
 
-    assert_equal ["the step ran and its done check still fails", "code_stamp, mark"], [error.message, error.source]
+    assert_equal ["the step ran and its done check still fails", "code_stamp, mark", Plastic::Crashed], [error.message, error.source, error.class]
   end
 end

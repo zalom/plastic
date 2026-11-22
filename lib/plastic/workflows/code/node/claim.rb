@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../graph/knowledge/store_folder"
+require_relative "../../../graph/work/packet"
+require_relative "../../../graph/work/schemas"
 
 module Plastic
   module Workflows
@@ -16,7 +19,7 @@ module Plastic
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :status, :result, :node, :problem, :approval_problem
+          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -46,6 +49,16 @@ module Plastic
           gate "%{approval_problem}", stops: :refusal,
             words: "the intent has no go-ahead",
             pass: ->(context) { context.approval_problem.nil? }
+
+          read "check the output of the needed nodes" do |context|
+            node = context.retrieval.node(context.intent_id, context.id)
+            context[:output_problem] = node && Plastic::Graph::Work::Packet.output_problem(context.retrieval, node)
+          end
+
+          gate "%{output_problem}", stops: :failure, offers: "plastic graph check %{intent_id}",
+            because: "a needed node holds output that is not JSON, so no packet can be built; nothing was claimed",
+            words: "a needed node holds output that is not JSON",
+            pass: ->(context) { context.output_problem.nil? }
 
           read "forget a refusal of an earlier call" do |context|
             context[:result] = nil if STOPPED.include?(context.result.to_s)
@@ -79,9 +92,18 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
+            packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
+            context.print(packet.criterion_line)
             context.print("input: #{node.input}") if node.input
             context.print("last reason: #{node.reason}") if node.reason
+            [*packet.need_lines, *packet.schema_lines].each { |line| context.print(line) }
+            context.data("packet", packet.to_h)
+          end
+
+          def self.packet_for(context, node)
+            folder = Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root)
+            Plastic::Graph::Work::Packet.new(context.retrieval, node, schemas: Plastic::Graph::Work::Schemas.new(folder, context.intent.dir))
           end
 
           outcome :done, offers: "plastic node done %{intent_id} %{id} TEXT",
