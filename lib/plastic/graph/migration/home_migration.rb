@@ -13,7 +13,7 @@ module Plastic
   module Graph
     # Brings the home database to the newest version. A database behind is copied into backups first, and the former
     # name local.db is renamed to plastic.db. The answer is :current, :migrated, or the reason it stayed behind. `notes`
-    # names each time with an offset that the UTC migration left as it was because it names no real moment. plastic.db
+    # names, after each migration, every time the UTC migration left as it was because it names no real moment. plastic.db
     # has no down: the copy in backups/ is the way back.
     class HomeMigration
       def initialize(home, now)
@@ -44,9 +44,8 @@ module Plastic
       def local = (@local ||= Database.open_local(@home).fetch(:local))
 
       def migrated
-        utc_pending = SchemaState.of_file(current, :home).pending.include?(UtcTimes::VERSION)
         local.migrate
-        note_unreadable if utc_pending
+        note_unreadable
         :migrated
       end
 
