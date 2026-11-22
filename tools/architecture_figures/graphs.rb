@@ -24,7 +24,7 @@ module ArchitectureFigures
       ["writer.bottom@0.56818", "knowledge.top", ["writes"]],
       ["writer.bottom@0.87727", "retrieval.top", ["writes"]],
       ["work.bottom", "work_db.top", ["rows"]],
-      ["knowledge.bottom", "knowledge_db.top@0.25385", ["rows"]],
+      ["knowledge.bottom", "knowledge_db.top", ["rows"]],
       ["retrieval.bottom", "retrieval_db.top", ["rows"]],
       ["reader.top@0.15", "work_db.bottom", ["reads"]],
       ["reader.top@0.5", "knowledge_db.bottom@0.5", ["reads"]],

@@ -14,7 +14,7 @@ module Plastic
         option :ref, switch: "--ref REF", text: "a ticket, a link, or another intent as ID-ORIGIN"
         option :after, switch: "--after ID", text: "an intent this one grows out of, linked as source"
         option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
-        writes :work, :knowledge
+        writes :work, :knowledge, :retrieval
         prints :intent
 
         workflow :code_write_intent, next: :noop

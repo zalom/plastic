@@ -16,7 +16,6 @@ module Plastic
         changes(knowledge: "The files kept in the store folder are read into the knowledge database")
         extend CLI::SyncOptions::Up
 
-        writes :retrieval
         backs_up_first
 
         option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"

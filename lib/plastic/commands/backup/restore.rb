@@ -12,7 +12,7 @@ module Plastic
       class Restore < Routine
         include CLI::BackupStore
 
-        writes :work, :knowledge
+        writes :work, :knowledge, :retrieval
         skips_daily_backup
 
         option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"

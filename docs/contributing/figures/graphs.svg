@@ -58,8 +58,8 @@
 <text class="al" x="995" y="149" text-anchor="middle">writes</text>
 <path class="flow" d="M 195.0 254 L 195.0 300" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="195" y="281" text-anchor="middle">rows</text>
-<path class="flow" d="M 655.0 254 L 655.0 277 L 573.7705 277 L 573.7705 300" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="614" y="270" text-anchor="middle">rows</text>
+<path class="flow" d="M 655.0 254 L 655.0 300" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="655" y="281" text-anchor="middle">rows</text>
 <path class="flow" d="M 995.0 254 L 995.0 300" marker-end="url(#graphs-arrow)"/>
 <text class="al" x="995" y="281" text-anchor="middle">rows</text>
 <path class="flow" d="M 196.5 420 L 196.5 393 L 195.0 393 L 195.0 367" marker-end="url(#graphs-arrow)"/>
