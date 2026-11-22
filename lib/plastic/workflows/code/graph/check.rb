@@ -13,8 +13,6 @@ module Plastic
         class Check < CodeWorkflow
           clear_declarations
 
-          HAND_EDIT = "hand edit: no command repairs these findings; edit graph.json by hand, then run plastic sync up and plastic graph check again"
-
           sets :intent, :findings, :first, :repair
 
           read "find the intent" do |context|
@@ -40,10 +38,11 @@ module Plastic
 
             findings.each do |finding|
               context.print("finding: #{finding.text}")
-              context.print("repair: #{finding.repair}") if finding.repair
+              context.print(advice(finding))
             end
-            context.print(HAND_EDIT) if context.repair.nil?
           end
+
+          def self.advice(finding) = finding.repair ? "repair: #{finding.repair}" : "hand edit: #{finding.hand}"
 
           gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? || !context.repair.nil? }
 

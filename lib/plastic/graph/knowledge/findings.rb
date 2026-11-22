@@ -45,12 +45,12 @@ module Plastic
 
         def findings_for(node) = [findings_finding(node), output_finding(node), edge_finding(node), retry_finding(node)].compact
 
-        def findings_finding(node) = Findings.findings_finding(node)&.then { |text| Finding.new(text, nil) }
+        def findings_finding(node) = Findings.findings_finding(node)&.then { |text| Finding.new(text, nil, hand_edit("edit the findings of node #{node.id} in graph.json")) }
 
         def output_finding(node)
           return nil if StoredOutput.valid?(node.output)
 
-          Finding.new("node #{node.id} holds output that is not JSON", nil)
+          Finding.new("node #{node.id} holds output that is not JSON", nil, hand_edit("edit the output of node #{node.id} in graph.json to hold JSON"))
         end
 
         def retry_finding(node)
@@ -62,6 +62,8 @@ module Plastic
 
           Finding.new("node #{node.id} has no edge", "plastic edge add #{@intent_id} #{node.id} TO")
         end
+
+        def hand_edit(edit) = "#{edit}, then run plastic sync up and plastic graph check #{@intent_id} again"
 
         def touches?(node) = edges.any? { |edge| edge.touches?(node.id) }
 

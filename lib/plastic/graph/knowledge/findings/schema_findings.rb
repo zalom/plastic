@@ -18,8 +18,15 @@ module Plastic
             return [] unless @schemas
 
             @schemas.ids.reject { |id| @live_ids.include?(id) }.map do |id|
-              Finding.new("schema #{@schemas.relative(id)} names no live node; rename it to a live node id or delete it", nil)
+              stray_finding(id)
             end
+          end
+
+          private
+
+          def stray_finding(id)
+            path = @schemas.relative(id)
+            Finding.new("schema #{path} names no live node", nil, "rename #{path} to a live node id or delete it, then run plastic graph check #{@intent_id} again")
           end
         end
       end
