@@ -58,8 +58,8 @@ worktree, and the agent makes it. They end on `plastic intent spec ID` while the
 the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic intent brief ID`
 otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
 the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim`, names the session that works a node. It
-fails for an intent that is not in progress, offers `plastic next` for a done or abandoned one, and
-refuses one without the go-ahead.
+refuses, with exit 3, an intent that is not in progress or without the go-ahead, and a node that
+is blocked, held or capped; it offers `plastic next` for a done or abandoned intent.
 
 ## Drive a graph from any harness
 

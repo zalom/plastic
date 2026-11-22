@@ -28,11 +28,11 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "node claim names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
-          gate "intent %{intent_id} is %{status}", stops: :failure, offers: "plastic next",
+          gate "intent %{intent_id} is %{status}", stops: :refusal, offers: "plastic next",
             because: "a node of a closed intent is never claimed; pick other work",
             pass: ->(context) { !context.intent.closed? }
           gate "intent %{intent_id} is %{status}; start it with plastic intent start %{intent_id}, or with plastic intent auto %{intent_id} for agent delivery",
-            stops: :failure, offers: "plastic intent start %{intent_id}", because: "a node is claimed only in an intent in progress",
+            stops: :refusal, offers: "plastic intent start %{intent_id}", because: "a node is claimed only in an intent in progress",
             pass: ->(context) { context.status == "in_progress" }
 
           read "check the go-ahead" do |context|
@@ -86,7 +86,10 @@ module Plastic
             words: "the node ran three times and the owner decides, or another session holds it",
             pass: ->(context) { !%w[capped held].include?(context.result.to_s) }
           gate "%{problem}", stops: :failure,
-            words: "the node is not in the intent, is not open, or needs a node that is not done",
+            words: "the node is not in the intent",
+            pass: ->(context) { !(context.result == :refused && context.node.nil?) }
+          gate "%{problem}", stops: :refusal,
+            words: "the node is not open, or needs a node that is not done",
             pass: ->(context) { !STOPPED.include?(context.result.to_s) }
 
           read "print the brief" do |context|

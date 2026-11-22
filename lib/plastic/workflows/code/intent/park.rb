@@ -20,7 +20,7 @@ module Plastic
           end
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
-          gate "intent %{intent_id} is %{status}; only an intent in progress parks", stops: :failure,
+          gate "intent %{intent_id} is %{status}; only an intent in progress parks", stops: :refusal,
             pass: ->(context) { context.status == "in_progress" }
 
           def self.parked?(context) = context.retrieval.intent(context.intent_id).status == "parked"

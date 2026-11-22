@@ -13,15 +13,7 @@ module Plastic
           summary "Checks that the intent can take a verdict."
           extend ReviewRound
 
-          sets :problem
-
-          read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "verdict")
-          end
-
-          gate "%{problem}", stops: :failure,
-            words: "the intent is missing, done or abandoned",
-            pass: ->(context) { context.problem.nil? }
+          open_intent_gates "verdict"
           review_round_gate
 
           outcome :accepted, if: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).counting? }, offers: "plastic intent end %{intent_id}",

@@ -29,7 +29,9 @@ module Plastic
 
       # A check that stops the call when pass: is false, and prints `reason`.
       # stops: :refusal ends in exit 3 and names an owner step. stops:
-      # :failure ends in exit 1 and names something the agent can fix.
+      # :failure ends in exit 1 and names something the agent can fix: a missing record, a bad input, a file that
+      # cannot be read. A rule that says no (a closed intent, a blocked node, a missing go-ahead) is always :refusal.
+      # test/refusal_exit_guard_test.rb checks it.
       # because: is the line that says why; the reason serves when it is left out.
       def gate(reason, **rule)
         unknown = rule.keys - GATE_OPTIONS
@@ -39,6 +41,18 @@ module Plastic
         raise Invalid, "#{name}: a gate stops as :refusal or :failure" unless STOPS.include?(stops)
 
         steps << Gate.new(reason, stops, rule.fetch(:pass), *rule.values_at(:offers, :because, :words))
+      end
+
+      # The gates of a workflow that writes into an intent that takes `takes`: a missing intent fails, an intent
+      # that is done or abandoned is refused. One place gives every such workflow the same two exits.
+      def open_intent_gates(takes)
+        sets :problem, :intent_missing
+        read("check the intent") do |context|
+          context[:intent_missing] = context.retrieval.intent(context.intent_id).nil?
+          context[:problem] = context.work.open_intent_problem(context.intent_id, takes)
+        end
+        gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent_missing }
+        gate "%{problem}", stops: :refusal, words: "the intent is done or abandoned", pass: ->(context) { context.problem.nil? }
       end
 
       # A step that changes nothing on disk. It runs on every call, rerun

@@ -11,15 +11,7 @@ module Plastic
         class Approve < CodeWorkflow
           clear_declarations
 
-          sets :problem
-
-          read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "go-ahead")
-          end
-
-          gate "%{problem}", stops: :failure,
-            words: "the intent is missing, done or abandoned",
-            pass: ->(context) { context.problem.nil? }
+          open_intent_gates "go-ahead"
 
           gate "intent %{intent_id} names no done criterion", stops: :failure, offers: "plastic intent spec %{intent_id}",
             because: "an approval needs a done criterion to judge the delivery by; write one in spec.md",

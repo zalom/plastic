@@ -28,7 +28,7 @@ module Plastic
             context[:problem] = problem
           end
 
-          gate "%{problem}", stops: :failure,
+          gate "%{problem}", stops: :refusal,
             words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is not a live node of the intent",
             pass: ->(context) { context.problem.nil? }
 

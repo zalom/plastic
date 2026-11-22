@@ -187,8 +187,8 @@ text that Plastic prints in the planning hand-off.
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
 They take no lock.
-`plastic node claim` fails for an intent that is not in progress, and refuses with exit 3 one
-without the go-ahead. A node claim names the session that
+`plastic node claim` refuses with exit 3 an intent that is not in progress, one
+without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and
 `hook stop` renew it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
@@ -242,6 +242,9 @@ so no workflow picks a number.
 | `Failed` | A step broke. | 1 |
 | `Refused` | A step belongs to the owner. | 3 |
 
+A refusal is a rule that says no: a closed or wrong-state intent, a blocked, held or capped node, a missing
+go-ahead, a thing that already exists. Every refusal exits 3, and `test/refusal_exit_guard_test.rb` fails a gate
+that names one and stops as a failure. A missing record, a file that cannot be read and a broken database exit 1.
 A usage error exits 2. A command raises, and the `run` method maps the error: `Failure`
 gives 1, `Usage` and an unknown project give 2, and `Refusal` gives 3.
 

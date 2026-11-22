@@ -93,10 +93,10 @@
 <rect x="480" y="64" width="330" height="46" rx="6" class="stop-failure"/>
 <text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="492" y="100" class="t" text-anchor="start">No intent &lt;intent id&gt; in this store.</text>
-<path d="M 424 89 L 438 89 L 438 141 L 480 141" class="wire-failure"/>
+<path d="M 424 89 L 438 89 L 438 141 L 480 141" class="wire-refusal"/>
 <path d="M 472 136 L 480 141 L 472 146 Z" class="head"/>
-<rect x="480" y="118" width="330" height="46" rx="6" class="stop-failure"/>
-<text x="492" y="136" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<rect x="480" y="118" width="330" height="46" rx="6" class="stop-refusal"/>
+<text x="492" y="136" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="154" class="t" text-anchor="start">Intent &lt;intent id&gt; is not open or in progress.</text>
 <path d="M 424 102 L 432 102 L 432 203 L 480 203" class="wire-end"/>
 <path d="M 472 198 L 480 203 L 472 208 Z" class="head"/>

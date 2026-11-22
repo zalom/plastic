@@ -88,10 +88,10 @@
 <text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
 <text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="106" class="t" text-anchor="start">Check that the call can go on.</text>
-<path d="M 424 76 L 444 76 L 444 95 L 480 95" class="wire-failure"/>
+<path d="M 424 76 L 444 76 L 444 95 L 480 95" class="wire-refusal"/>
 <path d="M 472 90 L 480 95 L 472 100 Z" class="head"/>
-<rect x="480" y="64" width="330" height="62" rx="6" class="stop-failure"/>
-<text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<rect x="480" y="64" width="330" height="62" rx="6" class="stop-refusal"/>
+<text x="492" y="82" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="100" class="t" text-anchor="start">Roadmap new creates a roadmap once.</text>
 <text x="492" y="116" class="t" text-anchor="start">next: plastic roadmap show &lt;slug&gt;</text>
 <path d="M 424 89 L 438 89 L 438 181 L 480 181" class="wire-failure"/>
@@ -134,6 +134,8 @@
 <text x="44" y="537" class="k" text-anchor="start">Code Workflow</text>
 <rect x="140" y="525" width="14" height="14" rx="3" class="stop-failure"/>
 <text x="160" y="537" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="525" width="14" height="14" rx="3" class="stop-end"/>
-<text x="296" y="537" class="k" text-anchor="start">Ends</text>
+<rect x="276" y="525" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="537" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="525" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="537" class="k" text-anchor="start">Ends</text>
 </svg>

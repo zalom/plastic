@@ -142,11 +142,13 @@
 <text x="302" y="573" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="302" y="593" class="t" text-anchor="start">Starts the intent: it goes in</text>
 <text x="302" y="610" class="t" text-anchor="start">progress and names its worktree.</text>
-<rect x="588" y="553" width="222" height="66" rx="6" class="stop-failure"/>
-<text x="600" y="573" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="600" y="593" class="t" text-anchor="start">A check fails. The events</text>
-<text x="600" y="610" class="t" text-anchor="start">below show each check.</text>
-<path d="M 544 586 L 588 586" class="wire-failure"/>
+<rect x="588" y="553" width="222" height="100" rx="6" class="stop-refusal"/>
+<text x="600" y="573" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
+<text x="600" y="593" class="t" text-anchor="start">A check fails or the step</text>
+<text x="600" y="610" class="t" text-anchor="start">belongs to the owner. The</text>
+<text x="600" y="627" class="t" text-anchor="start">events below show each</text>
+<text x="600" y="644" class="t" text-anchor="start">check.</text>
+<path d="M 544 586 L 588 586" class="wire-refusal"/>
 <path d="M 580 581 L 588 586 L 580 591 Z" class="head"/>
 <path d="M 417 619 L 417 645" class="wire"/>
 <path d="M 412 637 L 417 645 L 422 637 Z" class="head"/>

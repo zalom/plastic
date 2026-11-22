@@ -34,7 +34,7 @@ module Plastic
             end
           end
 
-          gate "%{problem}", stops: :failure, offers: "plastic intent end %{intent_id}",
+          gate "%{problem}", stops: :refusal, offers: "plastic intent end %{intent_id}",
             because: "only a done, abandoned or future intent archives; end it first",
             pass: ->(context) { context.kind != :unfinished }
           gate "%{problem}", stops: :failure,
