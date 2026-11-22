@@ -24,6 +24,6 @@ class PlasticMdProjectLoadTest < Minitest::Test
   def normalized_body = File.read(PlasticMdPointerTest::PLASTIC_MD).gsub(/\s+/, " ")
 
   def test_plastic_md_names_project_load_for_the_load_projects_phrase
-    assert_includes normalized_body, %("Load projects X, Y, Z", run plastic project load)
+    assert_includes normalized_body, %("Load projects X, Y, Z", run `plastic project load`)
   end
 end

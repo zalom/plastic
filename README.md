@@ -242,6 +242,7 @@ plastic architecture refresh --project blog                      # Tell the agen
 ```bash
 plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
 plastic project list                  # The registered projects with their paths
+plastic project load blog shop        # A short digest of each project: paths, files to read, work in play, last deliveries
 plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
 plastic project links                 # List the links that name an intent or a ruling this store lacks
 plastic sync up --dry-run             # Show what would change
