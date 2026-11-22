@@ -114,3 +114,85 @@ class IntentStartTest < Plastic::TestCase
       "Create the worktree at #{worktree} on branch plastic/1--alpha, then run plastic intent start 1 again. Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."]
   end
 end
+
+# A session that starts an intent becomes its driver; a second live driver is refused unless the owner asks for a take-over.
+class IntentStartDriverTest < Plastic::TestCase
+  include AutoHelper
+
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
+  def setup
+    super
+    @clock = Clock.new(START)
+    clear_intent
+  end
+
+  def drive(session, *args, command: "start", minutes: 0)
+    @clock.now = START + (minutes * 60)
+    plastic("intent", command, "1", *args, env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE, clock: @clock)
+  end
+
+  def driver = store_graphs.databases.fetch(:store).row("SELECT session_id FROM drivers WHERE intent_id = '1'")&.fetch("session_id")
+
+  def driver_lines = retrieval.structure.work_log("1").select { |line| line.kind == "driver" }.map(&:text)
+
+  def test_a_start_makes_the_session_the_driver
+    drive("s-1")
+
+    assert_equal "s-1", driver
+  end
+
+  def test_an_auto_makes_the_session_the_driver
+    drive("s-1", command: "auto")
+
+    assert_equal "s-1", driver
+  end
+
+  def test_the_driver_starting_again_is_not_refused
+    drive("s-1")
+
+    assert_equal 0, drive("s-1", minutes: 3).code
+  end
+
+  def test_a_second_session_is_refused_with_exit_3_and_the_live_driver_is_named
+    drive("s-1")
+    result = drive("s-2", minutes: 5)
+
+    assert_equal [3, "s-1"], [result.code, driver]
+    assert_includes result.err, "intent 1 is driven by session s-1"
+  end
+
+  def test_a_second_session_calling_auto_is_refused_the_same_way
+    drive("s-1", command: "auto")
+
+    assert_equal 3, drive("s-2", command: "auto", minutes: 5).code
+  end
+
+  def test_the_refusal_offers_the_take_over_for_the_owner
+    drive("s-1")
+    result = drive("s-2", minutes: 5)
+
+    assert_includes result.out, "--take-over"
+  end
+
+  def test_a_second_session_starts_once_the_claim_lapsed
+    drive("s-1")
+
+    assert_equal [0, "s-2"], [drive("s-2", minutes: 16).code, driver]
+  end
+
+  def test_a_take_over_with_a_reason_takes_a_live_claim_and_logs_both_drivers
+    drive("s-1")
+    result = drive("s-2", "--take-over", "the owner asked for Codex", minutes: 5)
+
+    assert_equal [0, "s-2", ["Driver s-1", "Driver s-2 took over from s-1: the owner asked for Codex"]], [result.code, driver, driver_lines]
+  end
+
+  def test_a_take_over_with_no_reason_is_a_usage_error
+    drive("s-1")
+
+    assert_equal [2, "s-1"], [drive("s-2", "--take-over", minutes: 5).code, driver]
+  end
+end
