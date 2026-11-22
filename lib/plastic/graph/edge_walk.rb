@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "edge_walk/cyclic"
+
 module Plastic
   module Graph
     # Walks the edges of one graph from a node, with a stack and a visited set, so a chain of any length ends. It
@@ -21,6 +23,9 @@ module Plastic
         back = trail(start, start)
         back && [start, *back.drop(1)]
       end
+
+      # Every node that lies on a cycle, found in one pass; the walk of `cycle` for a node costs one pass each.
+      def cyclic = Cyclic.new(@successors).call
 
       private
 
