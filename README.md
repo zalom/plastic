@@ -16,7 +16,7 @@
 <p align="center">
   <a href="#installation">Install</a> &bull;
   <a href="#quick-start">Quick start</a> &bull;
-  <a href="#commands">Commands</a> &bull;
+  <a href="docs/usage/commands.md">Commands</a> &bull;
   <a href="docs/reference/commands/README.md">Command reference</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">Architecture</a> &bull;
   <a href="MANIFESTO.md">Manifesto</a>
@@ -103,12 +103,12 @@ plastic doctor      # The installation, the databases and the hooks of this agen
 ```
 
 `plastic version`, or `plastic --version`, prints the version, the release channel and the file the version came from.
-It rebuilds a search index that is out of step and changes nothing else.
+It changes nothing.
 
 `plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3
 bundle, where the hooks point and the installer lock. It also opens each database and reads the hooks and instruction files of the
 agent it runs in. It prints one row for each check, then the repair for each finding, and exits
-1 when it finds a problem.
+1 when it finds a problem. It also rebuilds a search index that is out of step with the documents.
 
 ### Move from npm
 
@@ -139,8 +139,12 @@ plastic intent start 1
 plastic next
 ```
 
-Restart your agent after the install. For every command, read
-the [command reference](docs/reference/commands/README.md).
+`plastic project new` registers the repository, makes its store, and writes an `AGENTS.md` and a
+`CLAUDE.md` into it when they are missing. `plastic intent start` prints the worktree to create and
+asks you to run it again once it exists.
+
+Restart your agent after the install. [The command list](docs/usage/commands.md) shows the commands
+by task, and the [command reference](docs/reference/commands/README.md) has a page for each.
 
 ## How it works
 
@@ -169,176 +173,6 @@ Plastic follows four rules:
 3. **Status is derived.** Plastic reads what is ready from the node rows and their edges.
 4. **Nothing leaves the machine.** Plastic makes no model call and sends none of your files anywhere.
 
-## Commands
-
-### Orientation
-```bash
-plastic status                        # Active work in every store
-plastic graph resume                  # Where this project's work stopped and what runs next
-plastic graph resume --stores blog,shop  # The same, for several named projects
-plastic next                          # The next action in one line
-```
-
-### Intents
-```bash
-plastic intent new "TITLE"            # Create a future intent
-plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
-plastic intent start 12               # Set it in progress for guided work and print the code worktree
-plastic intent park 12 "TEXT"         # Park started work with the reason it waits
-plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
-plastic intent show 12                # Print the state screen
-plastic intent spec 12                # State screen, then the speccing rules
-plastic intent rule 12 "TEXT"         # Record a ruling in Insights
-plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
-plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
-plastic session note "TEXT"           # Write the one prose line of this session
-plastic intent link 12 cites 7        # Link intent 12 to intent 7
-plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
-plastic intent archive 12 --dry-run   # Preview an archive
-plastic intent archive --older-than 2026-01-01   # Archive each intent older than the date
-plastic intent unarchive 12             # Restore an archived intent
-plastic intent end 12                   # Close as delivered, after the merge
-plastic intent abandon 12               # Close as abandoned
-```
-
-### Graphs and needs links
-```bash
-plastic graph show 12                 # The work graph of intent 12
-plastic graph ready 12                # The nodes ready to start
-plastic graph check 12                # Find a done node with no findings, an isolated node, a retry cap, a loop or a stray schema file
-plastic node claim 12 n3 --agent NAME  # Claim a ready node
-plastic node done 12 n3 "TEXT"        # Close a claimed node with its findings
-plastic node resolve 12 n3 "TEXT"     # Reopen a node that needs info or is impeded
-plastic node remove 12 n3 --dry-run   # Preview a node removal
-plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal
-plastic intent link 12 needs 7       # Intent 12 waits for intent 7
-```
-
-A `--dry-run` call runs in a disposable copy of the store. It prints what it would
-write, never touches the original, and ends with the same call without `--dry-run`.
-
-### Auto teams
-```bash
-plastic intent auto 12                 # Set the intent in progress for agent delivery and print the code worktree
-plastic intent brief 12                # Print the brief an agent starts from
-```
-
-### Search
-```bash
-plastic search recovery flow --source-project blog --limit 20  # Ranked passages for the words of a question; quote a phrase to keep it whole
-plastic document get REFERENCE --json                           # One immutable document
-plastic document batch REFERENCE... --json                      # Documents in request order
-plastic intent discover 12 recovery flow                         # Save candidate provenance
-plastic intent context 12 --from selected-context.json           # Save agent-selected context
-plastic architecture status --project blog                       # Tell the agent to check the architecture map
-plastic architecture refresh --project blog                      # Tell the agent to regenerate the map
-```
-
-### Stores and databases
-```bash
-plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
-plastic project list                  # The registered projects with their paths
-plastic project load blog shop        # A short digest of each project: paths, files to read, work in play with its passages, last deliveries
-plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
-plastic project links                 # List the links that name an intent or a ruling this store lacks
-plastic sync up --dry-run             # Show what would change
-plastic sync down                     # Write the store files from the databases
-plastic backup --store blog          # Copy the databases of one store (or --store global) into a UTC-named folder
-plastic backup --store blog --live   # The same, printing each line of backup.log as it is written
-plastic backup list --store blog     # Folder, start time, status and goal of each backup
-plastic backup purge --store blog --older-than 2026-09-01   # Delete older backups
-plastic backup purge --store blog --failed   # Delete the backups that failed
-plastic backup restore --store blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
-plastic migration list --store blog  # The store's version, its kept rows, its ledger, and what a down would undo
-plastic migration down --store blog  # Put back the rows the newest migration kept in legacy.db, after a backup
-plastic migration purge 20261119000000 --store blog   # Remove the rows one migration kept, so it can no longer be undone
-```
-
-### Product
-```bash
-plastic init                          # Install into the agents you pick
-plastic install --reinstall           # Copy the files again and sync every agent
-plastic update                        # The newest stable release
-plastic rollback                      # Switch back to the previous release
-plastic uninstall                     # Remove Plastic from the agents you pick. Your stores stay.
-plastic version                       # The installed version and its channel
-plastic doctor                        # The installation, the databases and the hooks of this agent
-```
-
-### Help
-```bash
-plastic help                          # All commands, grouped in families
-plastic help intent                   # The commands of one family
-plastic help intent end               # The usage line of one command
-plastic help tools                    # One help topic
-```
-
-## Global options
-
-```bash
---json          # Print the result as data with stable keys
--h, --help      # Print the usage line of the command
---project SLUG  # Name a project other than the one the working directory is in
-```
-
-The installer commands and `plastic hook EVENT` do not take `--json`.
-
-## Examples
-
-**Active work in every store:**
-```
-$ plastic status
-global    0 active
-blog      1 active  14
-shop      2 active  7, 9
-
-next: plastic graph resume --stores shop
-because: the working directory is inside shop
-```
-
-**The next action:**
-```
-$ plastic next
-next work  9  in Batch 2: checkout flow
-
-next: plastic intent show 9 --project shop
-because: 9 is the first active intent in shop
-```
-
-**The installed version:**
-```
-$ plastic version
-version:         2.0.5
-channel:         latest
-source:          ~/.local/share/plastic/active/VERSION
-
-next: plastic status
-because: the command line works, so read the work next
-```
-
-The slugs and ids in these examples are samples.
-
-## Agent hooks
-
-The installer registers hooks in your agent. At session start a hook loads the conventions
-and prints where the work stands, and another checks GitHub for a newer release at most once every 12 hours.
-When a session stops or ends, a hook records it. Each hook
-calls the active release launcher under `~/.local/share/plastic`:
-
-```bash
-plastic hook start      # SessionStart; the agent calls these, not you
-plastic hook stop       # Stop
-plastic hook end        # SessionEnd
-```
-
-The start hook names the harness that runs the session and records it on the session row.
-The other hooks and commands read it from there.
-
-Run `plastic doctor` when hooks do not fire. Use `--harness codex` or
-`--harness claude-code` to choose the installation to check. Codex runs a hook only after
-you trust it in `/hooks`, and the installer names each hook that changed. The doctor names
-each repair, such as `plastic install --reinstall`.
-
 ## Supported AI tools
 
 | Tool | Install | State |
@@ -356,11 +190,9 @@ step and records what it reports.
 
 ## Configuration
 
-`plastic config list` prints every setting, `plastic config set KEY VALUE` writes one, and
-`~/.plastic/config.yml` is printed from them. [The features page](docs/usage/FEATURES.md#settings)
-says what each setting does, and the [page of `config`](docs/reference/commands/config/README.md) lists the keys.
+`plastic config list` prints every setting and `plastic config set KEY VALUE` writes one. [The features page](docs/usage/FEATURES.md#settings) says what each setting does.
 
-### Uninstall
+## Uninstall
 
 ```bash
 plastic uninstall     # Remove what Plastic wrote into the agents you pick
@@ -373,7 +205,7 @@ stores under `~/.plastic` stay.
 
 - **[INSTALL.md](INSTALL.md)**: every install path.
 - **[docs/reference/commands/](docs/reference/commands/README.md)**: one page for each `plastic` command.
-- **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
+- **[docs/usage/](docs/usage/FEATURES.md)**: features, [the command list](docs/usage/commands.md), the audit guide and tracking.
 - **[Drive a graph from any harness](docs/usage/drive-from-any-harness.md)**: the loop a script or an SDK runs to work a graph.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices, the gates and the [release lines](docs/release-lines.md).
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
