@@ -21,7 +21,7 @@ module Plastic
         def window(grace) = Time.iso8601(started_at)..(Time.iso8601(ended_at) + grace)
 
         # What the harness record is asked for: the session of the claim and the run's window.
-        def record_query(grace) = window(grace).then { |range| { harness:, session: session_id, from: range.begin, to: range.end } }
+        def record_query(grace) = window(grace).then { |range| { harness:, session: session_id, from: range.begin, to: range.end, claim: claim_text } }
 
         # The command the claim turn of the run holds, such as "485 n2".
         def claim_text = "#{intent_id} #{node_id}"

@@ -105,6 +105,14 @@ class RunCostFillSessionEndTest < Plastic::TestCase
     assert_includes result.err, "the cost was not filled"
   end
 
+  def test_a_run_whose_transcript_has_no_turn_inside_the_run_stays_with_no_cost
+    run_without_cost
+    write_claude("s-1", jsonl(claude_turn("2026-11-23T18:00:00Z", id: "early"), claude_cost(3.0)))
+    result = end_session
+
+    assert_equal [0, nil], [result.code, run_row[2]]
+  end
+
   def test_a_run_whose_transcript_is_missing_stays_with_no_cost_and_nothing_fails
     run_without_cost
     FileUtils.rm_f(Dir.glob(File.join(@home, ".claude", "projects", "*", "s-1.jsonl")))

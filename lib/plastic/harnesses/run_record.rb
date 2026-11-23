@@ -28,7 +28,7 @@ module Plastic
       end
 
       # The usage of an ended `run`, a Graph::Rows::Run: the read runs to the end of the second the run ended in.
-      def read_run(run) = read(**run.record_query(END_SECOND), claim: run.claim_text)
+      def read_run(run) = read(**run.record_query(END_SECOND))
 
       def self.missing(harness) = harness.to_s.empty? ? "no harness record: the claim named no harness" : "no harness record: Plastic reads none for #{harness}"
     end
