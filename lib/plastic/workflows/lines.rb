@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "time"
 require_relative "../graph/knowledge/ruling_order"
+require_relative "run_times"
 
 module Plastic
   module Workflows
@@ -27,34 +27,12 @@ module Plastic
       # One run of a node: its agent, the harness and the session that claimed it, how it ended, then what the harness record held
       # (the worker, the model, the tokens and the cost) and what it did not.
       def self.run_line(run)
-        [run_head(run), times(run), usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
+        [run_head(run), RunTimes.line(run), usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
       end
 
       def self.run_head(run)
         state = run.open? ? "open" : run.result
         "run: #{run.node_id} ##{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
-      end
-
-      # When the run started and ended and how long it took; a run with no end yet says running.
-      def self.times(run) = span(run.started_at, run.ended_at)
-
-      def self.span(started, ended)
-        return nil unless started
-
-        ended ? "started #{started}, ended #{ended}, length #{length(seconds(started, ended))}" : "started #{started}, running"
-      end
-
-      # The whole seconds from the start of a run to its end.
-      def self.seconds(started, ended) = (Time.iso8601(ended) - Time.iso8601(started)).to_i
-
-      # A length of whole seconds in plain words: under 1s, 42s, 4m 12s, 1h 2m 3s.
-      def self.length(total)
-        hours, rest = [total, 0].max.divmod(3600)
-        minutes, secs = rest.divmod(60)
-        return "under 1s" if total < 1
-        return "#{hours}h #{minutes}m #{secs}s" if hours.positive?
-
-        minutes.positive? ? "#{minutes}m #{secs}s" : "#{secs}s"
       end
 
       def self.agent_name(agent) = agent.to_s.empty? ? "none" : agent

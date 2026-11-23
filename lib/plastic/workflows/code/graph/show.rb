@@ -2,6 +2,7 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../lines"
+require_relative "../../run_times"
 
 module Plastic
   module Workflows
@@ -37,7 +38,7 @@ module Plastic
           # A run as data for a JSON answer: its node, number, start, end and length in whole seconds, nil while it runs.
           def self.run_data(run)
             started, ended = run.started_at, run.ended_at
-            { "node" => run.node_id, "number" => run.number, "started_at" => started, "ended_at" => ended, "length_seconds" => (Lines.seconds(started, ended) if ended) }
+            { "node" => run.node_id, "number" => run.number, "started_at" => Plastic.local(started), "ended_at" => (Plastic.local(ended) if ended), "length_seconds" => (RunTimes.seconds(started, ended) if ended) }
           end
 
           # The node each found node was found in, by the found node.
