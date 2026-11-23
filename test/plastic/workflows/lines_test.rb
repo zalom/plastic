@@ -7,7 +7,7 @@ class LinesTest < Minitest::Test
   Node = Struct.new(:id, :state, :title, :claimed_by, :deadline)
   Ruling = Struct.new(:id, :text, :supersedes)
   Run = Struct.new(:node_id, :number, :agent, :harness, :session_id, :result, :model, :input_tokens, :output_tokens, :cache_read_tokens,
-    :cache_write_tokens, :cost_usd, :worker_session, :usage_note) do
+    :cache_write_tokens, :cost_usd, :worker_session, :usage_note, :started_at, :ended_at) do
     def open? = result.nil?
   end
 
@@ -67,5 +67,25 @@ class LinesTest < Minitest::Test
     run = Run.new("n1", 1, nil, "", "s-1", nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
     assert_equal "run: n1 #1 agent none, session s-1, open", lines.run_line(run)
+  end
+
+  def timed(started, ended) = Run.new("n1", 1, "a", "", "s-1", ended ? "done" : nil, nil, nil, nil, nil, nil, nil, nil, nil, started, ended)
+
+  def test_a_finished_run_line_names_its_start_end_and_length
+    assert_equal "run: n1 #1 agent a, session s-1, done; started 2026-11-23T10:00:00Z, ended 2026-11-23T10:04:12Z, length 4m 12s",
+      lines.run_line(timed("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z"))
+  end
+
+  def test_a_run_with_no_end_yet_says_running
+    assert_equal "run: n1 #1 agent a, session s-1, open; started 2026-11-23T10:00:00Z, running", lines.run_line(timed("2026-11-23T10:00:00Z", nil))
+  end
+
+  def test_the_length_reads_plainly_at_each_edge
+    cases = { 0 => "under 1s", 1 => "1s", 59 => "59s", 60 => "1m 0s", 252 => "4m 12s", 3599 => "59m 59s", 3600 => "1h 0m 0s", 3723 => "1h 2m 3s" }
+    cases.each { |seconds, text| assert_equal text, lines.length(seconds), "#{seconds} seconds" }
+  end
+
+  def test_the_length_of_a_run_that_ends_before_it_starts_is_under_one_second
+    assert_equal "under 1s", lines.length(-3)
   end
 end
