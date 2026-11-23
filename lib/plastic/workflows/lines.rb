@@ -11,7 +11,10 @@ module Plastic
 
       def self.node(node, found_in = nil) = "node: #{node.id} #{node.state} #{node.title}#{holder(node)}#{", found in #{found_in}" if found_in}#{deadline(node.deadline)}"
 
-      def self.deadline(minutes) = minutes ? ", deadline #{minutes} minutes" : ""
+      def self.deadline(minutes) = minutes ? ", deadline #{minutes(minutes)}" : ""
+
+      # A count of minutes with its unit: 1 minute, 2 minutes.
+      def self.minutes(count) = "#{count} minute#{"s" unless count == 1}"
 
       def self.holder(node)
         return "" unless node.state == "claimed"

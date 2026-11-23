@@ -68,7 +68,8 @@ at the stop hook, and with `plastic node renew ID NODE`.
 
 A claimed node whose claim started more than its deadline ago is overdue. `plastic graph ready ID`
 prints a line for each, such as `overdue: n3 Build claimed 42 minutes ago, deadline 30`, and `--json`
-lists them under `result.overdue`. The time is the time of the call. A node with no deadline is never
+lists them under `result.overdue`. The minutes are rounded up, so a claim 30 minutes and 30 seconds
+old on a 30-minute deadline reads `claimed 31 minutes ago`. The time is the time of the call. A node with no deadline is never
 overdue. Plastic only reports it: the node stays claimed by its session, and the driver checks on the
 worker. The lapse finds a worker that stopped renewing; the deadline finds a worker that still runs
 but runs too long.

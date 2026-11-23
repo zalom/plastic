@@ -2,6 +2,7 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../../graph/work/repair_regions"
+require_relative "../../lines"
 
 module Plastic
   module Workflows
@@ -50,7 +51,7 @@ module Plastic
             "repair: #{region["id"]} #{region["title"]} is #{region["state"]}; #{tail}"
           end
 
-          def self.overdue_line(node, now) = "overdue: #{node.id} #{node.title} claimed #{node.claimed_minutes(now)} minutes ago, deadline #{node.deadline}"
+          def self.overdue_line(node, now) = "overdue: #{node.id} #{node.title} claimed #{Lines.minutes(node.claimed_minutes(now))} ago, deadline #{node.deadline}"
 
           # A claimed node past its deadline as data for a JSON answer: who holds it, for how many minutes, and its deadline.
           def self.overdue_data(node, now)

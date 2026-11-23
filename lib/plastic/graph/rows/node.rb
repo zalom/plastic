@@ -60,8 +60,9 @@ module Plastic
         # The seconds since the claim started, at `now`.
         def claimed_for(now) = now - Time.parse(claimed_at)
 
-        # The whole minutes since the claim started, at `now`.
-        def claimed_minutes(now) = (claimed_for(now) / 60).floor
+        # The minutes since the claim started, at `now`, rounded up to the minute the claim is in, so a
+        # claim past its deadline always names more minutes than the deadline.
+        def claimed_minutes(now) = (claimed_for(now) / 60).ceil
 
         # The last renewal of the claim, else its start; nil when the claim has neither.
         def last_seen
