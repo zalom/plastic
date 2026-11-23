@@ -91,7 +91,7 @@ on your machine.
 3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
 4. Write the command's reference pages: run `ruby tools/command-reference` and commit the pages under `docs/reference/commands/`.
 5. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
-6. Add the command to [README.md](README.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
+6. Add the command to [docs/usage/commands.md](docs/usage/commands.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
 
 ## Cut a release
 

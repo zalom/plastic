@@ -188,7 +188,7 @@ class GraphResumeTest < Plastic::TestCase
 
     wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 --agent NAME (because node n1 is ready)", "next: plastic node claim 1 n1 --agent NAME"]
 
-    assert_equal [0, "", wanted, 3], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("log: ") }]
+    assert_equal [0, "", wanted, 4], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("log: ") }]
   end
 
   def test_no_store_with_work_sends_the_agent_to_plastic_status

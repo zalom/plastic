@@ -41,3 +41,36 @@ class StopRenewsClaimsTest < Plastic::TestCase
     refute_equal seen_at("n1"), seen_at("n2")
   end
 end
+
+# The stop hook renews the driver claim of its session too.
+class StopRenewsDriverTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
+  def setup
+    super
+    open_intent
+    store_graphs.work.activate_intent("1")
+    clock = Clock.new(START)
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1", clock:).work.drive_intent(intent_id: "1", by: "s-1")
+  end
+
+  def seen_at = store_graphs.databases.fetch(:store).row("SELECT seen_at FROM drivers WHERE intent_id = '1'")["seen_at"]
+
+  def stop(session, seconds)
+    plastic("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE, clock: Clock.new(START + seconds))
+  end
+
+  def test_the_stop_hook_renews_the_driver_claim_of_its_session
+    stop("s-1", 600)
+
+    assert_equal "2026-11-23T08:10:00Z", seen_at
+  end
+
+  def test_the_stop_hook_leaves_the_driver_claim_of_another_session
+    stop("s-2", 600)
+
+    assert_equal "2026-11-23T08:00:00Z", seen_at
+  end
+end
