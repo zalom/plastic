@@ -7,6 +7,9 @@ module Plastic
     # and `plastic update` can drop them again. A table that held a row gets its rows back from legacy.db. Docs:
     # docs/contributing/MIGRATIONS.md.
     module RoadmapTables
+      # The migration that drops the tables. It keeps a table only when it holds a row, so an empty one is kept nowhere.
+      VERSION = "20261124090000"
+
       DDL = [
         %("roadmaps" ("slug" TEXT NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "opened_at" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, PRIMARY KEY ("slug", "origin_id"))),
         %("batches" ("roadmap" TEXT NOT NULL, "position" INTEGER NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "done" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, PRIMARY KEY ("roadmap", "position", "origin_id"))),

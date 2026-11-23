@@ -162,7 +162,7 @@ release from before the roadmap removal, such as an older checkout run against t
 makes each declared table that is missing. No code of this release declares them: `schema.rb` does
 not, and only the down of migration `20261123120000` makes them, from `legacy.db`. A migration that
 is already recorded never runs again, so the drop needs a new version. It has no switch. It is in
-`KEEPS` and `NON_EMPTY`: a table that holds a row is kept whole in `legacy.db` as
+`KEEPS`, and `RoadmapTables::VERSION` marks it as keeping a table only when it holds a row: a table that holds a row is kept whole in `legacy.db` as
 `<table>_20261124090000` before the drop, an empty table is kept nowhere, and a store with none of
 the tables only records the version. Its down, `RoadmapTables` in `REBUILDS`, builds the five tables
 again, empty and in the old shape, and puts back each row that the migration kept. A store that

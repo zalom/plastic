@@ -70,6 +70,7 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
   def test_a_run_that_drops_only_empty_tables_keeps_nothing_in_legacy_db
     home = remade
     migrate_store(home)
+
     assert_includes recorded(home), EMPTY
 
     assert_empty legacy_tables(home).select { |name| name.end_with?(EMPTY) }
