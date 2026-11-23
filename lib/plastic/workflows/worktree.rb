@@ -5,6 +5,9 @@ module Plastic
     # The code worktree of an intent: the repository the store's project names
     # in projects.yml, the folder under its .claude/worktrees and the branch.
     Worktree = Data.define(:repo, :path, :branch) do
+      # True when the project of the slug names a repository: its work is code work.
+      def self.code?(scope, slug = scope.slug) = !scope.projects.fetch(slug, nil).to_s.empty?
+
       # Nil when the store's project names no repository, such as the global store.
       def self.of(scope, intent)
         repo = scope&.projects&.fetch(scope.slug, nil).to_s

@@ -3,6 +3,7 @@
 require_relative "../brief"
 require_relative "../../../../code_workflow"
 require_relative "../../../../graph/work/delivery_action"
+require_relative "../../../worktree"
 
 module Plastic
   module Workflows
@@ -15,7 +16,7 @@ module Plastic
             sets :next_command, :why, :handoff_text
 
             read "choose the delivery action" do |context|
-              context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::DeliveryAction.new(context.retrieval, context.intent_id).call
+              context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::DeliveryAction.new(context.retrieval, context.intent_id, code: Plastic::Workflows::Worktree.code?(context.scope)).call
             end
 
             outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the agent takes the next step of the brief"

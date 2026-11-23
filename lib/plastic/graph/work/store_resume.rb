@@ -18,10 +18,10 @@ module Plastic
 
         # The rows hold the store's work.
         class InPlay
-          def initialize(retrieval, session, now)
+          def initialize(retrieval, session, now, code)
             @retrieval = retrieval
             @pick = NextPick.new(retrieval, session, now:)
-            @offer = NextOffer.new(retrieval, @pick).call
+            @offer = NextOffer.new(retrieval, @pick, code:).call
           end
 
           def rows = [["store:", @retrieval.store], *in_play_rows, *node_rows, *log_rows, ["then:", then_text]]
@@ -59,10 +59,10 @@ module Plastic
 
         attr_reader :slug
 
-        def initialize(retrieval, folder, session, now:)
+        def initialize(retrieval, folder, session, now:, code: false)
           @slug = retrieval.store
           rebuild = retrieval.intents.empty? && folder.intent_dirs.any?
-          @view = rebuild ? Rebuild.new(@slug, folder) : InPlay.new(retrieval, session, now)
+          @view = rebuild ? Rebuild.new(@slug, folder) : InPlay.new(retrieval, session, now, code)
         end
 
         # The label and value of each line to print, the store first.
