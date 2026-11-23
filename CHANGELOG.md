@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic update` and `plastic update --dry-run` show an unreachable release source as a plain message that names the source, such as "cannot reach https://api.github.com/repos/zalom/plastic/releases?per_page=50: Connection refused", or "cannot read the local release folder DIR" in development mode, and exit 1. They printed the raw exception with its class, such as "Errno::ECONNREFUSED". Connection refused or reset, a name that does not resolve, a timeout and a TLS failure are covered; no other error is rescued.
 - The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
 - `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.
 
