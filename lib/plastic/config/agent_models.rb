@@ -14,7 +14,8 @@ module Plastic
       # file basenames without the `.md` extension.
       TIER_DEFAULTS = {
         "plastic-planner" => "opus",
-        "plastic-executor" => "sonnet"
+        "plastic-executor" => "sonnet",
+        "plastic-driver" => "sonnet"
       }.freeze
 
       # An agent file that no longer ships, and the agent that took its place.

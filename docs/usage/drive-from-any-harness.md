@@ -5,6 +5,26 @@ program that can run `plastic` commands and start a model: a shell script, Claud
 mode, Codex in `exec` mode, or an agent built on an SDK. Plastic starts no model itself. This page
 shows the loop a driver runs.
 
+## The driver role
+
+When the driver is the open Claude Code or Codex session, `plastic install` writes the role
+`plastic-driver` for it, next to the planner and executor roles. The role tells the session to run
+the loop below: start one subagent or background worker for each ready node, of the role that fits
+the node's kind, and hand it the intent id and the node id. The worker claims its node, which
+prints the claim packet, and finishes it itself.
+
+| Node kind | Worker |
+| --------- | ------ |
+| `orchestrator` | The planner role, `plastic-planner`. |
+| `work` | The executor role, `plastic-executor`. |
+| `retrieval` | A read-only worker that searches and reports. |
+
+The worker finishes with `plastic node done ID NODE TEXT --output PATH`, so the next node reads its
+output in its packet. At most 3 workers run at once. The setting `driver.max_workers` holds the
+limit: change it with `plastic config set driver.max_workers N` and run `plastic install --reinstall`,
+and the installed role prints the new number. When the harness cannot start workers, the session
+works the nodes itself, one at a time. Plastic starts no worker.
+
 ## The loop
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready. Each is
@@ -73,8 +93,8 @@ under each finding that no command repairs, a `repair:` line under each finding 
 - Give each driver its own `PLASTIC_SESSION`. The claim holds the name of the session that took it. When
   `PLASTIC_SESSION` is not set, Plastic uses the session of the harness, and then `terminal-` and the login
   at a terminal. Two drivers that share a name share a claim.
-- A claim lapses after 900 seconds without a renewal. The worker never runs `plastic`, so the driver
-  renews the claim with `plastic node renew ID NODE`, for example every five minutes, while the worker runs.
+- A claim lapses after 900 seconds without a renewal. When a driver hands out nodes, each worker
+  renews its own claim with `plastic node renew ID NODE`, for example every five minutes, while it runs.
 - Exit code 3 means Plastic refused the call, for example when another session took a lapsed
   claim. Stop that node and do not retry with other options.
 - After three runs of one node, the next claim moves it to `needs_info` with a question for the

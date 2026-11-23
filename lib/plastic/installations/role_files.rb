@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "role_text"
 
 module Plastic
   module Installations
@@ -14,10 +15,10 @@ module Plastic
         text.sub(/^(model:[^\n]*)$/) { "#{Regexp.last_match(1)}\n#{key}: #{value}" }
       end
 
-      def initialize(package_root, models: {}, efforts: {}, skip: [])
+      def initialize(package_root, models: {}, efforts: {}, skip: [], workers: nil)
         @package_root = package_root
-        @models = models
-        @efforts = efforts
+        @workers = workers
+        @picks = { "model" => models, "effort" => efforts }
         @skip = skip
       end
 
@@ -30,12 +31,12 @@ module Plastic
       def copy(source, root)
         FileUtils.mkdir_p(root)
         target = File.join(root, File.basename(source))
-        File.write(target, rewritten(File.read(source), File.basename(source, ".md")))
+        File.write(target, rewritten(RoleText.fill(File.read(source), @workers), File.basename(source, ".md")))
         target
       end
 
       def rewritten(text, name)
-        { "model" => @models[name], "effort" => @efforts[name] }.compact.reduce(text) { |kept, (key, value)| RoleFiles.set_line(kept, key, value) }
+        @picks.transform_values { |picked| picked[name] }.compact.reduce(text) { |kept, (key, value)| RoleFiles.set_line(kept, key, value) }
       end
     end
   end
