@@ -55,4 +55,22 @@ class IntentReportMandatoryTest < Plastic::TestCase
 
     assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"the page\"\n- #{REPORT} (mandatory)\n", outcome
   end
+
+  def test_a_changed_report_with_the_same_setting_keeps_its_one_line
+    call
+    change_report
+    call
+
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
+  end
+
+  def test_an_intent_with_no_outcome_gets_the_mandatory_line_only
+    intent = open_intent("Beta")
+    write("#{intent.dir}/#{REPORT}", "<p>page</p>\n")
+    sync_up
+    seed_config(@plastic_home, MANDATORY)
+    plastic("intent", "report", intent.intent_id, REPORT, table: Plastic::CLI::TABLE)
+
+    assert_equal "# Outcome\n\n## Reports\n\n- #{REPORT} (mandatory)\n", retrieval.fetch(intent.intent_id, "outcome.md").body
+  end
 end

@@ -57,6 +57,18 @@ class ReportFileTest < Minitest::Test
     assert_includes problem("resources/output/reports/a.html", { "i/resources/output/reports/a.html" => "\x00\x01\x02binary" }), "is not text"
   end
 
+  def test_a_link_that_leads_out_of_the_reports_folder_is_a_problem
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "i/resources/output/reports"))
+      File.write(File.join(root, "secret.txt"), "secret\n")
+      File.symlink(File.join(root, "secret.txt"), File.join(root, "i/resources/output/reports/link.html"))
+      file = Plastic::Graph::Knowledge::Intent::ReportFile.new(Intent.new("1", "i"), "resources/output/reports/link.html")
+      selection = Struct.new(:read) { def reads_type?(_path) = read }.new(true)
+
+      assert_includes file.problem(selection, Plastic::Graph::Knowledge::StoreFolder.new(root)), "leads outside"
+    end
+  end
+
   def test_a_text_file_in_the_reports_folder_has_no_problem
     assert_nil problem("resources/output/reports/a.html", { "i/resources/output/reports/a.html" => "<p>x</p>\n" })
   end
