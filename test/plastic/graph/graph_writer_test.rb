@@ -2,7 +2,9 @@
 
 require_relative "../../test_helper"
 
-class WorkGraphTest < Plastic::TestCase
+class GraphWriterTest < Plastic::TestCase
+  fixtures :empty
+
   def work = store_graphs.work
 
   def run_session(graphs) = graphs.databases[:local].row("SELECT session_id FROM command_runs WHERE subject = 1").fetch("session_id")
@@ -34,7 +36,7 @@ class WorkGraphTest < Plastic::TestCase
     assert_predicate work.backups.restorer, :claimed?
   end
 
-  def test_a_sync_plan_applies_through_the_work_graph
+  def test_a_sync_plan_applies_through_the_graph_writer
     open_intent
     write("store/1--alpha/spec.md", "# Spec\n")
     plan = work.sync_plan(:up, {})
@@ -68,5 +70,41 @@ class WorkGraphTest < Plastic::TestCase
 
     assert_equal "s-2", run_session(second)
     assert_equal "s-1", structure.work_log("1").first.session_id
+  end
+
+  def opened = yield(Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1"))
+
+  def test_a_roadmap_file_is_readable_once_printed_and_not_before
+    work.write_batch("r1", 1, fields: Plastic::Graph::Knowledge::Roadmap::Writer::Fields.new(title: "T", goal: "G", done: "d"))
+
+    refute work.roadmap_file_readable?("r1")
+    work.print_roadmap("r1")
+
+    assert work.roadmap_file_readable?("r1")
+  end
+
+  def test_a_roadmap_file_in_an_older_form_is_not_readable
+    folder.write("roadmaps/old.md", "not a roadmap form")
+
+    refute work.roadmap_file_readable?("old")
+  end
+
+  def abandoned_intent
+    opened { |graphs| graphs.work.write_intent(title: "Alpha") }
+    opened { |graphs| graphs.work.print_intent("1") }
+    opened { |graphs| graphs.work.note_intent(graphs.retrieval.intent("1"), "note", "why it ends") }
+    opened { |graphs| graphs.work.abandon_intent("1") }
+  end
+
+  def test_an_intent_archives_and_unarchives
+    abandoned_intent
+
+    assert_equal [true, true], %i[archive_intent unarchive_intent].map { |write| opened { |graphs| graphs.work.public_send(write, "1").first } }
+  end
+
+  def test_unarchiving_an_intent_that_is_not_archived_reports_not_ok
+    abandoned_intent
+
+    refute opened { |graphs| graphs.work.unarchive_intent("1").first }
   end
 end

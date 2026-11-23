@@ -75,7 +75,7 @@ with its reason, and `plastic intent end` or `plastic intent abandon` finishes i
 
 ## The components of the kernel
 
-![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a CLI::Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
+![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a CLI::Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::GraphWriter writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::GraphWriter writes the four databases through Graph::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
 
 The kernel lives under `lib/plastic/`, and `lib/plastic.rb` loads it. A class
 loads on first use, so `plastic help` reads the table and loads no command.
@@ -101,7 +101,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
-| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: command runs, sessions, intents, nodes, runs and edges. |
+| `Graph::GraphWriter` | `lib/plastic/graph/graph_writer.rb` | The write side of all three graphs: it writes the store databases, the printed store files and the machine's own database. Command runs, sessions, intents, nodes, runs and edges go through it. |
 | `Graph::RetrievalGraph` | `lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
 | `Graph::Printer` | `lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Knowledge::Sync` | `lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
@@ -130,14 +130,15 @@ To retire a kind of data:
 
 ## The three graphs
 
-![The three graphs and their databases. Graph::WorkGraph is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, the knowledge graph lives in knowledge_graph.db, and the retrieval graph lives in retrieval_graph.db. Graph::RetrievalGraph is the read side: it reads those rows and writes nothing. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
+![The three graphs and their databases. Graph::GraphWriter is the write side: it writes the rows of every graph. The work graph lives in work_graph.db, the knowledge graph lives in knowledge_graph.db, and the retrieval graph lives in retrieval_graph.db. Graph::RetrievalGraph is the read side: it reads those rows. Only repair and reindex write, to the derived search tables. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
 
-`Graph::WorkGraph` is the write side of every database. `Graph::RetrievalGraph` is the read side:
-it reads every database and writes nothing. The commands below reach them through these two.
+`Graph::GraphWriter` is the write side of every graph: it writes the store databases, the printed
+store files and the machine's own database. `Graph::RetrievalGraph` is the read side: it reads every
+database and writes only when `repair` or `reindex` rebuilds the derived search tables. The commands below reach them through these two.
 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
-| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
+| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic intent spec`, `plastic intent brief` |
 | Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic sync up`, `plastic sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic roadmap open`, `plastic roadmap auto`, `plastic resources sort`, `plastic backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
 

@@ -8,7 +8,7 @@ require_relative "graph/migration/runner"
 require_relative "graph/retrieval_graph"
 require_relative "graph/knowledge/store_folder"
 require_relative "graph/knowledge/sync_settings"
-require_relative "graph/work_graph"
+require_relative "graph/graph_writer"
 
 module Plastic
   # The graphs of one store. The home keeps plastic.db, for the command runs of
@@ -38,7 +38,7 @@ module Plastic
       databases = Database.open_local(home).merge(store: Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:, clock:)
       folder = Knowledge::StoreFolder.new(root, sync: sync.for_store(databases.fetch(:store)))
-      Graphs.new(work: WorkGraph.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
+      Graphs.new(work: GraphWriter.new(databases, folder:, retrieval:, session:, clock:), retrieval:, databases:)
     end
 
     # Makes the store folder and its databases, then opens it. The one way

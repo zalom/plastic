@@ -75,7 +75,7 @@ class WiringTest < Plastic::TestCase
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
     graphs = Plastic::Wiring.graphs(home: @plastic_home, store: "global")
 
-    assert_instance_of Plastic::Graph::WorkGraph, graphs.work
+    assert_instance_of Plastic::Graph::GraphWriter, graphs.work
     assert Plastic::Wiring.sync(@plastic_home).selection.read?("resources/output/files/shot.PNG")
   end
 
