@@ -19,7 +19,7 @@ module Plastic
           SQL
 
           REMOVE_SQL = <<~SQL
-            DELETE FROM edges WHERE intent_id = :intent_id AND "from" = :from AND "to" = :to AND origin_id = :origin
+            DELETE FROM edges WHERE intent_id = :intent_id AND "from" = :from AND "to" = :to AND origin_id = :origin AND kind = 'needs'
             RETURNING "from"
           SQL
 

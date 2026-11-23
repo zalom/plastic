@@ -25,7 +25,7 @@ module Plastic
         "graph check" => ["Commands::Graph::Check", "Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node"],
         "graph ready" => ["Commands::Graph::Ready", "List the nodes ready to claim"],
         "graph resume" => ["Commands::Graph::Resume", "Say where each named store's work stopped and what runs next"],
-        "graph show" => ["Commands::Graph::Show", "Print every node and edge of an intent"]
+        "graph show" => ["Commands::Graph::Show", "Print every node, with the node it was found in, and every need of an intent"]
       },
       "roadmap" => {
         "roadmap new" => ["Commands::Roadmap::New", "Create a roadmap; write its batches with roadmap batch"],

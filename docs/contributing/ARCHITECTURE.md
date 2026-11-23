@@ -161,7 +161,7 @@ a missing or removed node, and an edge that would close a loop.
 
 Every plan follows the Principle of Least Surprise. An ambiguity gets research and then
 `plastic node ask`. A blocker stops its node with `plastic node impede`. A newly found issue
-becomes `plastic node add` plus `plastic edge add`. `Graph::Work::PlanningDirective` holds the
+becomes `plastic node add --found-in NODE`, which records the node it was found in as a `found_in` edge that orders nothing, plus `plastic edge add`. `Graph::Work::PlanningDirective` holds the
 text that Plastic prints in the planning hand-off.
 
 ## How an intent is delivered
