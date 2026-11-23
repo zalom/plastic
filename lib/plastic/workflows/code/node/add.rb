@@ -12,13 +12,13 @@ module Plastic
         class Add < CodeWorkflow
           clear_declarations
 
-          sets :id, :input_problem, :found_problem
+          sets :id, :input_problem, :found_problem, :found_refusal
 
           open_intent_gates "nodes"
 
           read "check the kind and the criterion" do |context|
             context[:input_problem] = kind_problem(context) || criterion_problem(context)
-            context[:found_problem] = found_in_problem(context)
+            context[:found_problem], context[:found_refusal] = found_in_problems(context)
           end
 
           gate "%{input_problem}", stops: :failure,
@@ -28,6 +28,10 @@ module Plastic
           gate "%{found_problem}", stops: :failure,
             words: "the node the new work was found in is not a live node of the intent",
             pass: ->(context) { context.found_problem.nil? }
+
+          gate "%{found_refusal}", stops: :refusal,
+            words: "the node the new work was found in is removed",
+            pass: ->(context) { context.found_refusal.nil? }
 
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|
@@ -47,15 +51,16 @@ module Plastic
             "kind #{kind.inspect} is not a node kind; the kinds are: #{Plastic::Graph::Work::Node::KINDS.join(", ")}"
           end
 
-          def self.found_in_problem(context)
+          # [the failure, the refusal]: a missing node fails, a removed node is refused, as `edge add` does.
+          def self.found_in_problems(context)
             found_in = context.found_in
-            return nil if found_in.nil?
+            return [nil, nil] if found_in.nil?
 
             intent_id = context.intent_id
             state = context.retrieval.node(intent_id, found_in)&.state
-            return "#{found_in} is not a node of intent #{intent_id}" if state.nil?
+            return ["#{found_in} is not a node of intent #{intent_id}", nil] if state.nil?
 
-            "#{found_in} is removed" if state == "removed"
+            [nil, ("#{found_in} is removed" if state == "removed")]
           end
 
           def self.criterion_problem(context)

@@ -28,9 +28,10 @@ module Plastic
             "Only after the owner gives it, record it with plastic intent approve #{id}."]
         end
 
-        def initialize(retrieval, pick)
+        def initialize(retrieval, pick, work: :general)
           @retrieval = retrieval
           @pick = pick
+          @work = work
         end
 
         # The command, the reason and the handoff text; the handoff is nil
@@ -51,7 +52,7 @@ module Plastic
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
           return self.class.go_ahead_offer(@retrieval, id) if open
 
-          DeliveryAction.new(@retrieval, id).call
+          DeliveryAction.new(@retrieval, id, work: @work).call
         end
 
         def gap_of(id) = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))

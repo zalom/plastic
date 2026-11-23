@@ -199,9 +199,8 @@ A driver outside the session can run the same steps. `Graph::Work::Packet` build
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
 every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
 is newer than the last node change, and `outcome.md` has a `## Verification` section with one
-delivery line: `Merged:` for a merged pull request or `Committed:` for a direct commit, each with
-an `Architecture map:` line, or `Delivered:` for files in the intent folder under
-`resources/output`, which needs no map. `Workflows::Agent::Intent::End::CheckDelivery` hands the
+delivery line: `Merged:` for a merged pull request or `Committed:` for a direct commit, or
+`Delivered:` for files in the intent folder under `resources/output`. `Workflows::Agent::Intent::End::CheckDelivery` hands the
 agent the steps for a delivery line that is missing or refused. When review by pull request is on (the default is off), the section
 also has a `Pull request:` line, and an `Approved:` line once the owner approves. Closing
 hands the agent the wind-down steps in `Workflows::Agent::Shared::WindDownIntent`.

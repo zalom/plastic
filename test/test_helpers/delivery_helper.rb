@@ -4,7 +4,7 @@ module Plastic
   class TestCase
     # Intents at the points of delivery the workflow tests start from.
     module DeliveryHelper
-      VERIFICATION = "\n## Verification\n- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n"
+      VERIFICATION = "\n## Verification\n- Merged: plastic/1 into alpha at abc123\n"
 
       def specified_intent(spec = "## Done criteria\n- It works\n")
         intent = open_intent

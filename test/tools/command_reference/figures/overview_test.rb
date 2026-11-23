@@ -9,7 +9,7 @@ class CommandReferenceOverviewFigureTest < Minitest::Test
   FOLDER = "docs/reference/commands"
   FLOW_TAGS = ["tag tag-code", "tag tag-agent"].freeze
   END_TAGS = ["tag tag-end", "tag tag-handoff"].freeze
-  UNREACHABLE = ["completion records are ready", "architecture map are recorded", "left running"].freeze
+  UNREACHABLE = ["completion records are ready", "delivery it needs is recorded", "left running"].freeze
 
   def texts(svg) = REXML::Document.new(svg).get_elements("//text").map { |each| [each.attributes["class"], each.text.to_s] }
 
