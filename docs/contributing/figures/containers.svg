@@ -70,10 +70,6 @@
 <rect class="box" x="40" y="585" width="250" height="79" rx="8"/><rect x="40" y="585" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="56" y="609">store/index.json</text><text class="s" x="56" y="626">[file]</text>
 <text class="s" x="56" y="646">Every intent, in order.</text>
-<rect class="box" x="320" y="585" width="250" height="94" rx="8"/><rect x="320" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
-<text class="t" x="336" y="609">roadmaps/</text><text class="s" x="336" y="626">[folder]</text>
-<text class="s" x="336" y="646">One file for each roadmap,</text>
-<text class="s" x="336" y="661">printed from the rows.</text>
 <rect class="box" x="600" y="585" width="530" height="94" rx="8"/><rect x="600" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="616" y="609">ID--slug/</text><text class="s" x="616" y="626">[intent folder]</text>
 <text class="s" x="616" y="646">spec.md, graph.json, work.log,</text>
@@ -92,7 +88,6 @@
 <path class="flow" d="M 538.0 293 L 538.0 349 L 725.0 349 L 725.0 405" marker-end="url(#containers-arrow)"/>
 <path class="flow" d="M 165.0 472 L 165.0 585" marker-end="url(#containers-arrow)"/>
 <text class="al" x="165" y="533" text-anchor="middle">printed</text>
-<path class="flow" d="M 252.5 472 L 252.5 528 L 357.5 528 L 357.5 585" marker-end="url(#containers-arrow)"/>
 <path class="flow" d="M 445.0 472 L 445.0 528 L 706.0 528 L 706.0 585" marker-end="url(#containers-arrow)"/>
 <text class="al" x="576" y="508" text-anchor="middle">printed from the rows;</text>
 <text class="al" x="576" y="521" text-anchor="middle">sync up reads edits back</text>

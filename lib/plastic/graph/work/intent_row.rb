@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "intent_needs"
+require_relative "../knowledge/intent_needs"
 
 module Plastic
   module Graph
     module Work
       # One intent's heading and node counts by state, ready for a status row.
       class IntentRow
-        def initialize(retrieval, intent, needs: IntentNeeds.new(retrieval))
+        def initialize(retrieval, intent, needs: Knowledge::IntentNeeds.new(retrieval))
           @retrieval = retrieval
           @intent = intent
           @needs = needs

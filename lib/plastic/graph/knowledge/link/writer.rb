@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../link"
-require_relative "../../work/intent_needs"
+require_relative "../intent_needs"
 
 module Plastic
   module Graph
@@ -54,7 +54,7 @@ module Plastic
           def needs_refusal(id, target)
             return "a needs link names an intent of this store, not #{target}" unless @retrieval.intent(target)
 
-            cycle = Work::IntentNeeds.new(@retrieval).loop_path(id, target)
+            cycle = IntentNeeds.new(@retrieval).loop_path(id, target)
             "intent #{id} needing #{target} would close a loop: #{cycle.join(" -> ")}" if cycle
           end
 

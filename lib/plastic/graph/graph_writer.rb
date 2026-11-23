@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require_relative "knowledge/roadmap/item_open"
 require_relative "backup/store_backups"
 require_relative "printer"
 require_relative "knowledge/prints"
@@ -38,7 +37,6 @@ module Plastic
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal
-      def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :open_item, :drop_item, :remove_roadmap_edge, :add_log
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       def_delegator "@writers.sync", :hand_edited
@@ -75,23 +73,6 @@ module Plastic
       # Returns [ok, problem, kind]; kind is :failure, nil on success.
       def unarchive_intent(intent_id)
         @logged.unarchive_intent(intent_id).tap { |ok,| @writers.sync.printer.reprint(Prints.log_of(@retrieval, intent_id)) if ok }
-      end
-
-      # Prints a roadmap's file from its rows; returns the paths written.
-      def print_roadmap(slug) = @writers.sync.printer.print([Prints.roadmap(@retrieval, slug)])
-
-      # Opens a ready item's intent, with its spec held in rows. Returns
-      # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
-      def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers, @logged).call(slug, item_id)
-
-      def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
-
-      # The file is in the form of this release and reads without a problem: `plastic sync up` turns it into rows.
-      def roadmap_file_readable?(slug)
-        path = "roadmaps/#{slug}.md"
-        @folder.exist?(path) && Knowledge::Reader::RoadmapFile.new(slug, @folder.read(path)) && true
-      rescue Invalid
-        false
       end
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])

@@ -10,8 +10,7 @@ module Plastic
         Plastic is installed for this agent. Plastic is intent-driven state management: work runs
         in one of two modes, guided or auto (an agent team drives the delivery with `plastic status`
         and `plastic next`). `plastic intent start ID` starts an intent for guided work, `plastic
-        intent auto ID` starts it for agent delivery, and `plastic roadmap auto SLUG` starts a
-        roadmap's next item. In auto the agents run `plastic intent approve ID` themselves when the
+        intent auto ID` starts it for agent delivery. In auto the agents run `plastic intent approve ID` themselves when the
         `because:` line of `plastic intent spec` names it. Do not jump straight to code.
 
         Standing rules:

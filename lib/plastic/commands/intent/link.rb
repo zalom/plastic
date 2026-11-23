@@ -11,7 +11,7 @@ module Plastic
       class Link < Routine
         subject :intent_id
         argument :intent_id, label: "ID", text: "the intent this link starts from"
-        argument :kind, label: "KIND", text: "cites, supersedes, answers, source, chain or needs"
+        argument :kind, label: "KIND", text: "cites, supersedes, answers, needs, source or chain"
         argument :target, label: "TARGET", text: "an intent, a ruling, or a ref with a store prefix"
         reads :work
         writes :knowledge

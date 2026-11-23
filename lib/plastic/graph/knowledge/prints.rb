@@ -2,7 +2,6 @@
 
 require_relative "intent"
 require_relative "store_folder"
-require_relative "roadmap_print"
 require_relative "prints/print"
 require_relative "prints/contents"
 require_relative "prints/index_print"
@@ -80,7 +79,6 @@ module Plastic
         [Print.text("#{intent.dir}/#{WORK_LOG}", lines.map { |line| "#{line.line}\n" }.join)]
       end
 
-      def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", RoadmapPrint.new(retrieval, slug).text)
     end
   end
 end

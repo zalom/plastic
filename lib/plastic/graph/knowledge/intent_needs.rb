@@ -4,7 +4,7 @@ require_relative "../edge_walk"
 
 module Plastic
   module Graph
-    module Work
+    module Knowledge
       # The needs links between the intents of one store: an intent that needs another waits until that one is
       # done or abandoned. It answers what an intent still waits on, which intents wait, and whether a new link
       # would close a loop.

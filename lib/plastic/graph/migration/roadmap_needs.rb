@@ -48,7 +48,7 @@ module Plastic
 
       private
 
-      def kept? = !@connection.get_first_value("SELECT name FROM legacy.sqlite_master WHERE name = 'roadmap_edges_#{VERSION}'").nil?
+      def kept? = !@connection.get_first_value("SELECT name FROM legacy.sqlite_master WHERE name = ?", "roadmap_edges_#{VERSION}").nil?
 
       # Writes the link of one edge and answers whether it was written.
       def link(edge, pairs)

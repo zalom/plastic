@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "intent_needs"
+require_relative "../knowledge/intent_needs"
 
 module Plastic
   module Graph
@@ -31,7 +31,7 @@ module Plastic
 
         private
 
-        def needs = @needs ||= IntentNeeds.new(@retrieval)
+        def needs = @needs ||= Knowledge::IntentNeeds.new(@retrieval)
 
         def ready = by_status("open").reject { |intent| blocked.key?(intent.intent_id) }
 
