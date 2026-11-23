@@ -49,12 +49,14 @@ module Plastic
           end
 
           # A node found while doing another carries `found_in`, the id of that node: the node row and its found_in edge
-          # land in one transaction. The edge orders nothing; only `needs` does.
-          def add_node(intent_id:, found_in: nil, **fields)
+          # land in one transaction. The edge orders nothing; only `needs` does. Each of `inputs` is a row of node_inputs, numbered from 1 in the order given.
+          def add_node(intent_id:, found_in: nil, inputs: [], **fields)
             id = next_id(intent_id)
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
+            paths = inputs.each.with_index(1).map { |path, position| { intent_id:, node_id: id, position:, path: } }
             @databases.fetch(:store).transaction do |batch|
               batch.put(:nodes, row, statement: :insert)
+              batch.put_all(:node_inputs, paths)
               found_in && batch.write(:edges, Edge::Writer::ADD_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
             end
             @retrieval.node(intent_id, id)

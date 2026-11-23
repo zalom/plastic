@@ -111,7 +111,7 @@ module Plastic
             packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)
-            context.print("input: #{node.input}") if node.input
+            packet.input_lines.each { |line| context.print(line) }
             context.print("last reason: #{node.reason}") if node.reason
             packet.answer_lines.each { |line| context.print(line) }
             context.data("packet", packet.to_h)
