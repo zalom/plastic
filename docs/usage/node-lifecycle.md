@@ -22,6 +22,8 @@ person talks to, moves a node. The agents it dispatches do the work and report b
 it needs is done, and `plastic graph ready ID` lists the ready nodes, and for a failed, needs_info or impeded node a `repair:` line naming the nodes that wait on it, the region to re-plan. Only an `open` node can be
 removed.
 
+After `plastic node done` the nodes that are now ready are named on `ready:` lines, and the `next:` line claims the first of them: `plastic node claim ID NODE --agent NAME`. When no node is ready, or the intent is complete, the `next:` line stays `plastic graph ready ID`.
+
 A node can carry a deadline: `plastic node add ID TITLE --criterion KEY --deadline MINUTES` stores the
 minutes a claim on it may run. The value is a whole number above 0; any other value exits 2 and adds
 no node. `plastic graph show` prints it on the node line as `deadline 30 minutes`. A node without one
@@ -36,7 +38,7 @@ claim names the main session and prints the node's brief, which the main session
 agent.
 
 Each claim opens a run that also records the harness of the claiming session. When the run ends,
-Plastic reads the model, the tokens and the cost of the work from the harness's own local record (Claude Code transcripts under `~/.claude/projects`, Codex logs under `~/.codex/sessions`), including the worker's own session when a subagent ran the claim. The run stores its start and its end in whole seconds, so the read takes in the whole second of each. Plastic starts nothing and calls no API. Claude Code writes its cost total about once per session, at the stop, so the cost is recorded only when the transcript holds a total after the run; a run in a live session records no cost and the note says so. When the record is missing or unreadable, the run keeps what is known and a note says what was not found; the claim and the done never fail for it. `plastic graph show ID` prints one `run:` line for each run. A claim in an intent that is not in progress is refused with exit 3 and offers
+Plastic reads the model, the tokens and the cost of the work from the harness's own local record (Claude Code transcripts under `~/.claude/projects`, Codex logs under `~/.codex/sessions`), including the worker's own session when a subagent ran the claim. The run stores its start and its end in whole seconds, so the read takes in the whole second of each. Plastic starts nothing and calls no API. Claude Code writes its cost total about once per session, at the stop, so the cost is recorded only when the transcript holds a total after the run; a run in a live session records no cost and the note says so. When the record is missing or unreadable, the run keeps what is known and a note says what was not found; the claim and the done never fail for it. `plastic graph show ID` prints one `run:` line for each run, with when it started, when it ended and its length (`4m 12s`, `1h 2m 3s`, `under 1s` for a run shorter than a second), or `running` for a run with no end yet; `--json` carries them under `result.runs` as `started_at`, `ended_at` and `length_seconds`. A run written after the work stands out by its length. A claim in an intent that is not in progress is refused with exit 3 and offers
 `plastic intent start ID`. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused, also with exit 3. After three runs, the next claim moves the
 node to `needs_info` with a standing question, and the owner decides.
 
