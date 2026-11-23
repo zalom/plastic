@@ -75,7 +75,27 @@ class HarnessesRunRecordTest < Plastic::TestCase
     assert_equal 50, usage.output_tokens
   end
 
-  def test_a_subagent_turn_with_a_text_block_and_no_command_is_not_the_claimant
+  def test_a_subagent_that_claimed_just_before_the_run_started_is_the_worker
+    write_claude("s-1", jsonl(claude_turn("2026-11-23T17:32:00Z", id: "p1", output: 7)))
+    write_claude("agent-a1", jsonl(
+      claude_claim_call("2026-11-23T17:32:55.306Z", "plastic node claim 1 n1 --agent plastic-executor --project plastic"),
+      claude_turn("2026-11-23T17:33:10Z", id: "a2", output: 40, model: "claude-haiku-5-5")
+    ), under: ["s-1", "subagents"])
+    usage = Plastic::Harnesses::RunRecord.new(home: @home).read(harness: "claude-code", session: "s-1", from: Time.utc(2026, 11, 23, 17, 32, 57),
+      to: Time.utc(2026, 11, 23, 17, 33, 21), claim: "1 n1")
+
+    assert_equal ["agent-a1", "claude-haiku-5-5"], [usage.worker_session, usage.model]
+  end
+
+  def test_a_subagent_claim_long_before_the_run_is_not_this_run
+    write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "p1")))
+    write_claude("agent-a1", jsonl(claude_claim_call("2026-11-12T10:00:00Z", "plastic node claim 1 n1 --agent plastic-executor"),
+      claude_turn("2026-11-12T12:03:00Z", id: "a2")), under: ["s-1", "subagents"])
+
+    assert_equal "agent-a1", read.worker_session
+  end
+
+  def test_a_subagent_that_claimed_just_before_the_run_started_is_the_worker_and_no_command_is_not_the_claimant
     write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "p1")))
     write_claude("agent-a1", jsonl(claude_turn("2026-11-12T12:03:00Z", id: "a2", block: { type: "text", text: "hello" })), under: ["s-1", "subagents"])
 
