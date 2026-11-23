@@ -6,6 +6,12 @@ class GraphBackupPurgerTest < Plastic::TestCase
   include BackupHomes
 
   Purger = Plastic::Graph::Backup::Purger
+  JUNK = "20261399000000"
+
+  def junk_done(home, **extra)
+    FileUtils.mkdir_p(File.join(backups_dir(home), JUNK))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(JUNK, status: "done", goal: "full", **extra)
+  end
 
   def test_a_folder_is_purged_whatever_its_status
     home = fresh_home
@@ -22,6 +28,26 @@ class GraphBackupPurgerTest < Plastic::TestCase
     Purger.new(File.join(home, "stores", "alpha")).sweep(now: at(2026, 1, 5, 10, 0, 0), keep: ["20260101100000"])
 
     assert_equal %w[20260101100000 20260105100000], folder_names(home)
+  end
+
+  def test_a_sweep_keeps_the_newest_real_done_backup_when_a_folder_with_no_real_time_is_done
+    home = fresh_home
+    [at(2026, 1, 1, 10, 0, 0), at(2026, 1, 5, 10, 0, 0)].each { |time| backup_at(home, time) }
+    junk_done(home)
+    Purger.new(File.join(home, "stores", "alpha")).sweep(now: at(2026, 1, 20, 10, 0, 0))
+
+    assert_equal %w[20260105100000 20261399000000], folder_names(home)
+  end
+
+  def test_a_sweep_keeps_the_newest_real_migration_backup_when_a_folder_with_no_real_time_claims_migration
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "done", goal: "full", reason: "migration")
+    backup_at(home, at(2026, 1, 5, 10, 0, 0))
+    junk_done(home, reason: "migration")
+    Purger.new(File.join(home, "stores", "alpha")).sweep(now: at(2026, 1, 20, 10, 0, 0))
+
+    assert_includes folder_names(home), "20260101100000"
   end
 
   def test_names_before_a_time_are_strictly_older

@@ -45,6 +45,15 @@ class GraphBackupStoreBackupsTest < Plastic::TestCase
     assert_equal [nil, "20260101100000"], [backups(home).entries.first.flag, backups(home).latest_done]
   end
 
+  def test_the_latest_done_passes_over_a_newer_done_folder_that_holds_no_database_file
+    home = fresh_home
+    backup_at(home, FIRST)
+    FileUtils.mkdir_p(File.join(backups_dir(home), "20260201100000"))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260201100000", status: "done", goal: "full")
+
+    assert_equal "20260101100000", backups(home).latest_done
+  end
+
   def test_a_backup_whose_folder_changed_is_listed_as_changed
     home = fresh_home
     backup_at(home, FIRST)

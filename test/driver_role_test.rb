@@ -28,6 +28,20 @@ class DriverRoleTest < Minitest::Test
     assert_includes ROLE, "work the nodes yourself"
   end
 
+  def test_it_re_plans_the_region_a_failed_node_leaves
+    assert_includes ROLE, "`result.repairs`"
+    assert_includes ROLE, "re-plan its region"
+  end
+
+  def test_the_loop_stops_only_when_nothing_is_ready_and_nothing_needs_repair
+    assert_includes ROLE, "Stop when the ready nodes and `result.repairs` are both empty"
+  end
+
+  def test_a_node_waiting_for_the_owner_goes_to_the_owner
+    assert_includes ROLE, "A `needs_info` or `impeded` node goes to the owner"
+    refute_includes ROLE, "or `plastic node resolve`"
+  end
+
   def test_a_new_limit_takes_effect_at_a_reinstall
     assert_includes ROLE, "`plastic install --reinstall`"
   end

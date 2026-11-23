@@ -200,7 +200,7 @@ The open Claude Code or Codex session is the driver of the graph loop. The insta
 `plastic-driver` for both harnesses, with the worker limit of `driver.max_workers` (3 by default)
 in its text. The session starts its own subagents or background workers, one for each ready node, of
 the role that fits the node's kind, and Plastic starts none. When the harness cannot start workers,
-the session works the nodes itself.
+the session works the nodes itself. After a node fails or waits on the owner, `plastic graph ready` also names the region to re-plan: `Graph::Work::RepairRegions` lists each stopped node with the not-done nodes that depend on it through needs edges, and the driver role re-plans them. No new node state exists. A node may carry a `deadline` in minutes, set by `plastic node add --deadline MINUTES` and stored in a nullable column of `nodes` (store migration `20261123154000`). `plastic graph ready` reports each claimed node whose claim is older than its deadline on an `overdue:` line and under `result.overdue`, with `Work::Node#overdue?` judging by the time of the call. Plastic moves no overdue node: the driver checks on the worker. The 15-minute lapse finds a worker that stopped; the deadline finds one that runs too long.
 
 A driver outside the session can run the same steps. `Graph::Work::Packet` builds the claim's packet from the retrieval graph, and `Graph::Work::Schemas` finds the schema file of a node at `resources/tmp/schemas/NODE.json`. Plastic names the file and never checks JSON against it: the harness does. `Workflows::NodeOutput` reads the file that `plastic node done --output` stores. [Drive a graph from any harness](../usage/drive-from-any-harness.md) shows the loop.
 
@@ -353,7 +353,7 @@ when every intent it needs is done or abandoned. `plastic next`, `plastic graph 
 | `plastic backup --store SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic backup list --store SLUG` | Lists the backups of a store. |
 | `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
-| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live. |
+| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live, and it refuses a finished backup that holds no database file, before the safety backup; `--latest` passes over such a backup. |
 
 A restore never syncs by itself, because a sync can undo it. It ends with
 `next: plastic sync down --project STORE`, which writes the files from the restored rows.

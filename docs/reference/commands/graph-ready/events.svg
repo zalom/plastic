@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 351" width="834" height="351" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 834" width="834" height="834" role="img" xml:space="preserve">
 <title>The events of one call of plastic graph ready, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -100,22 +100,62 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">List the ready nodes.</text>
-<path d="M 424 153 L 438 153 L 438 164 L 480 164" class="wire-end"/>
-<path d="M 472 159 L 480 164 L 472 169 Z" class="head"/>
-<rect x="480" y="141" width="330" height="46" rx="6" class="stop-end"/>
-<text x="492" y="159" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="177" class="t" text-anchor="start">No node is ready to claim.</text>
-<path d="M 424 167 L 432 167 L 432 234 L 480 234" class="wire-end"/>
-<path d="M 472 229 L 480 234 L 472 239 Z" class="head"/>
-<rect x="480" y="195" width="330" height="78" rx="6" class="stop-end"/>
-<text x="492" y="213" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="231" class="t" text-anchor="start">Node &lt;first&gt; is ready.</text>
-<text x="492" y="247" class="t" text-anchor="start">next: plastic node claim &lt;intent id&gt; &lt;first&gt;</text>
-<text x="492" y="263" class="t" text-anchor="start">--agent NAME</text>
-<rect x="24" y="303" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="315" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="303" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="315" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="303" width="14" height="14" rx="3" class="stop-end"/>
-<text x="296" y="315" class="k" text-anchor="start">Ends</text>
+<path d="M 64 192 L 64 218" class="wire"/>
+<path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
+<rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="237" r="8" class="badge"/>
+<text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="260" class="t" text-anchor="start">Name the regions to re-plan.</text>
+<path d="M 64 269 L 64 295" class="wire"/>
+<path d="M 59 287 L 64 295 L 69 287 Z" class="head"/>
+<rect x="24" y="295" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="314" r="8" class="badge"/>
+<text x="44" y="318" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="317" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="337" class="t" text-anchor="start">Name the claims past their deadline.</text>
+<path d="M 64 346 L 64 372" class="wire"/>
+<path d="M 59 364 L 64 372 L 69 364 Z" class="head"/>
+<rect x="24" y="372" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="391" r="8" class="badge"/>
+<text x="44" y="395" class="badge-t" text-anchor="middle">5</text>
+<text x="64" y="394" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="414" class="t" text-anchor="start">Name the first region.</text>
+<path d="M 424 384 L 450 384 L 450 427 L 480 427" class="wire-end"/>
+<path d="M 472 422 L 480 427 L 472 432 Z" class="head"/>
+<rect x="480" y="372" width="330" height="110" rx="6" class="stop-end"/>
+<text x="492" y="390" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="408" class="t" text-anchor="start">Node &lt;repair id&gt; is failed; release it to</text>
+<text x="492" y="424" class="t" text-anchor="start">retry it, or re-plan it and what waits on it</text>
+<text x="492" y="440" class="t" text-anchor="start">with plastic node add.</text>
+<text x="492" y="456" class="t" text-anchor="start">next: plastic node release &lt;intent id&gt; &lt;repair</text>
+<text x="492" y="472" class="t" text-anchor="start">id&gt;</text>
+<path d="M 424 393 L 444 393 L 444 553 L 480 553" class="wire-end"/>
+<path d="M 472 548 L 480 553 L 472 558 Z" class="head"/>
+<rect x="480" y="490" width="330" height="126" rx="6" class="stop-end"/>
+<text x="492" y="508" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="526" class="t" text-anchor="start">Node &lt;repair id&gt; is &lt;repair state&gt;; the owner</text>
+<text x="492" y="542" class="t" text-anchor="start">answers it, then re-plan what waits on it with</text>
+<text x="492" y="558" class="t" text-anchor="start">plastic node add if the answer changes the</text>
+<text x="492" y="574" class="t" text-anchor="start">plan.</text>
+<text x="492" y="590" class="t" text-anchor="start">next: plastic node resolve &lt;intent id&gt; &lt;repair</text>
+<text x="492" y="606" class="t" text-anchor="start">id&gt; TEXT</text>
+<path d="M 424 402 L 438 402 L 438 647 L 480 647" class="wire-end"/>
+<path d="M 472 642 L 480 647 L 472 652 Z" class="head"/>
+<rect x="480" y="624" width="330" height="46" rx="6" class="stop-end"/>
+<text x="492" y="642" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="660" class="t" text-anchor="start">No node is ready to claim.</text>
+<path d="M 424 411 L 432 411 L 432 717 L 480 717" class="wire-end"/>
+<path d="M 472 712 L 480 717 L 472 722 Z" class="head"/>
+<rect x="480" y="678" width="330" height="78" rx="6" class="stop-end"/>
+<text x="492" y="696" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="714" class="t" text-anchor="start">Node &lt;first&gt; is ready.</text>
+<text x="492" y="730" class="t" text-anchor="start">next: plastic node claim &lt;intent id&gt; &lt;first&gt;</text>
+<text x="492" y="746" class="t" text-anchor="start">--agent NAME</text>
+<rect x="24" y="786" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="798" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="786" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="798" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="786" width="14" height="14" rx="3" class="stop-end"/>
+<text x="296" y="798" class="k" text-anchor="start">Ends</text>
 </svg>

@@ -140,6 +140,90 @@ class BackupRestoreTest < Plastic::TestCase
   end
 end
 
+class BackupRestoreUnreadableFolderTest < Plastic::TestCase
+  include BackupHomes
+
+  JUNK = "20261399000000"
+
+  def seeded_home
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    add_intent(home)
+    backup_at(home, at(2026, 3, 1, 9, 30, 0))
+    add_intent(home)
+    home
+  end
+
+  def junk_done(home, **extra)
+    FileUtils.mkdir_p(File.join(backups_dir(home), JUNK))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(JUNK, status: "done", goal: "full", **extra)
+  end
+
+  def test_latest_skips_a_done_folder_whose_name_is_not_a_real_time
+    home = seeded_home
+    junk_done(home)
+
+    assert_equal 0, restore_call(home, "--store", "alpha", "--latest").code
+    assert_equal 2, intent_count(home)
+  end
+
+  def test_latest_with_only_a_done_folder_whose_name_is_not_a_real_time_refuses_as_with_none
+    home = fresh_home
+    junk_done(home)
+
+    assert_refused_with_usage restore_call(home, "--store", "alpha", "--latest"), "no done backup of alpha to restore"
+  end
+end
+
+class BackupRestoreEmptyFolderTest < Plastic::TestCase
+  include BackupHomes
+
+  EMPTY = "20260401080000"
+
+  def empty_done(home)
+    FileUtils.mkdir_p(File.join(backups_dir(home), EMPTY))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(EMPTY, status: "done", goal: "full")
+  end
+
+  def seeded_home
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    add_intent(home)
+    empty_done(home)
+    home
+  end
+
+  def state(home) = [File.binread(store_file(home, "work_graph")), File.binread(store_file(home, "knowledge_graph")), folder_names(home)]
+
+  def test_timestamp_naming_a_done_folder_with_no_database_file_refuses_and_changes_nothing
+    home = seeded_home
+    before = state(home)
+
+    assert_refused_with_usage restore_call(home, "--store", "alpha", "--timestamp", EMPTY), "the backup #{EMPTY} holds no database files"
+    assert_equal before, state(home)
+  end
+
+  def test_a_preview_of_a_done_folder_with_no_database_file_refuses
+    home = seeded_home
+
+    assert_refused_with_usage restore_call(home, "--store", "alpha", "--timestamp", EMPTY, "--dry-run"), "the backup #{EMPTY} holds no database files"
+  end
+
+  def test_latest_skips_a_done_folder_with_no_database_file
+    home = seeded_home
+
+    assert_equal 0, restore_call(home, "--store", "alpha", "--latest").code
+    assert_equal 1, intent_count(home)
+  end
+
+  def test_latest_with_only_a_done_folder_with_no_database_file_refuses_as_with_none
+    home = fresh_home
+    empty_done(home)
+
+    assert_refused_with_usage restore_call(home, "--store", "alpha", "--latest"), "no done backup of alpha to restore"
+  end
+end
+
 class BackupRestoreDeclarationTest < Minitest::Test
   def test_it_declares_that_it_writes_every_store_database_it_can_replace
     assert_equal [*Plastic::Graph::Schema.store, :retrieval].sort, Plastic::Commands::Backup::Restore.writes.uniq.sort

@@ -248,6 +248,14 @@ class GraphBackupWriterSafetyTest < Plastic::TestCase
     assert_equal ["20260101100000"], folder_names(home)
   end
 
+  def test_an_automatic_backup_of_an_unchanged_store_is_skipped_though_a_folder_with_no_real_time_sorts_last
+    home = fresh_home
+    writer(home, at(2026, 1, 1, 10, 0, 0), automatic: true).call
+    FileUtils.mkdir_p(File.join(backups_dir(home), "20261399000000"))
+
+    assert_nil writer(home, at(2026, 1, 2, 10, 0, 0), automatic: true).call
+  end
+
   def test_an_automatic_backup_of_a_changed_store_is_written
     home = fresh_home
     writer(home, at(2026, 1, 1, 10, 0, 0), automatic: true).call

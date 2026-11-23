@@ -144,6 +144,48 @@ class GraphBackupRestorerTest < Plastic::TestCase
   def passage_count = open_store.databases.fetch(:store).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 end
 
+# A backup folder that holds no database file restores nothing.
+class GraphBackupRestorerEmptyFolderTest < Plastic::TestCase
+  include BackupHomes
+
+  Restorer = Plastic::Graph::Backup::Restorer
+  EMPTY = "20260201100000"
+
+  def setup
+    super
+    @restore_home = fresh_home
+    backup_at(@restore_home, at(2026, 1, 1, 10, 0, 0))
+  end
+
+  def root = File.join(@restore_home, "stores", "alpha")
+
+  def local_db = Plastic::Graph.create(home: @restore_home, store: "alpha").databases.fetch(:local)
+
+  def restorer = Restorer.new(Plastic::Graph::Backup::Target.new(local_db, root, "alpha", nil), Plastic::Graph.open(home: @restore_home, store: "alpha").retrieval, now: at(2026, 6, 1, 12, 0, 0))
+
+  def bytes(name) = File.binread(store_file(@restore_home, name))
+
+  def empty_folder(status)
+    FileUtils.mkdir_p(File.join(backups_dir(@restore_home), EMPTY))
+    Plastic::Graph::Backup::Folders.new(root).write_report(EMPTY, status:, goal: "full")
+  end
+
+  def test_a_done_backup_that_holds_no_database_file_is_refused_before_the_safety_backup
+    empty_folder("done")
+    before = [bytes("work_graph"), folder_names(@restore_home)]
+    error = assert_raises(Restorer::Missing) { restorer.call(EMPTY) }
+
+    assert_equal ["the backup #{EMPTY} holds no database files", before], [error.message, [bytes("work_graph"), folder_names(@restore_home)]]
+  end
+
+  def test_a_backup_in_progress_with_no_database_file_yet_is_refused_naming_its_status
+    empty_folder("in-progress")
+    error = assert_raises(Restorer::NotDone) { restorer.call(EMPTY) }
+
+    assert_includes error.message, "in-progress"
+  end
+end
+
 # A store that moved above the version of a backup: the whole store restores to the backup's version, and one database alone is refused.
 class GraphBackupRestoreForwardTest < Plastic::TestCase
   include BackupHomes

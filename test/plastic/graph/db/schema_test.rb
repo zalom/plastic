@@ -18,7 +18,7 @@ class DbSchemaTest < Plastic::TestCase
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "941c8ce987df8d0916ce28662c252924939faf1f0f5bbf47e958edca2313cd9d",
+    nodes: "fc11a34ce94a50105476b9e57869a3ff696e213017efd344f4cf10f6dd444986",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
     rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
@@ -68,7 +68,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261123130000", ""], [status.success?, out, err]
+    assert_equal [true, "20261123154000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

@@ -8,7 +8,8 @@ module Plastic
     module Work
       # One unit of work inside an intent. The harness picks `kind`; `claimed_by` names the session that holds a claimed node.
       # `criterion` is the key of the spec's done criterion the node serves,
-      # `findings` what the work showed, `seen_at` the last renewal of the claim, and `answered_at` when the owner last answered; each claim is a run.
+      # `findings` what the work showed, `seen_at` the last renewal of the claim, `answered_at` when the owner last answered, and `deadline`
+      # the minutes a claim may run before `graph ready` reports the node as overdue, or nil for none; each claim is a run.
       #
       #   open -> claimed -> done
       #                   -> failed -> open
@@ -16,7 +17,7 @@ module Plastic
       #                   -> impeded -> open
       #   open -> removed
       Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :input, :output, :question, :answer,
-        :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at) do
+        :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at, :deadline) do
         include Record
 
         def refusal(to) = "node #{id} is #{state}; it cannot move to #{to}"
@@ -52,6 +53,16 @@ module Plastic
 
         # A claim the holder has not renewed within the lapse, at `now`.
         def lapsed?(now) = state == "claimed" && (last_seen.nil? || last_seen < now - Node::LAPSE)
+
+        # A claim that started more than `deadline` minutes before `now`. A node with no deadline is never overdue.
+        def overdue?(now) = state == "claimed" && !deadline.nil? && !claimed_at.to_s.empty? && claimed_for(now) > deadline * 60
+
+        # The seconds since the claim started, at `now`.
+        def claimed_for(now) = now - Time.parse(claimed_at)
+
+        # The minutes since the claim started, at `now`, rounded up to the minute the claim is in, so a
+        # claim past its deadline always names more minutes than the deadline.
+        def claimed_minutes(now) = (claimed_for(now) / 60).ceil
 
         # The last renewal of the claim, else its start; nil when the claim has neither.
         def last_seen

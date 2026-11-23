@@ -12,7 +12,7 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 ## The loop
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready, each
-   with its `kind`. Stop when the list is empty.
+   with its `kind`. Stop when the ready nodes and `result.repairs` are both empty.
 2. For each ready node, up to the limit below, pick a worker. Claim nothing for it: the worker
    claims its own node, and the claim answer carries `result.packet`, the brief for the worker.
 3. Start one subagent or background worker for the node, of the role that fits its kind:
@@ -27,6 +27,26 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
    in their own packet. When it cannot finish it uses `plastic node fail` with the reason, and writes nothing else.
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
    five minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
+
+## Check on an overdue node
+
+A node added with `plastic node add ID TITLE --criterion KEY --deadline MINUTES` has a deadline. When its
+claim has run longer than that, `plastic graph ready` prints an `overdue:` line for it, and
+`result.overdue` lists it with the session that holds it (`claimed_by`), the minutes the claim has run
+(`claimed_minutes`) and the `deadline`. The worker still holds the node. Check on that worker: read
+what it has done and whether it still renews its claim. Report the node to the owner, and leave it
+claimed. Only the owner decides to release it with `plastic node release`. Plastic changes no node for you.
+
+## Repair the region
+
+When `result.repairs` is not empty, a node failed or waits on the owner. Each entry names that
+node and the not-done nodes `downstream` of it. Keep working the ready nodes outside the region.
+Retry a `failed` node with `plastic node release`, or re-plan its region: add the nodes that
+replace the work with `plastic node add`, change the needs with `plastic edge add` and
+`plastic edge remove`, and drop an open node with `plastic node remove`. A `needs_info` or `impeded`
+node goes to the owner: report its question or impediment and stop that node. Only the owner
+answers it with `plastic node resolve`; re-plan its region after the owner decides. Plastic
+changes no node for you.
 
 ## The limit
 
