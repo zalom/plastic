@@ -7,6 +7,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
 - `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.
+- `plastic backup purge --interrupted` deletes the backups a stopped run left in progress for more than five minutes, such as one with a half-written database. A backup newer than that may still be running and is never deleted. `--failed` still means status failed only.
 
 ## 3.0.0-beta.12
 

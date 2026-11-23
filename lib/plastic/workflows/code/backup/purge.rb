@@ -9,7 +9,7 @@ module Plastic
     module Code
       class Backup
         # Deletes the backup folders of one store: all of them, or
-        # those strictly before a time, or those that failed.
+        # those strictly before a time, those that failed, or those a stopped run left in progress.
         class Purge < CodeWorkflow
           clear_declarations
           summary "Deletes the chosen backup folders of one store."
@@ -20,6 +20,7 @@ module Plastic
           def self.targets(context)
             purger = context.work.backups.purger
             return purger.failed if context.failed
+            return purger.interrupted(now: context.work.backups.now) if context.interrupted
 
             text = context.older_than
             cutoff = text && Plastic::Graph::Backup::OlderThan.parse(text)

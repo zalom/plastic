@@ -166,7 +166,7 @@ class BackupPurgeHelpTest < Plastic::TestCase
   def test_the_help_line_says_one_filter_is_required
     summary = Plastic::CLI::TABLE.fetch("backup purge").last
 
-    assert_includes summary, "one of --all, --failed or --older-than"
+    assert_includes summary, "one of --all, --failed, --interrupted or --older-than"
   end
 end
 
