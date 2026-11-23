@@ -39,7 +39,7 @@ module Plastic
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
       REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
-                    "20261123120000" => RoadmapNeedsLinks }.freeze
+                   "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }
 
       UNDO = "a down cannot undo it; restore a backup to go back"
