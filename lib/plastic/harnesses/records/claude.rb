@@ -3,6 +3,7 @@
 require_relative "../token_usage"
 require_relative "jsonl"
 require_relative "claude/transcript"
+require_relative "claude/claim"
 
 module Plastic
   module Harnesses
@@ -31,7 +32,7 @@ module Plastic
         def self.subagent(path, session, run, claim)
           pattern = /node claim #{Regexp.escape(claim)}(\s|\z)/
           Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort.each do |file|
-            started = Transcript.new(Jsonl.read(file) || [], run).claimed_at(pattern)
+            started = Claim.new(Jsonl.read(file) || [], run).at(pattern)
             return [file, started..run.end] if started
           end
           nil

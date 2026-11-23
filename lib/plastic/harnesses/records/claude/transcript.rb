@@ -31,13 +31,8 @@ module Plastic
             figures(name, cost)
           end
 
-          # The time of the turn that ran a command matching `pattern`: the latest one at or before the start of the run, else the
-          # first one inside the run. Nil when no turn up to the end of the run ran it.
-          def claimed_at(pattern)
-            claims = @entries.select { |entry| self.class.turn?(entry) && Jsonl.time(entry) <= @window.end && self.class.commands(entry).any? { |command| command.match?(pattern) } }
-            times = claims.map { |entry| Jsonl.time(entry) }.sort
-            times.reverse.find { |time| time <= @window.begin } || times.first
-          end
+          # True when a turn inside the run ran a command that matches `pattern`.
+          def claimed?(pattern) = windowed.flat_map { |turn| self.class.commands(turn) }.any? { |command| command.match?(pattern) }
 
           private
 

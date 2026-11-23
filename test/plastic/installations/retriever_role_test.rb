@@ -11,13 +11,14 @@ class RetrieverRoleTest < Plastic::TestCase
 
   ROOT = PackageFixture::REAL_PACKAGE
 
-  def test_the_role_file_is_read_only_with_the_tools_it_needs
-    text = File.read(File.join(ROOT, "agents", "plastic-retriever.md"))
+  def role = File.read(File.join(ROOT, "agents", "plastic-retriever.md"))
 
-    assert_includes text, "tools: Read, Grep, Glob, Bash, Write"
-    assert_includes text, "plastic node claim"
-    assert_includes text, "plastic node done"
-    assert_includes text, "plastic node fail"
+  def test_the_role_file_limits_its_tools_to_what_it_needs
+    assert_includes role, "tools: Read, Grep, Glob, Bash, Write"
+  end
+
+  def test_the_role_file_claims_and_finishes_its_node
+    assert_equal [true] * 3, ["plastic node claim", "plastic node done", "plastic node fail"].map { |text| role.include?(text) }
   end
 
   def test_it_installs_for_claude_code
