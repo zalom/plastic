@@ -61,7 +61,7 @@ class WorkNodeWriterTest < Plastic::TestCase
   def test_a_move_from_a_state_it_does_not_leave_writes_nothing
     add
 
-    assert_nil @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "ok")
+    assert_nil @work.done_node(intent_id: "1", id: "n1", findings: "ok")
     assert_equal "open", node("n1").state
   end
 
@@ -94,12 +94,12 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal ["open", 0], [node("n1").state, retrieval.structure.runs("1").size]
   end
 
-  def test_done_records_the_judge_and_findings
+  def test_done_records_the_findings
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
-    done = @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
+    done = @work.done_node(intent_id: "1", id: "n1", findings: "green")
 
-    assert_equal %w[done tests green], [done.state, done.judge, done.findings]
+    assert_equal %w[done green], [done.state, done.findings]
   end
 
   def test_a_resolution_reopens_a_needs_info_node_with_its_answer

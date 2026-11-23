@@ -16,7 +16,7 @@ REPO_ROOT = File.expand_path("..", __dir__)
 # "1b1a3", "4a1c1", "30a1a", etc. - digit-leading, optionally followed by any mix of letters and
 # digits. Deliberately does not match letter-leading tokens (e.g. "plastic-statusline",
 # "delivered", "SessionStart"), so ordinary word lists never cross the 5-token threshold.
-FOLGEZETTEL_TOKEN = /\A\d+[a-zA-Z0-9]*\z/
+FOLGEZETTEL_TOKEN = /\A(?!\d{14}\z)\d+[a-zA-Z0-9]*\z/
 
 module StoreIdLiteralScan
   module_function
@@ -69,7 +69,14 @@ class PackagingNoStoreIdsTest < Minitest::Test
     RUBY
 
     violations = StoreIdLiteralScan.violations_in(fixture)
+
     refute_empty violations, "the scanner must be able to catch the known amnesty-shaped literal"
+  end
+
+  def test_a_list_of_five_migration_versions_is_not_an_id_list
+    fixture = "ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000].freeze"
+
+    assert_empty StoreIdLiteralScan.violations_in(fixture)
   end
 
   # Nothing under the shipped set (package.json "files") embeds a store-id-list literal.
@@ -82,6 +89,6 @@ class PackagingNoStoreIdsTest < Minitest::Test
 
     assert_empty offenders,
       "shipped file(s) embed a store-specific id-list literal " \
-      "#{offenders.join('; ')}"
+      "#{offenders.join("; ")}"
   end
 end
