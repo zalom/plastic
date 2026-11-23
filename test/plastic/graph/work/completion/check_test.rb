@@ -13,7 +13,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
 
   def check = Plastic::Graph::Work::Completion::Check.new(retrieval, "1")
 
-  VERIFIED = "# Outcome\n\nDelivered.\n\n## Verification\n- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n"
+  VERIFIED = "# Outcome\n\nDelivered.\n\n## Verification\n- Merged: plastic/1 into alpha at abc123\n"
 
   def files(spec: SPEC, outcome: VERIFIED)
     write("#{@intent.dir}/spec.md", spec)
@@ -98,7 +98,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
   end
 
   def test_an_outcome_without_a_merge_record_asks_for_it
-    files(outcome: "# Outcome\n\nDelivered.\n\n## Verification\n- Architecture map: enola at abc123\n")
+    files(outcome: "# Outcome\n\nDelivered.\n\n## Verification\n- Tests pass\n")
     done_node
 
     assert_equal 1, check.verification_problems.size
@@ -106,12 +106,11 @@ class WorkCompletionCheckTest < Plastic::TestCase
     assert_empty check.record_problems
   end
 
-  def test_an_outcome_without_a_map_record_asks_for_it
+  def test_an_outcome_without_a_map_record_asks_for_nothing_more
     files(outcome: "# Outcome\n\nDelivered.\n\n## Verification\n- Merged: plastic/1 into alpha at abc123\n")
     done_node
 
-    assert_equal 1, check.verification_problems.size
-    assert_includes check.verification_problems.first, "Architecture map:"
+    assert_empty check.verification_problems
   end
 
   def test_the_problems_hold_the_record_and_the_verification_problems

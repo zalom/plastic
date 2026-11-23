@@ -18,7 +18,7 @@ module OutcomeHelpers
 
   def records(body)
     read = outcome(body)
-    [read.merged?, read.architecture_map?]
+    read.merged?
   end
 
   def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
@@ -29,42 +29,42 @@ end
 class KnowledgeOutcomeTest < Plastic::TestCase
   include OutcomeHelpers
 
-  def test_both_labels_under_verification_count
-    assert_equal [true, true], records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc1\n- Architecture map: enola at abc\n")
+  def test_the_merge_label_under_verification_counts
+    assert records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc1\n")
   end
 
   def test_a_merge_line_outside_verification_does_not_count
-    assert_equal [false, false], records("# Outcome\n\n- Merged: branch into alpha at abc\n\n## Verification\n- Tests pass\n\n## Notes\n- Architecture map: enola\n")
+    refute records("# Outcome\n\n- Merged: branch into alpha at abc\n\n## Verification\n- Tests pass\n\n## Notes\n- Merged: branch into alpha at abc\n")
   end
 
   def test_a_label_with_no_text_does_not_count
-    assert_equal [false, false], records("## Verification\n- Merged:\n- Architecture map:   \n")
+    refute records("## Verification\n- Merged:\n")
   end
 
   def test_labels_match_with_a_checkbox_and_any_case
-    assert_equal [true, true], records("## Verification\n- [x] merged: branch into alpha at abc1\n- [ ] ARCHITECTURE MAP: enola\n")
+    assert records("## Verification\n- [x] merged: branch into alpha at abc1\n")
   end
 
   def test_no_outcome_records_neither
     read = read_outcome
 
-    assert_equal [false, false], [read.merged?, read.architecture_map?]
+    refute read.merged?
   end
 
   def test_a_bold_label_counts
-    assert_equal [true, true], records("## Verification\n- **Merged:** branch into alpha at abc1\n- **Architecture map**: enola\n")
+    assert records("## Verification\n- **Merged:** branch into alpha at abc1\n")
   end
 
   def test_a_star_bullet_counts
-    assert_equal [true, false], records("## Verification\n* Merged: branch into alpha at abc1\n")
+    assert records("## Verification\n* Merged: branch into alpha at abc1\n")
   end
 
   def test_bullets_under_a_subheading_of_verification_count
-    assert_equal [true, true], records("## Verification\n### Merge\n- Merged: branch into alpha at abc1\n### Map\n- Architecture map: enola\n")
+    assert records("## Verification\n### Merge\n- Merged: branch into alpha at abc1\n### Map\n- other\n")
   end
 
   def test_a_third_level_verification_heading_counts
-    assert_equal [true, false], records("### Verification\n- Merged: branch into alpha at abc1\n#### Detail\n- other\n## Next\n- Architecture map: enola\n")
+    assert records("### Verification\n- Merged: branch into alpha at abc1\n#### Detail\n- other\n## Next\n- Merged: branch into alpha at abc1\n")
   end
 
   def test_pull_request_approval_and_revert_bullets_are_read
@@ -169,10 +169,10 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
     refute_predicate outcome("## Verification\n- Approved by: the owner on 2026-11-14\n"), :approved?
   end
 
-  def test_a_negative_word_in_another_label_still_counts_as_recorded
-    read = outcome("## Verification\n- Architecture map: none found by tool X\n- Pull request: no link yet\n")
+  def test_a_negative_word_in_the_pull_request_label_still_counts_as_recorded
+    read = outcome("## Verification\n- Pull request: no link yet\n")
 
-    assert_equal [true, true], [read.architecture_map?, read.pull_request?]
+    assert_predicate read, :pull_request?
   end
 
   def test_the_missing_record_message_quotes_the_value_and_shows_the_form_to_write
@@ -189,7 +189,7 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
   end
 
   def test_the_missing_record_message_asks_for_one_of_the_three_delivery_lines_when_none_is_there
-    message = outcome("## Verification\n- Architecture map: enola at abc123\n").missing_records.first
+    message = outcome("## Verification\n- Tests pass\n").missing_records.first
 
     ["Merged: <branch> into <base> at <commit or pull request>", "Committed: <branch> at <commit>",
       "Delivered: resources/output/<path> because <reason>", "plastic sync up"].each { |part| assert_includes message, part }
@@ -242,24 +242,28 @@ class KnowledgeOutcomeDeliveryTest < Plastic::TestCase
     assert_empty(lines.select { |line| outcome("## Verification\n- #{line}\n").delivery_recorded? })
   end
 
-  def test_the_architecture_map_is_asked_for_after_a_merge_or_a_commit
+  def test_a_merge_or_a_commit_alone_leaves_no_record_missing
     lines = ["Merged: plastic/1 into alpha at abc1234", "Committed: main at 4f2a9c1"]
 
-    assert_equal [false, false], lines.map { |line| outcome("## Verification\n- #{line}\n").map_recorded? }
+    assert_equal [[], []], lines.map { |line| outcome("## Verification\n- #{line}\n").missing_records }
   end
 
-  def test_delivered_files_alone_need_no_architecture_map
+  def test_delivered_files_alone_leave_no_record_missing
     delivered_file
-    read = outcome("## Verification\n#{delivered_line}")
 
-    assert_equal [true, []], [read.map_recorded?, read.missing_records]
+    assert_empty outcome("## Verification\n#{delivered_line}").missing_records
   end
 
-  def test_delivered_files_beside_a_commit_still_need_the_architecture_map
-    delivered_file
-    read = outcome("## Verification\n- Committed: main at 4f2a9c1\n#{delivered_line}")
+  def test_an_old_architecture_map_line_is_ignored_and_its_absence_is_not_asked_for
+    with_line = outcome("## Verification\n- Merged: plastic/1 into alpha at abc1234\n- Architecture map: enola at abc1234\n")
+    without_line = outcome("## Verification\n- Merged: plastic/1 into alpha at abc1234\n")
 
-    assert_equal [false, ["Architecture map"]], [read.map_recorded?, read.missing_records.map { |message| message[/Architecture map/] }]
+    assert_equal [[], []], [with_line.missing_records, without_line.missing_records]
+  end
+
+  def test_the_outcome_no_longer_answers_for_an_architecture_map
+    refute_respond_to read_outcome, :map_recorded?
+    refute_respond_to read_outcome, :architecture_map?
   end
 
   def test_a_rejected_delivery_line_is_named_with_the_form_of_its_label
