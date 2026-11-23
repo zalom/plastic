@@ -9,16 +9,23 @@ module Plastic
           # and counted `retries`, into the nodes and runs the rows hold now. A
           # node with a worker gets one run; a claimed node keeps its claim and
           # its run stays open. The fields `judge` and `verdict`, which a node no
-          # longer has, are read past.
+          # longer has, are read past. The `input` of a node becomes its first row of
+          # node_inputs.
           class LegacyNodes
-            # One node of an older graph file, which gives up its `by`, `retries`, `judge` and `verdict` and may give one run.
+            # One node of an older graph file, which gives up its `by`, `retries`, `judge`, `verdict` and `input` and may give one run and one input row.
             class Node
               OLD_FIELDS = %w[retries judge verdict].freeze
 
-              def self.old?(hash) = (%w[by] + OLD_FIELDS).any? { |field| hash.key?(field) }
+              def self.old?(hash) = (%w[by input] + OLD_FIELDS).any? { |field| hash.key?(field) }
 
               def initialize(node)
                 @node = node
+              end
+
+              # The first input row of the node, or nil when its `input` is empty; the node loses the field either way.
+              def input_row
+                path = @node.delete("input").to_s
+                { "intent_id" => @node["intent_id"], "node_id" => @node["id"], "position" => 1, "path" => path } unless path.empty?
               end
 
               def run_row
@@ -58,8 +65,15 @@ module Plastic
               nodes = Array(@data["nodes"]).grep(Hash).select { |node| Node.old?(node) }
               return @data if nodes.empty?
 
-              runs = nodes.filter_map { |node| Node.new(node).run_row }
-              @data.merge("runs" => Array(@data["runs"]) + runs)
+              merged(nodes.map { |node| Node.new(node) })
+            end
+
+            private
+
+            def merged(olds)
+              inputs = olds.filter_map(&:input_row)
+              runs = olds.filter_map(&:run_row)
+              @data.merge("node_inputs" => Array(@data["node_inputs"]) + inputs, "runs" => Array(@data["runs"]) + runs)
             end
           end
         end

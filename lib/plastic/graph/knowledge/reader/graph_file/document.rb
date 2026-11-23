@@ -5,6 +5,7 @@ require_relative "../../../rows/approval"
 require_relative "../../../rows/completion_row"
 require_relative "../../../rows/edge"
 require_relative "../../../rows/node"
+require_relative "../../../rows/node_input"
 require_relative "../../../rows/run"
 require_relative "legacy_nodes"
 require_relative "../../../rows/verdict"
@@ -17,7 +18,7 @@ module Plastic
           # The JSON object of a graph file, or the reason the text is not one.
           class Document
             TABLES = {
-              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, runs: Work::Run, edges: Work::Edge
+              approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, node_inputs: Work::NodeInput, runs: Work::Run, edges: Work::Edge
             }.freeze
 
             # What a run holds when its graph file came from a release before the harness and the usage were recorded.
