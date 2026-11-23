@@ -99,7 +99,7 @@ under each finding that no command repairs, a `repair:` line under each finding 
   claim. Stop that node and do not retry with other options.
 - After three runs of one node, the next claim moves it to `needs_info` with a question for the
   owner. The driver stops that node.
-- Run one driver for each intent. Two drivers on one intent claim nodes against each other.
+- Run one driver for each intent. `plastic intent start` and `plastic intent auto` take a driver claim for the session, which lapses after 15 minutes without a renewal. A second session is refused with exit 3 and the name of the driver, unless it passes `--take-over REASON`.
 
 ## Build it on an SDK
 
