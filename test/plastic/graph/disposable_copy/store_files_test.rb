@@ -21,6 +21,30 @@ module Plastic
         end
       end
 
+      def test_the_backups_folder_stays_out_of_the_copy
+        with_home do |home|
+          seed_intents(home, "Alpha")
+          FileUtils.mkdir_p(store_file(home, "backups", "20260101100000"))
+          File.write(store_file(home, "backups", "20260101100000", "work_graph.db"), "rows")
+          File.write(store_file(home, "notes.txt"), "kept\n")
+          copy = files(home).tap(&:call)
+
+          refute_path_exists store_file(copy.target, "backups")
+          assert_path_exists store_file(copy.target, "notes.txt")
+        end
+      end
+
+      def test_a_link_to_a_folder_inside_backups_does_not_refuse_the_copy
+        with_home do |home|
+          seed_intents(home, "Alpha")
+          outside = File.join(File.dirname(home), "outside")
+          FileUtils.mkdir_p([outside, store_file(home, "backups")])
+          File.symlink(outside, store_file(home, "backups", "folder"))
+
+          assert_nil files(home).refuse_folder_links
+        end
+      end
+
       def test_a_link_to_a_folder_refuses_naming_the_link
         with_home do |home|
           seed_intents(home, "Alpha")

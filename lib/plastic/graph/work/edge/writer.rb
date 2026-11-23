@@ -29,12 +29,18 @@ module Plastic
             SELECT "from", "to" FROM edges WHERE intent_id = :intent_id AND origin_id = :origin AND kind = 'needs'
           SQL
 
+          SELF_REASON = [:refused, "a node cannot need itself"].freeze
+
           def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
           end
 
-          # Returns [true, nil] when the edge is written, or [false, the reason it is refused].
+          # Returns one of three results:
+          #   [true, nil, nil]         the edge is written;
+          #   [false, message, :missing]  an end of the edge is not a node of the intent, which the command exits 1 on;
+          #   [false, message, :refused]  the edge is a self edge, a duplicate, a loop, or touches a removed node, which the command exits 3 on.
+          # The kind comes from the reason itself, never from reading the message.
           def add_edge(intent_id:, from:, to:)
             store.atomically do
               problem, kind = refusal(intent_id, from, to)
@@ -58,27 +64,28 @@ module Plastic
           end
 
           def refusal(intent_id, from, to)
-            reason = self_reason(from, to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
-            reason && ["edge #{from} to #{to} is refused: #{reason}", (:failure if reason.end_with?("is not a node of intent #{intent_id}")) || :refusal]
-          end
+            kind, reason = (SELF_REASON if from == to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
+            return unless reason
 
-          def self_reason(from, to) = ("a node cannot need itself" if from == to)
+            lead = (kind == :missing) ? "is missing a node" : "is refused"
+            ["edge #{from} to #{to} #{lead}: #{reason}", kind]
+          end
 
           def node_reason(intent_id, from, to)
             [from, to].each do |id|
               state = store.row(NODE_SQL, intent_id:, id:, origin: @retrieval.origin_id)&.fetch("state")
-              return "#{id} is not a node of intent #{intent_id}" if state.nil?
-              return "#{id} is removed" if state == "removed"
+              return [:missing, "#{id} is not a node of intent #{intent_id}"] if state.nil?
+              return [:refused, "#{id} is removed"] if state == "removed"
             end
             nil
           end
 
           def edge_reason(intent_id, from, to)
             pairs = store.rows(EDGES_SQL, intent_id:, origin: @retrieval.origin_id).map { |row| [row.fetch("from"), row.fetch("to")] }
-            return "it is already there" if pairs.include?([from, to])
+            return [:refused, "it is already there"] if pairs.include?([from, to])
 
             path = EdgeWalk.new(pairs).path(to, from)
-            "it would loop, #{[from, *path].join(" -> ")}" if path
+            [:refused, "it would loop, #{[from, *path].join(" -> ")}"] if path
           end
         end
       end
