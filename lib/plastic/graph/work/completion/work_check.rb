@@ -23,6 +23,9 @@ module Plastic
             [blocking, uncovered_problem(nodes), orphan_problem(nodes)].compact
           end
 
+          # The done criterion keys no live done node serves. `plastic intent end`, `intent judge` and `intent verdict` read this one answer.
+          def uncovered_keys = @keys - live_nodes.select { |node| node.state == "done" }.map(&:criterion)
+
           private
 
           def plan_problem = "Plan at least one work node with plastic node add #{@intent_id} TITLE --criterion KEY."
@@ -40,9 +43,7 @@ module Plastic
 
           def blocking_problem(nodes) = nodes.empty? ? plan_problem : unfinished_problem(nodes) || unverified_problem(nodes)
 
-          def uncovered_problem(nodes) = missing_keys(nodes).join(", ").then { |list| "Cover every done criterion with a done node. No done node serves: #{list}." unless list.empty? }
-
-          def missing_keys(nodes) = @keys - nodes.map(&:criterion)
+          def uncovered_problem(_nodes) = uncovered_keys.join(", ").then { |list| "Cover every done criterion with a done node. No done node serves: #{list}." unless list.empty? }
 
           def orphan_problem(nodes) = (stray_text(nodes) if @keys.any?)
 

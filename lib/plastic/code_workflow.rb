@@ -6,6 +6,7 @@ require_relative "code_workflow/gate"
 require_relative "code_workflow/read"
 require_relative "code_workflow/step"
 require_relative "code_workflow/open_intent_gates"
+require_relative "code_workflow/criteria_coverage_gate"
 
 module Plastic
   # A workflow of Ruby steps. The steps run in order, each one once per
@@ -24,6 +25,7 @@ module Plastic
     GATE_OPTIONS = %i[stops pass offers because words].freeze
 
     extend OpenIntentGates
+    extend CriteriaCoverageGate
 
     class << self
       def lane = "code"
