@@ -130,6 +130,12 @@ The installer copies each role file of `agents/` into every harness that reads a
 A model or an effort set for a harness with `plastic config set` rewrites that agent's model line for
 that harness only. With `advisor.enabled: false`, the two advisor agents are not installed.
 
+The role `plastic-driver` tells the open session how to run an intent's graph loop and dispatch its
+workers. Its text names the worker limit as `{{driver.max_workers}}`, and the installer writes the
+number of the setting `driver.max_workers` (3 when it is not set, or when it is not a whole number
+above zero) into the Claude Code copy and the Codex TOML. Change the setting with
+`plastic config set driver.max_workers N`, then run `plastic install --reinstall`.
+
 `plastic init` counts a harness as found when its folder, `.claude`, `.codex` or `.hermes`, is in
 the home, or its program, `claude` or `codex`, is on the `PATH`. Hermes names no program, so
 only its folder finds it. It writes only into a harness

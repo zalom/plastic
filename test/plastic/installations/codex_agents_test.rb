@@ -36,4 +36,11 @@ class CodexAgentsTest < Plastic::TestCase
   def test_a_package_with_no_role_files_generates_nothing
     assert_equal [[], false], [generate({}), File.exist?(File.join(@home, "agents"))]
   end
+
+  def test_the_worker_limit_reaches_the_codex_document
+    roles = { "demo-role" => "---\nname: demo-role\ndescription: Demo\n---\nRun {{driver.max_workers}} workers.\n" }
+    generate(roles, workers: 2)
+
+    assert_includes File.read(File.join(@home, "agents", "demo-role.toml")), "Run 2 workers."
+  end
 end
