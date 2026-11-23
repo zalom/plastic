@@ -18,14 +18,16 @@ module Plastic
 
           # The folder names the call would delete.
           def self.targets(context)
-            purger = context.work.backups.purger
+            backups = context.work.backups
+            purger = backups.purger
             return purger.failed if context.failed
-            return purger.interrupted(now: context.work.backups.now) if context.interrupted
+            return purger.interrupted(now: backups.now) if context.interrupted
 
-            text = context.older_than
-            cutoff = text && Plastic::Graph::Backup::OlderThan.parse(text)
-            purger.names(older_than: cutoff)
+            purger.names(older_than: cutoff(context.older_than))
           end
+
+          # The time a date text names, or nil when none was given.
+          def self.cutoff(text) = text && Plastic::Graph::Backup::OlderThan.parse(text)
 
           step "delete the backups", done: ->(context) { !context.purged.nil? },
             changes: { backups: "The chosen backup folders are deleted" } do |context|
