@@ -106,3 +106,56 @@ class IntentJudgeRefusalTest < Plastic::TestCase
     end
   end
 end
+
+class IntentJudgeUncoveredCriterionTest < Plastic::TestCase
+  include LifecycleHelper
+
+  TWO = { KEY => CRITERION, "extra" => "Also works" }.freeze
+
+  def setup
+    super
+    specified(TWO)
+    delivered_nodes({ KEY => CRITERION })
+  end
+
+  def verdicts = work_rows("verdicts")
+
+  def test_a_criterion_with_no_done_node_exits_3_and_names_it
+    result = cli("intent", "judge", "1")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "extra"
+    refute_includes result.err, "[#{KEY}]"
+  end
+
+  def test_the_refusal_names_the_repair
+    err = cli("intent", "judge", "1").err
+
+    assert_includes err, "plastic node add 1 TITLE --criterion KEY"
+  end
+
+  def test_a_node_added_but_not_done_still_leaves_the_criterion_uncovered
+    cli("node", "add", "1", "Deliver extra", "--criterion", "extra")
+
+    assert_equal 3, cli("intent", "judge", "1").code
+  end
+
+  def test_a_done_node_for_the_criterion_lets_the_judge_run
+    cli("node", "add", "1", "Deliver extra", "--criterion", "extra")
+    cli("node", "claim", "1", "n2")
+    cli("node", "done", "1", "n2", "Acceptance passes for extra")
+
+    assert_equal 0, cli("intent", "judge", "1").code
+  end
+
+  def test_an_accept_verdict_exits_3_and_writes_no_row
+    result = cli("intent", "verdict", "1", "accept", "fine")
+
+    assert_equal [3, []], [result.code, verdicts]
+    assert_includes result.err, "extra"
+  end
+
+  def test_a_revise_verdict_is_still_recorded
+    assert_equal [0, 1], [cli("intent", "verdict", "1", "revise", "extra is missing").code, verdicts.size]
+  end
+end

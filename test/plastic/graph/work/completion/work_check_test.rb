@@ -62,3 +62,24 @@ class WorkCompletionWorkCheckTest < Plastic::TestCase
     refute_includes problem, "--judge"
   end
 end
+
+class WorkCompletionWorkCheckUncoveredKeysTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def uncovered = Plastic::Graph::Work::Completion::WorkCheck.new(retrieval, "1", [KEY, "extra"]).uncovered_keys
+
+  def test_a_key_with_only_an_unfinished_node_is_uncovered
+    specified({ KEY => CRITERION, "extra" => "Also" })
+    delivered_nodes({ KEY => CRITERION })
+    cli("node", "add", "1", "Deliver extra", "--criterion", "extra")
+
+    assert_equal ["extra"], uncovered
+  end
+
+  def test_every_key_with_a_done_node_leaves_nothing_uncovered
+    specified({ KEY => CRITERION, "extra" => "Also" })
+    delivered_nodes({ KEY => CRITERION, "extra" => "Also" })
+
+    assert_equal [], uncovered
+  end
+end
