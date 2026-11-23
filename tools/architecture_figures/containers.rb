@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Containers
     META = Diagram::Meta.new(file: "containers.svg", width: 1160, height: 770, title: "What runs and where Plastic keeps its data",
-      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
+      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       install | zone | 10 10 1140 135 | Plastic install: ~/.local/share/plastic | | | |
       launcher | | 30 44 230 | ~/.local/bin/plastic | link | line | | Found on the PATH, / where you run plastic.

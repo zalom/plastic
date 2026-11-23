@@ -9,7 +9,7 @@ plastic intent unlink ID KIND TARGET [--dry-run]
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent this link starts from | |
-| `KIND` | cites, supersedes, answers, source or chain | |
+| `KIND` | cites, supersedes, answers, source, chain or needs | |
 | `TARGET` | the link's other end, as written when it was added | |
 | `--dry-run` | preview the call in a disposable copy | `false` |
 
