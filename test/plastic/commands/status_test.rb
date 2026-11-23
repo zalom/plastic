@@ -174,7 +174,7 @@ class StatusBlockedIntentTest < Plastic::TestCase
     open_intent("Beta")
     store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
 
-    assert_match(/^\s*1 Alpha \(open\).*waits on 2/, call.out)
+    assert_includes call.out, "1 Alpha (open), no nodes, waits on 2"
   end
 
   def test_an_intent_whose_needed_intents_are_done_shows_no_wait

@@ -25,7 +25,8 @@ module Plastic
       end
 
       def self.store_lines(retrieval, slug)
-        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
+        needs = Plastic::Graph::Work::IntentNeeds.new(retrieval)
+        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent, needs:).to_a.join(", ") }
         [["store:", slug], *rows.map { |name, text| ["#{name}:", text] }]
       end
 

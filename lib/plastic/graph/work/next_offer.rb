@@ -38,12 +38,19 @@ module Plastic
         # unless the next step is the agent's, and then the command is nil.
         def call
           return [nil, "choose the intent to work on", CHOOSE] if @pick.ambiguous?
-          return [nil, "nothing is open", nil] if @pick.none?
+          return none_offer if @pick.none?
 
           for_intent(@pick.intent)
         end
 
         private
+
+        def none_offer
+          return [nil, "nothing is open", nil] if @pick.blocked.empty?
+
+          id, needed = @pick.blocked.first
+          [nil, "nothing is ready: intent #{id} waits on #{needed.map { |each| "intent #{each}" }.join(", ")}", nil]
+        end
 
         def for_intent(intent)
           id = intent.intent_id
