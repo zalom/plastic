@@ -114,6 +114,16 @@ class GraphBackupRestorerTest < Plastic::TestCase
     assert_raises(Restorer::Missing) { restorer.call("20260201100000", databases: %w[references]) }
   end
 
+  def test_a_done_backup_that_holds_no_database_file_is_refused_before_the_safety_backup
+    empty = "20260201100000"
+    FileUtils.mkdir_p(File.join(backups_dir(@restore_home), empty))
+    Plastic::Graph::Backup::Folders.new(root).write_report(empty, status: "done", goal: "full")
+    before = [bytes("work_graph"), folder_names(@restore_home)]
+    error = assert_raises(Restorer::Missing) { restorer.call(empty) }
+
+    assert_equal ["the backup #{empty} holds no database files", before], [error.message, [bytes("work_graph"), folder_names(@restore_home)]]
+  end
+
   def test_the_status_file_is_never_copied_into_the_store
     restorer.call(STAMP)
 
