@@ -20,28 +20,28 @@ class WorkEdgeWriterTest < Plastic::TestCase
   end
 
   def test_an_edge_from_a_node_to_itself_is_refused_with_its_reason
-    assert_equal [false, "edge n1 to n1 is refused: a node cannot need itself", :refusal], add("n1", "n1")
+    assert_equal [false, "edge n1 to n1 is refused: a node cannot need itself", :refused], add("n1", "n1")
     assert_empty edges
   end
 
-  def test_an_edge_to_a_missing_node_is_refused_with_its_reason
-    assert_equal [false, "edge n1 to n9 is refused: n9 is not a node of intent 1", :failure], add("n1", "n9")
+  def test_an_edge_to_a_missing_node_is_named_missing_with_its_reason
+    assert_equal [false, "edge n1 to n9 is missing a node: n9 is not a node of intent 1", :missing], add("n1", "n9")
   end
 
-  def test_an_edge_from_a_missing_node_is_refused_with_its_reason
-    assert_equal [false, "edge n9 to n1 is refused: n9 is not a node of intent 1", :failure], add("n9", "n1")
+  def test_an_edge_from_a_missing_node_is_named_missing_with_its_reason
+    assert_equal [false, "edge n9 to n1 is missing a node: n9 is not a node of intent 1", :missing], add("n9", "n1")
   end
 
   def test_an_edge_to_a_removed_node_is_refused_with_its_reason
     @work.remove_node(intent_id: "1", id: "n2")
 
-    assert_equal [false, "edge n1 to n2 is refused: n2 is removed", :refusal], add("n1", "n2")
+    assert_equal [false, "edge n1 to n2 is refused: n2 is removed", :refused], add("n1", "n2")
   end
 
   def test_a_duplicate_edge_is_refused_with_its_reason_and_no_second_row
     add("n1", "n2")
 
-    assert_equal [false, "edge n1 to n2 is refused: it is already there", :refusal], add("n1", "n2")
+    assert_equal [false, "edge n1 to n2 is refused: it is already there", :refused], add("n1", "n2")
     assert_equal [%w[n1 n2 needs]], edges
   end
 
@@ -49,7 +49,7 @@ class WorkEdgeWriterTest < Plastic::TestCase
     add("n1", "n2")
     add("n2", "n3")
 
-    assert_equal [false, "edge n3 to n1 is refused: it would loop, n3 -> n1 -> n2 -> n3", :refusal], add("n3", "n1")
+    assert_equal [false, "edge n3 to n1 is refused: it would loop, n3 -> n1 -> n2 -> n3", :refused], add("n3", "n1")
     assert_equal [%w[n1 n2 needs], %w[n2 n3 needs]], edges
   end
 
@@ -96,5 +96,13 @@ class WorkEdgeWriterLongChainTest < Plastic::TestCase
 
   def test_a_shortcut_over_a_chain_of_5000_edges_is_written
     assert_equal [true, nil, nil], @work.add_edge(intent_id: "1", from: "n1", to: "n#{LENGTH + 1}")
+  end
+end
+
+class WorkEdgeWriterKindTest < Plastic::TestCase
+  def test_the_writer_comment_names_its_three_return_values
+    source = File.read(File.expand_path("../../../../../lib/plastic/graph/work/edge/writer.rb", __dir__))
+
+    assert_match(/\[true, nil, nil\].*:missing.*:refused/m, source[/# Returns.*?def add_edge/m])
   end
 end

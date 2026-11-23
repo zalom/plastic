@@ -29,7 +29,7 @@ works the nodes itself, one at a time. Plastic starts no worker.
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready. Each is
    `{id, title, kind, criterion, state, needs}`. Stop when the list is empty.
-2. For each ready node, run `plastic node claim ID NODE --json`. The answer carries
+2. For each ready node, run `plastic node claim ID NODE --agent NAME --json`. The answer carries
    `result.packet`, the brief for the worker.
 3. Start the worker with the packet. It does the work.
 4. Record the result with `plastic node done ID NODE TEXT --output PATH`, or with

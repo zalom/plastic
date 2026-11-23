@@ -3,7 +3,9 @@
 require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
+require_relative "../edge/writer"
 require_relative "claim"
+require_relative "run_usage"
 
 module Plastic
   module Graph
@@ -46,10 +48,15 @@ module Plastic
             @claim = Claim.new(databases, retrieval, clock)
           end
 
-          def add_node(intent_id:, **fields)
+          # A node found while doing another carries `found_in`, the id of that node: the node row and its found_in edge
+          # land in one transaction. The edge orders nothing; only `needs` does.
+          def add_node(intent_id:, found_in: nil, **fields)
             id = next_id(intent_id)
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
-            @databases.fetch(:store).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
+            @databases.fetch(:store).transaction do |batch|
+              batch.put(:nodes, row, statement: :insert)
+              found_in && batch.write(:edges, Edge::Writer::ADD_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
+            end
             @retrieval.node(intent_id, id)
           end
 
@@ -60,14 +67,17 @@ module Plastic
           end
 
           # Returns [:claimed, node], [:held, node], [:capped, node], [:blocked, node] or [:refused, node].
-          def claim_node(intent_id:, id:, by:, agent: "")
+          def claim_node(intent_id:, id:, by:, agent: "", harness: "")
             current = @retrieval.node(intent_id, id)
             return [:refused, nil] unless current
             return [:blocked, current] if current.waiting?(@retrieval.ready_nodes(intent_id))
             return capped(intent_id:, id:) if current.capped?(@retrieval.structure.runs(intent_id), RETRY_CAP)
 
-            @claim.call(current, by:, agent:)
+            @claim.call(current, by:, agent:, harness:)
           end
+
+          # Stores the usage of a harness record on the last run of the node.
+          def record_run(**fields) = RunUsage.new(@databases, @retrieval).call(**fields)
 
           def renew_claims(session)
             now = Plastic.timestamp(@clock.now)

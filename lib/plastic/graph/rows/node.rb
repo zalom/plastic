@@ -16,7 +16,7 @@ module Plastic
       #                   -> impeded -> open
       #   open -> removed
       Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :input, :output, :question, :answer,
-        :reason, :judge, :verdict, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at) do
+        :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at) do
         include Record
 
         def refusal(to) = "node #{id} is #{state}; it cannot move to #{to}"

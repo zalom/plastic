@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 281" width="834" height="281" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 435" width="834" height="435" role="img" xml:space="preserve">
 <title>The events of one call of plastic graph show, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -99,17 +99,31 @@
 <circle cx="44" cy="160" r="8" class="badge"/>
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="183" class="t" text-anchor="start">Print each node and edge.</text>
-<path d="M 424 172 L 480 172" class="wire-end"/>
-<path d="M 472 167 L 480 172 L 472 177 Z" class="head"/>
-<rect x="480" y="141" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="159" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="177" class="t" text-anchor="start">The rows hold this graph.</text>
-<text x="492" y="193" class="t" text-anchor="start">next: plastic graph ready &lt;intent id&gt;</text>
-<rect x="24" y="233" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="245" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="233" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="245" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="233" width="14" height="14" rx="3" class="stop-end"/>
-<text x="296" y="245" class="k" text-anchor="start">Ends</text>
+<text x="64" y="183" class="t" text-anchor="start">Print each node.</text>
+<path d="M 64 192 L 64 218" class="wire"/>
+<path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
+<rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="237" r="8" class="badge"/>
+<text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="260" class="t" text-anchor="start">Print each need.</text>
+<path d="M 64 269 L 64 295" class="wire"/>
+<path d="M 59 287 L 64 295 L 69 287 Z" class="head"/>
+<rect x="24" y="295" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="314" r="8" class="badge"/>
+<text x="44" y="318" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="317" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="337" class="t" text-anchor="start">Print each run.</text>
+<path d="M 424 326 L 480 326" class="wire-end"/>
+<path d="M 472 321 L 480 326 L 472 331 Z" class="head"/>
+<rect x="480" y="295" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="313" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="331" class="t" text-anchor="start">The rows hold this graph.</text>
+<text x="492" y="347" class="t" text-anchor="start">next: plastic graph ready &lt;intent id&gt;</text>
+<rect x="24" y="387" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="399" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="387" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="399" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="387" width="14" height="14" rx="3" class="stop-end"/>
+<text x="296" y="399" class="k" text-anchor="start">Ends</text>
 </svg>

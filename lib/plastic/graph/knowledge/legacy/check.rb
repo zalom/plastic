@@ -6,7 +6,6 @@ require_relative "../intent"
 require_relative "../store_folder"
 require_relative "../reader/graph_file"
 require_relative "index"
-require_relative "roadmaps"
 
 module Plastic
   module Graph
@@ -25,7 +24,7 @@ module Plastic
           end
 
           def call
-            problems = unreadable + roadmap_problems + index_problems + graph_problems
+            problems = unreadable + index_problems + graph_problems
             raise Failed, problems.join("; ") if problems.any?
           end
 
@@ -33,15 +32,7 @@ module Plastic
 
           def unreadable = paths.reject { |path| File.readable?(@folder.path(path)) }.map { |path| "#{path} cannot be read" }
 
-          def paths = [StoreFolder::LEGACY_INDEX, *@folder.intent_files, *roadmaps.files.map { |path| roadmaps.relative(path) }].select { |path| @folder.exist?(path) }
-
-          def roadmaps = (@roadmaps ||= Roadmaps.new(@folder.root))
-
-          def roadmap_problems
-            return [] unless unreadable.empty?
-
-            roadmaps.parse.values.flat_map(&:problems)
-          end
+          def paths = [StoreFolder::LEGACY_INDEX, *@folder.intent_files].select { |path| @folder.exist?(path) }
 
           def index_problems
             return [] unless @folder.exist?(StoreFolder::LEGACY_INDEX)

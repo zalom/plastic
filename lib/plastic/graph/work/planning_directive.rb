@@ -13,7 +13,7 @@ module Plastic
           "by search or research with at least 3 attempts, then ask with plastic node ask ID NODE TEXT, naming the " \
           "question and what you tried. An impediment such as no access, a missing source or missing resources stops " \
           "the node at once: plastic node impede ID NODE TEXT. plastic node resolve ID NODE TEXT reopens either. " \
-          "A newly found issue becomes a new node with plastic node add and plastic edge add. plastic node fail ID " \
+          "A newly found issue becomes a new node with plastic node add --found-in NODE, naming the node it was found in, and plastic edge add. plastic node fail ID " \
           "NODE TEXT is for work that was tried and failed."
       end
     end

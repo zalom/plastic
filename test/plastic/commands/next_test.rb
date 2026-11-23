@@ -10,8 +10,7 @@ require_relative "../../../lib/plastic/commands/node/fail"
 require_relative "../../../lib/plastic/commands/node/ask"
 
 class NextPlanStepCaseTest < Plastic::TestCase
-  PLAN_STEP = "1. Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, " \
-    "or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE " \
+  PLAN_STEP = "1. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE " \
     "--criterion KEY, then add dependencies with plastic edge add. " \
     "An edge FROM TO means TO reads, changes or tests what FROM makes. Nodes with no path between them may run at the same time. " \
     "A red test node comes before the code it tests. Run plastic graph check 1 after the edges and repair each finding it names, " \
@@ -21,7 +20,7 @@ class NextPlanStepCaseTest < Plastic::TestCase
     "newly found issue and blocker. Resolve an ambiguity by search or research with at least 3 attempts, then ask with plastic node ask " \
     "ID NODE TEXT, naming the question and what you tried. An impediment such as no access, a missing source or missing resources stops " \
     "the node at once: plastic node impede ID NODE TEXT. plastic node resolve ID NODE TEXT reopens either. A newly found issue becomes " \
-    "a new node with plastic node add and plastic edge add. plastic node fail ID NODE TEXT is for work that was tried and failed."
+    "a new node with plastic node add --found-in NODE, naming the node it was found in, and plastic edge add. plastic node fail ID NODE TEXT is for work that was tried and failed."
 
   def test_a_locked_intent_with_no_plan_hands_the_agent_the_plan_step
     alpha_specified(UNKEYED_CRITERION)
@@ -92,7 +91,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -107,7 +106,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -122,7 +121,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -141,7 +140,7 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1"
+    assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1 --agent NAME"
   end
 
   def test_several_candidates_request_a_choice
@@ -257,7 +256,7 @@ class DeliveryHandoffTest < Plastic::TestCase
   def test_a_done_graph_leads_to_explicit_intent_verification
     active_intent
     cli("node", "add", "1", "Ship", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "done", "1", "n1", "Checked")
 
     result = cli("next")
@@ -269,9 +268,38 @@ class DeliveryHandoffTest < Plastic::TestCase
     active_intent
     cli("node", "add", "1", "Ship", "--criterion", KEY)
     brief = cli("intent", "brief", "1").out
-    claimed = cli("node", "claim", "1", "n1").out
+    claimed = cli("node", "claim", "1", "n1", "--agent", "tester").out
 
     [brief, claimed].each { |text| refute_includes text, "--judge" }
     assert_includes claimed, "plastic node done 1 n1 TEXT"
+  end
+end
+
+class NextFutureIntentTest < Plastic::TestCase
+  def need(from, to) = store_graphs.work.add_link(from_ref: from, to_ref: to, kind: "needs")
+
+  def test_a_future_intent_with_nothing_unfinished_to_wait_on_is_the_next_work
+    open_intent("Alpha", status: "future")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, true], [result.code, result.out.include?("because: intent 1 has no done criteria")]
+  end
+
+  def test_a_future_intent_that_needs_a_future_intent_waits_and_the_needed_one_is_next
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "future")
+    need("1", "2")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_includes result.out, "because: intent 2 has no done criteria"
+  end
+
+  def test_only_future_intents_all_waiting_say_what_they_wait_on
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "parked")
+    need("1", "2")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_includes result.out, "because: nothing is ready: intent 1 waits on intent 2"
   end
 end

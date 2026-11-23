@@ -11,6 +11,7 @@ module Plastic
         argument :title, label: "TITLE", text: "what the node is for"
         option :criterion, switch: "--criterion KEY", text: "the key of the spec done criterion this node serves", required: true
         option :kind, switch: "--kind KIND", text: "orchestrator, work or retrieval; work when left out"
+        option :found_in, switch: "--found-in NODE", text: "the node of this intent where the new work was found; it orders nothing"
         option :input, switch: "--input PATH", text: "a file the node reads"
         reads :knowledge
         writes :work

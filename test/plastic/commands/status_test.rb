@@ -111,7 +111,7 @@ class StatusTest < Plastic::TestCase
   def test_counts_the_nodes_of_an_intent_by_state
     open_keyed_intent
     2.times { |i| plastic("node", "add", "1", "node #{i}", "--criterion", "done", table: Plastic::CLI::TABLE) }
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_includes call.out, "claimed: 1, open: 1"
     assert_equal 0, call.code
@@ -163,5 +163,43 @@ class StatusMissingStoreTest < Plastic::TestCase
     result = plastic("status", env: { "PLASTIC_HOME" => empty_home }, table: Plastic::CLI::TABLE)
 
     assert_includes result.out, "global has no store folder"
+  end
+end
+
+class StatusBlockedIntentTest < Plastic::TestCase
+  def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)
+
+  def test_an_intent_that_needs_an_unfinished_intent_shows_what_it_waits_on
+    open_intent("Alpha")
+    open_intent("Beta")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_includes call.out, "1 Alpha (open), no nodes, waits on 2"
+  end
+
+  def test_an_intent_whose_needed_intents_are_done_shows_no_wait
+    open_intent("Alpha")
+    open_intent("Beta", status: "done")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    refute_includes call.out, "waits on"
+  end
+end
+
+class StatusFutureIntentTest < Plastic::TestCase
+  def call = plastic("status", table: Plastic::CLI::TABLE)
+
+  def test_a_store_with_only_future_intents_offers_next
+    open_intent("Alpha", status: "future")
+
+    assert_includes call.out, "next: plastic next"
+  end
+
+  def test_a_future_intent_that_needs_an_unfinished_intent_shows_what_it_waits_on
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "future")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_includes call.out, "waits on 2"
   end
 end

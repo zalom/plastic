@@ -12,7 +12,7 @@ class NodeImpedeTest < Plastic::TestCase
   end
 
   def test_impeding_a_claimed_node_offers_the_resolution
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
 
     result = cli("node", "impede", "1", "n1", "no access to the host")
 
@@ -21,7 +21,7 @@ class NodeImpedeTest < Plastic::TestCase
   end
 
   def test_the_impediment_is_stored_as_the_reason
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "impede", "1", "n1", "no access to the host")
 
     assert_equal ["impeded", "no access to the host"], retrieval.node("1", "n1").to_h.values_at(:state, :reason)

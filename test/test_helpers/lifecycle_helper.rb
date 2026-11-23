@@ -11,7 +11,7 @@ module Plastic
       EARLY = "2026-10-05T10:00:00+02:00"
       MIDDLE = "2026-10-05T11:00:00+02:00"
       LATE = "2026-10-05T12:00:00+02:00"
-      MERGE_RECORDS = "- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n"
+      MERGE_RECORDS = "- Merged: plastic/1 into alpha at abc123\n"
       PULL_REQUEST = "- Pull request: https://example.test/pull/1\n"
       APPROVED = "- Approved: the owner on 2026-10-05\n"
 
@@ -34,7 +34,7 @@ module Plastic
         cli("intent", "auto", "1")
         keys.each_key.with_index(1) do |key, number|
           cli("node", "add", "1", "Deliver #{key}", "--criterion", key)
-          cli("node", "claim", "1", "n#{number}")
+          cli("node", "claim", "1", "n#{number}", "--agent", "tester")
           cli("node", "done", "1", "n#{number}", "Acceptance passes for #{key}")
         end
       end

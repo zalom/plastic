@@ -12,7 +12,7 @@ class NodeAskTest < Plastic::TestCase
   end
 
   def test_asking_about_a_claimed_node_offers_the_resolution
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
 
     result = cli("node", "ask", "1", "n1", "which way?")
 
@@ -21,7 +21,7 @@ class NodeAskTest < Plastic::TestCase
   end
 
   def test_a_question_that_holds_column_names_is_stored_unchanged
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "ask", "1", "n1", "see :id and :intent_id")
 
     assert_equal "see :id and :intent_id", retrieval.node("1", "n1").question

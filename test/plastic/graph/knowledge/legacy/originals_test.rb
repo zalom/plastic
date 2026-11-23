@@ -28,18 +28,4 @@ class KnowledgeLegacyOriginalsTest < Plastic::TestCase
 
     assert_equal [["originals/store/4--alpha/spec.md", "4"]], kept
   end
-
-  def test_a_rewritten_roadmap_keeps_its_original_with_no_intent
-    write("roadmaps/plan.md", "after")
-    originals.keep_roadmap_original(folder.path("."), "plan", "before")
-
-    assert_equal [["originals/roadmaps/plan.md", nil]], kept
-  end
-
-  def test_an_unchanged_roadmap_keeps_nothing
-    write("roadmaps/plan.md", "same")
-    originals.keep_roadmap_original(folder.path("."), "plan", "same")
-
-    assert_empty kept
-  end
 end

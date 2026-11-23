@@ -161,7 +161,7 @@ class WorkLoggedWritesOneTransactionTest < Plastic::TestCase
 
   def failing
     open = graphs
-    Plastic::Graph::WorkGraph.new(open.databases.merge(store: FailingLogStore.new(open.databases.fetch(:store))), folder:, retrieval: open.retrieval, session: "s-1")
+    Plastic::Graph::GraphWriter.new(open.databases.merge(store: FailingLogStore.new(open.databases.fetch(:store))), folder:, retrieval: open.retrieval, session: "s-1")
   end
 
   def log_rows = graphs.databases.fetch(:store).rows("SELECT kind FROM work_log WHERE intent_id = '1'").map { |row| row["kind"] }

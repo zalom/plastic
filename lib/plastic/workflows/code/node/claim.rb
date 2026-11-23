@@ -4,6 +4,7 @@ require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/store_folder"
 require_relative "../../../graph/work/packet"
 require_relative "../../../graph/work/schemas"
+require_relative "../../../graph/work/start_check"
 
 module Plastic
   module Workflows
@@ -19,7 +20,7 @@ module Plastic
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem
+          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem, :start_check, :graph_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -50,6 +51,16 @@ module Plastic
             words: "the intent has no go-ahead",
             pass: ->(context) { context.approval_problem.nil? }
 
+          read "check the graph before the first claim" do |context|
+            context[:start_check] = Plastic::Graph::Work::StartCheck.new(context.retrieval, context.intent, context.scope.root)
+            context[:graph_problem] = context.start_check.problem
+          end
+
+          gate "%{graph_problem}", stops: :refusal, offers: "plastic graph check %{intent_id}",
+            because: "a loop or a need on a removed node stops the first claim; repair it, then claim again",
+            words: "the graph holds a loop or a need on a removed node, and no node was claimed yet",
+            pass: ->(context) { context.graph_problem.nil? }
+
           read "check the output of the needed nodes" do |context|
             node = context.retrieval.node(context.intent_id, context.id)
             context[:output_problem] = node && Plastic::Graph::Work::Packet.output_problem(context.retrieval, node)
@@ -66,7 +77,8 @@ module Plastic
 
           step "claim the node", done: ->(context) { !context.result.nil? },
             changes: { work: ["The node is claimed by this session: PLASTIC_SESSION, else the harness session, else terminal- and the login at a terminal", "A node with three runs moves to needing information, with the question for the owner"] } do |context|
-            result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session, agent: context.agent.to_s)
+            result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session, agent: context.agent.to_s,
+              harness: context.running_harness)
             context[:result] = result
             context[:node] = node
             context[:problem] = problem_for(context, node)
@@ -95,6 +107,7 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
+            context.start_check.claim_lines.each { |line| context.print(line) }
             packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)

@@ -135,13 +135,12 @@
 <text x="308" y="312" class="t" text-anchor="start">delivered.</text>
 <path d="M 423 321 L 423 347" class="wire"/>
 <path d="M 418 339 L 423 347 L 428 339 Z" class="head"/>
-<rect x="296" y="347" width="254" height="117" rx="6" class="stop-handoff"/>
+<rect x="296" y="347" width="254" height="100" rx="6" class="stop-handoff"/>
 <text x="308" y="367" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
-<text x="308" y="387" class="t" text-anchor="start">The agent records the delivery,</text>
-<text x="308" y="404" class="t" text-anchor="start">and the architecture map after</text>
-<text x="308" y="421" class="t" text-anchor="start">code, in outcome.md.</text>
-<text x="308" y="438" class="t" text-anchor="start">next: plastic intent end</text>
-<text x="308" y="455" class="t" text-anchor="start">&lt;intent id&gt;</text>
+<text x="308" y="387" class="t" text-anchor="start">The agent records the delivery</text>
+<text x="308" y="404" class="t" text-anchor="start">in outcome.md.</text>
+<text x="308" y="421" class="t" text-anchor="start">next: plastic intent end</text>
+<text x="308" y="438" class="t" text-anchor="start">&lt;intent id&gt;</text>
 <path d="M 423 139 L 423 178 L 689 178 L 689 186" class="wire"/>
 <text x="689" y="200" class="k" text-anchor="middle">the records, the verdict and the</text>
 <text x="689" y="214" class="k" text-anchor="middle">delivery are in place</text>

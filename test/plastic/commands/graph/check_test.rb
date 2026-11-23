@@ -117,7 +117,7 @@ class GraphCheckTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "no findings"
-    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
+    assert_match(/^next: plastic node claim 1 n1 --agent NAME\b/, result.out)
   end
 
   def test_a_clean_graph_offers_the_first_ready_node
@@ -127,7 +127,7 @@ class GraphCheckTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
+    assert_match(/^next: plastic node claim 1 n1 --agent NAME\b/, result.out)
   end
 
   def test_a_clean_intent_with_no_ready_node_has_no_next_line_and_a_reason

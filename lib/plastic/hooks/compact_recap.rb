@@ -50,7 +50,7 @@ module Plastic
         return "plastic graph resume" if claims.any? { |node| node.intent_id == intent_id }
 
         node = ready(intent).first
-        node ? "plastic node claim #{intent_id} #{node.id}" : "plastic next"
+        node ? "plastic node claim #{intent_id} #{node.id} --agent NAME" : "plastic next"
       end
     end
   end

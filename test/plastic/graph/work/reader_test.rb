@@ -15,7 +15,7 @@ class WorkReaderTest < Plastic::TestCase
 
   def finish(id)
     @work.claim_node(intent_id: "1", id:, by: "a")
-    @work.done_node(intent_id: "1", id:, judge: "tests", findings: "ok")
+    @work.done_node(intent_id: "1", id:, findings: "ok")
   end
 
   def test_an_open_node_with_no_needs_is_ready

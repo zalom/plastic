@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "../backup/folders"
 require_relative "front_matter"
 require_relative "intent"
 require_relative "store_path"
@@ -17,7 +18,7 @@ module Plastic
         INDEX = "store/index.json"
         LEGACY_INDEX = "INDEX.md"
         IGNORE_FILE = ".gitignore"
-        IGNORED = %w[*.db *.db-journal backups/].freeze
+        IGNORED = ["*.db", "*.db-journal", "#{Backup::Folders::NAME}/"].freeze
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
@@ -33,6 +34,9 @@ module Plastic
         def exist?(rel) = File.file?(path(rel))
 
         def read(rel) = File.binread(path(rel))
+
+        # The path of the file with every link resolved.
+        def real(rel) = File.realpath(path(rel))
 
         # The SHA-256 of the file, or nil when it is gone.
         def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
@@ -55,9 +59,6 @@ module Plastic
           fixed = "#{dir}/#{Intent::FILE}"
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
-
-        # Every roadmap file on disk, by path. The event log an older release kept beside a roadmap is not one.
-        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| StorePath.roadmap_log?(path) }.sort
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 

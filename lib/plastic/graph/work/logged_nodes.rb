@@ -24,6 +24,8 @@ module Plastic
           @log.recorded { @writers.nodes.claim_node(intent_id:, **fields).tap { |status, node| claim_line(intent_id, status, node) } }
         end
 
+        def record_run(**fields) = @log.recorded { @writers.nodes.record_run(**fields) }
+
         def add_edge(intent_id:, from:, to:) = @log.logged(intent_id, "edge_added", "#{from} -> #{to}") { @writers.edges.add_edge(intent_id:, from:, to:) }
 
         def remove_edge(intent_id:, from:, to:) = @log.logged(intent_id, "edge_removed", "#{from} -> #{to}") { @writers.edges.remove_edge(intent_id:, from:, to:) }

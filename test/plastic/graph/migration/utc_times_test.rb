@@ -42,7 +42,7 @@ class GraphUtcTimesTest < Plastic::TestCase
       alpha_rows(home, "work_graph.db", "SELECT at FROM work_log WHERE intent_id = '91'").flatten]
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  def down(home) = Plastic::Graph::MigrationDown.new(without_usage(home), "alpha", NOW).call
 
   def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
 
@@ -138,7 +138,7 @@ class GraphUtcTimesNothingToChangeTest < Plastic::TestCase
     home
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  def down(home) = Plastic::Graph::MigrationDown.new(without_usage(home), "alpha", NOW).call
 
   def test_a_migration_with_no_time_to_change_makes_no_legacy_db
     home = store_before_utc_alone

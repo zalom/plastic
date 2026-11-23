@@ -2,15 +2,13 @@
 
 module Plastic
   class TestCase
-    # Calls `plastic intent auto`, `plastic intent start` and `plastic roadmap auto` as session s-1 and reads back what they wrote.
+    # Calls `plastic intent auto` and `plastic intent start` as session s-1 and reads back what they wrote.
     module AutoHelper
       CLEAR_SPEC = "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n"
 
       def call(*args, env: {}) = as_session("intent", "auto", *args, env:)
 
       def start(*args, env: {}) = as_session("intent", "start", *args, env:)
-
-      def roadmap_auto(*args, env: {}) = as_session("roadmap", "auto", *args, env:)
 
       def as_session(*words, env:) = plastic(*words, env: { "PLASTIC_SESSION" => "s-1" }.merge(env), table: Plastic::CLI::TABLE)
 

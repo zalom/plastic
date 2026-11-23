@@ -56,8 +56,8 @@ module Plastic
           # The print of a path with no rows.
           NO_PRINT = Prints::Print.new(nil, nil, nil)
 
-          # A file printed from rows: the index, a context view or a roadmap.
-          def self.generated?(path) = path == StoreFolder::INDEX || StorePath.context_view?(path) || StorePath.roadmap?(path)
+          # A file printed from rows: the index or a context view.
+          def self.generated?(path) = path == StoreFolder::INDEX || StorePath.context_view?(path)
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
@@ -108,7 +108,7 @@ module Plastic
           # An index another home printed, on a home that holds no print of the index: the rows print it again.
           def reprinted? = !printed_by.nil? && printed_sha.nil?
 
-          # The index: the rows print it again after a read. A roadmap and a context view are read like any file.
+          # The index: the rows print it again after a read. A context view is read like any file.
           def generated? = path == StoreFolder::INDEX
 
           # The file already holds what the rows print.
@@ -138,7 +138,7 @@ module Plastic
 
           private
 
-          def readable_path?(rowed) = StorePath.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
+          def readable_path?(rowed) = Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
         end
       end
     end

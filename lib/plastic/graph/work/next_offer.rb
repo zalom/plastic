@@ -21,37 +21,45 @@ module Plastic
         end
 
         # The offer for an open intent: intent start after the go-ahead row, the owner instruction before it.
-        def self.go_ahead_offer(retrieval, id)
-          return ["plastic intent start #{id}", "intent #{id} is open", nil] if retrieval.structure.approval(id)
+        def self.go_ahead_offer(retrieval, id, status = "open")
+          return ["plastic intent start #{id}", "intent #{id} is #{status}", nil] if retrieval.structure.approval(id)
 
           [nil, "the owner must give the go-ahead for intent #{id}", "Ask the owner for the go-ahead. " \
             "Only after the owner gives it, record it with plastic intent approve #{id}."]
         end
 
-        def initialize(retrieval, pick)
+        def initialize(retrieval, pick, work: :general)
           @retrieval = retrieval
           @pick = pick
+          @work = work
         end
 
         # The command, the reason and the handoff text; the handoff is nil
         # unless the next step is the agent's, and then the command is nil.
         def call
           return [nil, "choose the intent to work on", CHOOSE] if @pick.ambiguous?
-          return [nil, "nothing is open", nil] if @pick.none?
+          return none_offer if @pick.none?
 
           for_intent(@pick.intent)
         end
 
         private
 
+        def none_offer
+          id, needed = @pick.first_wait
+          return [nil, "nothing is open", nil] unless id
+
+          [nil, "nothing is ready: intent #{id} waits on #{needed.map { |each| "intent #{each}" }.join(", ")}", nil]
+        end
+
         def for_intent(intent)
           id = intent.intent_id
-          open = intent.status == "open"
+          open = intent.unstarted?
           gap = gap_of(id) unless open && approved?(id)
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
-          return self.class.go_ahead_offer(@retrieval, id) if open
+          return self.class.go_ahead_offer(@retrieval, id, intent.status) if open
 
-          DeliveryAction.new(@retrieval, id).call
+          DeliveryAction.new(@retrieval, id, work: @work).call
         end
 
         def gap_of(id) = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))

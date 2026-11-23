@@ -14,6 +14,10 @@ module Plastic
 
         def joins?(edge) = [from_ref, to_ref, kind] == edge
 
+        def needs? = kind == "needs"
+
+        def ends = [from_ref, to_ref]
+
         def from_intent_id = from_ref.split("/").first
 
         def supersedes_from_another?(intent_id) = kind == "supersedes" && to_ref == intent_id && from_intent_id != intent_id
@@ -27,7 +31,7 @@ module Plastic
 
         def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
       end
-      Link::KINDS = %w[cites supersedes answers source chain].freeze
+      Link::KINDS = %w[cites supersedes answers source chain needs].freeze
       Link::ALL_SQL = "SELECT * FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind"
     end
   end

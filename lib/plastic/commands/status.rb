@@ -25,7 +25,8 @@ module Plastic
       end
 
       def self.store_lines(retrieval, slug)
-        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
+        needs = Plastic::Graph::Knowledge::IntentNeeds.new(retrieval)
+        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent, needs:).to_a.join(", ") }
         [["store:", slug], *rows.map { |name, text| ["#{name}:", text] }]
       end
 
@@ -43,7 +44,7 @@ module Plastic
 
       def store_rows(slug, projects)
         retrieval = Plastic::Graph.open(home: scope.plastic_home, store: slug).retrieval
-        Shown.new(Status.store_lines(retrieval, slug), nil, retrieval.intents.any?(&:open?))
+        Shown.new(Status.store_lines(retrieval, slug), nil, retrieval.intents.any? { |intent| intent.open? || intent.unstarted? })
       rescue Plastic::Graph::MissingStore => error
         command = error.next_command(projects[slug])
         Shown.new([["store:", "#{slug} has no store folder; run #{command}"]], (command if scope.requested?), false)

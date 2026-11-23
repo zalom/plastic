@@ -9,14 +9,14 @@ module DeliveredHomes
   include TwoHomes
 
   SESSION = { "PLASTIC_SESSION" => "delivery" }.freeze
-  RECORDS = "- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n" \
+  RECORDS = "- Merged: plastic/1 into alpha at abc123\n" \
             "- Pull request: https://example.test/pull/1\n- Approved: the owner on 2026-10-05\n"
   OUTCOME = "# Outcome\n\nDelivered and verified.\n\n## Verification\n#{RECORDS}"
   DROPPED = "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n"
 
   def deliver(kernel)
     kernel.command!("intent", "auto", "1", env: SESSION)
-    kernel.command!("node", "claim", "1", "n2")
+    kernel.command!("node", "claim", "1", "n2", "--agent", "tester")
     kernel.command!("node", "done", "1", "n2", "The code is green")
     kernel.command!("intent", "verdict", "1", "accept", "Both nodes hold")
     kernel.write("#{DIR}/outcome.md", OUTCOME)

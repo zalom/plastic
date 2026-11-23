@@ -5,6 +5,25 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
+- `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.
+
+## 3.0.0-beta.12
+
+- `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.
+- `plastic sync up --dry-run` and `plastic sync down --dry-run` no longer fail with "attempt to write a readonly database" on a store that holds a half-written backup. The preview twin leaves `backups/` out, as the real sync already does, and the comparison names no backup file.
+- `plastic edge add` now says a missing node is missing ("edge n1 to n9 is missing a node: ...", exit 1) and says refused only with exit 3. The edge writer returns `:missing` or `:refused` from the reason itself, not by reading the message, and its comment names its three results.
+
+## 3.0.0-beta.11
+
+- Roadmaps are replaced by `needs` links between intents. `plastic intent link ID needs OTHER` says an intent waits for another, refuses a link that would close a loop, and `plastic next`, `plastic graph resume` and `plastic status` read the ready intents. Migration `20261123120000` turns each roadmap's item order into `needs` links and drops the five roadmap tables with no config switch; `legacy.db` keeps their rows and the down puts them back. An edge whose item has no intent, whose items share one intent, or that would close a loop is skipped and counted. The `plastic roadmap` commands, their reference pages, the `roadmaps` help chapter and the printed `roadmaps/` folder are gone. Old `roadmaps/` files stay on disk, no longer printed or read.
+- `Graph::WorkGraph` is now `Graph::GraphWriter`, the write side of all three graphs (the store databases, the printed store files and the machine's own database). No behavior changes. The architecture page and its figures name it, and no longer say `Graph::RetrievalGraph` writes nothing: `repair` and `reindex` write its derived tables.
+- A node no longer has the columns `judge` and `verdict`. No code read them and no store held a value in them. Store migration `20261123100000` drops them with no switch, and its down adds them back empty; a graph file printed by an earlier release with the two fields still reads.
+- `plastic node add ID TITLE --found-in NODE` records which node new work was found in. The node must be in the same intent: a missing node exits 1 and a removed node exits 3, each naming it. `plastic edge remove` leaves a found_in link in place. The link is an edge of kind `found_in` (the edges table already has a kind column, so no migration runs and old rows read as before); `plastic graph show` prints `found in NODE` on the new node and no edge line for it, and prints each need as an edge line. It adds no `needs` edge and changes no readiness, claim packet or loop check. The role files of the planner, executor and advisors tell a worker to name the node a newly found issue came from in its report, and the planning hand-off names `--found-in`.
+- `plastic intent judge ID` and `plastic intent verdict ID accept TEXT` refuse with exit 3 while a done criterion of the spec has no done node serving it. They name each such criterion and the repair, `plastic node add ID TITLE --criterion KEY`, then claim and finish the node. An accept can no longer leave an intent that `plastic intent end` refuses for the same reason; both commands read one method, `WorkCheck#uncovered_keys`. A revise is still recorded.
+- For code work only, the planning handoff tells the agent to map the code with an architecture mapping tool such as Enola, and to read the project's `AGENTS.md`, before it plans the graph, so the graph is planned from the real architecture. An intent whose project names no repository gets no such sentence. `plastic intent end` no longer asks for an `Architecture map:` line in outcome.md and no longer refuses without one; an old line is ignored. `plastic architecture status` and `plastic architecture refresh` say the same and ask for no record. Plastic still runs no such tool.
+- Plastic checks the graph before work starts. `plastic node claim` refuses the first claim of an intent with exit 3 when the graph holds a loop or a need on a removed node, and names the nodes and the repair command. It prints the other findings of `plastic graph check` and claims anyway, and `plastic intent approve` prints them too. `plastic graph check` names a graph of several nodes with no edge at all once more, after the finding for each node.
+- `plastic node claim` requires `--agent NAME`; a claim without it exits 2 and names the flag. Each run now records the harness of the claiming session, and when it ends, the model, the input, output, cache read and cache write tokens and the cost, read from the harness's own local record (Claude Code transcripts and Codex session logs; the worker's own session when a subagent ran the claim). Plastic starts nothing and calls no API. A record that is missing or unreadable leaves the figures empty and a note says what was not found; the claim and the done never fail for it. The columns are added to `runs` by migration `20261123090000`, and `plastic graph show` prints one `run:` line for each run.
 - `plastic install` writes a driver role, `plastic-driver`, for Claude Code and Codex. It tells the open session to run the graph loop: read `plastic graph ready`, start one subagent or background worker for each ready node, of the role that fits its kind (orchestrator, work or retrieval), hand it the claim packet, and have it finish with `plastic node done` and its output; when the harness cannot start workers, the session works the nodes itself. Plastic starts no worker. At most 3 workers run at once: the new setting `driver.max_workers` holds the limit, and the installed role prints it. The driver page and the architecture page describe the role.
 - `plastic intent report ID PATH` records a report again, with its new sha256, when the file changed since it was recorded, and keeps its one line under Reports. When the file is unchanged it writes nothing and says so: `unchanged: PATH is already recorded with this sha256; nothing written`.
 - Every refusal exits 3. A claim on a blocked node, a claim or a change on a closed intent, a node that cannot take a move, an intent that cannot start, park, end or abandon, an edge that is a self edge, a duplicate, a loop or on a removed node, an intent that cannot be unarchived and a roadmap that already exists now end with exit 3 and the same words. A missing intent, node (also an end of an edge) or file still exits 1. A guard test fails when a gate that names a refusal stops as a failure.
@@ -107,42 +126,6 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 - `roadmap batch` keeps the fields a call leaves out, names a new untitled batch "Batch N", and no longer resets the roadmap's title and goal. `intent brief` prints the goal lines of the spec.
 
 - A refused or failed write now runs again on the next call instead of replaying the old stop.
-
-## 2.0.3
-
-- Documentation follows the public CLI and distinguishes implemented behavior from proposals.
-
-- The CLI tutorial walks a Ruby change from intent creation through Git integration and delivered closure.
-
-- Future intents can be closed directly. The preview and real close reject an unresolvable INDEX entry before changing lifecycle files.
-
-## 2.0.2
-
-- Updates and rollbacks verify the installed version and refuse packages that cannot read the stores layout.
-
-- Closure previews enforce delivery checks without writing records. Untouched intents cannot be marked delivered.
-
-- Command repairs cover project registration, roadmap validation, sync previews, lock ownership, and completed graph guidance.
-
-- Harness display checks enforce one deadline across the process and its input and output streams.
-
-## 2.0.1
-
-- The README uses the centered ocean-blue wordmark and shows stable release versions on GitHub and npm.
-
-- Packaged Varar checks read the generated archive directly, so npm 12 can run the release checks.
-
-## 2.0.0
-
-This version was not published separately. Its changes shipped with 2.0.1.
-
-- The public `plastic` command carries workflow guidance, project scope, and next actions. Agent instructions point to the command and its help chapters.
-- Direct intents advance through lifecycle preparation, checklist work, verification, and closure. Graph intents use the existing file-backed runner and delivery ownership checks.
-- Search, sync, checkout, and backup operate on the store databases. The retrieval library provides deterministic question search; recursive RLM and database-backed graph execution remain subsequent work.
-- Intent 383 repairs JSON output from script adapters, preserves project scope in next commands, respects blocked and completed work, and removes unnecessary mutation advice from reads. Packaged executable checks run in CI.
-- Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
-
-## Unreleased
 
 - Intent 391: Plastic calls only tools native to macOS and Linux. Install checks only git and
   sqlite3; `doctor` checks only the harness it runs from; `plastic update` reads the GitHub
@@ -386,6 +369,40 @@ to carry a criteria-shaped list still reports its matrix rows.
 
 - Moved the general skill-authoring guides from `docs/skill-authoring/` to the `skill-creating` and `skill-evaluating` skills at https://github.com/zalom/agent-skills; `docs/skill-authoring.md` keeps the Plastic-only rules.
 - `AGENTS.md`, the auto report contract, and the doctor and installer hook examples name the `plain-writing` skill, renamed from `writing-style`.
+
+## 2.0.3
+
+- Documentation follows the public CLI and distinguishes implemented behavior from proposals.
+
+- The CLI tutorial walks a Ruby change from intent creation through Git integration and delivered closure.
+
+- Future intents can be closed directly. The preview and real close reject an unresolvable INDEX entry before changing lifecycle files.
+
+## 2.0.2
+
+- Updates and rollbacks verify the installed version and refuse packages that cannot read the stores layout.
+
+- Closure previews enforce delivery checks without writing records. Untouched intents cannot be marked delivered.
+
+- Command repairs cover project registration, roadmap validation, sync previews, lock ownership, and completed graph guidance.
+
+- Harness display checks enforce one deadline across the process and its input and output streams.
+
+## 2.0.1
+
+- The README uses the centered ocean-blue wordmark and shows stable release versions on GitHub and npm.
+
+- Packaged Varar checks read the generated archive directly, so npm 12 can run the release checks.
+
+## 2.0.0
+
+This version was not published separately. Its changes shipped with 2.0.1.
+
+- The public `plastic` command carries workflow guidance, project scope, and next actions. Agent instructions point to the command and its help chapters.
+- Direct intents advance through lifecycle preparation, checklist work, verification, and closure. Graph intents use the existing file-backed runner and delivery ownership checks.
+- Search, sync, checkout, and backup operate on the store databases. The retrieval library provides deterministic question search; recursive RLM and database-backed graph execution remain subsequent work.
+- Intent 383 repairs JSON output from script adapters, preserves project scope in next commands, respects blocked and completed work, and removes unnecessary mutation advice from reads. Packaged executable checks run in CI.
+- Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
 
 ## Released
 

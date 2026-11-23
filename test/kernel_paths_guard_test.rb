@@ -20,9 +20,7 @@ module RetiredNames
     "Commands::NodeRemove", "Commands::NodeClaim", "Commands::NodeRelease", "Commands::NodeDone",
     "Commands::NodeFail", "Commands::NodeAsk", "Commands::NodeImpede", "Commands::NodeResolve",
     "Commands::EdgeAdd", "Commands::EdgeRemove", "Commands::GraphCheck", "Commands::GraphReady",
-    "Commands::GraphResume", "Commands::GraphShow", "Commands::RoadmapNew", "Commands::RoadmapBatch",
-    "Commands::RoadmapAdd", "Commands::RoadmapShow", "Commands::RoadmapNext", "Commands::RoadmapDrop",
-    "Commands::RoadmapOpen", "Commands::RoadmapCheck", "Commands::RoadmapLog", "Commands::RoadmapEdgeRemove"
+    "Commands::GraphResume", "Commands::GraphShow"
   ].freeze
   RETIRED_WORKFLOWS = [
     "Workflows::WriteIntent", "Workflows::SyncUp", "Workflows::PreviewSync", "Workflows::SyncDown", "Workflows::PreviewSyncDown",

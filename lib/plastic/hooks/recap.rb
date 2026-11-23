@@ -21,7 +21,7 @@ module Plastic
         "fork" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       LOG_LINES = 5
-      LAPSED = "intent %<intent_id>s: the claim of this session on node %<id>s lapsed (last renewed %<seen_at>s); plastic node claim %<intent_id>s %<id>s takes it again"
+      LAPSED = "intent %<intent_id>s: the claim of this session on node %<id>s lapsed (last renewed %<seen_at>s); plastic node claim %<intent_id>s %<id>s --agent NAME takes it again"
 
       def initialize(retrieval, session_id:, source:, directory:)
         @retrieval = retrieval

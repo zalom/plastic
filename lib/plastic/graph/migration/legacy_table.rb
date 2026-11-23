@@ -15,6 +15,8 @@ module Plastic
       SCHEMA = "legacy"
       NAME = /\A(?<table>.+)_(?<version>\d{14})\z/
       HEAD = /\ACREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:\w+\.)?(?:"[^"]+"|\w+)/i
+      # The schema a table lives in when it is not `main`: the roadmap tables of the work graph.
+      HOMES = %w[roadmaps batches roadmap_items roadmap_edges roadmap_log].to_h { |table| [table, "work"] }.freeze
       DEFINITION = "SELECT sql FROM %<schema>s.sqlite_master WHERE type = 'table' AND name = ?"
 
       # The legacy tables that the migration `version` kept.
@@ -35,6 +37,7 @@ module Plastic
         @connection = connection
         @table = table
         @version = version
+        @home = HOMES.fetch(table, "main")
       end
 
       def name = "#{@table}_#{@version}"
@@ -42,19 +45,19 @@ module Plastic
       # Copies the rows of the live table that the `where` text selects, or all of them, and answers how many it copied. A
       # kept row with the key of a live row gives way to it. A missing live table keeps nothing and makes no table.
       def keep(where = nil, values = [])
-        definition = definition("main", @table)
+        definition = definition(@home, @table)
         return 0 unless definition
 
         @connection.execute(definition.sub(HEAD, %(CREATE TABLE IF NOT EXISTS #{SCHEMA}."#{name}")))
-        @connection.execute(%(INSERT OR REPLACE INTO #{SCHEMA}."#{name}" SELECT * FROM main."#{@table}"#{" WHERE #{where}" if where}), values)
+        @connection.execute(%(INSERT OR REPLACE INTO #{SCHEMA}."#{name}" SELECT * FROM #{@home}."#{@table}"#{" WHERE #{where}" if where}), values)
         @connection.changes
       end
 
       # Puts the kept rows back into the live table, made again in the old shape when it is gone, and answers how many it
       # put back. A live row that is the same as its kept row is skipped.
       def restore
-        @connection.execute(definition(SCHEMA, name).sub(HEAD, %(CREATE TABLE IF NOT EXISTS main."#{@table}")))
-        @connection.execute(%(INSERT INTO main."#{@table}" SELECT * FROM #{SCHEMA}."#{name}" EXCEPT SELECT * FROM main."#{@table}"))
+        @connection.execute(definition(SCHEMA, name).sub(HEAD, %(CREATE TABLE IF NOT EXISTS #{@home}."#{@table}")))
+        @connection.execute(%(INSERT INTO #{@home}."#{@table}" SELECT * FROM #{SCHEMA}."#{name}" EXCEPT SELECT * FROM #{@home}."#{@table}"))
         @connection.changes
       rescue SQLite3::ConstraintException
         raise Changed, "a row of #{@table} changed after migration #{@version} kept it"

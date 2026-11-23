@@ -14,7 +14,7 @@ module Plastic
       extend Forwardable
 
       TYPES = {
-        text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER", int: "INT", blob: "BLOB",
+        text: "TEXT", real: "REAL", kept: "TEXT NOT NULL", integer: "INTEGER", int: "INT", blob: "BLOB",
         number: "INTEGER NOT NULL", blank: "TEXT NOT NULL DEFAULT ''", primary: "TEXT PRIMARY KEY",
         serial: "INTEGER PRIMARY KEY AUTOINCREMENT", role: "TEXT NOT NULL CHECK(role IN ('user', 'assistant'))",
         operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))", event: "TEXT NOT NULL CHECK(event IN ('up', 'down', 'purge'))",

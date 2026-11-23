@@ -30,7 +30,7 @@ re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
 QMD, Serena and Enola are companion tools a person or an agent runs beside Plastic. `plastic
 architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
-the architecture map with a tool it chooses. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
+the architecture map with a tool it chooses. For code work only, the planning handoff tells the agent to map the code and read this file before it plans; nothing is asked after delivery. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
 its own `qmd query` or `qmd search` commands.
 
 ## Contributor rules
@@ -76,7 +76,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 `alpha` is the one trunk. Every change and every fix goes to `alpha` by its own pull request, and CI runs the suite on each. `beta` is a snapshot of `alpha`, cut only on the owner's word. It takes no commits of its own and releases on the `beta` channel on a `-beta.N` version. `main` releases on the `latest` channel on a version with no suffix, and it stays frozen until the shaping ends. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
 
 ### Worktrees and node claims
-- One session works a node at a time. A node claim, `plastic node claim ID NODE`, names the
+- One session works a node at a time. A node claim, `plastic node claim ID NODE --agent NAME`, names the
   session that holds it and opens one run of the node. The session renews its claims at every
   `plastic` command and at the stop hook, and a claim lapses after 15 minutes without a
   renewal. If a node is claimed by another session, back off. A session that finds a lapsed

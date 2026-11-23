@@ -11,10 +11,12 @@ module Plastic
       # The backup folders of one store on disk. The folders decide what
       # backups exist.
       class Folders
+        NAME = "backups"
+
         attr_reader :dir
 
         def initialize(store_root)
-          @dir = File.join(store_root, "backups")
+          @dir = File.join(store_root, NAME)
         end
 
         def names

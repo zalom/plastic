@@ -44,8 +44,8 @@ when it failed. You write nothing else to Plastic. Every other case follows the 
 1. Receive the handoff: the intent id, the step (plan or review), the brief the main session
    pasted in, and the worktree path when one exists. Read-only Plastic commands such as
    `plastic intent brief ID` and `plastic graph show ID` are open to you.
-2. Map the code before you plan: use an architecture mapping tool such as Enola when one is
-   available, or read the code yourself.
+2. For code work, map the code before you plan, with an architecture mapping tool such as Enola
+   when one is available or by reading the code yourself, and read the project's AGENTS.md.
 3. Do the one step. Edit no repository file and no intent file.
 4. Report (see `## Completion Report`) and stop.
 
@@ -70,4 +70,4 @@ the planner payload:
 
 ## Planning directive
 
-Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker, and the main session records each one from your report. An ambiguity gets at least 3 research attempts, then goes in your report as a question with what was tried. An impediment stops your step at once and goes in your report with its reason. A newly found issue goes in your report as new work, and work tried and failed as a failure with its reason.
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker, and the main session records each one from your report. An ambiguity gets at least 3 research attempts, then goes in your report as a question with what was tried. An impediment stops your step at once and goes in your report with its reason. A newly found issue goes in your report as new work, naming the node it was found in, and work tried and failed as a failure with its reason.

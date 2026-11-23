@@ -48,8 +48,8 @@ Verification section holds one of three delivery lines:
 
 | Line | Records | Also needs |
 | --- | --- | --- |
-| `Merged: <branch> into <base> at <commit or pull request>` | Code merged by a pull request | `Architecture map: <tool> at <source revision>` |
-| `Committed: <branch> at <commit>` | Code committed straight to its branch, with a commit of 7 to 40 hexadecimal characters | `Architecture map: <tool> at <source revision>` |
+| `Merged: <branch> into <base> at <commit or pull request>` | Code merged by a pull request | Nothing more |
+| `Committed: <branch> at <commit>` | Code committed straight to its branch, with a commit of 7 to 40 hexadecimal characters | Nothing more |
 | `Delivered: resources/output/<path> because <reason>` | Work that no version control holds, such as a report or a document | Nothing more |
 
 Delivered files go in the intent folder: reports under `resources/output/reports`, and other

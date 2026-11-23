@@ -30,7 +30,7 @@ module Plastic
 
           def entry(path, printed_sha, prints) = Entry.for(@folder, path, printed_sha, prints.fetch(path, Entry::NO_PRINT))
 
-          def prints_of(printed_paths) = [*Prints.of_store(@retrieval), *parts(printed_paths)].to_h { |print| [print.path, print] }.merge(roadmap_prints(printed_paths))
+          def prints_of(printed_paths) = [*Prints.of_store(@retrieval), *parts(printed_paths)].to_h { |print| [print.path, print] }
 
           # The clusters and the links of the index, once the index is on disk or a part was printed.
           def parts(printed_paths)
@@ -38,15 +38,9 @@ module Plastic
             held ? Prints.parts(@retrieval) : []
           end
 
-          # The roadmaps this home printed or holds a file for that still have rows, so a sync can compare them.
-          def roadmap_prints(paths)
-            slugs = [*paths, *@folder.roadmap_files].filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.uniq.select { |slug| @retrieval.roadmaps.find(slug) }
-            slugs.map { |slug| Prints.roadmap(@retrieval, slug) }.to_h { |print| [print.path, print] }
-          end
-
           def on_disk
             files = @folders ? @folders.readable_files : @folder.intent_files
-            [*(StoreFolder::INDEX if @folder.exist?(StoreFolder::INDEX)), *@folder.roadmap_files, *files]
+            [*(StoreFolder::INDEX if @folder.exist?(StoreFolder::INDEX)), *files]
           end
         end
       end

@@ -7,7 +7,7 @@ module Plastic
   module Workflows
     module Code
       module Graph
-        # Prints each node and edge from the rows. It never reads or writes graph.json.
+        # Prints each node, edge and run from the rows. It never reads or writes graph.json.
         class Show < CodeWorkflow
           clear_declarations
 
@@ -19,10 +19,21 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
-          read "print each node and edge" do |context|
-            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
-            context.retrieval.structure.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+          read "print each node" do |context|
+            found = found_in(context.retrieval.structure.edges(context.intent_id))
+            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node, found[node.id])) }
           end
+
+          read "print each need" do |context|
+            context.retrieval.structure.edges(context.intent_id).select(&:needs?).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+          end
+
+          read "print each run" do |context|
+            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
+          end
+
+          # The node each found node was found in, by the found node.
+          def self.found_in(edges) = edges.reject(&:needs?).to_h { |edge| [edge.from, edge.to] }
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"
         end

@@ -2,10 +2,10 @@
 
 require_relative "test_helper"
 
-# Retired auto words guard. `plastic intent auto ID` and `plastic roadmap auto SLUG`
-# replace the top-level `plastic auto`, and `intent new` takes no status, so no
+# Retired auto words guard. `plastic intent auto ID`
+# replaces the top-level `plastic auto`, and `intent new` takes no status, so no
 # shipped document and no kernel file names `plastic auto`, `auto start`, `auto lock`,
-# the old `plastic-lock` script, `roadmap start`, which is `roadmap open`, or a status
+# the old `plastic-lock` script, the removed `roadmap start`, or a status
 # or reason option of `intent new`. CHANGELOG.md is history and keeps the words it was
 # written with.
 class AutoWordsGuardTest < Minitest::Test
@@ -26,7 +26,7 @@ class AutoWordsGuardTest < Minitest::Test
   def retired?(text) = text.match?(RETIRED)
 
   def test_the_subjects_are_found
-    assert_includes subjects, "docs/help/roadmaps.md"
+    assert_includes subjects, "docs/help/completion-and-done.md"
   end
 
   def test_no_subject_names_a_retired_auto_word
@@ -42,7 +42,7 @@ class AutoWordsGuardTest < Minitest::Test
   end
 
   def test_the_detector_leaves_the_new_words_alone
-    refute retired?("run plastic intent auto 7, then plastic roadmap auto r1 and plastic intent start 8")
+    refute retired?("run plastic intent auto 7, then plastic intent start 8")
   end
 
   def test_the_detector_catches_the_retired_top_level_auto

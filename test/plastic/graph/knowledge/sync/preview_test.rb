@@ -63,6 +63,17 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     write(SPEC, "file change")
   end
 
+  def test_a_backup_left_half_written_does_not_stop_the_preview
+    backup = store_path("backups/20261122143051")
+    FileUtils.mkdir_p(backup)
+    File.write(File.join(backup, "knowledge_graph-20261122143051.db"), "half a database")
+    File.write(File.join(backup, "knowledge_graph-20261122143051.db-journal"), "hot journal")
+    before = snapshot(store_root)
+
+    assert_includes preview, "preview: paths that would change: 0"
+    assert_equal before, snapshot(store_root)
+  end
+
   def test_absolute_overwrite_path_is_resolved_against_original_store
     conflicting_spec
     before = snapshot(store_root)
@@ -132,10 +143,9 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 
   def test_a_dry_run_of_sync_up_keeps_the_files_this_home_holds_no_rows_for
     write("store/1--alpha/graph.json", "{\"hand\":true}\n")
-    write("roadmaps/old.md", "# Old\n")
     run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).preview
 
-    assert_equal [%w[roadmaps/old.md store/1--alpha/graph.json], %w[roadmaps/old.md]], [run.unreadable_files.keys.sort, run.rowless_files]
+    assert_equal [%w[store/1--alpha/graph.json], []], [run.unreadable_files.keys.sort, run.rowless_files]
   end
 
   def test_a_dry_run_of_sync_down_keeps_no_file_to_refuse

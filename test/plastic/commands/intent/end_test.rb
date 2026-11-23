@@ -195,6 +195,18 @@ class IntentEndPullRequestTest < Plastic::TestCase
     assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
   end
 
+  def test_a_merge_record_with_no_architecture_map_line_closes
+    accepted_intent(records: "- Merged: plastic/1 into alpha at abc123\n")
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_an_old_architecture_map_line_beside_the_merge_record_is_ignored
+    accepted_intent(records: "- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n")
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
   def test_off_closes_with_no_pull_request_bullets
     accepted_intent(records: MERGE_RECORDS)
     review_off
@@ -209,7 +221,7 @@ class IntentEndMergeTest < Plastic::TestCase
   def finish = cli("intent", "end", "1")
 
   def lacking_merge_record
-    accepted_intent(records: "- Architecture map: enola at abc123\n")
+    accepted_intent(records: "- Tests pass\n")
     review_off
   end
 
@@ -251,7 +263,7 @@ class IntentEndMergeTest < Plastic::TestCase
   end
 
   def test_a_negative_merge_record_is_named_by_the_handoff
-    accepted_intent(records: "- Merged: no\n- Architecture map: enola at abc123\n")
+    accepted_intent(records: "- Merged: no\n")
     review_off
     result = finish
 
@@ -270,7 +282,7 @@ class IntentEndMergeTest < Plastic::TestCase
   end
 
   def test_the_printed_template_of_the_merge_line_closes_nothing
-    accepted_intent(records: "- Merged: <branch> into <base> at <commit or pull request>\n- Architecture map: enola at abc123\n")
+    accepted_intent(records: "- Merged: <branch> into <base> at <commit or pull request>\n")
     review_off
     result = finish
 
@@ -288,7 +300,7 @@ class IntentEndMergeTest < Plastic::TestCase
   end
 
   def test_a_direct_commit_with_the_architecture_map_closes_the_intent
-    accepted_intent(records: "- Committed: main at 4f2a9c1\n- Architecture map: enola at 4f2a9c1\n")
+    accepted_intent(records: "- Committed: main at 4f2a9c1\n")
     review_off
 
     assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]

@@ -142,23 +142,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic graph check`](graph-check/README.md) | Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node |
 | [`plastic graph ready`](graph-ready/README.md) | List the nodes ready to claim |
 | [`plastic graph resume`](graph-resume/README.md) | Say where each named store's work stopped and what runs next |
-| [`plastic graph show`](graph-show/README.md) | Print every node and edge of an intent |
-
-## roadmap
-
-| Command | What it does |
-| --- | --- |
-| [`plastic roadmap new`](roadmap-new/README.md) | Create a roadmap; write its batches with roadmap batch |
-| [`plastic roadmap batch`](roadmap-batch/README.md) | Write one roadmap batch's goal and done criteria |
-| [`plastic roadmap add`](roadmap-add/README.md) | Add an item to a roadmap batch, with the items it needs |
-| [`plastic roadmap show`](roadmap-show/README.md) | Print a roadmap's batches and items |
-| [`plastic roadmap next`](roadmap-next/README.md) | Print the first ready item, or what is in the way |
-| [`plastic roadmap drop`](roadmap-drop/README.md) | Mark a roadmap item dropped; its edges stay as rows |
-| [`plastic roadmap open`](roadmap-open/README.md) | Open a ready item's intent, with its spec held in rows |
-| [`plastic roadmap auto`](roadmap-auto/README.md) | Start a roadmap's next item for agent delivery: its first free item in flight, or its first ready item, opened first |
-| [`plastic roadmap check`](roadmap-check/README.md) | List a roadmap's loops, dangling edges and items with no intent |
-| [`plastic roadmap log`](roadmap-log/README.md) | Append a log line to a roadmap, stamped with the session id |
-| [`plastic roadmap edge remove`](roadmap-edge-remove/README.md) | Remove one needs edge from a roadmap |
+| [`plastic graph show`](graph-show/README.md) | Print every node, with the node it was found in, and every need of an intent |
 
 ## chat
 

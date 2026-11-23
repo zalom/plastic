@@ -57,15 +57,12 @@ module Plastic
         self.class.prints.each do |kind|
           case kind
           when :intent then print_intent(facts[:intent_id])
-          when :roadmap then print_roadmap(facts[:slug])
           else graphs.work.print_index
           end
         end
       end
 
       def print_intent(intent_id) = (graphs.work.print_intent(intent_id) if intent_id)
-
-      def print_roadmap(slug) = (graphs.work.print_roadmap(slug) if slug)
     end
   end
 end
