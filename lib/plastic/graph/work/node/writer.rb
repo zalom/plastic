@@ -3,6 +3,7 @@
 require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
+require_relative "../edge/writer"
 require_relative "claim"
 require_relative "run_usage"
 
@@ -47,10 +48,15 @@ module Plastic
             @claim = Claim.new(databases, retrieval, clock)
           end
 
-          def add_node(intent_id:, **fields)
+          # A node found while doing another carries `found_in`, the id of that node: the node row and its found_in edge
+          # land in one transaction. The edge orders nothing; only `needs` does.
+          def add_node(intent_id:, found_in: nil, **fields)
             id = next_id(intent_id)
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
-            @databases.fetch(:store).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
+            @databases.fetch(:store).transaction do |batch|
+              batch.put(:nodes, row, statement: :insert)
+              found_in && batch.write(:edges, Edge::Writer::ADD_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
+            end
             @retrieval.node(intent_id, id)
           end
 
