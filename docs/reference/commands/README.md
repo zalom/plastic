@@ -82,7 +82,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | --- | --- |
 | [`plastic backup`](backup/README.md) | Copy one store's databases into a new backup folder |
 | [`plastic backup list`](backup-list/README.md) | List one store's backups with status and goal, flagging a missing or changed file |
-| [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed or --older-than |
+| [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed, --interrupted or --older-than |
 | [`plastic backup restore`](backup-restore/README.md) | Replace one store's databases with those of a done backup |
 
 ## migration

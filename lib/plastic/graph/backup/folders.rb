@@ -12,6 +12,8 @@ module Plastic
       # backups exist.
       class Folders
         NAME = "backups"
+        # How long a backup may stay in-progress before it counts as left by a stopped run; a newer one is another session's live claim.
+        CLAIM_WINDOW = 5 * 60
 
         attr_reader :dir
 

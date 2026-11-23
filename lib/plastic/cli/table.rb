@@ -70,7 +70,7 @@ module Plastic
       "backup" => {
         "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
         "backup list" => ["Commands::Backup::List", "List one store's backups with status and goal, flagging a missing or changed file"],
-        "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed or --older-than"],
+        "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed, --interrupted or --older-than"],
         "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
       },
       "migration" => {

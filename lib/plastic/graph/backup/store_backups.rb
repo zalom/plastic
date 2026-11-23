@@ -37,6 +37,9 @@ module Plastic
 
         def purger = Purger.new(@target.root)
 
+        # The current time of this call's clock.
+        def now = @clock.now
+
         def restorer = Restorer.new(@target, @retrieval, now: @clock.now)
 
         # The newest folder marked done, or nil.

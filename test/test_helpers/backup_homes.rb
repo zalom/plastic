@@ -60,7 +60,7 @@ module BackupHomes
 
   def list_call(home, *argv) = plastic("backup", "list", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 
-  def purge_call(home, *argv) = plastic("backup", "purge", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
+  def purge_call(home, *argv, clock: Time) = plastic("backup", "purge", *argv, env: env_for(home), table: Plastic::CLI::TABLE, clock:)
 
   def restore_call(home, *argv) = plastic("backup", "restore", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 

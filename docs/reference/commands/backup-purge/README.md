@@ -1,9 +1,9 @@
 # plastic backup purge
 
-Delete one store's backups; give one of --all, --failed or --older-than.
+Delete one store's backups; give one of --all, --failed, --interrupted or --older-than.
 
 ```sh
-plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]
+plastic backup purge --store SLUG (--older-than DATE | --all | --failed | --interrupted) [--dry-run]
 ```
 
 | Argument or option | What it gives | Default |
@@ -12,6 +12,7 @@ plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-
 | `--older-than DATE` | delete the backups before this date or time |  |
 | `--all` | delete every backup of the store | `false` |
 | `--failed` | delete every backup whose status is failed | `false` |
+| `--interrupted` | delete every backup in progress for over five minutes, whether its run stopped or is only slow | `false` |
 | `--dry-run` | list what would be deleted and delete nothing | `false` |
 
 ## The workflows of one call
