@@ -16,7 +16,7 @@ module PreviousStore
   UTC = "20261121090000"
   USAGE = "20261123090000"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
-  DRIVERS = "20261123100000"
+  DRIVERS = "20261123110000"
   ROADMAP = "originals/roadmaps/plan.md"
   MIGRATED_AT = Time.utc(2026, 11, 19, 12, 0, 0)
   REVISIONS = <<~SQL
