@@ -15,7 +15,7 @@ module Plastic
           lines = File.readlines(path, chomp: true, encoding: "UTF-8").reject { |line| line.strip.empty? }
           parsed = lines.filter_map { |line| parse(line) }
           parsed unless parsed.empty? && !lines.empty?
-        rescue SystemCallError, EncodingError
+        rescue SystemCallError, EncodingError, ArgumentError
           nil
         end
 

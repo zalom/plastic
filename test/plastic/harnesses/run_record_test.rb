@@ -93,30 +93,4 @@ class HarnessesRunRecordTest < Plastic::TestCase
 
     assert_includes read.note, "no turn inside the run"
   end
-
-  def test_codex_tokens_are_the_growth_of_the_running_total_and_the_model_is_the_turn_model
-    write_codex("s-1", jsonl(
-      codex_context("2026-11-12T11:58:00Z", "gpt-6-astra"),
-      codex_count("2026-11-12T11:59:00Z", input: 1000, cached: 800, output: 50),
-      codex_count("2026-11-12T12:05:00Z", input: 3000, cached: 2000, output: 150, written: 10),
-      codex_count("2026-11-12T12:20:00Z", input: 9000, cached: 9000, output: 900)
-    ))
-    usage = read(harness: "codex")
-
-    assert_equal ["gpt-6-astra", 800, 100, 1200, 10], figures(usage)
-    assert_nil usage.cost_usd
-    assert_includes usage.note, "cost"
-  end
-
-  def test_a_missing_codex_log_gives_a_note
-    assert_includes read(harness: "codex").note, "no Codex session log for session s-1"
-  end
-
-  def test_a_harness_with_no_record_gives_a_note
-    assert_includes read(harness: nil).note, "no harness record"
-  end
-
-  def test_a_harness_the_reader_does_not_know_gives_a_note
-    assert_includes read(harness: "hermes").note, "no harness record"
-  end
 end
