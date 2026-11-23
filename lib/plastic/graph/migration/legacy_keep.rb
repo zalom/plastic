@@ -21,7 +21,7 @@ module Plastic
       TRIMS = %w[20261119190000].freeze
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
       # row they drop that the rules still read, or a down of the earlier version rebuilds it.
-      ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000].freeze
+      ALONE = (%w[20261119180000 20261119190000 20261120090000 20261123090000] + %w[20261123100000]).freeze
       # The versions that keep the old text of values they rewrite, in a table made only when a value changed; a down
       # undoes one that kept no value by removing the version alone.
       VALUES = %w[20261121090000].freeze
