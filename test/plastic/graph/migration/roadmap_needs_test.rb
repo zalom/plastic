@@ -159,6 +159,12 @@ class RoadmapNeedsDownTest < Plastic::TestCase
     assert_equal [2, {}], [undone.removed, undone.built]
   end
 
+  def test_the_down_workflow_of_a_version_that_removes_no_links_prints_no_removed_line
+    result = down_result(migrated_to_drop)
+
+    refute_match(/removed/, result.out)
+  end
+
   def test_the_down_workflow_names_one_removed_link_in_the_singular
     home = roadmap_home
     SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute("DELETE FROM roadmap_edges WHERE \"from\" = 'b'") }
