@@ -9,20 +9,6 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).hand_edited(kinds, facts)
   end
 
-  def test_a_hand_edited_roadmap_that_reads_has_no_reason
-    cli("roadmap", "new", "r1")
-    write("roadmaps/r1.md", folder.read("roadmaps/r1.md").sub(/^# .*/, "# By hand"))
-
-    assert_equal({ "roadmaps/r1.md" => nil }, hand_edited([:roadmap], { slug: "r1" }))
-  end
-
-  def test_a_hand_edited_roadmap_in_an_older_form_is_given_its_reason
-    cli("roadmap", "new", "r1")
-    write("roadmaps/r1.md", "# by hand\n")
-
-    assert_equal ["roadmaps/r1.md is in an older form that this release does not read"], hand_edited([:roadmap], { slug: "r1" }).values
-  end
-
   def test_a_hand_edited_context_json_that_reads_has_no_reason
     specified
     cli("intent", "discover", "1", "spec")

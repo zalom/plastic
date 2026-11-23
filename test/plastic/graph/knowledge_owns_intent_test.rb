@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 
-# The knowledge file owns the intent and its closing rows; the work file keeps the nodes, the edges, the runs, the roadmaps and the work log.
+# The knowledge file owns the intent and its closing rows; the work file keeps the nodes, the edges, the runs and the work log.
 class KnowledgeOwnsIntentTest < Plastic::TestCase
   fixtures :empty
 
@@ -17,7 +17,7 @@ class KnowledgeOwnsIntentTest < Plastic::TestCase
   def test_a_new_store_holds_the_moved_tables_in_knowledge_and_none_in_work
     assert_equal MOVED, MOVED & tables(:main)
     assert_empty MOVED & tables(:work)
-    assert_equal %w[edges nodes roadmaps runs work_log], %w[edges nodes roadmaps runs work_log] & tables(:work)
+    assert_equal [%w[edges nodes runs work_log], []], [%w[edges nodes runs work_log] & tables(:work), %w[roadmaps roadmap_items] & tables(:work)]
   end
 
   def test_a_new_intent_is_one_knowledge_row_and_a_work_log_line_in_work

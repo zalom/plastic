@@ -39,7 +39,7 @@ module Plastic
 
           def reprint(reads)
             fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| printed_of(found, fresh) })
+            @printer.print(reads.map { |found| found.printed(fresh, @folder) })
           end
 
           private
@@ -65,17 +65,6 @@ module Plastic
           def commit(reads)
             applies = reads.map(&:apply)
             @databases.fetch(:store).transaction { |batch| batch.apply(applies) }
-          end
-
-          # A roadmap file read into rows is printed again from them, so the file holds the form the rows print.
-          def roadmap_print(path)
-            slug = path[%r{\Aroadmaps/(.+)\.md\z}, 1]
-            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmaps.find(slug)
-          end
-
-          def printed_of(found, fresh)
-            path = found.path
-            fresh[path] || roadmap_print(path) || found.kept_print(@folder)
           end
         end
       end

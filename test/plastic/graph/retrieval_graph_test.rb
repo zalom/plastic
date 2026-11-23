@@ -44,9 +44,9 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_the_record_reads_are_objects_the_graph_hands_out
-    readers = [retrieval.roadmaps, retrieval.stored, retrieval.archives, retrieval.structure]
+    readers = [retrieval.stored, retrieval.archives, retrieval.structure]
 
-    assert_equal %w[RoadmapReader StoreRead ArchiveReader StructureReader], readers.map { |reader| reader.class.name.split("::").last }
+    assert_equal %w[StoreRead ArchiveReader StructureReader], readers.map { |reader| reader.class.name.split("::").last }
   end
 
   def test_intents_read_in_luhmann_order
@@ -425,57 +425,5 @@ class RetrievalRepairTest < Plastic::TestCase
   def assert_repaired
     assert_equal ["repair evidence"], retrieval.search("repair").map { |row| row.fetch("body") }
     assert_equal [1], DERIVED_TABLES.map { |table| store_database.row("SELECT count(*) AS n FROM #{table}").fetch("n") }.uniq
-  end
-end
-
-module RetrievalRoadmapFixtures
-  def roadmap_fields(title)
-    Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal: "Deliver #{title}", done: ["Verify #{title}"])
-  end
-
-  def seed_roadmap
-    work.write_batch("delivery", 2, fields: roadmap_fields("Later"))
-    work.write_batch("delivery", 1, fields: roadmap_fields("First"))
-    work.add_item("delivery", "a", 1, fields: roadmap_fields("Evidence"), needs: [])
-    work.add_item("delivery", "b", 2, fields: roadmap_fields("Review"), needs: ["a"])
-    work.add_log("delivery", "First entry")
-    work.add_log("delivery", "Second entry")
-  end
-
-  def work = store_graphs.work
-end
-
-class RetrievalRoadmapRecordsTest < Plastic::TestCase
-  include RetrievalRoadmapFixtures
-
-  def test_reads_a_missing_roadmap_without_inventing_records
-    assert_nil roadmaps.find("absent")
-    assert_equal [[], [], [], []], [roadmaps.batches("absent"), roadmaps.items("absent"),
-      roadmaps.edges("absent"), roadmaps.log("absent")]
-  end
-
-  def test_reads_the_roadmap_and_batches_in_position_order
-    seed_roadmap
-
-    assert_equal "delivery", roadmaps.find("delivery").slug
-    assert_equal [1, 2], roadmaps.batches("delivery").map(&:position)
-  end
-
-  def test_preserves_item_order_dependencies_and_log_order
-    seed_roadmap
-
-    assert_equal %w[a b], roadmaps.items("delivery").map(&:item)
-    assert_equal [["a", "b"]], roadmaps.edges("delivery").map { |edge| [edge.from, edge.to] }
-    assert_equal ["First entry", "Second entry"], roadmaps.log("delivery").map(&:text)
-  end
-
-  def test_starting_a_roadmap_item_indexes_its_spec_as_immutable_evidence
-    seed_roadmap
-    intent_id, problem, kind = work.open_roadmap_item("delivery", "a")
-    document = retrieval.fetch_reference(retrieval.reference(intent_id, "spec.md"))
-
-    assert_equal ["1", nil, nil], [intent_id, problem, kind]
-    assert_includes document.fetch(:body), "Verify Evidence"
-    assert_equal Digest::SHA256.hexdigest(document.fetch(:body)), document.fetch(:revision)
   end
 end

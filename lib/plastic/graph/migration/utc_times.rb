@@ -15,8 +15,7 @@ module Plastic
         main.legacy_intents_data.updated_at main.document_heads.updated_at main.retrieval_contexts.updated_at
         main.retrieval_discoveries.updated_at main.rulings.at main.links.at
         work.nodes.updated_at work.nodes.claimed_at work.nodes.seen_at work.nodes.answered_at work.runs.started_at
-        work.runs.ended_at work.work_log.at work.roadmaps.opened_at work.roadmaps.updated_at work.batches.updated_at
-        work.roadmap_items.updated_at work.roadmap_log.at
+        work.runs.ended_at work.work_log.at
       ].freeze
       # The time columns of plastic.db, which its own SQL migration of this version writes in UTC.
       HOME_COLUMNS = %w[

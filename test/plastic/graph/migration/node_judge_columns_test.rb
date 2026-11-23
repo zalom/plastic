@@ -60,6 +60,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def test_a_down_puts_the_empty_columns_back_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    down(home)
     undone = down(home)
 
     assert_equal [NODES, {}, true, false], [undone.version, undone.moved, GONE.all? { |name| columns(home).include?(name) }, recorded(home).include?(NODES)]
@@ -67,6 +68,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def test_a_down_keeps_each_node_row
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    down(home)
     down(home)
 
     assert_equal [["1", "n1", "Build", nil, nil]], alpha_rows(home, "work_graph.db", "SELECT intent_id, id, title, judge, verdict FROM nodes")

@@ -14,7 +14,7 @@ class CliTest < Plastic::TestCase
   def test_the_table_has_the_three_start_entries_and_no_top_level_auto_or_lock_entry
     start_words = Plastic::CLI::TABLE.keys.select { |name| name.split.include?("auto") || name == "intent start" }
 
-    assert_equal [["intent start", "intent auto", "roadmap auto"], false, false],
+    assert_equal [["intent start", "intent auto"], false, false],
       [start_words, Plastic::CLI::TABLE.key?("auto"), Plastic::CLI::TABLE.key?("intent lock status")]
   end
 

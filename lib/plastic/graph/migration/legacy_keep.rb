@@ -14,9 +14,10 @@ module Plastic
     class LegacyKeep
       FILE = "legacy.db"
       # The versions that keep what they remove, so a down can undo them.
-      KEEPS = %w[20261119000000 20261121090000].freeze
+      KEEPS = %w[20261119000000 20261121090000 20261123120000].freeze
       # The tables a version drops, kept whole before its SQL runs.
-      WHOLE = { "20261119000000" => %w[document_revisions] }.freeze
+      WHOLE = { "20261119000000" => %w[document_revisions],
+                "20261123120000" => %w[roadmaps batches roadmap_items roadmap_edges roadmap_log] }.freeze
       # The versions that remove from legacy.db rows an earlier version kept, rows a down rebuilds or no sync reads.
       TRIMS = %w[20261119190000].freeze
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
@@ -48,6 +49,10 @@ module Plastic
         @connection = connection
         @kept = {}
       end
+
+      # Whether a down can leave `version` with nothing in legacy.db: it keeps only when a value changed or a table was there.
+      # (Migration 20261123120000 keeps its tables only when the store has them, and its down then takes its links off.)
+      def self.kept_when_present?(version) = VALUES.include?(version) || version == "20261123120000"
 
       # Runs just before the SQL of `version`.
       def call(version)

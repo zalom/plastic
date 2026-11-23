@@ -26,12 +26,6 @@ module Plastic
             @databases.fetch(:store).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
             @counts[:kept] += 1
           end
-
-          def keep_roadmap_original(root, slug, original_bytes)
-            canonical = File.join(root, "roadmaps", "#{slug}.md")
-            after = File.exist?(canonical) ? File.binread(canonical) : nil
-            keep_original("roadmaps/#{slug}.md", original_bytes, nil) unless after == original_bytes
-          end
         end
       end
     end

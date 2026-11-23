@@ -6,7 +6,6 @@ require_relative "work/session/reader"
 require_relative "work/reader"
 require_relative "source"
 require_relative "knowledge/link"
-require_relative "knowledge/roadmap"
 require_relative "knowledge/archive"
 require_relative "evidence/writer"
 require_relative "retrieval/errors"
@@ -16,7 +15,6 @@ require_relative "retrieval/reference"
 require_relative "retrieval/search"
 require_relative "retrieval/store_read"
 require_relative "retrieval/archive_reader"
-require_relative "retrieval/roadmap_reader"
 require_relative "retrieval/structure_reader"
 require_relative "retrieval/evidence"
 
@@ -61,8 +59,6 @@ module Plastic
       def stored = (@stored ||= Retrieval::StoreRead.new(@databases, origin_id))
 
       def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases, origin_id))
-
-      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:store), origin_id))
 
       def structure = (@structure ||= Retrieval::StructureReader.new(@databases, origin_id))
 

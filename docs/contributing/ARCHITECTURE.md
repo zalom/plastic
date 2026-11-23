@@ -17,7 +17,7 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## What runs and where it keeps data
 
-![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and retrieval_graph.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
+![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the download folder, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, plastic.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and retrieval_graph.db, and prints store/index.json and an intent folder for each intent from the rows.](figures/containers.svg)
 
 One program, `active/bin/plastic` of the install, serves every command and the three hooks.
 Everything it keeps lives under the Plastic home.
@@ -33,7 +33,6 @@ Everything it keeps lives under the Plastic home.
 | `stores/SLUG/` | One store for each project, plus the global store. |
 | `stores/SLUG/backups/` | Copies of the work and knowledge databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
-| `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
 | `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
 
 A store keeps its rows in three SQLite databases: work, knowledge and retrieval. A fourth, `legacy.db`, keeps what a migration removed. The store folder's `.gitignore` lists them,
@@ -41,7 +40,7 @@ so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `nodes`, `edges`, `work_log`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `runs` |
+| `work_graph.db` | `nodes`, `edges`, `work_log`, `runs` |
 | `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows and outside the backups; the commands the table below names keep it current, and `plastic doctor` rebuilds it |
 | `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`, and the old text of each value a migration rewrote, in `changed_values_VERSION`; made by the first migration that keeps rows or values, and read only by `plastic migration down` and `plastic migration purge` |
@@ -69,7 +68,7 @@ An intent row has its number in `id`, its Luhmann id in `intent_id`, the Luhmann
 parent in `parent_id`, and an optional `ref` to an intent it follows. Its status is one of six:
 open, in_progress, parked, future, done or abandoned. The states fall in three groups: active
 (open, in_progress and parked), future, and finished (done and abandoned). A parked intent holds the
-`reason` it waits. `plastic intent new` writes a future intent and `plastic roadmap open` an open one.
+`reason` it waits. `plastic intent new` writes a future intent.
 `plastic intent start` or `plastic intent auto` sets it in progress, `plastic intent park` parks it
 with its reason, and `plastic intent end` or `plastic intent abandon` finishes it.
 
@@ -138,9 +137,9 @@ database and writes only when `repair` or `reindex` rebuilds the derived search 
 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
-| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs, roadmaps. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
+| Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic intent spec`, `plastic intent brief` |
-| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic sync up`, `plastic sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic roadmap open`, `plastic roadmap auto`, `plastic resources sort`, `plastic backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic sync up`, `plastic sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic resources sort`, `plastic backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
 
 ![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds the node. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
 
@@ -332,14 +331,11 @@ from its intent file. A folder that cannot give a row is named with its reason, 
 exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
 whole chain against a temporary copy of the store and prints what the call would change.
 
-## Roadmaps, links, archive and backup
+## Links, archive and backup
 
-A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches. Each
-batch has a goal and done criteria, and each item can need other items. `plastic roadmap new`,
-`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap open` opens a
-ready item's intent and copies the item's goal and done criteria into its spec. An item's state
-is never stored: it is derived on each read as done, dropped, in flight, blocked or ready.
-`plastic roadmap next` prints the first ready item, and `plastic roadmap check` names a cycle.
+A `needs` link from one intent to another says the first waits for the second. An intent is ready
+when every intent it needs is done or abandoned. `plastic next`, `plastic graph resume` and
+`plastic status` read the ready intents. A link that would close a loop is refused.
 
 | Command | What it does |
 | ------- | ------------ |
@@ -402,8 +398,8 @@ A migration that removes data keeps it in `legacy.db` in the same transaction, a
 `plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
 newest migration the store records from those rows. A migration that changes stored data waits
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
-migration that writes every stored time in UTC and the migration that drops the node columns
-`judge` and `verdict` have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
+migration that writes every stored time in UTC, the migration that drops the node columns
+`judge` and `verdict`, and the migration `20261123120000` that turns the roadmaps into needs links have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
 23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 

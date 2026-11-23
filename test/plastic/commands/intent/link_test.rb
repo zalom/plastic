@@ -20,7 +20,7 @@ class IntentLinkCaseTest < Plastic::TestCase
     ran("intent new Alpha", "intent new Beta")
 
     assert_case line("intent link 1 likes 2"), code: 2, out: "",
-      err: ["KIND takes cites, supersedes, answers, source, chain"]
+      err: ["KIND takes cites, supersedes, answers, source, chain, needs"]
   end
 end
 
@@ -97,5 +97,66 @@ class IntentLinkTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_equal "global:25", store_graphs.retrieval.links("1").first.to_ref
+  end
+end
+
+# The needs kind: an intent that waits for another intent of the store to be done.
+class IntentNeedsLinkTest < Plastic::TestCase
+  def link(*args) = plastic("intent", "link", *args, table: Plastic::CLI::TABLE)
+
+  def unlink(*args) = plastic("intent", "unlink", *args, table: Plastic::CLI::TABLE)
+
+  def needs(id) = store_graphs.retrieval.links(id).select { |found| found.kind == "needs" && found.from_ref == id }.map(&:to_ref)
+
+  def test_needs_is_a_kind_that_writes_one_link
+    open_intent
+    open_intent("Beta")
+
+    assert_equal [0, ["2"]], [link("1", "needs", "2").code, needs("1")]
+  end
+
+  def test_the_kinds_named_in_the_usage_error_include_needs
+    open_intent
+    open_intent("Beta")
+
+    assert_includes link("1", "likes", "2").err, "needs"
+  end
+
+  def test_a_needs_target_that_is_not_an_intent_of_the_store_is_refused_with_exit_3
+    open_intent
+
+    assert_equal [3, []], [link("1", "needs", "global:25").code, needs("1")]
+  end
+
+  def test_a_needs_link_to_the_same_intent_is_refused_with_exit_3
+    open_intent
+
+    assert_equal [3, []], [link("1", "needs", "1").code, needs("1")]
+  end
+
+  def test_a_needs_link_written_twice_is_refused_with_exit_3
+    open_intent
+    open_intent("Beta")
+    link("1", "needs", "2")
+
+    assert_equal [3, ["2"]], [link("1", "needs", "2").code, needs("1")]
+  end
+
+  def test_a_needs_link_that_closes_a_loop_is_refused_with_exit_3_and_names_the_loop
+    %w[Alpha Beta Gamma].each { |title| open_intent(title) }
+    link("1", "needs", "2")
+    link("2", "needs", "3")
+    result = link("3", "needs", "1")
+
+    assert_equal [3, []], [result.code, needs("3")]
+    assert_includes result.err, "3 -> 1 -> 2 -> 3"
+  end
+
+  def test_unlink_removes_a_needs_link
+    open_intent
+    open_intent("Beta")
+    link("1", "needs", "2")
+
+    assert_equal [0, []], [unlink("1", "needs", "2").code, needs("1")]
   end
 end

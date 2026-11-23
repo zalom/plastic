@@ -26,7 +26,6 @@ module Plastic
       agent_judge_intent: "Agent::Intent::Judge",
       code_record_verdict: "Code::Intent::Verdict",
       code_start_intent: "Code::Intent::Start",
-      code_auto_roadmap: "Code::Roadmap::Auto",
       code_preview_sync: "Code::Sync::Up::Preview",
       code_preview_sync_down: "Code::Sync::Down::Preview",
       code_check_graph: "Code::Graph::Check",
@@ -38,17 +37,6 @@ module Plastic
       # Knowledge graph: typed links between intents and rulings.
       code_add_link: "Code::Intent::Link",
       code_remove_link: "Code::Intent::Unlink",
-      # Roadmaps: batches and items held as rows, with a derived state per item.
-      code_create_roadmap: "Code::Roadmap::New",
-      code_write_roadmap_batch: "Code::Roadmap::Batch",
-      code_add_roadmap_item: "Code::Roadmap::Add",
-      code_show_roadmap: "Code::Roadmap::Show",
-      code_next_roadmap: "Code::Roadmap::Next",
-      code_drop_roadmap_item: "Code::Roadmap::Drop",
-      code_open_roadmap_item: "Code::Roadmap::Open",
-      code_check_roadmap: "Code::Roadmap::Check",
-      code_log_roadmap: "Code::Roadmap::Log",
-      code_remove_roadmap_edge: "Code::Roadmap::Edge::Remove",
 
       code_delivery_next: "Code::Intent::Brief::Next",
       agent_advance_delivery: "Agent::Shared::AdvanceDelivery",

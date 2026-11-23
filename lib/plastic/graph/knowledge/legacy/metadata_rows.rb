@@ -3,13 +3,12 @@
 require_relative "decision_writer"
 require_relative "decisions"
 require_relative "originals"
-require_relative "roadmap_migration"
 
 module Plastic
   module Graph
     module Knowledge
       module Legacy
-        # Writes the decisions, the kept originals and the roadmaps of one legacy store.
+        # Writes the decisions and the kept originals of one legacy store.
         class MetadataRows
           def initialize(graphs, folder, counts)
             @graphs = graphs
@@ -20,7 +19,6 @@ module Plastic
           def call(read)
             write_decisions(read.decisions)
             keep_originals(read.originals)
-            RoadmapMigration.new(@graphs, @folder.root, @counts).call(read.parsed)
           end
 
           private

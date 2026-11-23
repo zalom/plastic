@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "check"
-require_relative "roadmaps"
 require_relative "metadata_rows"
 
 module Plastic
@@ -11,7 +10,7 @@ module Plastic
         # The checked read of a legacy store and the metadata rows written from it.
         class ImportMetadata
           # What the legacy store held before the import wrote any row.
-          Read = Data.define(:parsed, :originals, :decisions)
+          Read = Data.define(:originals, :decisions)
 
           def initialize(folder, retrieval, home)
             @folder = folder
@@ -23,21 +22,21 @@ module Plastic
 
           def call(&reader)
             Check.new(@folder).call
-            import(Roadmaps.new(@folder.root).parse, &reader)
+            import(&reader)
           end
 
           private
 
-          def import(parsed)
+          def import
             @folder.ignore_databases
-            read = legacy_read(parsed)
+            read = legacy_read
             lines = yield
             [lines, written(read)]
           end
 
-          def legacy_read(parsed)
+          def legacy_read
             originals = @folder.intent_files.to_h { |path| [path, @folder.read(path)] }
-            Read.new(parsed, originals, Decisions.read(@folder.intent_dirs, originals))
+            Read.new(originals, Decisions.read(@folder.intent_dirs, originals))
           end
 
           def opened = Graph.open(home: @home, store:)

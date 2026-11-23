@@ -10,7 +10,7 @@ module Plastic
     # takes, what it works on, and which graphs it reads and writes.
     module Declarations
       GRAPHS = %i[work knowledge retrieval].freeze
-      PRINTS = %i[intent roadmap index].freeze
+      PRINTS = %i[intent index].freeze
       OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
 
       # The arguments that name the thing a call works on, such as the
