@@ -8,13 +8,8 @@ class GrantDocsGuardTest < Minitest::Test
 
   def read(path) = File.read(File.join(ROOT, path))
 
-  def unreleased
-    sections = read("CHANGELOG.md").split(/^## /).drop(1).map { |s| s.split("\n", 2).last.to_s }
-    sections.find { |body| !body.strip.empty? }.to_s
-  end
-
-  def test_the_readme_the_features_page_and_the_unreleased_changelog_name_the_grant_command
-    named = { "README.md" => read("README.md"), "docs/usage/FEATURES.md" => read("docs/usage/FEATURES.md"), "CHANGELOG.md Unreleased" => unreleased }
+  def test_the_features_page_and_the_changelog_name_the_grant_command
+    named = { "README.md" => read("README.md"), "docs/usage/FEATURES.md" => read("docs/usage/FEATURES.md"), "CHANGELOG.md" => read("CHANGELOG.md") }
 
     assert_equal [], named.reject { |_, text| text.include?(COMMAND) }.keys
   end
