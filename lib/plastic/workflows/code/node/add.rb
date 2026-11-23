@@ -12,22 +12,27 @@ module Plastic
         class Add < CodeWorkflow
           clear_declarations
 
-          sets :id, :input_problem
+          sets :id, :input_problem, :found_problem
 
           open_intent_gates "nodes"
 
           read "check the kind and the criterion" do |context|
             context[:input_problem] = kind_problem(context) || criterion_problem(context)
+            context[:found_problem] = found_in_problem(context)
           end
 
           gate "%{input_problem}", stops: :failure,
             words: "the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
             pass: ->(context) { context.input_problem.nil? }
 
+          gate "%{found_problem}", stops: :failure,
+            words: "the node the new work was found in is not a live node of the intent",
+            pass: ->(context) { context.found_problem.nil? }
+
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|
             node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
-              input: context.input, kind: context.kind || "work")
+              input: context.input, kind: context.kind || "work", found_in: context.found_in)
             context[:id] = node.id
           end
 
@@ -40,6 +45,16 @@ module Plastic
             return nil if kind.nil? || Plastic::Graph::Work::Node::KINDS.include?(kind)
 
             "kind #{kind.inspect} is not a node kind; the kinds are: #{Plastic::Graph::Work::Node::KINDS.join(", ")}"
+          end
+
+          def self.found_in_problem(context)
+            found_in = context.found_in
+            return nil if found_in.nil?
+
+            state = context.retrieval.node(context.intent_id, found_in)&.state
+            return "#{found_in} is not a node of intent #{context.intent_id}" if state.nil?
+
+            "#{found_in} is removed" if state == "removed"
           end
 
           def self.criterion_problem(context)

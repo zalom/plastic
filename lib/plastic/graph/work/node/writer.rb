@@ -30,6 +30,11 @@ module Plastic
             resolve_node: { to: "open", from: %w[needs_info impeded], stamp: :answered_at }
           }.freeze
 
+          FOUND_IN_SQL = <<~SQL
+            INSERT INTO edges (intent_id, "from", "to", kind, origin_id)
+            VALUES (:intent_id, :from, :to, :kind, :origin)
+          SQL
+
           CAP_MOVE = { to: "needs_info", from: %w[open] }.freeze
 
           CLOSE_RUN_SQL = <<~SQL
@@ -46,10 +51,15 @@ module Plastic
             @claim = Claim.new(databases, retrieval, clock)
           end
 
-          def add_node(intent_id:, **fields)
+          # A node found while doing another carries `found_in`, the id of that node: the node row and its found_in edge
+          # land in one transaction. The edge orders nothing; only `needs` does.
+          def add_node(intent_id:, found_in: nil, **fields)
             id = next_id(intent_id)
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
-            @databases.fetch(:store).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
+            @databases.fetch(:store).transaction do |batch|
+              batch.put(:nodes, row, statement: :insert)
+              found_in && batch.write(:edges, FOUND_IN_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
+            end
             @retrieval.node(intent_id, id)
           end
 

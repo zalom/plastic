@@ -6,7 +6,7 @@ module Plastic
   module Graph
     module Work
       # A directed edge between two nodes. Only `needs` orders the work: `to`
-      # waits until `from` is done.
+      # waits until `from` is done. A `found_in` edge says `from` was found while doing `to`, and orders nothing.
       Edge = Data.define(:intent_id, :from, :to, :kind, :origin_id) do
         include Record
 

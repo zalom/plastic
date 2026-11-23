@@ -9,7 +9,7 @@ module Plastic
     module Lines
       CRITERIA = 'the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text'
 
-      def self.node(node) = "node: #{node.id} #{node.state} #{node.title}#{holder(node)}"
+      def self.node(node, found_in = nil) = "node: #{node.id} #{node.state} #{node.title}#{holder(node)}#{", found in #{found_in}" if found_in}"
 
       def self.holder(node)
         return "" unless node.state == "claimed"
