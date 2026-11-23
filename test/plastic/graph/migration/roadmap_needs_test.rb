@@ -9,7 +9,6 @@ require_relative "../../../../lib/plastic/graph/migration/migration_down"
 class RoadmapNeedsMigrationTest < Plastic::TestCase
   include PreviousStore
 
-  NEEDS = "20261123120000"
   TABLES = %w[roadmaps batches roadmap_items roadmap_edges roadmap_log].freeze
   DDL = <<~SQL
     CREATE TABLE IF NOT EXISTS "roadmaps" ("slug" TEXT NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "opened_at" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, PRIMARY KEY ("slug", "origin_id"));
@@ -32,9 +31,16 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
   # The previous release's store: the roadmap tables hold rows and the newest migration is not recorded.
   def roadmap_home
     home = previous_home
+    open_intents(home)
     SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute_batch(DDL) }
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [NEEDS]) }
     home
+  end
+
+  # The three intents the roadmap items opened.
+  def open_intents(home)
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
+      (1..3).each { |id| database.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES (?, 'o', ?, ?, 'open')", [id.to_s, "intent-#{id}", "Intent #{id}"]) }
+    end
   end
 
   def needs(home) = alpha_rows(home, "knowledge_graph.db", "SELECT from_ref, to_ref FROM links WHERE kind = 'needs' ORDER BY from_ref, to_ref")
@@ -54,7 +60,7 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     home = roadmap_home
     report = migrate_store(home)
 
-    assert(report.notes.any? { |note| note.match?(/1 roadmap edge.*skipped/) }, report.notes.inspect)
+    assert(report.notes.any? { |note| note.match?(/skipped 1 roadmap edge\b/) }, report.notes.inspect)
   end
 
   def test_the_five_roadmap_tables_are_dropped_from_the_work_file
@@ -99,6 +105,6 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     report = migrate_store(home)
 
     assert_equal [%w[2 1], %w[3 2]], needs(home)
-    assert(report.notes.any? { |note| note.match?(/2 roadmap edges.*skipped/) }, report.notes.inspect)
+    assert(report.notes.any? { |note| note.match?(/skipped 2 roadmap edges/) }, report.notes.inspect)
   end
 end

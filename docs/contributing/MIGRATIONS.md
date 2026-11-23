@@ -145,6 +145,16 @@ After `plastic update`, run `plastic sync down` so the printed files carry the U
 sync up reads each time in the files into UTC, so a file an earlier release printed with an
 offset still gives UTC rows.
 
+Migration `20261123120000` turns the roadmaps into needs links and drops the five roadmap tables
+of `work_graph.db`. Its data step, `RoadmapNeeds` in `lib/plastic/graph/migration/roadmap_needs.rb`,
+reads the roadmap edges that `legacy.db` kept and writes one `needs` link from the intent of the
+later item to the intent of the earlier one. An edge is skipped, and counted in the migrate notes,
+when an item has no intent, when both items belong to one intent, or when the link would close a
+loop. The migration is in `KEEPS` and keeps the five tables whole as `<table>_20261123120000`. It
+has no switch. Its down, `RoadmapNeedsLinks`, removes every `needs` link and puts the five tables
+back from `legacy.db`. A store that never had the tables keeps nothing, and its down removes the
+version alone.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as

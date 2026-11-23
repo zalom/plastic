@@ -11,6 +11,7 @@ require_relative "migration_ledger"
 require_relative "migration_reason"
 require_relative "revision_rows"
 require_relative "node_judge_columns"
+require_relative "roadmap_needs_links"
 require_relative "run_usage_columns"
 
 module Plastic
@@ -37,7 +38,8 @@ module Plastic
       Undone = Data.define(:version, :moved, :built, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
-      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns }.freeze
+      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
+                    "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }
 
       UNDO = "a down cannot undo it; restore a backup to go back"
@@ -81,7 +83,9 @@ module Plastic
 
       def tables = alone? ? [] : @store.tables(version)
 
-      def alone? = LegacyKeep::ALONE.include?(version) || (LegacyKeep::VALUES.include?(version) && @store.tables(version).empty?)
+      def alone? = LegacyKeep::ALONE.include?(version) || (kept_when_present?(version) && @store.tables(version).empty?)
+
+      def kept_when_present?(version) = LegacyKeep::VALUES.include?(version) || LegacyKeep::PRESENT.include?(version)
 
       def check
         current
