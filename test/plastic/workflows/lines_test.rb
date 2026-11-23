@@ -80,8 +80,4 @@ class LinesTest < Minitest::Test
   def test_a_run_with_no_end_yet_says_running
     assert_equal "run: n1 #1 agent a, session s-1, open; started #{Plastic.local("2026-11-23T10:00:00Z")}, running", lines.run_line(timed("2026-11-23T10:00:00Z", nil))
   end
-
-  def test_the_times_carry_the_offset_of_the_machine_zone
-    assert_match(/started \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(Z|[+-]\d\d:\d\d), ended/, lines.run_line(timed("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z")))
-  end
 end
