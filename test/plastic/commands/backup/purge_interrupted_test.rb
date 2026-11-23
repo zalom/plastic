@@ -53,6 +53,33 @@ class BackupPurgeInterruptedTest < Plastic::TestCase
     assert_equal [STOPPED], folder_names(home)
   end
 
+def test_interrupted_deletes_a_folder_with_an_empty_status_file
+  home = fresh_home
+  bare(home, STOPPED)
+  File.write(File.join(backups_dir(home), STOPPED, "status.yml"), "")
+  purge_call(home, "--store", "alpha", "--interrupted", clock: NOW)
+
+  assert_empty folder_names(home)
+end
+
+def test_interrupted_deletes_a_folder_whose_status_file_has_no_status_key
+  home = fresh_home
+  bare(home, STOPPED)
+  File.write(File.join(backups_dir(home), STOPPED, "status.yml"), { "goal" => "full" }.to_yaml)
+  purge_call(home, "--store", "alpha", "--interrupted", clock: NOW)
+
+  assert_empty folder_names(home)
+end
+
+def test_interrupted_keeps_a_folder_with_no_status_file_whose_name_is_not_a_real_time
+  home = fresh_home
+  bare(home, "20201399000000")
+  result = purge_call(home, "--store", "alpha", "--interrupted", clock: NOW)
+
+  assert_equal 0, result.code
+  assert_equal ["20201399000000"], folder_names(home)
+end
+
   def test_interrupted_deletes_only_the_in_progress_backup_older_than_five_minutes
     home = seeded_home
 
