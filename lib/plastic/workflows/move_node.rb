@@ -2,7 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "node_output"
-require_relative "lines"
+require_relative "ready_after_done"
 require_relative "../harnesses/run_record"
 
 module Plastic
@@ -13,6 +13,8 @@ module Plastic
     # moves, and a subclass calls `move` once with its key. A refused move
     # keeps its run open, so the next call moves again.
     class MoveNode < CodeWorkflow
+      extend ReadyAfterDone
+
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
                         offers: "plastic node claim %{intent_id} %{id} --agent NAME" },
@@ -104,18 +106,6 @@ module Plastic
         read(shape.fetch(:say)) { |context| context.print("node: #{context.id} #{state}") }
         ready_steps if state == "done"
         outcome :done, offers: shape.fetch(:offers), because: "node %{id} is #{state}"
-      end
-
-      # After a node is done: the nodes now ready are named, and the next line claims the first. With none ready, the outcome stays the
-      # graph ready command.
-      def self.ready_steps
-        read("name the nodes now ready") do |context|
-          ready = context.retrieval.ready_nodes(context.intent_id)
-          context[:first_ready] = ready.first&.id
-          ready.each { |node| context.print(Lines.ready_node(node)) }
-        end
-        outcome :claim_ready, if: ->(context) { context.first_ready }, offers: "plastic node claim %{intent_id} %{first_ready} --agent NAME",
-          because: "node %{id} is done; node %{first_ready} is ready"
       end
 
       def self.run_move(context, verb, shape)

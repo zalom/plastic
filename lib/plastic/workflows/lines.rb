@@ -36,14 +36,16 @@ module Plastic
       end
 
       # When the run started and ended and how long it took; a run with no end yet says running.
-      def self.times(run)
-        return nil unless run.started_at
+      def self.times(run) = span(run.started_at, run.ended_at)
 
-        run.ended_at ? "started #{run.started_at}, ended #{run.ended_at}, length #{length(seconds(run))}" : "started #{run.started_at}, running"
+      def self.span(started, ended)
+        return nil unless started
+
+        ended ? "started #{started}, ended #{ended}, length #{length(seconds(started, ended))}" : "started #{started}, running"
       end
 
-      # The whole seconds from the start of a run to its end, or nil while it runs.
-      def self.seconds(run) = run.ended_at && (Time.iso8601(run.ended_at) - Time.iso8601(run.started_at)).to_i
+      # The whole seconds from the start of a run to its end.
+      def self.seconds(started, ended) = (Time.iso8601(ended) - Time.iso8601(started)).to_i
 
       # A length of whole seconds in plain words: under 1s, 42s, 4m 12s, 1h 2m 3s.
       def self.length(total)

@@ -35,7 +35,10 @@ module Plastic
           end
 
           # A run as data for a JSON answer: its node, number, start, end and length in whole seconds, nil while it runs.
-          def self.run_data(run) = { "node" => run.node_id, "number" => run.number, "started_at" => run.started_at, "ended_at" => run.ended_at, "length_seconds" => Lines.seconds(run) }
+          def self.run_data(run)
+            started, ended = run.started_at, run.ended_at
+            { "node" => run.node_id, "number" => run.number, "started_at" => started, "ended_at" => ended, "length_seconds" => (Lines.seconds(started, ended) if ended) }
+          end
 
           # The node each found node was found in, by the found node.
           def self.found_in(edges) = edges.reject(&:needs?).to_h { |edge| [edge.from, edge.to] }

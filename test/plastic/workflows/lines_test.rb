@@ -82,6 +82,7 @@ class LinesTest < Minitest::Test
 
   def test_the_length_reads_plainly_at_each_edge
     cases = { 0 => "under 1s", 1 => "1s", 59 => "59s", 60 => "1m 0s", 252 => "4m 12s", 3599 => "59m 59s", 3600 => "1h 0m 0s", 3723 => "1h 2m 3s" }
+
     cases.each { |seconds, text| assert_equal text, lines.length(seconds), "#{seconds} seconds" }
   end
 
