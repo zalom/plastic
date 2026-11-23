@@ -2,34 +2,44 @@
 
 require_relative "../../../../test_helper"
 
-# Closing an intent releases its driver claim, whoever holds it, and leaves the claims of other intents.
+# Releasing the claims of a session when it ends: the nodes it holds open again and their runs close as released.
 class WorkDriverReleaseTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
   def setup
     super
-    %w[Alpha Beta].each_with_index do |title, index|
-      store_graphs.work.write_intent(title:)
-      store_graphs.work.activate_intent((index + 1).to_s)
-    end
+    @clock = Clock.new(START)
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
   end
 
-  def work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
+  def graphs(session) = Plastic::Graph.open(home: @plastic_home, store: "global", session:, clock: @clock)
 
-  def claimed = store_graphs.databases.fetch(:store).rows("SELECT intent_id FROM drivers").map { |row| row["intent_id"] }
+  def work(session = "s-1") = graphs(session).work
 
-  def test_releasing_an_intent_deletes_its_claim_and_names_the_holder
-    work.drive_intent(intent_id: "1", by: "s-1")
+  def at(minutes) = @clock.now = START + (minutes * 60)
 
-    assert_equal ["s-1", []], [work.release_driver("1"), claimed]
+  def claimed_node(session)
+    node = work.add_node(intent_id: "1", title: "Build", criterion: "it works")
+    work.claim_node(intent_id: "1", id: node.id, by: session)
+    node
   end
 
-  def test_releasing_an_intent_leaves_the_claim_of_another_intent
-    %w[1 2].each { |id| work.drive_intent(intent_id: id, by: "s-1") }
-    work.release_driver("1")
+  def test_releasing_the_claims_of_a_session_opens_its_claimed_nodes_and_closes_their_runs_as_released
+    node = claimed_node("s-1")
+    at(2)
+    work.release_claims("s-1")
 
-    assert_equal ["2"], claimed
+    assert_equal ["open", nil], retrieval.node("1", node.id).to_h.values_at(:state, :claimed_by)
+    assert_equal ["released"], retrieval.structure.runs("1").map(&:result)
   end
 
-  def test_releasing_an_intent_nobody_drives_names_no_holder
-    assert_nil work.release_driver("1")
+  def test_releasing_the_claims_of_a_session_leaves_the_nodes_of_another_session
+    node = claimed_node("s-2")
+    work.release_claims("s-1")
+
+    assert_equal ["claimed", "s-2"], retrieval.node("1", node.id).to_h.values_at(:state, :claimed_by)
   end
 end

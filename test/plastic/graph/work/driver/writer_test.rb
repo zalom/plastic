@@ -137,4 +137,5 @@ class WorkDriverWriterTest < Plastic::TestCase
     drive("s-2")
 
     assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the claim lapsed"], driver_lines
-  endend
+  end
+end
