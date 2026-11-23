@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.12
+
 - `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.
 - `plastic sync up --dry-run` and `plastic sync down --dry-run` no longer fail with "attempt to write a readonly database" on a store that holds a half-written backup. The preview twin leaves `backups/` out, as the real sync already does, and the comparison names no backup file.
 - `plastic edge add` now says a missing node is missing ("edge n1 to n9 is missing a node: ...", exit 1) and says refused only with exit 3. The edge writer returns `:missing` or `:refused` from the reason itself, not by reading the message, and its comment names its three results.
