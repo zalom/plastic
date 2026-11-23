@@ -29,9 +29,12 @@ module Plastic
           read "name the regions to re-plan" do |context|
             structure = context.retrieval.structure
             context[:repairs] = Plastic::Graph::Work::RepairRegions.new(structure.nodes(context.intent_id), structure.edges(context.intent_id)).to_a
-            context[:repair_id], context[:repair_state] = context.repairs.first&.values_at("id", "state")
             context.repairs.each { |region| context.print(repair_line(region)) }
             context.data("repairs", context.repairs)
+          end
+
+          read "name the first region" do |context|
+            context[:repair_id], context[:repair_state] = context.repairs.first&.values_at("id", "state")
           end
 
           def self.repair_line(region)
@@ -51,7 +54,7 @@ module Plastic
           end
 
           outcome :repair, if: ->(context) { context.first.nil? && !context.repairs.empty? }, offers: "plastic node add %{intent_id} TITLE --criterion KEY",
-                           because: "node %{repair_id} is %{repair_state}; re-plan it and what waits on it"
+            because: "node %{repair_id} is %{repair_state}; re-plan it and what waits on it"
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
           outcome :done, offers: "plastic node claim %{intent_id} %{first} --agent NAME", because: "node %{first} is ready"
         end

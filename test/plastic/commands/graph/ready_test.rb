@@ -161,6 +161,17 @@ class GraphReadyRegionTest < Plastic::TestCase
     assert_includes call("1").out, "repair: n1 a is failed; nothing waits on it"
   end
 
+  def test_a_node_reached_by_two_paths_is_named_once
+    chain
+    step("node", "add", "1", "e", "--criterion", "done")
+    step("edge", "add", "1", "n1", "n5")
+    step("edge", "add", "1", "n5", "n3")
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "fail", "1", "n1", "broke")
+
+    assert_includes call("1").out, "repair: n1 a is failed; waiting on it: n2 b, n3 c, n5 e"
+  end
+
   def test_a_parked_node_is_a_region_root
     chain
     step("node", "claim", "1", "n1", "--agent", "tester")
