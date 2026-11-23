@@ -8,7 +8,7 @@ person talks to, moves a node. The agents it dispatches do the work and report b
 | State | How a node gets there | What moves it on |
 | ----- | --------------------- | ---------------- |
 | `open` | `plastic node add ID TITLE --criterion KEY` | `plastic node claim`, `plastic node remove` |
-| `claimed` | `plastic node claim ID NODE` | `plastic node done`, `plastic node fail`, `plastic node ask`, `plastic node impede`, `plastic node release` |
+| `claimed` | `plastic node claim ID NODE --agent NAME` | `plastic node done`, `plastic node fail`, `plastic node ask`, `plastic node impede`, `plastic node release` |
 | `done` | `plastic node done ID NODE TEXT` | Nothing. The node is finished. |
 | `failed` | `plastic node fail ID NODE TEXT` | `plastic node release` |
 | `needs_info` | `plastic node ask ID NODE TEXT` | `plastic node resolve` |
@@ -24,9 +24,12 @@ removed.
 
 ## Claimed
 
-The main session runs `plastic node claim ID NODE` as it dispatches the agent for that node. The
+The main session runs `plastic node claim ID NODE --agent NAME` as it dispatches the agent for that node. `--agent` is required: a claim without it exits 2 and names the flag. The
 claim names the main session and prints the node's brief, which the main session hands to the
-agent. A claim in an intent that is not in progress is refused with exit 3 and offers
+agent.
+
+Each claim opens a run that also records the harness of the claiming session. When the run ends,
+Plastic reads the model, the tokens and the cost of the work from the harness's own local record (Claude Code transcripts under `~/.claude/projects`, Codex logs under `~/.codex/sessions`), including the worker's own session when a subagent ran the claim. Plastic starts nothing and calls no API. Claude Code writes its cost total about once per session, at the stop, so the cost is recorded only when the transcript holds a total after the run; a run in a live session records no cost and the note says so. When the record is missing or unreadable, the run keeps what is known and a note says what was not found; the claim and the done never fail for it. `plastic graph show ID` prints one `run:` line for each run. A claim in an intent that is not in progress is refused with exit 3 and offers
 `plastic intent start ID`. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused, also with exit 3. After three runs, the next claim moves the
 node to `needs_info` with a standing question, and the owner decides.
 

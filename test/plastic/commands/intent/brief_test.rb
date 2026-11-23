@@ -23,7 +23,7 @@ class IntentBriefCaseTest < Plastic::TestCase
 
   MAIN_SESSION = ["main session: record each ruling with plastic intent rule 1 TEXT",
     "main session: write spec.md and add the work nodes with plastic node add 1 TITLE --criterion KEY",
-    "main session: claim each node as you dispatch it with plastic node claim 1 NODE",
+    "main session: claim each node as you dispatch it with plastic node claim 1 NODE --agent NAME",
     "main session: judge each node's report and record it with plastic node done 1 NODE TEXT",
     "main session: judge the intent with plastic intent judge 1",
     "main session: close the intent after the merge with plastic intent end 1"].freeze
@@ -47,7 +47,7 @@ class IntentBriefCaseTest < Plastic::TestCase
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: store/1--alpha/spec.md; the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text',
       "criterion: [tests-pass] the CLI ships", "ruling: D1 ship the CLI first", "ready: n1 Build", *MAIN_SESSION,
-      "next: plastic node claim 1 n1"]
+      "next: plastic node claim 1 n1 --agent NAME"]
   end
 
   def test_a_brief_of_a_missing_intent_exits_1_and_names_it

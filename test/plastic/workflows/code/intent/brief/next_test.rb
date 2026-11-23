@@ -17,7 +17,7 @@ class DeliveryNextTest < Plastic::TestCase
 
     outcome, context = next_action
 
-    assert_equal [:done, "plastic node claim 1 n1", "node n1 is ready"], [outcome, context.next_command, context.why]
+    assert_equal [:done, "plastic node claim 1 n1 --agent NAME", "node n1 is ready"], [outcome, context.next_command, context.why]
   end
 
   def test_an_intent_with_no_node_needs_the_agent

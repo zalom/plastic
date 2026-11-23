@@ -75,7 +75,7 @@ class JsonShapeTest < Plastic::TestCase
   def call(*args) = plastic(*args, "--json", table: Plastic::CLI::TABLE)
 
   def test_a_failed_call_writes_one_json_document_and_nothing_to_stderr
-    result = call("node", "claim", "9", "n1")
+    result = call("node", "claim", "9", "n1", "--agent", "tester")
 
     assert_equal [1, ""], [result.code, result.err]
     assert_equal "failed", JSON.parse(result.out).dig("result", "error", "kind")
@@ -106,7 +106,7 @@ class JsonShapeTest < Plastic::TestCase
   end
 
   def test_a_text_error_still_writes_its_line_to_stderr
-    result = plastic("node", "claim", "9", "n1", table: Plastic::CLI::TABLE)
+    result = plastic("node", "claim", "9", "n1", "--agent", "tester", table: Plastic::CLI::TABLE)
 
     assert_match(/\Aplastic: /, result.err)
   end

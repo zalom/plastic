@@ -76,7 +76,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 `alpha` is the one trunk. Every change and every fix goes to `alpha` by its own pull request, and CI runs the suite on each. `beta` is a snapshot of `alpha`, cut only on the owner's word. It takes no commits of its own and releases on the `beta` channel on a `-beta.N` version. `main` releases on the `latest` channel on a version with no suffix, and it stays frozen until the shaping ends. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
 
 ### Worktrees and node claims
-- One session works a node at a time. A node claim, `plastic node claim ID NODE`, names the
+- One session works a node at a time. A node claim, `plastic node claim ID NODE --agent NAME`, names the
   session that holds it and opens one run of the node. The session renews its claims at every
   `plastic` command and at the stop hook, and a claim lapses after 15 minutes without a
   renewal. If a node is claimed by another session, back off. A session that finds a lapsed

@@ -328,7 +328,7 @@ class PrintAfterWriteTest < Plastic::TestCase
     keyed
     run_cli("intent", "approve", "1")
     run_cli("intent", "auto", "1")
-    run_cli("node", "claim", "1", "n1")
+    run_cli("node", "claim", "1", "n1", "--agent", "tester")
     run_cli("node", "done", "1", "n1", "it passes")
 
     assert_files_level

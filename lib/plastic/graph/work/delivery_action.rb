@@ -59,11 +59,11 @@ module Plastic
 
         def pending_action
           step("release", live_in("failed"), "failed; release it before retrying") ||
-            step("claim", @retrieval.ready_nodes(@intent_id).first, "is ready") || waiting_action
+            step("claim", @retrieval.ready_nodes(@intent_id).first, "is ready", tail: " --agent NAME") || waiting_action
         end
 
-        def step(verb, node, reason)
-          DeliveryAction.acting(node) { |_, id| ["plastic node #{verb} #{@intent_id} #{id}", "node #{id} #{reason}", nil] }
+        def step(verb, node, reason, tail: "")
+          DeliveryAction.acting(node) { |_, id| ["plastic node #{verb} #{@intent_id} #{id}#{tail}", "node #{id} #{reason}", nil] }
         end
 
         def waiting_action = needs_info_action(live_in("needs_info")) || impeded_action(live_in("impeded")) || claimed_action(live_in("claimed")) || blocked_action

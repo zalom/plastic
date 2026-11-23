@@ -22,11 +22,11 @@ class NodeClaimPacketTest < Plastic::TestCase
   def output_file(text = OUTPUT) = File.join(@home, "output.json").tap { |path| File.binwrite(path, text) }
 
   def finish_first(*options)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "done", "1", "n1", "built", *options)
   end
 
-  def claim_second(*options) = cli("node", "claim", "1", "n2", *options)
+  def claim_second(*options) = cli("node", "claim", "1", "n2", "--agent", "tester", *options)
 
   def packet = JSON.parse(claim_second("--json").out).dig("result", "packet")
 
@@ -61,7 +61,7 @@ class NodeClaimPacketTest < Plastic::TestCase
   end
 
   def test_a_node_that_needs_nothing_carries_an_empty_list_of_needs
-    assert_equal [], JSON.parse(cli("node", "claim", "1", "n1", "--json").out).dig("result", "packet", "needs")
+    assert_equal [], JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out).dig("result", "packet", "needs")
   end
 
   def test_the_text_claim_prints_the_criterion_text_and_the_output_of_each_needed_node
@@ -85,7 +85,7 @@ class NodeClaimPacketTest < Plastic::TestCase
   end
 
   def test_a_refused_claim_carries_no_packet
-    result = JSON.parse(cli("node", "claim", "1", "n2", "--json").out)
+    result = JSON.parse(cli("node", "claim", "1", "n2", "--agent", "tester", "--json").out)
 
     assert_nil result.dig("result", "packet")
   end

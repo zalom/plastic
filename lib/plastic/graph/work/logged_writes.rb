@@ -16,7 +16,7 @@ module Plastic
 
         attr_reader :grants
 
-        def_delegators :@nodes, :add_node, :claim_node, :add_edge, :remove_edge, *LoggedNodes::NODE_KINDS.keys
+        def_delegators :@nodes, :add_node, :claim_node, :record_run, :add_edge, :remove_edge, *LoggedNodes::NODE_KINDS.keys
 
         def initialize(writers)
           @writers = writers

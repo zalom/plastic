@@ -21,7 +21,7 @@ module TwoHomes
     add_two_nodes(kernel)
     kernel.command!("intent", "approve", "1")
     kernel.command!("intent", "start", "1")
-    kernel.command!("node", "claim", "1", "n1")
+    kernel.command!("node", "claim", "1", "n1", "--agent", "tester")
     kernel.command!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
     kernel.command!("intent", "verdict", "1", "revise", "The findings hold :id and :intent_id")
   end
