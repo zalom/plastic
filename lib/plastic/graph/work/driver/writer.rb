@@ -57,6 +57,7 @@ module Plastic
 
           RENEW_SQL = "UPDATE drivers SET seen_at = :now WHERE session_id = :session AND origin_id = :origin"
           RELEASE_SQL = "DELETE FROM drivers WHERE session_id = :session AND origin_id = :origin"
+          RELEASE_INTENT_SQL = "DELETE FROM drivers WHERE intent_id = :intent_id AND origin_id = :origin"
           HOLDER_SQL = "SELECT session_id, claimed_at, seen_at FROM drivers WHERE intent_id = :intent_id AND origin_id = :origin"
 
           def initialize(databases, retrieval, clock: Time)
@@ -84,6 +85,13 @@ module Plastic
           def renew(session) = write_for(RENEW_SQL, session)
 
           def release(session) = write_for(RELEASE_SQL, session)
+
+          # Deletes the claim of the intent, whoever holds it. Returns the session that held it, or nil when no claim stood.
+          def release_intent(intent_id)
+            held = holder(intent_id)&.session
+            @databases.fetch(:store).transaction { |batch| batch.add(RELEASE_INTENT_SQL, intent_id:, origin: @retrieval.origin_id) } if held
+            held
+          end
 
           private
 
