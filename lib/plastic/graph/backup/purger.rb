@@ -44,7 +44,7 @@ module Plastic
 
         # The names of the folders a run left behind: in-progress or with no status file, for longer than the claim window.
         def interrupted(now:)
-          @folders.names.select { |name| STOPPED_STATUSES.include?(@folders.status(name)) && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
+          @folders.names.select { |name| STOPPED_STATUSES.include?(@folders.status(name)) && FolderName.readable?(name) && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
         end
 
         # Deletes the folder, or leaves it where it was.
