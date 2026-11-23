@@ -94,12 +94,12 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal ["open", 0], [node("n1").state, retrieval.structure.runs("1").size]
   end
 
-  def test_done_records_the_judge_and_findings
+  def test_done_records_the_findings
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
     done = @work.done_node(intent_id: "1", id: "n1", findings: "green")
 
-    assert_equal %w[done tests green], [done.state, done.judge, done.findings]
+    assert_equal %w[done green], [done.state, done.findings]
   end
 
   def test_a_resolution_reopens_a_needs_info_node_with_its_answer
