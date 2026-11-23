@@ -10,7 +10,7 @@ plastic backup restore --store SLUG [--timestamp TS] [--latest] [--databases LIS
 | --- | --- | --- |
 | `--store SLUG` | the registered project whose backups the call works on |  |
 | `--timestamp TS` | the backup to restore, by its folder name |  |
-| `--latest` | restore the newest backup that is done | `false` |
+| `--latest` | restore the newest done backup that holds a database file | `false` |
 | `--databases LIST` | the databases to restore, comma separated; all the backup holds when left out |  |
 | `--dry-run` | list what would be replaced and change nothing | `false` |
 

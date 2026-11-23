@@ -353,7 +353,7 @@ when every intent it needs is done or abandoned. `plastic next`, `plastic graph 
 | `plastic backup --store SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic backup list --store SLUG` | Lists the backups of a store. |
 | `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
-| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live. |
+| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live, and it refuses a finished backup that holds no database file, before the safety backup; `--latest` passes over such a backup. |
 
 A restore never syncs by itself, because a sync can undo it. It ends with
 `next: plastic sync down --project STORE`, which writes the files from the restored rows.
