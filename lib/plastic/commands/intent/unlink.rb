@@ -9,7 +9,7 @@ module Plastic
       class Unlink < Routine
         subject :intent_id
         argument :intent_id, label: "ID", text: "the intent this link starts from"
-        argument :kind, label: "KIND", text: "cites, supersedes, answers, source, chain or needs"
+        argument :kind, label: "KIND", text: "cites, supersedes, answers, needs, source or chain"
         argument :target, label: "TARGET", text: "the link's other end, as written when it was added"
         previews
         writes :knowledge
