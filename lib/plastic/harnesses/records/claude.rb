@@ -30,12 +30,8 @@ module Plastic
         # [file, window] of the subagent that ran the claim, or nil. The turn that runs the claim is written before the command
         # executes, so before the run's stored start: the window of the worker starts at that turn and ends with the run.
         def self.subagent(path, session, run, claim)
-          pattern = /node claim #{Regexp.escape(claim)}(\s|\z)/
-          Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort.each do |file|
-            started = Claim.new(Jsonl.read(file) || [], run).at(pattern)
-            return [file, started..run.end] if started
-          end
-          nil
+          files = Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort
+          Claim.nearest(files, run, /node claim #{Regexp.escape(claim)}(\s|\z)/)
         end
       end
     end

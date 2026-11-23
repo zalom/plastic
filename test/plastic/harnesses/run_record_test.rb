@@ -89,8 +89,7 @@ class HarnessesRunRecordTest < Plastic::TestCase
 
   def test_the_later_claim_of_one_node_by_a_second_subagent_credits_the_second_run
     write_claude("s-1", jsonl(claude_turn("2026-11-23T17:00:00Z", id: "p1")))
-    write_claude("agent-a1", jsonl(claude_claim_call("2026-11-23T17:10:00Z", "plastic node claim 1 n1 --agent a"), claude_turn("2026-11-23T17:12:00Z", id: "a2")), under: ["s-1", "subagents"])
-    write_claude("agent-b2", jsonl(claude_claim_call("2026-11-23T17:20:00Z", "plastic node claim 1 n1 --agent b"), claude_turn("2026-11-23T17:22:00Z", id: "b2")), under: ["s-1", "subagents"])
+    %w[a1 17:10 b2 17:20].each_slice(2) { |agent, at| write_claude("agent-#{agent}", jsonl(claude_claim_call("2026-11-23T#{at}:00Z", "plastic node claim 1 n1")), under: ["s-1", "subagents"]) }
     usage = Plastic::Harnesses::RunRecord.new(home: @home).read(harness: "claude-code", session: "s-1", from: Time.utc(2026, 11, 23, 17, 20, 2),
       to: Time.utc(2026, 11, 23, 17, 30), claim: "1 n1")
 

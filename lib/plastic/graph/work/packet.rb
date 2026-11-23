@@ -18,6 +18,12 @@ module Plastic
           "node #{bad.id} holds output that is not JSON" if bad
         end
 
+        # The line of the text answer that gives one need: its node id and its output.
+        def self.need_line(need)
+          output = need.fetch("output")
+          "needs: #{need.fetch("id")} #{output.nil? ? "no output" : JSON.generate(output)}"
+        end
+
         # `schemas` is the intent's Work::Schemas.
         def initialize(retrieval, node, schemas:)
           @retrieval = retrieval
@@ -35,7 +41,7 @@ module Plastic
         def criterion_line = "criterion text: #{criterion.fetch("text")}"
 
         # The lines of the text answer that give the output of each needed node.
-        def need_lines = needs.map { |need| need_line(need) }
+        def need_lines = needs.map { |need| Packet.need_line(need) }
 
         # The lines of the text answer after the input: the needs, the rulings and constraints, the schema.
         def answer_lines = [*need_lines, *rule_lines, *schema_lines, "output: #{output_text}"]
@@ -48,15 +54,16 @@ module Plastic
 
         # The nodes this node needs.
         def needed
-          ids = @retrieval.structure.edges(@node.intent_id).select { |edge| edge.kind == "needs" && edge.to == @node.id }.map(&:from)
-          ids.filter_map { |id| @retrieval.node(@node.intent_id, id) }
+          intent = @node.intent_id
+          ids = @retrieval.structure.edges(intent).select { |edge| edge.kind == "needs" && edge.to == @node.id }.map(&:from)
+          ids.filter_map { |id| @retrieval.node(intent, id) }
         end
 
         private
 
         def output_text = "a JSON file, given with plastic node done #{@node.intent_id} #{@node.id} TEXT --output PATH"
 
-        def schema =@schemas.path(@node.id)
+        def schema = @schemas.path(@node.id)
 
         def rules = @rules ||= PacketRules.new(@retrieval, @node.intent_id)
 
@@ -65,12 +72,7 @@ module Plastic
           { "key" => key, "text" => Knowledge::Spec.new(@retrieval, @node.intent_id).criteria_by_key.fetch(key, key) }
         end
 
-        def needs = needed.map { |node| { "id" => node.id, "title" => node.title, "output" => node.output && JSON.parse(node.output) } }
-
-        def need_line(need)
-          output = need.fetch("output")
-          "needs: #{need.fetch("id")} #{output.nil? ? "no output" : JSON.generate(output)}"
-        end
+        def needs = needed.map(&:to_h).map { |row| row.slice(:id, :title).transform_keys(&:to_s).merge("output" => Knowledge::StoredOutput.parse(row[:output])) }
       end
     end
   end
