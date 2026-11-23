@@ -11,13 +11,16 @@ module Plastic
       class DeliveredIntent
         LANDINGS = %w[Merged Committed].freeze
 
-        attr_reader :stamp
-
         def initialize(stamp, label, retrieval)
           @stamp = stamp
           @label = label
           @retrieval = retrieval
         end
+
+        # The moment it closed, for ordering across time zones.
+        def moment = Plastic.utc(@stamp).to_s
+
+        def to_row = ["delivered:", to_s]
 
         # The day a stored time falls on here; an older date-only value shows as it is.
         def to_s = [Plastic.local_day(@stamp) || @stamp.to_s[0, 10], @label, landing].compact.join(" ")
@@ -25,10 +28,13 @@ module Plastic
         private
 
         def landing
-          outcome = Knowledge::Outcome.new(@retrieval, @label.split.first)
-          found = LANDINGS.flat_map { |name| outcome.values(name).first(1).map { |value| "#{name}: #{value}" } }.first
+          found = LANDINGS.filter_map { |name| line(name) }.first
           "- #{found}" if found
         end
+
+        def line(name) = outcome.values(name).first&.then { |value| "#{name}: #{value}" }
+
+        def outcome = @outcome ||= Knowledge::Outcome.new(@retrieval, @label.split.first)
       end
     end
   end

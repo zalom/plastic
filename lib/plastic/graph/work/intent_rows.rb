@@ -27,7 +27,7 @@ module Plastic
 
         def waiting = ["waiting:", "#{@open} open #{(@open == 1) ? "intent" : "intents"}; plastic status --project #{@slug} lists them"]
 
-        def delivered = @closed.max_by(DELIVERED) { |delivery| Plastic.utc(delivery.stamp).to_s }.map { |delivery| ["delivered:", delivery.to_s] }
+        def delivered = @closed.max_by(DELIVERED, &:moment).map(&:to_row)
       end
     end
   end
