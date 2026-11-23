@@ -14,6 +14,8 @@ module Plastic
       class Purger
         RETENTION = 3 * 24 * 60 * 60
         DAILY_RETENTION = 24 * 60 * 60
+        # A run that stopped leaves its backup in-progress, or with no status file when it stopped before the first write.
+        STOPPED_STATUSES = %w[in-progress unknown].freeze
 
         def initialize(store_root, retention: RETENTION)
           @folders = Folders.new(store_root)
@@ -40,9 +42,9 @@ module Plastic
         # The names of the folders whose backup failed.
         def failed = @folders.names.select { |name| @folders.status(name) == "failed" }
 
-        # The names of the folders left in-progress by a run that stopped: in-progress for longer than the claim window.
+        # The names of the folders a run left behind: in-progress or with no status file, for longer than the claim window.
         def interrupted(now:)
-          @folders.names.select { |name| @folders.status(name) == "in-progress" && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
+          @folders.names.select { |name| STOPPED_STATUSES.include?(@folders.status(name)) && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
         end
 
         # Deletes the folder, or leaves it where it was.
