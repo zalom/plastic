@@ -15,11 +15,11 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
   # Each table as the live tables and the legacy.db copies of migration 20261123120000 hold it: their text in sqlite_master,
   # with UNIQUE keys and the batch and position of an item NOT NULL.
   EXACT = [
-    %q(CREATE TABLE "roadmaps"("slug" TEXT NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "opened_at" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("slug", "origin_id"))),
-    %q(CREATE TABLE "batches"("roadmap" TEXT NOT NULL, "position" INTEGER NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "done" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "position", "origin_id"))),
-    %q(CREATE TABLE "roadmap_items"("roadmap" TEXT NOT NULL, "item" TEXT NOT NULL, "batch" INTEGER NOT NULL, "position" INTEGER NOT NULL, "title" TEXT, "goal" TEXT, "done" TEXT, "intent_id" TEXT, "mark" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "item", "origin_id"))),
-    %q(CREATE TABLE "roadmap_edges"("roadmap" TEXT NOT NULL, "from" TEXT NOT NULL, "to" TEXT NOT NULL, "kind" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "from", "to", "origin_id"))),
-    %q(CREATE TABLE "roadmap_log"("roadmap" TEXT NOT NULL, "position" INTEGER NOT NULL, "at" TEXT, "text" TEXT NOT NULL, "session_id" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "position", "origin_id")))
+    'CREATE TABLE "roadmaps"("slug" TEXT NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "opened_at" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("slug", "origin_id"))',
+    'CREATE TABLE "batches"("roadmap" TEXT NOT NULL, "position" INTEGER NOT NULL, "title" TEXT NOT NULL, "goal" TEXT, "done" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "position", "origin_id"))',
+    'CREATE TABLE "roadmap_items"("roadmap" TEXT NOT NULL, "item" TEXT NOT NULL, "batch" INTEGER NOT NULL, "position" INTEGER NOT NULL, "title" TEXT, "goal" TEXT, "done" TEXT, "intent_id" TEXT, "mark" TEXT, "updated_at" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "item", "origin_id"))',
+    'CREATE TABLE "roadmap_edges"("roadmap" TEXT NOT NULL, "from" TEXT NOT NULL, "to" TEXT NOT NULL, "kind" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "from", "to", "origin_id"))',
+    'CREATE TABLE "roadmap_log"("roadmap" TEXT NOT NULL, "position" INTEGER NOT NULL, "at" TEXT, "text" TEXT NOT NULL, "session_id" TEXT, "origin_id" TEXT NOT NULL, UNIQUE("roadmap", "position", "origin_id"))'
   ].freeze
   DDL = EXACT.map { |sql| sql.sub("CREATE TABLE", "CREATE TABLE IF NOT EXISTS") }.join(";\n")
 
