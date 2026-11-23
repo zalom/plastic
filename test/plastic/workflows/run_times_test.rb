@@ -19,4 +19,17 @@ class RunTimesTest < Minitest::Test
   def test_the_seconds_come_from_the_stored_times
     assert_equal 252, run_times.seconds("2026-11-23T10:00:00Z", "2026-11-23T10:04:12+00:00")
   end
+
+  def test_the_times_show_in_the_zone_they_are_given_with_its_offset
+    assert_equal "started 2026-11-23T19:00:00+09:00, ended 2026-11-23T19:04:12+09:00, length 4m 12s",
+      run_times.span("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z", "+09:00")
+  end
+
+  def test_a_run_with_no_end_shows_its_start_in_the_zone_it_is_given_and_says_running
+    assert_equal "started 2026-11-23T19:00:00+09:00, running", run_times.span("2026-11-23T10:00:00Z", nil, "+09:00")
+  end
+
+  def test_the_length_does_not_change_with_the_zone
+    assert_equal "4m 12s", run_times.span("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z", "-05:00").split("length ").last
+  end
 end
