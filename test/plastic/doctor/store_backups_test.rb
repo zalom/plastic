@@ -78,4 +78,12 @@ class DoctorStoreBackupsTest < Plastic::TestCase
 
     assert_equal ["backups alpha:", "backups beta:", "backups global:"], labels.grep(/\Abackups/).sort
   end
+
+  def test_a_newest_folder_whose_name_is_not_a_real_time_is_ignored_by_the_age_check
+    home = stale_home
+    Dir.mkdir(File.join(backups_dir(home), "20261399000000"))
+    found = check(home, THIRTEEN_HOURS_LATER)
+
+    assert_equal ["backups alpha:", "ok, newest #{Plastic.local(Plastic.timestamp(SEEDED))}, 13 hours old, integrity passed, live check #{Plastic.local("2026-01-01T10:00:00Z")} passed", nil], found.to_a
+  end
 end

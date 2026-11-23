@@ -15,7 +15,7 @@ module Plastic
           CLOSED = %w[done abandoned].freeze
           MANDATORY = Plastic::Graph::Knowledge::Intent::Reporter::MANDATORY
 
-          sets :intent, :status, :problem, :state, :reference
+          sets :intent, :status, :problem, :state, :reference, :restated
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -40,19 +40,28 @@ module Plastic
             context[:state] = context.work.report_state(Report.of(context))
           end
 
-          step "record the report", done: ->(context) { context.state.kind == :unchanged || !context.reference.nil? },
-            changes: { knowledge: "The report is recorded, read into the rows and listed under Reports in the outcome" } do |context|
-            context[:reference] = context.work.report_intent(context.intent, context.path, Report.text(context))
+          step "record the report", done: ->(context) { !context.reference.nil? || !context.restated.nil? },
+            changes: { knowledge: "A new or changed report is recorded, read into the rows and listed under Reports in the outcome; an unchanged one only has its Reports line rewritten when the setting changed its form" } do |context|
+            Report.record(context)
           end
 
           read "say what was recorded" do |context|
-            context.print(Report.words(context.state, context.path))
+            context.print(context.restated ? Report.restated_words(context.path) : Report.words(context.state, context.path))
           end
 
           outcome :done, offers: "plastic next", because: "the outcome lists the report and the sync reads it"
 
           # The file of the report the command names.
           def self.of(context) = Plastic::Graph::Knowledge::Intent::ReportFile.new(context.intent, context.path)
+
+          # A new or changed report is recorded in full; an unchanged one only has its outcome line rewritten, no row and no log line.
+          def self.record(context)
+            (context.state.kind == :unchanged) ? restate(context) : write(context)
+          end
+
+          def self.restate(context) = (context[:restated] = context.work.restate_report(of(context), text(context)))
+
+          def self.write(context) = (context[:reference] = context.work.report_intent(of(context), text(context)))
 
           # What the command says: a first record, a record again of a changed file, or that nothing was written.
           def self.words(state, path)
@@ -62,6 +71,9 @@ module Plastic
             else "reported: #{path}"
             end
           end
+
+          # What the command says when only the outcome line of an unchanged report was rewritten.
+          def self.restated_words(path) = "unchanged: #{path} is already recorded with this sha256; outcome line rewritten, no row and no log line"
 
           # The text of the log line: MANDATORY for a path the setting reports.mandatory names, else none.
           def self.text(context) = context.settings.selection.reports.mandatory?(context.path) ? MANDATORY : ""

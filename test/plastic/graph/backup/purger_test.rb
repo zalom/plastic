@@ -86,3 +86,45 @@ class GraphBackupPurgerExpiryTest < Plastic::TestCase
     assert_empty purger(home).expired(now: NOW)
   end
 end
+
+class GraphBackupPurgerInterruptedTest < Plastic::TestCase
+  include BackupHomes
+
+  def test_interrupted_names_in_progress_folders_older_than_five_minutes_only
+    home = fresh_home
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
+    now = Time.utc(2026, 3, 1, 10, 10, 0)
+    { "20260301100000" => "in-progress", "20260301100800" => "in-progress", "20260301095000" => "failed" }.each do |name, status|
+      FileUtils.mkdir_p(folders.path(name))
+      folders.write_report(name, status:, goal: "full")
+    end
+
+    assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(File.join(home, "stores", "alpha")).interrupted(now:)
+  end
+
+  def test_interrupted_names_folders_with_an_empty_status_file_or_none_recorded
+    root = File.join(fresh_home, "stores", "alpha")
+    folders = Plastic::Graph::Backup::Folders.new(root)
+    { "20260301100000" => "", "20260301100100" => { "goal" => "full" }.to_yaml }.each do |name, text|
+      FileUtils.mkdir_p(folders.path(name))
+      File.write(File.join(folders.path(name), "status.yml"), text)
+    end
+
+    assert_equal %w[20260301100000 20260301100100], Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
+  end
+
+  def test_interrupted_keeps_a_folder_whose_name_is_not_a_real_time
+    root = File.join(fresh_home, "stores", "alpha")
+    FileUtils.mkdir_p(File.join(root, "backups", "20201399000000"))
+
+    assert_empty Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
+  end
+
+  def test_interrupted_names_folders_with_no_status_file_older_than_five_minutes
+    root = File.join(fresh_home, "stores", "alpha")
+    folders = Plastic::Graph::Backup::Folders.new(root)
+    %w[20260301100000 20260301100800].each { |name| FileUtils.mkdir_p(folders.path(name)) }
+
+    assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
+  end
+end

@@ -159,14 +159,14 @@ class BackupPurgeHelpTest < Plastic::TestCase
     environment.out.string.lines.map(&:chomp)
   end
 
-  def test_the_usage_line_says_one_of_the_three_filters_is_required
-    assert_equal "plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]", help_lines.first
+  def test_the_usage_line_says_one_of_the_four_filters_is_required
+    assert_equal "plastic backup purge --store SLUG (--older-than DATE | --all | --failed | --interrupted) [--dry-run]", help_lines.first
   end
 
   def test_the_help_line_says_one_filter_is_required
     summary = Plastic::CLI::TABLE.fetch("backup purge").last
 
-    assert_includes summary, "one of --all, --failed or --older-than"
+    assert_includes summary, "one of --all, --failed, --interrupted or --older-than"
   end
 end
 

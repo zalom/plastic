@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "../backup/folders"
 require_relative "front_matter"
 require_relative "intent"
 require_relative "store_path"
@@ -17,7 +18,7 @@ module Plastic
         INDEX = "store/index.json"
         LEGACY_INDEX = "INDEX.md"
         IGNORE_FILE = ".gitignore"
-        IGNORED = %w[*.db *.db-journal backups/].freeze
+        IGNORED = ["*.db", "*.db-journal", "#{Backup::Folders::NAME}/"].freeze
         # Machine state of the command line that runs today, never a record.
         SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 

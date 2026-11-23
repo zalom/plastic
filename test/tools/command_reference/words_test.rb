@@ -170,7 +170,7 @@ class CommandReferencePlacesTest < Minitest::Test
   end
 
   def test_the_store_the_backups_the_local_database_the_home_and_the_harness_are_places
-    assert(%i[store backups local home harness].all? { |place| CommandReference::Places.known?(place) })
+    assert(%i[store backups local home harness claims].all? { |place| CommandReference::Places.known?(place) })
   end
 
   def test_a_store_the_command_writes_is_not_named_when_a_step_of_its_workflow_has_a_change_in_words

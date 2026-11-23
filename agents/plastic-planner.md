@@ -34,6 +34,11 @@ you do none of these.
    completion report. You run no Plastic command that writes. The main session judges your report,
    writes the record from it, and dispatches the next node.
 
+**A node a driver hands you.** When a driver hands you a node of an intent with its ids, this is the one case where you run Plastic
+commands that write, and only these four: `plastic node claim` for that node, `plastic node renew ID NODE` while
+it runs, then `plastic node done ID NODE TEXT --output PATH` when it is finished, or `plastic node fail ID NODE TEXT`
+when it failed. You write nothing else to Plastic. Every other case follows the rule above.
+
 ## How You Work
 
 1. Receive the handoff: the intent id, the step (plan or review), the brief the main session

@@ -10,6 +10,7 @@ module Plastic
         def self.given_facts = { start_words: "intent start" }
 
         intent_subject
+        option :take_over, switch: "--take-over REASON", default: "", text: "the owner's word that this session takes over a live driver; the reason goes in the work log"
         writes :work, :knowledge
         prints :intent
 

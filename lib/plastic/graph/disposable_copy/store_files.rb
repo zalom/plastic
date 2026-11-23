@@ -2,14 +2,15 @@
 
 require "fileutils"
 require "find"
+require_relative "../backup/folders"
 require_relative "snapshot"
 
 module Plastic
   module Graph
     class DisposableCopy
-      # The files of one store copied under another path, databases left
-      # out. A link to a file becomes a link to a held copy of its target,
-      # so a write through it never reaches the original.
+      # The files of one store copied under another path, databases and the
+      # backups folder left out. A link to a file becomes a link to a held
+      # copy of its target, so a write through it never reaches the original.
       class StoreFiles
         attr_reader :target
 
@@ -23,6 +24,8 @@ module Plastic
           return unless File.exist?(@root) || File.symlink?(@root)
 
           Find.find(@root) do |path|
+            next Find.prune if path == backups
+
             raise Refused, "preview cannot copy folder link #{path}; the original store was not changed" if File.symlink?(path) && File.directory?(path)
           end
         end
@@ -30,10 +33,13 @@ module Plastic
         def call
           return unless File.directory?(@root)
 
-          Find.find(@root) { |path| place(path, File.join(@target, path.delete_prefix("#{@home}/"))) }
+          Find.find(@root) { |path| (path == backups) ? Find.prune : place(path, File.join(@target, path.delete_prefix("#{@home}/"))) }
         end
 
         private
+
+        # No call that previews reads a backup, and the folder is the largest in the store.
+        def backups = File.join(@root, Backup::Folders::NAME)
 
         def place(path, copied)
           link = File.symlink?(path)

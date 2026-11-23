@@ -132,7 +132,7 @@ class GraphBackupDayTest < Plastic::TestCase
     write_failed_start(home, "2026-01-02T25:00:00Z")
     error = assert_raises(Backup::Day::Unreadable) { day(home, MORNING).begin_day }
 
-    assert_includes error.message, "#{Backup::Day::FAILED_START} holds 2026-01-02T25:00:00Z"
+    assert_includes error.message, "#{Backup::Folders::NAME}/#{Backup::Day::FAILED_START} holds 2026-01-02T25:00:00Z"
   end
 
   def test_a_backup_whose_status_holds_an_impossible_time_is_reported_with_its_path
@@ -142,7 +142,7 @@ class GraphBackupDayTest < Plastic::TestCase
     File.write(path, File.read(path).sub(/^taken_at: .*$/, "taken_at: '2026-01-02T25:00:00Z'"))
     error = assert_raises(Backup::Day::Unreadable) { day(home, MORNING).begin_day }
 
-    assert_includes error.message, "#{stamp(AFTER_MIDNIGHT)}/status.yml holds 2026-01-02T25:00:00Z"
+    assert_includes error.message, "#{Backup::Folders::NAME}/#{stamp(AFTER_MIDNIGHT)}/status.yml holds 2026-01-02T25:00:00Z"
   end
 end
 
