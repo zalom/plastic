@@ -70,7 +70,6 @@ class GraphWriterTest < Plastic::TestCase
 
     assert_equal "s-2", run_session(second)
     assert_equal "s-1", structure.work_log("1").first.session_id
-
   end
 
   def opened = yield(Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1"))
@@ -80,6 +79,7 @@ class GraphWriterTest < Plastic::TestCase
 
     refute work.roadmap_file_readable?("r1")
     work.print_roadmap("r1")
+
     assert work.roadmap_file_readable?("r1")
   end
 
@@ -89,12 +89,22 @@ class GraphWriterTest < Plastic::TestCase
     refute work.roadmap_file_readable?("old")
   end
 
-  def test_an_intent_archives_and_unarchives
+  def abandoned_intent
     opened { |graphs| graphs.work.write_intent(title: "Alpha") }
     opened { |graphs| graphs.work.print_intent("1") }
     opened { |graphs| graphs.work.note_intent(graphs.retrieval.intent("1"), "note", "why it ends") }
     opened { |graphs| graphs.work.abandon_intent("1") }
+  end
 
-    assert_equal [true, true], [opened { |graphs| graphs.work.archive_intent("1").first }, opened { |graphs| graphs.work.unarchive_intent("1").first }]
+  def test_an_intent_archives_and_unarchives
+    abandoned_intent
+
+    assert_equal [true, true], %i[archive_intent unarchive_intent].map { |write| opened { |graphs| graphs.work.public_send(write, "1").first } }
+  end
+
+  def test_unarchiving_an_intent_that_is_not_archived_reports_not_ok
+    abandoned_intent
+
+    refute opened { |graphs| graphs.work.unarchive_intent("1").first }
   end
 end
