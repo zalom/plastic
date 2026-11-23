@@ -35,6 +35,10 @@ module PreviousStore
       database.execute_batch(REVISIONS)
       database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE])
     end
+    drop_usage_columns(home)
+  end
+
+  def drop_usage_columns(home)
     SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| USAGE_COLUMNS.each { |column| database.execute("ALTER TABLE runs DROP COLUMN #{column}") } }
     home
   end

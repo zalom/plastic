@@ -50,20 +50,13 @@ module Plastic
 
         # The total grew from the last `cost-state` before the first turn of the run to the last one before the first turn after it.
         def cost(entries, window)
-          before = after = nil
-          started = finished = false
-          entries.each do |entry|
-            if entry["type"] == "cost-state"
-              before = entry["totalCostUSD"] unless started
-              after = entry["totalCostUSD"] unless finished
-            elsif turn?(entry)
-              at = Jsonl.time(entry)
-              started ||= at >= window.begin
-              finished ||= at > window.end
-            end
-          end
-          after && (after - (before || 0.0))
+          after = last_cost(entries, turn_at(entries) { |at| at > window.end })
+          after && (after - (last_cost(entries, turn_at(entries) { |at| at >= window.begin }) || 0.0))
         end
+
+        def turn_at(entries) = entries.index { |entry| turn?(entry) && yield(Jsonl.time(entry)) }
+
+        def last_cost(entries, index) = entries.first(index || entries.size).reverse.find { |entry| entry["type"] == "cost-state" }&.fetch("totalCostUSD", nil)
 
         def subagent(path, session, window, claim)
           pattern = /node claim #{Regexp.escape(claim)}(\s|\z)/

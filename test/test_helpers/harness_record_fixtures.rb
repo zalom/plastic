@@ -10,8 +10,9 @@ module Plastic
     module HarnessRecordFixtures
       def jsonl(*entries) = "#{entries.map { |entry| JSON.generate(entry) }.join("\n")}\n"
 
-      def claude_turn(at, id:, input: 2, output: 10, cache_read: 100, cache_write: 1000, model: "claude-sonnet-5-5", block: nil)
-        usage = { input_tokens: input, output_tokens: output, cache_read_input_tokens: cache_read, cache_creation_input_tokens: cache_write }
+      def claude_turn(at, id:, model: "claude-sonnet-5-5", block: nil, **tokens)
+        counts = { input: 2, output: 10, cache_read: 100, cache_write: 1000 }.merge(tokens)
+        usage = { input_tokens: counts[:input], output_tokens: counts[:output], cache_read_input_tokens: counts[:cache_read], cache_creation_input_tokens: counts[:cache_write] }
         content = block ? [block] : []
         { type: "assistant", timestamp: at, sessionId: "s-1", message: { id:, model:, role: "assistant", usage:, content: } }
       end

@@ -111,12 +111,16 @@ module Plastic
       # Keeps on the run just ended what the record of its harness holds. A record that is missing or unreadable is named in the
       # run's note, and the move stands either way.
       def self.record_usage(context)
-        run = finisher_run(context, context.retrieval.node(context.intent_id, context.id))
+        intent_id, id = context.intent_id, context.id
+        run = finisher_run(context, context.retrieval.node(intent_id, id))
         return unless run&.ended_at
 
-        usage = Harnesses::RunRecord.new(home: context.user_home.to_s).read(harness: run.harness, session: run.session_id, from: Time.iso8601(run.started_at),
-          to: Time.iso8601(run.ended_at), claim: "#{context.intent_id} #{context.id}")
-        context.work.record_run(intent_id: context.intent_id, id: context.id, by: context.session, usage:)
+        context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}"))
+      end
+
+      def self.read_usage(context, run, claim)
+        Harnesses::RunRecord.new(home: context.user_home.to_s).read(harness: run.harness, session: run.session_id,
+          from: Time.iso8601(run.started_at), to: Time.iso8601(run.ended_at), claim:)
       end
 
       def self.settle(context, moved, state)

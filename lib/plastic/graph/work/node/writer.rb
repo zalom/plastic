@@ -45,7 +45,6 @@ module Plastic
             @retrieval = retrieval
             @clock = clock
             @claim = Claim.new(databases, retrieval, clock)
-            @usage = RunUsage.new(databases, retrieval)
           end
 
           def add_node(intent_id:, **fields)
@@ -72,7 +71,7 @@ module Plastic
           end
 
           # Stores the usage of a harness record on the last run of the node.
-          def record_run(**fields) = @usage.call(**fields)
+          def record_run(**fields) = RunUsage.new(@databases, @retrieval).call(**fields)
 
           def renew_claims(session)
             now = Plastic.timestamp(@clock.now)

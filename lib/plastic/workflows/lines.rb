@@ -22,16 +22,19 @@ module Plastic
       # (the worker, the model, the tokens and the cost) and what it did not.
       def self.run_line(run)
         state = run.open? ? "open" : run.result
-        head = "run: #{run.node_id} ##{run.number} agent #{run.agent.to_s.empty? ? "none" : run.agent}, #{harness(run)}, #{state}"
+        head = "run: #{run.node_id} ###{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
         [head, usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
       end
 
-      def self.harness(run) = run.harness.to_s.empty? ? "session #{run.session_id}" : "#{run.harness} session #{run.session_id}"
+      def self.agent_name(agent) = agent.to_s.empty? ? "none" : agent
 
-      def self.usage(run)
-        figures = [run.model, tokens(run), (format("$%.2f", run.cost_usd) if run.cost_usd), ("worker #{run.worker_session}" unless run.worker_session.to_s.empty?)]
-        figures.compact.join(", ")
-      end
+      def self.harness(name, session) = name.empty? ? "session #{session}" : "#{name} session #{session}"
+
+      def self.usage(run) = [run.model, tokens(run), cost(run.cost_usd), worker(run.worker_session.to_s)].compact.join(", ")
+
+      def self.cost(usd) = usd&.then { |amount| format("$%.2f", amount) }
+
+      def self.worker(session) = session.empty? ? nil : "worker #{session}"
 
       def self.tokens(run)
         counts = { "in" => run.input_tokens, "out" => run.output_tokens, "cache read" => run.cache_read_tokens, "cache write" => run.cache_write_tokens }

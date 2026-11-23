@@ -29,12 +29,14 @@ module Plastic
         private
 
         def usage(entries, session, from, to)
-          before = total(entries.select { |entry| (Jsonl.time(entry) || from) < from })
-          final = total(entries.select { |entry| (Jsonl.time(entry) || to + 1) <= to })
+          before, final = totals(entries, from, to)
           return TokenUsage.none("no turn inside the run in the Codex session log of session #{session}", worker_session: session) if final == before
 
-          growth = KEYS.zip(final.zip(before)).to_h { |key, (now, then_)| [key, now - then_] }
-          figures(growth, model(entries, to), session)
+          figures(KEYS.zip(final.zip(before)).to_h { |key, (now, then_)| [key, now - then_] }, model(entries, to), session)
+        end
+
+        def totals(entries, from, to)
+          [total(entries.select { |entry| (Jsonl.time(entry) || from) < from }), total(entries.select { |entry| (Jsonl.time(entry) || to + 1) <= to })]
         end
 
         def figures(growth, model, session)

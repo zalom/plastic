@@ -43,9 +43,12 @@ module Plastic
             def records(table)
               return [@data["approval"]].compact if table == :approvals
               return [@data["completion"]].compact if table == :completions
+              return runs if table == :runs
 
-              table == :runs ? listed("runs").map { |run| UNRECORDED.merge(run) } : listed(table.to_s)
+              listed(table.to_s)
             end
+
+            def runs = listed("runs").map { |run| UNRECORDED.merge(run) }
 
             private
 

@@ -56,14 +56,16 @@ class WorkNodeRunUsageTest < Plastic::TestCase
     assert_equal [nil, "no Claude Code transcript for session s-1"], [last_run.model, last_run.usage_note]
   end
 
+  def record(model) = work.record_run(intent_id: "1", id: "n1", by: "s-1", usage: usage(model:))
+
   def test_the_usage_goes_to_the_last_run_of_the_node_only
     claim
     work.release_node(intent_id: "1", id: "n1", by: "s-1")
-    work.record_run(intent_id: "1", id: "n1", by: "s-1", usage: usage(model: "first"))
+    record("first")
     @clock.now = START + 60
     claim
     work.fail_node(intent_id: "1", id: "n1", by: "s-1", reason: "x")
-    work.record_run(intent_id: "1", id: "n1", by: "s-1", usage: usage(model: "second"))
+    record("second")
 
     assert_equal %w[first second], retrieval.structure.runs("1").sort_by(&:number).map(&:model)
   end

@@ -19,7 +19,7 @@ module Plastic
             @retrieval = retrieval
           end
 
-          # `usage` is a Harnesses::Usage. Returns true when a run took it.
+          # `usage` is a Harnesses::TokenUsage. Returns true when a run took it.
           def call(intent_id:, id:, by:, usage:)
             fields = usage.to_h.merge(worker_session: usage.worker_session.to_s)
             @databases.fetch(:store).transaction { |batch| batch.add(SQL, **fields, intent_id:, id:, by:, origin: @retrieval.origin_id) }.any?

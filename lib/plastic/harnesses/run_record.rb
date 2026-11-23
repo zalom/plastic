@@ -20,7 +20,7 @@ module Plastic
         return TokenUsage.none(missing(harness)) unless reader
 
         reader.read(session:, from:, to:, claim:)
-      rescue StandardError => error
+      rescue => error
         TokenUsage.none("the #{harness} record could not be read: #{error.message}")
       end
 
