@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.13
+
 - A backup run and `plastic doctor` no longer crash on a backup folder whose name is not a real time, such as 20261399000000. The folder is ignored when deciding the newest backup, whether an automatic backup is due, whether another session holds a claim, and the doctor age check, and the start-of-day backup counts it as no day. The folder stays on disk, as purge and list leave it.
 - `plastic backup purge` and `plastic backup list` no longer crash on a corrupt `status.yml` or on a folder name that is not a real time. A `status.yml` that is a plain string or does not parse reads as no status recorded, so `--interrupted` deletes the folder once it is older than five minutes and `--failed` leaves it. A folder such as 20201399000000 or 20200231000000, whose digits are not a real time (Ruby rolled the second one over to 2 March), is never deleted by `--older-than` or `--interrupted`, and `backup list` shows its time as unknown.
 - `plastic backup purge --interrupted` also deletes a backup with no status recorded: no `status.yml`, an empty one, or one with no status in it, which a run leaves when it stops before or while writing its first status. The folder must be older than five minutes by the time in its name; a younger one stays, because its run may still be writing, and a folder whose name is not a real time stays too.
