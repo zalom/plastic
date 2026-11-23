@@ -9,8 +9,7 @@ module Plastic
       module Intent
         class End
           # The agent records how the work of the intent was delivered, by a merge, a direct commit or files
-          # in the intent folder, and confirms the architecture map after code. Plastic runs no version
-          # control command and records what the agent writes.
+          # in the intent folder. Plastic runs no version control command and records what the agent writes.
           class CheckDelivery < AgentWorkflow
             summary "Has the agent record how the work of the intent was delivered."
             step "record the delivery", done: ->(context) { context.delivery_recorded },
@@ -24,16 +23,11 @@ module Plastic
                 "Add '- Delivered: resources/output/<path> because <reason>' only for work that no version control holds: " \
                 "put a report of the work in %{intent_folder}/resources/output/reports and record it with " \
                 "plastic intent report %{intent_id} PATH, put other files in %{intent_folder}/resources/output/files, " \
-                "and name them in the line. Then run plastic sync up. Plastic runs no version control command; it records what you write."
-            step "confirm the architecture map", done: ->(context) { context.map_recorded },
-              say: "Now that the code is delivered, fetch the architecture map once more, with the tool you used before planning " \
-                "or by mapping the code yourself, and confirm that it describes the delivered code. Then add the line " \
-                "'- Architecture map: <tool> at <source revision>' under ## Verification in %{intent_folder}/outcome.md. " \
-                "Run plastic sync up and then plastic intent end %{intent_id} again."
+                "and name them in the line. Then run plastic sync up and plastic intent end %{intent_id} again. Plastic runs no version control command; it records what you write."
 
             outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}",
-              because: "the agent records the delivery, and the architecture map after code, in outcome.md"
-            outcome :done, unreachable: true, offers: nil, because: "the delivery and the architecture map it needs are recorded"
+              because: "the agent records the delivery in outcome.md"
+            outcome :done, unreachable: true, offers: nil, because: "the delivery it needs is recorded"
           end
         end
       end

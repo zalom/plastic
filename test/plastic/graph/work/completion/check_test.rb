@@ -118,7 +118,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     done_node
 
     assert_equal check.record_problems + check.verification_problems, check.problems
-    assert_equal 2, check.problems.size
+    assert_equal 1, check.problems.size
   end
 
   def test_abandon_problems_hold_only_the_outcome_substance

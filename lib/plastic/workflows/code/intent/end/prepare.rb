@@ -17,7 +17,7 @@ module Plastic
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
             summary "Reads what closing the intent needs: the rows, the verdict, outcome.md and the review."
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :delivery_recorded, :map_recorded, :delivery_found, :approval_found, :template_found, :missing
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :delivery_recorded, :delivery_found, :approval_found, :template_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -42,7 +42,7 @@ module Plastic
               context[:judged] = true
               context[:used_up] = false
               context[:awaiting_approval] = false
-              context[:delivery_recorded] = context[:map_recorded] = false
+              context[:delivery_recorded] = false
               context[:missing] = ""
               context[:delivery_found] = context[:approval_found] = context[:template_found] = ""
               record_facts(context) unless context.closed
@@ -58,7 +58,7 @@ module Plastic
             end
 
             def self.verification_facts(context, verification)
-              context[:delivery_recorded], context[:map_recorded] = [verification.delivery_recorded?, verification.map_recorded?]
+              context[:delivery_recorded] = verification.delivery_recorded?
               found_facts(context, verification)
               context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
             end
@@ -96,7 +96,7 @@ module Plastic
             gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
-            def self.verified?(context) = context.delivery_recorded && context.map_recorded
+            def self.verified?(context) = context.delivery_recorded
 
             outcome :closed, if: ->(context) { context.closed }, found_by: "read the intent",
               offers: "plastic next", because: "intent %{intent_id} is already done"
