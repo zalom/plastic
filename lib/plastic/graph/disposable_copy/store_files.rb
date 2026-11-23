@@ -31,7 +31,7 @@ module Plastic
         def call
           return unless File.directory?(@root)
 
-          Find.find(@root) { |path| path == backups ? Find.prune : place(path, File.join(@target, path.delete_prefix("#{@home}/"))) }
+          Find.find(@root) { |path| (path == backups) ? Find.prune : place(path, File.join(@target, path.delete_prefix("#{@home}/"))) }
         end
 
         private

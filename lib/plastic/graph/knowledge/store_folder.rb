@@ -3,7 +3,6 @@
 require "digest"
 require "fileutils"
 require_relative "../backup/folders"
-require_relative "../backup/folders"
 require_relative "front_matter"
 require_relative "intent"
 require_relative "store_path"
