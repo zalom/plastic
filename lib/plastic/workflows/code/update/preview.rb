@@ -21,7 +21,7 @@ module Plastic
           read "compare the installed and the running versions" do |context|
             installation = Installation.of(context)
             context[:from] = installation.installed_version || ReleaseUpdate.of(context).active_version
-            context[:to] = installation.version
+            context[:to] = context.dry_run ? target(context, installation) : installation.version
           end
 
           gate "Plastic is not installed under this home; run plastic install first", stops: :refusal,
@@ -36,6 +36,16 @@ module Plastic
 
           outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}", because: "the preview changed no file"
           outcome :continue, offers: "plastic update", because: "update the home"
+
+          # What a real run installs: the running package when it is newer than
+          # the installed one, else the newest release on the channel, else the
+          # version already there.
+          def self.target(context, installation)
+            return installation.version if installation.installed? && installation.newer?
+
+            release = ReleaseUpdate.of(context)
+            (release.active_version && release.newer_release(context.channel)) || context.from
+          end
         end
       end
     end
