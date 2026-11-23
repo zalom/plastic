@@ -38,8 +38,7 @@ module Plastic
         def goal(name) = report(name).fetch("goal", "unknown")
 
         def report(name)
-          file = File.join(path(name), "status.yml")
-          File.file?(file) ? (YAML.safe_load_file(file) || {}) : {}
+          read_hash(File.join(path(name), "status.yml"))
         end
 
         def write_report(name, status:, goal:, **extra) = File.write(File.join(path(name), "status.yml"), { "status" => status, "goal" => goal }.merge(extra.transform_keys(&:to_s)).to_yaml)
@@ -48,10 +47,7 @@ module Plastic
         def record_digest(name) = File.write(File.join(path(name), "status.yml"), report(name).merge("digest" => digest(name)).to_yaml)
 
         # The verdict of the newest check of the live files: time, verdict, and for a failure the file and the reason.
-        def last_check
-          file = File.join(dir, "last-check.yml")
-          File.file?(file) ? (YAML.safe_load_file(file) || {}) : {}
-        end
+        def last_check = read_hash(File.join(dir, "last-check.yml"))
 
         def write_check(**check)
           FileUtils.mkdir_p(dir)
@@ -70,6 +66,16 @@ module Plastic
         def digest(name)
           lines = files(name).map { |file| "#{file} #{Digest::SHA256.file(File.join(path(name), file)).hexdigest}" }
           Digest::SHA256.hexdigest(lines.join("\n"))
+        end
+
+        private
+
+        # The mapping a YAML file holds; a missing file, an empty one, a plain string or text that does not parse is no record.
+        def read_hash(file)
+          found = YAML.safe_load_file(file) if File.file?(file)
+          found.is_a?(Hash) ? found : {}
+        rescue Psych::Exception
+          {}
         end
       end
     end
