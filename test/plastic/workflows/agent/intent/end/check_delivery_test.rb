@@ -6,30 +6,27 @@ require_relative "../../../../../../lib/plastic/workflows/agent/intent/end/check
 class CheckDeliveryTest < Plastic::TestCase
   FOUND = "The repository has a pull request template at pull_request_template.md; the description of the pull request follows it. "
 
-  def check(delivery_recorded: false, map_recorded: false, template_found: "", delivery_found: "")
+  def check(delivery_recorded: false, template_found: "", delivery_found: "")
     run_workflow(Plastic::Workflows::Agent::Intent::End::CheckDelivery, intent_id: "1", intent_folder: "store/1--alpha", delivery_found:, template_found:,
-      delivery_recorded:, map_recorded:).first
+      delivery_recorded:).first
   end
 
-  def test_each_missing_record_prints_its_step
+  def test_the_missing_delivery_prints_its_step_and_no_map_step
     steps = check.steps
 
-    assert_equal ["Record the delivery", "architecture map"], steps.map { |text| text[/Record the delivery|architecture map/] }
+    assert_equal ["Record the delivery"], steps.map { |text| text[/Record the delivery/] }
+    refute_includes steps.join, "architecture map"
   end
 
-  def test_a_recorded_delivery_leaves_only_the_map_step
-    assert_equal 1, check(delivery_recorded: true).steps.size
-    assert_includes check(delivery_recorded: true).steps.first, "architecture map"
-  end
-
-  def test_both_records_in_place_are_done
-    assert_equal :done, check(delivery_recorded: true, map_recorded: true)
+  def test_a_recorded_delivery_is_done
+    assert_equal :done, check(delivery_recorded: true)
   end
 
   def test_the_steps_name_the_labels_the_folder_and_the_end_command
     text = check.steps.join("\n")
 
-    ["- Merged: ", "- Committed: ", "- Delivered: ", "- Architecture map: ", "Verification", "store/1--alpha/outcome.md", "plastic sync up",
+    refute_includes text, "Architecture map"
+    ["- Merged: ", "- Committed: ", "- Delivered: ", "Verification", "store/1--alpha/outcome.md", "plastic sync up",
       "plastic intent end 1"].each do |part|
       assert_includes text, part
     end

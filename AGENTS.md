@@ -30,7 +30,7 @@ re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
 QMD, Serena and Enola are companion tools a person or an agent runs beside Plastic. `plastic
 architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
-the architecture map with a tool it chooses. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
+the architecture map with a tool it chooses. For code work only, the planning handoff tells the agent to map the code and read this file before it plans; nothing is asked after delivery. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
 its own `qmd query` or `qmd search` commands.
 
 ## Contributor rules

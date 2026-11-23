@@ -12,7 +12,7 @@ class WorkDeliveryActionCase < Plastic::TestCase
     @work.activate_intent("1")
   end
 
-  def action(intent_id = "1") = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id).call
+  def action(intent_id = "1", work: :general) = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id, work:).call
 
   def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
 
@@ -29,8 +29,14 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
     assert_includes instructions, "plastic node add 1 TITLE --criterion KEY"
   end
 
-  def test_the_planning_instruction_starts_with_fetching_the_architecture_map
-    assert action.last.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
+  def test_the_planning_instruction_of_code_work_starts_with_mapping_the_code_and_reading_agents_md
+    assert action(work: :code).last.start_with?("Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+      "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal")
+  end
+
+  def test_the_planning_instruction_of_work_with_no_repository_starts_with_the_goal_and_names_no_mapping_tool
+    assert action.last.start_with?("Read the intent's goal")
+    refute_includes action.last, "architecture"
   end
 
   def test_the_planning_instruction_carries_the_planning_directive

@@ -39,8 +39,8 @@ you do none of these.
 1. Receive the handoff: the intent id, the step (plan or review), the brief the main session
    pasted in, and the worktree path when one exists. Read-only Plastic commands such as
    `plastic intent brief ID` and `plastic graph show ID` are open to you.
-2. Map the code before you plan: use an architecture mapping tool such as Enola when one is
-   available, or read the code yourself.
+2. For code work, map the code before you plan, with an architecture mapping tool such as Enola
+   when one is available or by reading the code yourself, and read the project's AGENTS.md.
 3. Do the one step. Edit no repository file and no intent file.
 4. Report (see `## Completion Report`) and stop.
 

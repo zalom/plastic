@@ -18,18 +18,18 @@ class KnowledgeOutcomeDeliveryLinesTest < Plastic::TestCase
     refute_predicate delivery({ "Delivered" => ["#{RESUME} because x"] }, folder: nil), :recorded?
   end
 
-  def test_delivered_files_in_the_intent_folder_count_and_need_no_map
+  def test_delivered_files_in_the_intent_folder_count
     folder = intent_folder
     File.write(File.join(folder, RESUME), "%PDF")
     read = delivery({ "Delivered" => ["#{RESUME} because x"] }, folder:)
 
-    assert_equal [true, false], [read.recorded?, read.map_needed?]
+    assert_predicate read, :recorded?
   end
 
-  def test_no_delivery_line_still_needs_the_map_and_asks_for_one_of_the_three_lines
+  def test_no_delivery_line_asks_for_one_of_the_three_lines
     read = delivery({})
 
-    assert_equal [false, true, ""], [read.recorded?, read.map_needed?, read.finding]
+    assert_equal [false, ""], [read.recorded?, read.finding]
     assert_includes read.message, "Committed: <branch> at <commit>"
   end
 

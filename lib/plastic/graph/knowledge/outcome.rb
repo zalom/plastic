@@ -17,7 +17,6 @@ module Plastic
 
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
-        MISSING = "Add a line starting %s: to the Verification section of outcome.md and run plastic sync up."
 
         def_delegator :@delivery, :recorded?, :delivery_recorded?
         def_delegator :@delivery, :rejection, :delivery_rejection
@@ -31,17 +30,13 @@ module Plastic
         end
 
         # The messages that ask for the records this outcome lacks.
-        def missing_records = [(@delivery.message unless delivery_recorded?), (format(MISSING, "Architecture map") unless map_recorded?)].compact
+        def missing_records = delivery_recorded? ? [] : [@delivery.message]
 
         # The line of `label` when it is there but not in its form, as 'Label: value', else nil.
         def rejected(label)
           found = values(label).first
           "#{label}: #{found}" if found && !positive?(label)
         end
-
-        def map_recorded? = architecture_map? || !@delivery.map_needed?
-
-        def architecture_map? = recorded?("Architecture map")
 
         def pull_request? = recorded?("Pull request")
 

@@ -136,11 +136,29 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
+    assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
       "then add dependencies with plastic edge add. An edge FROM TO means TO reads, changes or tests what FROM makes. " \
       "Nodes with no path between them may run at the same time. A red test node comes before the code it tests. " \
       "Run plastic graph check 1 after the edges and repair each finding it names, then use plastic graph ready 1."
     refute_includes result.out, "then: (because"
+  end
+
+  def test_an_intent_with_no_nodes_and_no_repository_is_not_told_to_map_the_code
+    ready_intent
+
+    refute_includes lines(call).find { |line| line.start_with?("then: ") }, "architecture mapping tool"
+  end
+
+  def test_an_intent_with_no_nodes_in_a_project_with_a_repository_is_told_to_map_the_code_and_read_agents_md_before_planning
+    register("b")
+    intent = store_intent("b", "Beta")
+    clear_spec("b", intent)
+    plastic("intent", "start", intent.intent_id, "--project", "b", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+    then_line = lines(call("--stores", "b")).find { |line| line.start_with?("then: ") }
+
+    assert_includes then_line, "Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+      "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal"
   end
 
   def test_several_open_intents_and_no_lock_pick_none
