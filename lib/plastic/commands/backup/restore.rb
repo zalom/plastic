@@ -16,7 +16,7 @@ module Plastic
         skips_daily_backup
 
         option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"
-        option :latest, switch: "--latest", default: false, text: "restore the newest backup that is done"
+        option :latest, switch: "--latest", default: false, text: "restore the newest done backup that holds a database file"
         option :databases, switch: "--databases LIST", text: "the databases to restore, comma separated; all the backup holds when left out"
         option :dry_run, switch: "--dry-run", default: false, text: "list what would be replaced and change nothing"
 

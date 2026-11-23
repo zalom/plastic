@@ -52,7 +52,7 @@ module Plastic
 
         # The database names a restore would replace.
         def held_in(timestamp, names: nil)
-          held = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
+          held = held_files(timestamp)
           chosen = Array(names)
           self.class.require_held(timestamp, chosen - held)
           chosen.empty? ? held : chosen
@@ -81,6 +81,15 @@ module Plastic
         end
 
         private
+
+        # The database names the folder holds; a done folder that holds none has nothing to restore.
+        def held_files(timestamp)
+          folders = @target.folders
+          held = folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
+          raise Missing, "the backup #{timestamp} holds no database files" if held.empty? && folders.status(timestamp) == "done"
+
+          held
+        end
 
         def error_for(message)
           return Claimed if claimed?
