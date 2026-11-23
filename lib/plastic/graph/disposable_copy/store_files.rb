@@ -24,6 +24,8 @@ module Plastic
           return unless File.exist?(@root) || File.symlink?(@root)
 
           Find.find(@root) do |path|
+            next Find.prune if path == backups
+
             raise Refused, "preview cannot copy folder link #{path}; the original store was not changed" if File.symlink?(path) && File.directory?(path)
           end
         end
