@@ -83,12 +83,6 @@ curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | 
 
 Plastic runs no Enola installer, pins no Enola release and stores no Enola preference.
 
-## Beta and alpha releases
-
-`install.sh` installs the stable release only. To follow a beta or alpha release, install the
-stable release, then run `plastic update`. When no stable release carries the archive, the
-checksum and the manifest, the script says so and exits.
-
 ## Check the installation
 
 ```bash
@@ -120,16 +114,9 @@ row says so. Only Ruby is checked, and the check does not report the installatio
 plastic update
 ```
 
-`plastic update` activates the newest release on the channel of the active release.
-`--dry-run` names both versions and changes nothing.
-
-To move to another channel, name it:
-
-```bash
-plastic update --channel beta
-plastic update --channel alpha
-plastic update --channel stable
-```
+`plastic update` activates the newest stable release. `--dry-run` names both versions and
+changes nothing. Contributors who follow a pre-release channel read
+[the release lines](docs/release-lines.md#follow-a-pre-release-channel).
 
 An update keeps the release it replaces, so a rollback can return to it. It brings the agent
 files in line with the new release. It does not touch your stores or their databases.
