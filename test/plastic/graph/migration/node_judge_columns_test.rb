@@ -18,7 +18,8 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
     previous_home.tap { |home| SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute(ROW) } }
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  # The driver migration is the newest and removes its version alone, so its down comes first and the second down undoes the node columns migration.
+  def down(home) = 2.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
 
   def test_a_new_store_has_no_judge_or_verdict_column_on_a_node
     home = fresh_home
