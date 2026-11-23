@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- QMD is gone from Plastic's instructions, help and contributor docs. `plastic help tools` no longer has a QMD section, and a guard test fails when a shipped file names QMD outside the changelog and the two installer lists that remove an old `qmd-search` hook.
+
 ## 3.0.0-beta.17
 
 - A run counts the worker turn that falls inside the second the run ended. The run's end is stored in whole seconds and the turn that runs the done command can be stamped a fraction of a second later, so its tokens were left out of the run.
