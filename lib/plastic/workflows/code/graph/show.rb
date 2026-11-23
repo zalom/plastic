@@ -19,12 +19,17 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
-          read "print each node and edge" do |context|
-            edges = context.retrieval.structure.edges(context.intent_id)
-            found = edges.select { |edge| edge.kind == "found_in" }.to_h { |edge| [edge.from, edge.to] }
+          read "print each node" do |context|
+            found = found_in(context.retrieval.structure.edges(context.intent_id))
             context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node, found[node.id])) }
-            edges.select { |edge| edge.kind == "needs" }.each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
           end
+
+          read "print each need" do |context|
+            context.retrieval.structure.edges(context.intent_id).select(&:needs?).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+          end
+
+          # The node each found node was found in, by the found node.
+          def self.found_in(edges) = edges.reject(&:needs?).to_h { |edge| [edge.from, edge.to] }
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"
         end

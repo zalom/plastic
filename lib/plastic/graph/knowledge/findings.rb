@@ -70,7 +70,7 @@ module Plastic
 
         def hand_edit(edit) = "#{edit}, then run plastic sync up and plastic graph check #{@intent_id} again"
 
-        def touches?(node) = edges.any? { |edge| edge.kind == "needs" && edge.touches?(node.id) }
+        def touches?(node) = edges.any? { |edge| edge.touches?(node.id) }
 
         def schema_findings = SchemaFindings.new(@intent_id, live.map(&:id), @schemas).all
 

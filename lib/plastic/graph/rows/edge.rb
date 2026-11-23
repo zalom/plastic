@@ -10,9 +10,12 @@ module Plastic
       Edge = Data.define(:intent_id, :from, :to, :kind, :origin_id) do
         include Record
 
-        def touches?(node_id) = from == node_id || to == node_id
+        # A need touches the two nodes it names. A found_in edge orders nothing, so it touches no node.
+        def touches?(node_id) = needs? && ends.include?(node_id)
 
-        def needs_touching?(node_id) = kind == "needs" && touches?(node_id)
+        def needs? = kind == "needs"
+
+        def ends = [from, to]
       end
     end
   end
