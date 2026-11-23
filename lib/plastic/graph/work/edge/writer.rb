@@ -29,6 +29,8 @@ module Plastic
             SELECT "from", "to" FROM edges WHERE intent_id = :intent_id AND origin_id = :origin AND kind = 'needs'
           SQL
 
+          SELF_REASON = [:refused, "a node cannot need itself"].freeze
+
           def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
@@ -62,14 +64,12 @@ module Plastic
           end
 
           def refusal(intent_id, from, to)
-            kind, reason = self_reason(from, to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
+            kind, reason = (SELF_REASON if from == to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
             return unless reason
 
-            lead = kind == :missing ? "is missing a node" : "is refused"
+            lead = (kind == :missing) ? "is missing a node" : "is refused"
             ["edge #{from} to #{to} #{lead}: #{reason}", kind]
           end
-
-          def self_reason(from, to) = ([:refused, "a node cannot need itself"] if from == to)
 
           def node_reason(intent_id, from, to)
             [from, to].each do |id|
