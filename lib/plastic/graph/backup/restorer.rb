@@ -84,8 +84,9 @@ module Plastic
 
         # The database names the folder holds; a done folder that holds none has nothing to restore.
         def held_files(timestamp)
-          held = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
-          raise Missing, "the backup #{timestamp} holds no database files" if held.empty? && @target.folders.status(timestamp) == "done"
+          folders = @target.folders
+          held = folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
+          raise Missing, "the backup #{timestamp} holds no database files" if held.empty? && folders.status(timestamp) == "done"
 
           held
         end
