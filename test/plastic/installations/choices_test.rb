@@ -52,4 +52,22 @@ class ChoicesTest < Plastic::TestCase
 
     assert_predicate choices, :statusline?
   end
+
+  def test_the_worker_limit_is_three_by_default
+    assert_equal 3, choices.max_workers
+  end
+
+  def test_the_worker_limit_is_the_number_the_owner_set
+    config_with({ "driver.max_workers" => 5 })
+
+    assert_equal 5, choices.max_workers
+  end
+
+  def test_a_worker_limit_that_is_not_a_positive_whole_number_reads_as_three
+    ["0", "-2", "many", 2.5].each do |bad|
+      config_with({ "driver.max_workers" => bad })
+
+      assert_equal 3, choices.max_workers, bad.inspect
+    end
+  end
 end
