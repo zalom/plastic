@@ -189,6 +189,12 @@ columns. It is in `ALONE`, and its down, `NodeJudgeColumns` in `REBUILDS`, adds 
 back, empty. A graph file that an earlier release printed with the two fields still reads: the
 sync reads past them.
 
+Migration `20261123154000` adds the nullable column `deadline` to `nodes` in `work_graph.db`, the
+minutes a claim on a node may run before `plastic graph ready` reports it as overdue. It writes no
+value, so it has no switch, and a node it finds keeps no deadline. It is in `ALONE`, and its down,
+`NodeDeadlineColumn` in `REBUILDS`, drops the column again; the backup that the down takes first holds
+any deadline a node had.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down

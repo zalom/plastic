@@ -104,6 +104,10 @@ under each finding that no command repairs, a `repair:` line under each finding 
   at a terminal. Two drivers that share a name share a claim.
 - A claim lapses after 900 seconds without a renewal. When a driver hands out nodes, each worker
   renews its own claim with `plastic node renew ID NODE`, for example every five minutes, while it runs.
+- A node added with `--deadline MINUTES` is overdue once its claim has run longer than that. `plastic graph
+  ready ID --json` lists it under `result.overdue` with `id`, `title`, `claimed_by`, `claimed_minutes` and
+  `deadline`. Plastic moves no node for it: the driver checks on the worker, and the owner decides
+  whether to release the node.
 - Exit code 3 means Plastic refused the call, for example when another session took a lapsed
   claim. Stop that node and do not retry with other options.
 - After three runs of one node, the next claim moves it to `needs_info` with a question for the
