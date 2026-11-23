@@ -26,8 +26,12 @@ class MigrationListTest < Plastic::TestCase
 
   def fresh_lines(home)
     newest = recorded(home).last
-    ["store: alpha is at migration #{newest}", "legacy: alpha keeps no rows in legacy.db", "no migration of alpha is in the ledger",
-     "down: would undo migration #{newest} and put back no rows"]
+    [
+      "store: alpha is at migration #{newest}",
+      "legacy: alpha keeps no rows in legacy.db",
+      "no migration of alpha is in the ledger",
+      "down: would undo migration #{newest} and put back no rows"
+    ]
   end
 
   def test_a_list_of_a_fresh_store_prints_every_line

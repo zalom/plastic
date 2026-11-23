@@ -37,14 +37,19 @@ module Plastic
           end
 
           def self.history_lines(context)
-            rows = ledger(context).of(context.store)
-            rows.empty? ? ["no migration of #{context.store} is in the ledger"] : rows.map { |row| event(row) }
+            slug = context.store
+            rows = ledger(context).of(slug)
+            rows.empty? ? ["no migration of #{slug} is in the ledger"] : rows.map { |row| event(row) }
           end
 
+          # A migration that kept nothing in legacy.db has no entry in `kept`, so its down puts back no rows.
           def self.down_line(context, kept)
             down = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
             refusal = down.refusal
-            refusal ? "down: #{refusal}" : "down: would undo migration #{down.version} and put back #{Migration.counted(kept.fetch(down.version, {}))}"
+            return "down: #{refusal}" if refusal
+
+            version = down.version
+            "down: would undo migration #{version} and put back #{Migration.counted(kept.fetch(version, {}))}"
           end
 
           def self.kept(context)
