@@ -14,6 +14,7 @@ module Plastic
           extend ReviewRound
 
           open_intent_gates "verdict"
+          criteria_coverage_gate
           review_round_gate
 
           outcome :accepted, if: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).counting? }, offers: "plastic intent end %{intent_id}",

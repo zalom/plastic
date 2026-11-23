@@ -17,7 +17,7 @@ class NodeResolveTest < Plastic::TestCase
     super
     open_keyed_intent
     cli("node", "add", "1", "a", "--criterion", "done")
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def test_resolving_a_needs_info_node_opens_it_and_offers_the_claim
@@ -25,7 +25,7 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
+    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1 --agent NAME\nbecause: node n1 is open\n"
   end
 
   def test_an_answer_that_holds_column_names_is_stored_unchanged
@@ -40,7 +40,7 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "access granted")
 
-    assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1"]
+    assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1 --agent NAME"]
     assert_equal "open", retrieval.node("1", "n1").state
   end
 

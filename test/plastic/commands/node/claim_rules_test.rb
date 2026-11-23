@@ -22,9 +22,9 @@ class NodeClaimRulesTest < Plastic::TestCase
     cli("sync", "up")
   end
 
-  def packet = JSON.parse(cli("node", "claim", "1", "n1", "--json").out).dig("result", "packet")
+  def packet = JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out).dig("result", "packet")
 
-  def claim_lines = cli("node", "claim", "1", "n1").out.lines.map(&:chomp)
+  def claim_lines = cli("node", "claim", "1", "n1", "--agent", "tester").out.lines.map(&:chomp)
 
   def test_the_packet_carries_the_rulings_in_force_and_leaves_superseded_ones_out
     rule("Old")

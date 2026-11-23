@@ -13,7 +13,7 @@ class NodeFailTest < Plastic::TestCase
   end
 
   def test_failing_a_claimed_node_offers_the_release
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
 
     result = cli("node", "fail", "1", "n1", "boom")
 
@@ -28,7 +28,7 @@ class NodeFailTest < Plastic::TestCase
 
   def test_a_refused_move_moves_on_the_next_call
     cli("node", "fail", "1", "n1", "boom")
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
 
     result = cli("node", "fail", "1", "n1", "boom")
 

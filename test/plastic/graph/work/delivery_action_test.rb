@@ -59,7 +59,7 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_a_ready_node_is_claimed
     plan("Build")
 
-    assert_equal ["plastic node claim 1 n1", "node n1 is ready", nil], action
+    assert_equal ["plastic node claim 1 n1 --agent NAME", "node n1 is ready", nil], action
   end
 
   def test_a_failed_node_is_released_before_anything_else

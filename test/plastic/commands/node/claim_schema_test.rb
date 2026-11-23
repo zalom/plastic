@@ -17,7 +17,7 @@ class NodeClaimSchemaTest < Plastic::TestCase
     cli("node", "add", "1", "Build", "--criterion", KEY)
   end
 
-  def packet = JSON.parse(cli("node", "claim", "1", "n1", "--json").out).dig("result", "packet")
+  def packet = JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out).dig("result", "packet")
 
   def test_a_packet_with_no_schema_file_carries_null
     assert_nil packet.fetch("schema")
@@ -38,10 +38,10 @@ class NodeClaimSchemaTest < Plastic::TestCase
   def test_the_text_claim_prints_the_schema_path_when_the_file_exists
     write(SCHEMA, "{}\n")
 
-    assert_includes cli("node", "claim", "1", "n1").out, "schema: #{store_path(SCHEMA)}\n"
+    assert_includes cli("node", "claim", "1", "n1", "--agent", "tester").out, "schema: #{store_path(SCHEMA)}\n"
   end
 
   def test_the_text_claim_prints_no_schema_line_when_there_is_no_file
-    refute_includes cli("node", "claim", "1", "n1").out, "schema:"
+    refute_includes cli("node", "claim", "1", "n1", "--agent", "tester").out, "schema:"
   end
 end

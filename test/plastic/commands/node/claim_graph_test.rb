@@ -14,7 +14,7 @@ class NodeClaimGraphCaseTest < Plastic::TestCase
     put_edge("n1", "n2")
     put_edge("n2", "n1")
 
-    assert_case line("node claim 1 n1"), code: 3, out: ["next: plastic graph check 1", "because: a loop or a need on a removed node stops the first claim; repair it, then claim again"],
+    assert_case line("node claim 1 n1 --agent a"), code: 3, out: ["next: plastic graph check 1", "because: a loop or a need on a removed node stops the first claim; repair it, then claim again"],
       err: ["the graph of intent 1 has a finding that stops the first claim: nodes loop: n1 -> n2 -> n1; repair: plastic edge remove 1 n2 n1"]
   end
 end

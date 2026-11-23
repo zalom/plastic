@@ -10,6 +10,7 @@ require_relative "legacy_table"
 require_relative "migration_ledger"
 require_relative "migration_reason"
 require_relative "revision_rows"
+require_relative "run_usage_columns"
 
 module Plastic
   module Graph
@@ -35,7 +36,7 @@ module Plastic
       Undone = Data.define(:version, :moved, :built, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
-      REBUILDS = { "20261119000000" => RevisionRows }.freeze
+      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns }.freeze
       NONE = ->(_connection) { {} }
 
       UNDO = "a down cannot undo it; restore a backup to go back"

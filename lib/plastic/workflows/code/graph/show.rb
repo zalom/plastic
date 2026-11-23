@@ -7,7 +7,7 @@ module Plastic
   module Workflows
     module Code
       module Graph
-        # Prints each node and edge from the rows. It never reads or writes graph.json.
+        # Prints each node, edge and run from the rows. It never reads or writes graph.json.
         class Show < CodeWorkflow
           clear_declarations
 
@@ -26,6 +26,10 @@ module Plastic
 
           read "print each need" do |context|
             context.retrieval.structure.edges(context.intent_id).select(&:needs?).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
+          end
+
+          read "print each run" do |context|
+            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
           end
 
           # The node each found node was found in, by the found node.

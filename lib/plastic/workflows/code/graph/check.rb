@@ -54,7 +54,7 @@ module Plastic
           end
 
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
-          outcome :done, offers: "plastic node claim %{intent_id} %{first}", because: "node %{first} is ready"
+          outcome :done, offers: "plastic node claim %{intent_id} %{first} --agent NAME", because: "node %{first} is ready"
         end
       end
     end

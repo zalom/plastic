@@ -176,7 +176,7 @@ text that Plastic prints in the planning hand-off.
 | One spec | `plastic intent rule`, `plastic intent revise` | A ruling, or a new revision of the What and the Why. |
 | Go-ahead | `plastic intent approve` | The approval row: the owner gives it in guided work, and the agents record it in auto. `plastic node claim` refuses without it. |
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
-| Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. |
+| Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. When a run ends, `Harnesses::RunRecord` reads the model, tokens and cost of the worker from the harness's own local record into the run, and never fails the move. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
 | Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
 | Close | `plastic intent end` | The completion row. |
@@ -187,7 +187,7 @@ text that Plastic prints in the planning hand-off.
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
 They take no lock.
-`plastic node claim` refuses with exit 3 an intent that is not in progress, one
+`plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and
 `hook stop` renew it. Plastic computes the path

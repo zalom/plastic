@@ -9,7 +9,7 @@ module Plastic
         STEPS = [
           ["record each ruling", "plastic intent rule ID TEXT"],
           ["write spec.md and add the work nodes", "plastic node add ID TITLE --criterion KEY"],
-          ["claim each node as you dispatch it", "plastic node claim ID NODE"],
+          ["claim each node as you dispatch it", "plastic node claim ID NODE --agent NAME"],
           ["judge each node's report and record it", "plastic node done ID NODE TEXT"],
           ["judge the intent", "plastic intent judge ID"],
           ["close the intent after the merge", "plastic intent end ID"]

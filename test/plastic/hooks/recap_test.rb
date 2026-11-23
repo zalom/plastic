@@ -162,7 +162,7 @@ class RecapClaimTest < Plastic::TestCase
     intent_id, node = claim_node
 
     assert_includes recap.lines(now: lapsed_after(node)),
-      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{shown(node.seen_at)}); plastic node claim #{intent_id} n1 takes it again"
+      "intent #{intent_id}: the claim of this session on node n1 lapsed (last renewed #{shown(node.seen_at)}); plastic node claim #{intent_id} n1 --agent NAME takes it again"
   end
 
   def test_an_own_claim_within_its_window_prints_no_lapsed_line

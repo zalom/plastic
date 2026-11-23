@@ -3,14 +3,14 @@
 Claim an open node, or take a lapsed claim, and print its brief.
 
 ```sh
-plastic node claim ID NODE [--agent NAME]
+plastic node claim ID NODE --agent NAME
 ```
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
 | `NODE` | the node | |
-| `--agent NAME` | the agent that runs the node, recorded on its run; empty when left out | `""` |
+| `--agent NAME` | the agent that runs the node, recorded on its run with its harness, model, tokens and cost |  |
 
 ## The events of one call, step by step
 

@@ -31,7 +31,7 @@ class NodeRemoveTest < Plastic::TestCase
   def test_removing_a_claimed_node_exits_3
     open_keyed_intent
     add_node("a")
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = remove("1", "n1")
 

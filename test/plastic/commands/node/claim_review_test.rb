@@ -29,9 +29,9 @@ class NodeClaimReviewTest < Plastic::TestCase
   def snapshot = [node.to_h, store_graphs.retrieval.structure.runs("1").map(&:to_h)]
 
   def reclaim_lapsed_then_finish
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
     at(16)
-    as("s-2", "node", "claim", "1", "n1")
+    as("s-2", "node", "claim", "1", "n1", "--agent", "tester")
     as("s-2", "node", "done", "1", "n1", "new holder")
   end
 
@@ -45,7 +45,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_the_same_holder_finishing_twice_exits_0_and_changes_nothing
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
     as("s-1", "node", "done", "1", "n1", "first")
     before = snapshot
     at(5)
@@ -61,10 +61,10 @@ class NodeClaimReviewTest < Plastic::TestCase
     assert_equal ["plastic-executor"], store_graphs.retrieval.structure.runs("1").map(&:agent)
   end
 
-  def test_a_claim_without_an_agent_records_an_empty_one
-    as("s-1", "node", "claim", "1", "n1")
+  def test_a_claim_without_an_agent_is_refused_and_records_no_run
+    result = as("s-1", "node", "claim", "1", "n1")
 
-    assert_equal [""], store_graphs.retrieval.structure.runs("1").map(&:agent)
+    assert_equal [2, []], [result.code, store_graphs.retrieval.structure.runs("1")]
   end
 
   def test_a_claimed_node_with_no_time_and_no_holder_is_taken
@@ -72,7 +72,7 @@ class NodeClaimReviewTest < Plastic::TestCase
       batch.add("UPDATE nodes SET state = 'claimed', claimed_by = NULL, claimed_at = NULL, seen_at = NULL WHERE id = 'n1'")
     end
 
-    assert_equal [0, "s-2"], [as("s-2", "node", "claim", "1", "n1").code, node.claimed_by]
+    assert_equal [0, "s-2"], [as("s-2", "node", "claim", "1", "n1", "--agent", "tester").code, node.claimed_by]
   end
 
   def test_a_claimed_node_with_an_empty_time_lapses
@@ -82,7 +82,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_status_by_the_holder_renews_its_claim
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
     at(10)
 
     as("s-1", "status")
@@ -91,13 +91,13 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_the_printed_graph_file_holds_no_renewal_time
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
 
     refute_includes File.read(File.join(store_root, "store/1--alpha/graph.json")), "seen_at"
   end
 
   def test_a_renewal_prints_no_file_and_leaves_the_graph_file_alone
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
     path = File.join(store_root, "store/1--alpha/graph.json")
     before = File.read(path)
     at(10)
@@ -109,7 +109,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_a_graph_file_import_keeps_the_renewal_time_of_the_row
-    as("s-1", "node", "claim", "1", "n1")
+    as("s-1", "node", "claim", "1", "n1", "--agent", "tester")
     at(10)
     as("s-1", "node", "renew", "1", "n1")
     File.write(File.join(store_root, "store/1--alpha/graph.json"), File.read(File.join(store_root, "store/1--alpha/graph.json")).sub('"findings": null', '"findings": "edited"'))
@@ -120,7 +120,7 @@ class NodeClaimReviewTest < Plastic::TestCase
   end
 
   def test_a_terminal_with_no_session_variable_claims_as_the_terminal_login
-    result = plastic("node", "claim", "1", "n1", env: { "USER" => "ada" }, table: Plastic::CLI::TABLE, clock: @clock)
+    result = plastic("node", "claim", "1", "n1", "--agent", "tester", env: { "USER" => "ada" }, table: Plastic::CLI::TABLE, clock: @clock)
 
     assert_equal [0, ["terminal-ada"]], [result.code, store_graphs.retrieval.structure.runs("1").map(&:session_id)]
   end

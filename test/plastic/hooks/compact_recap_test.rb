@@ -64,7 +64,7 @@ class CompactRecapTest < Plastic::TestCase
     intent = graphs.work.write_intent(title: "Alpha")
     graphs.work.add_node(intent_id: intent.intent_id, title: "Build")
 
-    assert_equal "next: plastic node claim #{intent.intent_id} n1", recap("compact").last
+    assert_equal "next: plastic node claim #{intent.intent_id} n1 --agent NAME", recap("compact").last
   end
 
   def test_a_closed_intent_is_not_the_intent_of_the_session

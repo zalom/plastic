@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "node_output"
+require_relative "../harnesses/run_record"
 
 module Plastic
   module Workflows
@@ -13,7 +14,7 @@ module Plastic
     class MoveNode < CodeWorkflow
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
-                        offers: "plastic node claim %{intent_id} %{id}" },
+                        offers: "plastic node claim %{intent_id} %{id} --agent NAME" },
         done_node: { state: "done", step: "finish the node", say: "say what was done", fields: { findings: :text },
                      offers: "plastic graph ready %{intent_id}" },
         fail_node: { state: "failed", step: "fail the node", say: "say what failed", fields: { reason: :text },
@@ -23,12 +24,14 @@ module Plastic
         impede_node: { state: "impeded", step: "record the impediment", say: "say what impedes the node", fields: { reason: :text },
                        offers: "plastic node resolve %{intent_id} %{id} TEXT" },
         resolve_node: { state: "open", step: "resolve the node", say: "say what was resolved", fields: { answer: :text },
-                        offers: "plastic node claim %{intent_id} %{id}" },
+                        offers: "plastic node claim %{intent_id} %{id} --agent NAME" },
         remove_node: { state: "removed", step: "remove the node", say: "say what was removed", fields: %i[reason],
                        offers: "plastic graph ready %{intent_id}" }
       }.freeze
 
       RESULT_VERBS = %i[done_node fail_node ask_node impede_node].freeze
+      # The moves that end a run, so what the harness's record holds of it is read and kept.
+      RUN_ENDS = (RESULT_VERBS + [:release_node]).freeze
 
       CHANGES = {
         release_node: "The node is released and open again",
@@ -102,6 +105,20 @@ module Plastic
       def self.run_move(context, verb, shape)
         node = context.work.public_send(verb, intent_id: context.intent_id, id: context.id, by: context.session, **fields(context, shape), **files(context, verb), **stored_output(context, verb))
         settle(context, node || (verb == :done_node && repeated_done?(context)), shape.fetch(:state))
+        record_usage(context) if node && RUN_ENDS.include?(verb)
+      end
+
+      # Keeps on the run just ended what the record of its harness holds. A record that is missing or unreadable is named in the
+      # run's note, and the move stands either way.
+      def self.record_usage(context)
+        intent_id, id = context.intent_id, context.id
+        ended = [finisher_run(context, context.retrieval.node(intent_id, id))].compact.select(&:ended_at)
+        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}")) }
+      end
+
+      def self.read_usage(context, run, claim)
+        Harnesses::RunRecord.new(home: context.user_home.to_s).read(harness: run.harness, session: run.session_id,
+          from: Time.iso8601(run.started_at), to: Time.iso8601(run.ended_at), claim:)
       end
 
       def self.settle(context, moved, state)
@@ -132,9 +149,10 @@ module Plastic
       end
 
       # The session of the last run of a node: the one that finished it when the node is done.
-      def self.finisher_of(context, node)
-        runs = context.retrieval.structure.runs(node.intent_id).select { |run| run.node_id == node.id }
-        runs.max_by(&:number)&.session_id
+      def self.finisher_of(context, node) = finisher_run(context, node)&.session_id
+
+      def self.finisher_run(context, node)
+        context.retrieval.structure.runs(node.intent_id).select { |run| run.node_id == node.id }.max_by(&:number)
       end
 
       # The holder that finished the node asks again: nothing moves and nothing is written.
