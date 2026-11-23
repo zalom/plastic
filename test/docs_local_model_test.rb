@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require "tmpdir"
+require_relative "support/child_process"
 
 # Intent 525: the driver docs say how to run a worker on a local model, for each harness.
 class DocsLocalModelTest < Minitest::Test
@@ -21,5 +23,21 @@ class DocsLocalModelTest < Minitest::Test
 
   def test_the_official_sources_are_cited
     ["https://docs.ollama.com/integrations/claude-code", "https://docs.ollama.com/integrations/codex"].each { |url| assert_includes DOC, url }
+  end
+
+  # A wrong command in the docs fails here: each documented `plastic config set` runs on a scratch home.
+  def test_each_documented_config_set_command_runs_on_a_scratch_home
+    root = File.expand_path("..", __dir__)
+    commands = File.read(File.join(root, "docs/usage/drive-from-any-harness.md")).scan(/^plastic config set agents\.models\..+$/)
+
+    refute_empty commands
+    Dir.mktmpdir do |home|
+      env = { "HOME" => home, "PLASTIC_HOME" => File.join(home, ".plastic"), "PLASTIC_TMP" => File.join(home, "tmp") }
+      commands.each do |line|
+        _out, err, status = ChildProcess.capture3(env, File.join(root, "exe", "plastic"), *line.split.drop(1), stdin_data: "")
+
+        assert_equal 0, status.exitstatus, "#{line}: #{err}"
+      end
+    end
   end
 end
