@@ -102,23 +102,23 @@ class GraphBackupPurgerInterruptedTest < Plastic::TestCase
     assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(File.join(home, "stores", "alpha")).interrupted(now:)
   end
 
-def test_interrupted_names_folders_with_an_empty_status_file_or_none_recorded
-  root = File.join(fresh_home, "stores", "alpha")
-  folders = Plastic::Graph::Backup::Folders.new(root)
-  { "20260301100000" => "", "20260301100100" => { "goal" => "full" }.to_yaml }.each do |name, text|
-    FileUtils.mkdir_p(folders.path(name))
-    File.write(File.join(folders.path(name), "status.yml"), text)
+  def test_interrupted_names_folders_with_an_empty_status_file_or_none_recorded
+    root = File.join(fresh_home, "stores", "alpha")
+    folders = Plastic::Graph::Backup::Folders.new(root)
+    { "20260301100000" => "", "20260301100100" => { "goal" => "full" }.to_yaml }.each do |name, text|
+      FileUtils.mkdir_p(folders.path(name))
+      File.write(File.join(folders.path(name), "status.yml"), text)
+    end
+
+    assert_equal %w[20260301100000 20260301100100], Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
   end
 
-  assert_equal %w[20260301100000 20260301100100], Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
-end
+  def test_interrupted_keeps_a_folder_whose_name_is_not_a_real_time
+    root = File.join(fresh_home, "stores", "alpha")
+    FileUtils.mkdir_p(File.join(root, "backups", "20201399000000"))
 
-def test_interrupted_keeps_a_folder_whose_name_is_not_a_real_time
-  root = File.join(fresh_home, "stores", "alpha")
-  FileUtils.mkdir_p(File.join(root, "backups", "20201399000000"))
-
-  assert_empty Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
-end
+    assert_empty Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
+  end
 
   def test_interrupted_names_folders_with_no_status_file_older_than_five_minutes
     root = File.join(fresh_home, "stores", "alpha")
