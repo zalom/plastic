@@ -49,8 +49,10 @@ class MigrationListTest < Plastic::TestCase
   end
 
   def test_a_list_says_the_newest_migration_that_kept_nothing_puts_back_no_rows
-    assert_call list(migrated_previous_home), code: 0,
-      out: ["legacy: migration #{DROP} keeps 1 row of document_revisions", "down: would undo migration #{DRIVERS} and put back no rows\n"]
+    home = migrated_previous_home
+
+    assert_call list(home), code: 0,
+      out: ["legacy: migration #{DROP} keeps 1 row of document_revisions", "down: would undo migration #{recorded(home).last} and put back no rows\n"]
   end
 
   def test_a_list_prints_each_ledger_row_of_the_store_in_the_zone_of_the_machine
