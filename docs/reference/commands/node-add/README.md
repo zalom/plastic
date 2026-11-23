@@ -3,7 +3,7 @@
 Add a node to an intent's work graph, of kind work, orchestrator or retrieval.
 
 ```sh
-plastic node add ID TITLE --criterion KEY [--kind KIND] [--found-in NODE] [--input PATH]
+plastic node add ID TITLE --criterion KEY [--kind KIND] [--found-in NODE] [--input PATH] [--deadline MINUTES]
 ```
 
 | Argument or option | What it gives | Default |
@@ -14,6 +14,7 @@ plastic node add ID TITLE --criterion KEY [--kind KIND] [--found-in NODE] [--inp
 | `--kind KIND` | orchestrator, work or retrieval; work when left out |  |
 | `--found-in NODE` | the node of this intent where the new work was found; it orders nothing |  |
 | `--input PATH` | a file the node reads |  |
+| `--deadline MINUTES` | the minutes a claim on the node may run before plastic graph ready reports it as overdue |  |
 
 ## The events of one call, step by step
 

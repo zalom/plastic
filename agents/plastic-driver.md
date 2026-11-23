@@ -28,6 +28,15 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
    five minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
 
+## Check on an overdue node
+
+A node added with `plastic node add ID TITLE --criterion KEY --deadline MINUTES` has a deadline. When its
+claim has run longer than that, `plastic graph ready` prints an `overdue:` line for it, and
+`result.overdue` lists it with the session that holds it (`claimed_by`), the minutes the claim has run
+(`claimed_minutes`) and the `deadline`. The worker still holds the node. Check on that worker: read
+what it has done and whether it still renews its claim. Report the node to the owner, and leave it
+claimed. Only the owner decides to release it with `plastic node release`. Plastic changes no node for you.
+
 ## Repair the region
 
 When `result.repairs` is not empty, a node failed or waits on the owner. Each entry names that

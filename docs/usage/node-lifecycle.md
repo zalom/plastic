@@ -22,6 +22,11 @@ person talks to, moves a node. The agents it dispatches do the work and report b
 it needs is done, and `plastic graph ready ID` lists the ready nodes, and for a failed, needs_info or impeded node a `repair:` line naming the nodes that wait on it, the region to re-plan. Only an `open` node can be
 removed.
 
+A node can carry a deadline: `plastic node add ID TITLE --criterion KEY --deadline MINUTES` stores the
+minutes a claim on it may run. The value is a whole number above 0; any other value exits 2 and adds
+no node. `plastic graph show` prints it on the node line as `deadline 30 minutes`. A node without one
+has none.
+
 Work found while doing a node is added with `plastic node add ID TITLE --criterion KEY --found-in NODE`. The node must be in the same intent: a missing node exits 1 and a removed node exits 3, each naming it. The link is a `found_in` edge from the new node to the node it was found in: `plastic graph show` prints it as `found in NODE` on the new node, and it adds no need and changes no readiness.
 
 ## Claimed
@@ -58,6 +63,15 @@ at the stop hook, and with `plastic node renew ID NODE`.
   `lapsed` and a new run opens.
 - The old holder's next node command exits 3, names the new holder and changes nothing.
 - A lapsed claim that nobody took still completes for its holder.
+
+## When a claim runs past its deadline
+
+A claimed node whose claim started more than its deadline ago is overdue. `plastic graph ready ID`
+prints a line for each, such as `overdue: n3 Build claimed 42 minutes ago, deadline 30`, and `--json`
+lists them under `result.overdue`. The time is the time of the call. A node with no deadline is never
+overdue. Plastic only reports it: the node stays claimed by its session, and the driver checks on the
+worker. The lapse finds a worker that stopped renewing; the deadline finds a worker that still runs
+but runs too long.
 
 Each claim opens one run of the node, and each move out of `claimed` closes it with the move's
 result. `plastic graph show ID` names the holder of each claimed node and its runs.

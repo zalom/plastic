@@ -67,7 +67,9 @@ is blocked, held or capped; it offers `plastic next` for a done or abandoned int
 returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, the
 rulings in force, the spec's constraints, what the lists left out, and the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
 the node's output and refuses a file that is not JSON. `plastic graph check` finds a schema file that
-names no live node and prints a `hand edit:` line for each finding no command repairs. [Drive a graph from any harness](drive-from-any-harness.md) shows the loop.
+names no live node and prints a `hand edit:` line for each finding no command repairs. A node added with
+`--deadline MINUTES` that stays claimed longer than that is listed by `plastic graph ready` on an `overdue:`
+line and under `result.overdue`, for the driver to check on its worker; Plastic moves no node for it. [Drive a graph from any harness](drive-from-any-harness.md) shows the loop.
 
 ## Rulings and revisions
 
