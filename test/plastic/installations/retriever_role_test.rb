@@ -22,7 +22,7 @@ class RetrieverRoleTest < Plastic::TestCase
   end
 
   def test_the_role_says_the_output_is_json
-    assert_includes role.gsub(/\s+/, " "), "The output must be a JSON file"
+    assert_includes role.gsub(/\s+/, " "), "JSON file of your own"
   end
 
   def test_it_installs_for_claude_code
