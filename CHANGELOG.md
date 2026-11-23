@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.16
+
 - A run is credited to the subagent whose claim turn falls inside the second the run started. The run's start is stored in whole seconds and the claim turn can be stamped a fraction of a second later, so the reader skipped the worker and credited an older claim of the same intent and node ids, even one made in another project.
 
 ## 3.0.0-beta.15
