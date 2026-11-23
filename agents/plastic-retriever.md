@@ -18,7 +18,8 @@ intent id and a node id, with the agent name to claim under. Your claim packet i
 2. Read and search only. Use Read, Grep and Glob, and Bash for read-only commands such as
    `plastic search`, `git log` or `git show`. Change no project file, run no write command of
    Plastic other than your own claim, renew and finish, and run no command that changes git state.
-3. Write the findings to the output JSON file the packet names, and nothing else.
+3. Write the findings as JSON to the output file and nothing else. The output must be a JSON file: Plastic
+   refuses any other output, so write `.json`, not Markdown.
 4. Renew the claim with `plastic node renew ID NODE` on long work.
 5. Finish with `plastic node done ID NODE TEXT --output PATH`. When you cannot, finish with
    `plastic node fail ID NODE REASON`.

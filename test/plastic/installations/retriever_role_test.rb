@@ -21,6 +21,10 @@ class RetrieverRoleTest < Plastic::TestCase
     assert_equal [true] * 3, ["plastic node claim", "plastic node done", "plastic node fail"].map { |text| role.include?(text) }
   end
 
+  def test_the_role_says_the_output_is_json
+    assert_includes role.gsub(/\s+/, " "), "The output must be a JSON file"
+  end
+
   def test_it_installs_for_claude_code
     Plastic::Installations::RoleFiles.new(ROOT).call(File.join(@home, "agents"))
 

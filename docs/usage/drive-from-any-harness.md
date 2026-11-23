@@ -20,7 +20,7 @@ prints the claim packet, and finishes it itself. The driver waits for the harnes
 | `work` | The executor role, `plastic-executor`. |
 | `retrieval` | The read-only retriever role, `plastic-retriever`. |
 
-The worker finishes with `plastic node done ID NODE TEXT --output PATH`, so the next node reads its
+The worker finishes with `plastic node done ID NODE TEXT --output PATH`, where PATH is a JSON file (Plastic refuses other output; the claim packet says so), so the next node reads its
 output in its packet. At most 3 workers run at once. The setting `driver.max_workers` holds the
 limit: change it with `plastic config set driver.max_workers N` and run `plastic install --reinstall`,
 and the installed role prints the new number. When the harness cannot start workers, the session

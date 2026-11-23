@@ -23,7 +23,7 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
      role, `plastic-retriever`. It changes no project file, claims its node, and writes only its
      output file and its `plastic node done` or `plastic node fail`.
 4. You pick the `--agent` name for each worker, for example its role name, and hand it over with the intent id and the node id, so the claim packet is its whole brief. It claims
-   the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, so the nodes that need this one read its output
+   the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, where PATH is a JSON file (Plastic refuses output that is not JSON), so the nodes that need this one read its output
    in their own packet. When it cannot finish it uses `plastic node fail` with the reason, and writes nothing else.
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
    five minutes. The driver waits for the harness's notice that a worker ended, then runs

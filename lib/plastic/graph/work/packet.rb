@@ -27,7 +27,7 @@ module Plastic
 
         def to_h
           { "node" => { "id" => @node.id, "title" => @node.title, "kind" => @node.kind, "state" => @node.state },
-            "criterion" => criterion, "input" => @node.input, "needs" => needs, "schema" => schema,
+            "criterion" => criterion, "input" => @node.input, "needs" => needs, "schema" => schema, "output" => output_text,
             "rulings" => rules.rulings, "constraints" => rules.constraints, "omitted" => rules.omitted }
         end
 
@@ -38,7 +38,7 @@ module Plastic
         def need_lines = needs.map { |need| need_line(need) }
 
         # The lines of the text answer after the input: the needs, the rulings and constraints, the schema.
-        def answer_lines = [*need_lines, *rule_lines, *schema_lines]
+        def answer_lines = [*need_lines, *rule_lines, *schema_lines, "output: #{output_text}"]
 
         # The lines of the text answer that give the rulings in force, the constraints and what was left out.
         def rule_lines = rules.lines
@@ -54,7 +54,9 @@ module Plastic
 
         private
 
-        def schema = @schemas.path(@node.id)
+        def output_text = "a JSON file, given with plastic node done #{@node.intent_id} #{@node.id} TEXT --output PATH"
+
+        def schema =@schemas.path(@node.id)
 
         def rules = @rules ||= PacketRules.new(@retrieval, @node.intent_id)
 

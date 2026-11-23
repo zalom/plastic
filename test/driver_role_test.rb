@@ -55,4 +55,8 @@ class DriverRoleTest < Minitest::Test
     assert_includes ROLE, "waits for the harness's notice that a worker ended"
     assert_includes ROLE, "does not poll in a loop"
   end
+
+  def test_the_output_file_is_said_to_be_json
+    assert_includes ROLE, "PATH is a JSON file"
+  end
 end
