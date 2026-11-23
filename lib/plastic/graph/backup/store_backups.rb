@@ -53,7 +53,7 @@ module Plastic
         private
 
         def entry(number, name)
-          Entry.new(number, name, FolderName.time(name).localtime.strftime("%Y-%m-%d %H:%M:%S"),
+          Entry.new(number, name, FolderName.started(name),
             folders.status(name), folders.goal(name), flag(name))
         end
 

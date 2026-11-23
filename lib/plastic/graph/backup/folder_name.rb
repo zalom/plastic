@@ -18,15 +18,18 @@ module Plastic
         end
 
         # Whether the folder is strictly before the limit; no limit means every folder is.
-        def self.before?(name, limit) = limit ? time(name) < limit : true
+        def self.before?(name, limit) = limit ? readable?(name) && time(name) < limit : true
 
         # Whether the digits of the name make a real time; a name that does not has no age to judge.
+        # Ruby rolls 20200231000000 over to 2 March, so the time must format back to the name.
         def self.readable?(name)
-          time(name)
-          true
+          timestamp(time(name)) == name[0, 14]
         rescue ArgumentError
           false
         end
+
+        # The local start time of a folder as text, or unknown when its name is not a real time.
+        def self.started(name) = readable?(name) ? time(name).localtime.strftime("%Y-%m-%d %H:%M:%S") : "unknown"
 
         # The moment a folder name stands for, in UTC.
         def self.time(name) = Time.utc(name[0, 4], name[4, 2], name[6, 2], name[8, 2], name[10, 2], name[12, 2])
