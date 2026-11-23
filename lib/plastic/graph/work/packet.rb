@@ -8,7 +8,7 @@ require_relative "../knowledge/stored_output"
 module Plastic
   module Graph
     module Work
-      # What a worker needs to start one claimed node: the node, the done criterion it serves, its input, and the
+      # What a worker needs to start one claimed node: the node, the done criterion it serves, its input paths, and the
       # stored output of each node it needs, and the rules of the intent: its rulings in force and the constraints
       # of its spec. A harness hands it to the worker, whatever the worker is.
       class Packet
@@ -33,7 +33,7 @@ module Plastic
 
         def to_h
           { "node" => { "id" => @node.id, "title" => @node.title, "kind" => @node.kind, "state" => @node.state },
-            "criterion" => criterion, "input" => @node.input, "needs" => needs, "schema" => schema, "output" => output_text,
+            "criterion" => criterion, "inputs" => @retrieval.structure.node_paths(@node), "needs" => needs, "schema" => schema, "output" => output_text,
             "rulings" => rules.rulings, "constraints" => rules.constraints, "omitted" => rules.omitted }
         end
 
@@ -43,7 +43,7 @@ module Plastic
         # The lines of the text answer that give the output of each needed node.
         def need_lines = needs.map { |need| Packet.need_line(need) }
 
-        # The lines of the text answer after the input: the needs, the rulings and constraints, the schema.
+        # The lines of the text answer after the inputs: the needs, the rulings and constraints, the schema.
         def answer_lines = [*need_lines, *rule_lines, *schema_lines, "output: #{output_text}"]
 
         # The lines of the text answer that give the rulings in force, the constraints and what was left out.

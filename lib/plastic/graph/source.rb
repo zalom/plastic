@@ -6,6 +6,7 @@ require_relative "knowledge/document"
 require_relative "knowledge/legacy_intents_data"
 require_relative "rows/log_line"
 require_relative "rows/node"
+require_relative "rows/node_input"
 require_relative "rows/run"
 require_relative "rows/edge"
 require_relative "rows/approval"
@@ -41,6 +42,7 @@ module Plastic
       legacy_intents_data: Source.new(Knowledge::LegacyIntentsData, "legacy_intents_data", "*", "intent_id, path"),
       work_log: Source.new(Work::LogLine, "work_log", "*", "intent_id, position"),
       nodes: Source.new(Work::Node, "nodes", "*", "intent_id, #{NODE_ORDER}"),
+      node_inputs: Source.new(Work::NodeInput, "node_inputs", "*", "intent_id, rtrim(node_id, '0123456789'), length(node_id), node_id, position"),
       runs: Source.new(Work::Run, "runs", "*", "intent_id, rtrim(node_id, '0123456789'), length(node_id), node_id, number"),
       edges: Source.new(Work::Edge, "edges", "*", 'intent_id, "from", "to", kind'),
       approvals: Source.new(Work::Approval, "approvals", "*", "intent_id"),
