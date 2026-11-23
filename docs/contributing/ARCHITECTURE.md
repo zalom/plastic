@@ -402,8 +402,9 @@ A migration that removes data keeps it in `legacy.db` in the same transaction, a
 `plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
 newest migration the store records from those rows. A migration that changes stored data waits
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
-one exception is the migration that writes every stored time in UTC, which has no switch; the
-owner ruled so on 22 November 2026. `docs/contributing/MIGRATIONS.md`
+migration that writes every stored time in UTC and the migration that drops the node columns
+`judge` and `verdict` have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
+23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,

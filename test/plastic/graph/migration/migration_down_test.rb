@@ -23,7 +23,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
-    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}); run plastic update first",
+    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}, #{NODES}); run plastic update first",
       down(beta_2_home).refusal
   end
 
@@ -94,8 +94,8 @@ class GraphMigrationDownTest < Plastic::TestCase
     assert_equal "migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back", down(previous_home).refusal
   end
 
-  # A migrated store whose run usage migration, time migration, page migration and trim went down, so the report migration is the newest it records.
-  def past_trim = migrated_previous_home.tap { |home| 4.times { down(home).call } }
+  # A migrated store whose node columns migration, run usage migration, time migration, page migration and trim went down, so the report migration is the newest it records.
+  def past_trim = migrated_previous_home.tap { |home| 5.times { down(home).call } }
 
   def test_the_report_migration_goes_down_by_removing_its_version_alone
     home = past_trim

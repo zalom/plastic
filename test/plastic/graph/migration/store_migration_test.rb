@@ -245,12 +245,9 @@ class AlphaStoreMigrationTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
     Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
-    SQLite3::Database.open(store_path(home, "work_graph.db")) { |db| RUN_USAGE_COLUMNS.each { |column| db.execute("ALTER TABLE runs DROP COLUMN #{column}") } }
+    SQLite3::Database.open(store_path(home, "work_graph.db")) { |db| PreviousStore.older_work_layout(db) }
     home
   end
-
-  # The columns the newest migration adds to runs: an alpha build at stamp 1 has the baseline layout, which lacks them.
-  RUN_USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
 
   def without_versions(home) = layouts_of(store_root(home)).transform_values { |tables| tables.except("schema_migrations") }
 

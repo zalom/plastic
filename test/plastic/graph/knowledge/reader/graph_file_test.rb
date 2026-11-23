@@ -150,7 +150,7 @@ module GraphFileHelpers
   def node_hash(id, **fields)
     { "intent_id" => "1", "id" => id, "kind" => "work", "title" => "Node #{id}", "criterion" => nil, "state" => "done",
       "by" => "agent-7", "input" => nil, "output" => nil, "question" => nil, "answer" => nil, "reason" => nil,
-      "judge" => nil, "verdict" => nil, "findings" => "checked", "retries" => 2, "updated_at" => "2026-10-20T08:00:00Z" }
+      "findings" => "checked", "retries" => 2, "updated_at" => "2026-10-20T08:00:00Z" }
       .merge(fields.transform_keys(&:to_s))
   end
 
