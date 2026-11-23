@@ -132,6 +132,8 @@ end
 class RoadmapNeedsDownTest < Plastic::TestCase
   include RoadmapStoreHelpers
 
+  def down_result(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
+
   def test_a_down_puts_the_roadmap_rows_back_and_removes_the_needs_links
     home = roadmap_home
     migrate_store(home)
@@ -157,10 +159,18 @@ class RoadmapNeedsDownTest < Plastic::TestCase
     assert_equal [2, {}], [undone.removed, undone.built]
   end
 
+  def test_the_down_workflow_names_one_removed_link_in_the_singular
+    home = roadmap_home
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute("DELETE FROM roadmap_edges WHERE \"from\" = 'b'") }
+    migrate_store(home)
+
+    assert_includes down_result(home).out, "down: removed 1 needs link that the migration wrote"
+  end
+
   def test_the_down_workflow_prints_removed_and_not_built_links
     home = roadmap_home
     migrate_store(home)
-    result = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
+    result = down_result(home)
 
     assert_includes result.out, "down: removed 2 needs links that the migration wrote"
     refute_match(/built 2/, result.out)
