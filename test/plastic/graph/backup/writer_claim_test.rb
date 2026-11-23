@@ -60,4 +60,12 @@ class GraphBackupWriterClaimTest < Plastic::TestCase
     assert_nil automatic(home, FIRST + 3600)
     assert_equal ["20260101100000"], folder_names(home)
   end
+
+  def test_a_newest_folder_whose_name_is_not_a_real_time_is_no_claim
+    home = fresh_home
+    claim(home, "20261399000000")
+    add_intent(home)
+
+    refute_nil automatic(home, FIRST)
+  end
 end
