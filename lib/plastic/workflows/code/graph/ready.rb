@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../graph/work/repair_regions"
 
 module Plastic
   module Workflows
@@ -10,7 +11,7 @@ module Plastic
         class Ready < CodeWorkflow
           clear_declarations
 
-          sets :intent, :nodes, :first
+          sets :intent, :nodes, :first, :repairs, :repair_id, :repair_state
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -25,6 +26,23 @@ module Plastic
             context.data("nodes", node_fields(context))
           end
 
+          read "name the regions to re-plan" do |context|
+            structure = context.retrieval.structure
+            context[:repairs] = Plastic::Graph::Work::RepairRegions.new(structure.nodes(context.intent_id), structure.edges(context.intent_id)).to_a
+            context.repairs.each { |region| context.print(repair_line(region)) }
+            context.data("repairs", context.repairs)
+          end
+
+          read "name the first region" do |context|
+            context[:repair_id], context[:repair_state] = context.repairs.first&.values_at("id", "state")
+          end
+
+          def self.repair_line(region)
+            waiting = region["downstream"].map { |node| "#{node["id"]} #{node["title"]}" }
+            tail = waiting.empty? ? "nothing waits on it" : "waiting on it: #{waiting.join(", ")}"
+            "repair: #{region["id"]} #{region["title"]} is #{region["state"]}; #{tail}"
+          end
+
           # The ready nodes as data for a JSON answer: the fields of each and the ids of the nodes it needs.
           def self.node_fields(context)
             needs = context.retrieval.structure.edges(context.intent_id).select { |edge| edge.kind == "needs" }.group_by(&:to)
@@ -35,6 +53,10 @@ module Plastic
             node.to_h.slice(:id, :title, :kind, :criterion, :state).transform_keys(&:to_s).merge("needs" => needs)
           end
 
+          outcome :retry, if: ->(context) { context.first.nil? && context.repair_state == "failed" }, offers: "plastic node release %{intent_id} %{repair_id}",
+            because: "node %{repair_id} is failed; release it to retry it, or re-plan it and what waits on it with plastic node add"
+          outcome :ask_owner, if: ->(context) { context.first.nil? && context.repair_id }, offers: "plastic node resolve %{intent_id} %{repair_id} TEXT",
+            because: "node %{repair_id} is %{repair_state}; the owner answers it, then re-plan what waits on it with plastic node add if the answer changes the plan"
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
           outcome :done, offers: "plastic node claim %{intent_id} %{first} --agent NAME", because: "node %{first} is ready"
         end
