@@ -67,6 +67,13 @@ class HarnessesRunRecordTest < Plastic::TestCase
     assert_equal 50, usage.output_tokens
   end
 
+  def test_a_subagent_turn_with_a_text_block_and_no_command_is_not_the_claimant
+    write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "p1")))
+    write_claude("agent-a1", jsonl(claude_turn("2026-11-12T12:03:00Z", id: "a2", block: { type: "text", text: "hello" })), under: ["s-1", "subagents"])
+
+    assert_equal "s-1", read.worker_session
+  end
+
   def test_with_no_subagent_holding_the_claim_the_worker_is_the_session_itself
     write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "m1")))
 

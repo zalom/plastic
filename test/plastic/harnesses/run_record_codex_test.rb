@@ -49,6 +49,16 @@ class HarnessesRunRecordCodexTest < Plastic::TestCase
     assert_includes read(harness: "codex").note, "no turn inside the run"
   end
 
+  def test_a_log_whose_first_count_lies_inside_the_run_grows_from_zero
+    write_codex("s-1", jsonl(
+      { timestamp: "later", type: "turn_context", payload: { model: "gpt-x" } },
+      { type: "event_msg", payload: { type: "token_count", info: { total_token_usage: "none" } } },
+      codex_count("2026-11-12T12:05:00Z", input: 300, cached: 100, output: 30)
+    ))
+
+    assert_equal ["gpt-x", 200, 30, 100, 0], figures(read(harness: "codex"))
+  end
+
   def test_a_line_with_no_time_and_a_blank_line_are_skipped_without_failing
     write_claude("s-1", "\n#{JSON.generate(type: "assistant", timestamp: "not a time", message: { id: "m0" })}\n[1]\n#{jsonl(claude_turn("2026-11-12T12:05:00Z", id: "m1"))}")
 
