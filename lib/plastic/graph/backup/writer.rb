@@ -25,7 +25,6 @@ module Plastic
         class Error < StandardError; end
 
         MODE_KEYS = %i[automatic reason].freeze
-        CLAIM_WINDOW = 5 * 60
 
         # Whether the backup is automatic, and the reason that asked for it.
         Mode = Data.define(:automatic, :reason)
@@ -65,7 +64,7 @@ module Plastic
 
         def claimed_lately?
           newest = folders.latest
-          !newest.nil? && folders.status(newest) != "done" && (@now - FolderName.time(newest)).between?(0, CLAIM_WINDOW)
+          !newest.nil? && folders.status(newest) != "done" && (@now - FolderName.time(newest)).between?(0, Folders::CLAIM_WINDOW)
         end
 
         def folders = @site.folders

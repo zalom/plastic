@@ -13,8 +13,6 @@ module Plastic
       # the daily backups.
       class Purger
         RETENTION = 3 * 24 * 60 * 60
-        # A backup in progress for longer than this is taken to be interrupted; the writer treats a newer one as a live claim.
-        INTERRUPTED_AFTER = 5 * 60
         DAILY_RETENTION = 24 * 60 * 60
 
         def initialize(store_root, retention: RETENTION)
@@ -44,7 +42,7 @@ module Plastic
 
         # The names of the folders left in-progress by a run that stopped: in-progress for longer than the claim window.
         def interrupted(now:)
-          @folders.names.select { |name| @folders.status(name) == "in-progress" && FolderName.before?(name, now - INTERRUPTED_AFTER) }
+          @folders.names.select { |name| @folders.status(name) == "in-progress" && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
         end
 
         # Deletes the folder, or leaves it where it was.
