@@ -72,12 +72,16 @@ class LinesTest < Minitest::Test
   def timed(started, ended) = Run.new("n1", 1, "a", "", "s-1", ended ? "done" : nil, nil, nil, nil, nil, nil, nil, nil, nil, started, ended)
 
   def test_a_finished_run_line_names_its_start_end_and_length
-    assert_equal "run: n1 #1 agent a, session s-1, done; started 2026-11-23T10:00:00Z, ended 2026-11-23T10:04:12Z, length 4m 12s",
+    assert_equal "run: n1 #1 agent a, session s-1, done; started #{Plastic.local("2026-11-23T10:00:00Z")}, ended #{Plastic.local("2026-11-23T10:04:12Z")}, length 4m 12s",
       lines.run_line(timed("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z"))
   end
 
   def test_a_run_with_no_end_yet_says_running
-    assert_equal "run: n1 #1 agent a, session s-1, open; started 2026-11-23T10:00:00Z, running", lines.run_line(timed("2026-11-23T10:00:00Z", nil))
+    assert_equal "run: n1 #1 agent a, session s-1, open; started #{Plastic.local("2026-11-23T10:00:00Z")}, running", lines.run_line(timed("2026-11-23T10:00:00Z", nil))
+  end
+
+  def test_the_times_carry_the_offset_of_the_machine_zone
+    assert_match(/started \d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(Z|[+-]\d\d:\d\d), ended/, lines.run_line(timed("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z")))
   end
 
   def test_the_length_reads_plainly_at_each_edge

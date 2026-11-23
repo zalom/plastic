@@ -8,7 +8,7 @@ require_relative "../../../../lib/plastic/commands/node/done"
 class GraphShowRunsTest < Plastic::TestCase
   include LifecycleHelper
 
-  TIME = "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+  TIME = "\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|[+-]\d\d:\d\d)"
   LENGTH = "(under 1s|\\d+s|\\d+m \\d+s)"
 
   def setup
@@ -43,6 +43,21 @@ class GraphShowRunsTest < Plastic::TestCase
     cli("node", "done", "1", "n1", "ok")
 
     assert_kind_of Integer, runs_json.first.fetch("length_seconds")
+  end
+
+  def test_the_screen_and_json_show_the_same_times_in_the_machine_zone
+    cli("node", "done", "1", "n1", "ok")
+    stored = store_graphs.databases.fetch(:store).row("SELECT started_at FROM runs").fetch("started_at")
+
+    assert_equal Plastic.local(stored), runs_json.first.fetch("started_at")
+    assert_includes cli("graph", "show", "1").out, "started #{Plastic.local(stored)}"
+  end
+
+  def test_the_length_comes_from_the_stored_times
+    cli("node", "done", "1", "n1", "ok")
+    row = store_graphs.databases.fetch(:store).row("SELECT started_at, ended_at FROM runs")
+
+    assert_equal Plastic::Workflows::Lines.seconds(row.fetch("started_at"), row.fetch("ended_at")), runs_json.first.fetch("length_seconds")
   end
 
   def runs_json = JSON.parse(cli("graph", "show", "1", "--json").out).fetch("result").fetch("runs")
