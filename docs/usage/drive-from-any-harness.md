@@ -48,6 +48,9 @@ goes to the owner, who answers it with `plastic node resolve`; the driver re-pla
 
 Two or more ready nodes have no edge between them, so a driver may work them at the same time.
 
+`plastic intent end` releases the driver claim of the intent in the step that closes it and prints
+`driver claim: released, held by session S`. A closed intent has no live driver left.
+
 ## The packet
 
 `result.packet` holds everything a worker needs, so it reads no other file to start.

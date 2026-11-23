@@ -28,7 +28,7 @@ plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
 plastic intent archive --older-than 2026-01-01   # Archive each intent older than the date
 plastic intent unarchive 12             # Restore an archived intent
-plastic intent end 12                   # Close as delivered, after the merge
+plastic intent end 12                   # Close as delivered, after the merge; it also releases the driver claim
 plastic intent abandon 12               # Close as abandoned
 ```
 
