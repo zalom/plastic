@@ -30,6 +30,6 @@ This command changes nothing.
 
 | Step | The text the agent gets |
 | --- | --- |
-| 2 | Start a reasoning judge agent; the harness picks which kind. Tell it to read spec.md and the findings of every node, check each done criterion against the delivered work and decide: accept when every criterion holds, revise when something falls short. It records the verdict with plastic intent verdict \<intent id> accept\|revise TEXT. A revise starts a second review round, and a second revise stops the intent for the owner, who can grant one more round with plastic intent grant. |
+| 3 | Start a reasoning judge agent; the harness picks which kind. Tell it to read spec.md and the findings of every node, check each done criterion against the delivered work and decide: accept when every criterion holds, revise when something falls short. It records the verdict with plastic intent verdict \<intent id> accept\|revise TEXT. A revise starts a second review round, and a second revise stops the intent for the owner, who can grant one more round with plastic intent grant. |
 
 The command is `Plastic::Commands::Intent::Judge`, in [`commands/intent/judge.rb`](../../../../lib/plastic/commands/intent/judge.rb).
