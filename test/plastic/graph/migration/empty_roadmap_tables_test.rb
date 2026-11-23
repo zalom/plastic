@@ -67,11 +67,12 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
     assert_equal [[], true], [work_tables(home) & TABLES, recorded(home).include?(EMPTY)]
   end
 
-  def test_a_run_that_drops_only_empty_tables_makes_no_legacy_db
+  def test_a_run_that_drops_only_empty_tables_keeps_nothing_in_legacy_db
     home = remade
     migrate_store(home)
+    assert_includes recorded(home), EMPTY
 
-    refute_path_exists alpha_file(home, "legacy.db")
+    assert_empty legacy_tables(home).select { |name| name.end_with?(EMPTY) }
   end
 
   def test_a_store_that_never_had_the_tables_only_records_the_version
