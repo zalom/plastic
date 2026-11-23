@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- A run's cost is filled after the run ended. The session end hook and `plastic intent end` read the Claude Code transcript again for runs that have no cost and store the cost it holds by then, because Claude Code writes the cost when the session stops, after the done command read the record. The cost was empty on every run. A Codex run keeps no cost, as its log holds none.
+
 ## 3.0.0-beta.17
 
 - A run counts the worker turn that falls inside the second the run ended. The run's end is stored in whole seconds and the turn that runs the done command can be stamped a fraction of a second later, so its tokens were left out of the run.

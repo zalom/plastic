@@ -10,6 +10,9 @@ module Plastic
     # It reads files the harness wrote and starts nothing. Whatever the record lacks is nil and named in the note; it never raises.
     # Claude Code and Codex are read. Docs: docs/usage/node-lifecycle.md.
     class RunRecord
+      # The read of a run's usage runs this many seconds past the end the run stores, which is cut to whole seconds.
+      END_SECOND = 1
+
       def initialize(home:)
         @readers = { "claude-code" => Records::Claude.new(home:), "codex" => Records::Codex.new(home:) }.freeze
       end
@@ -22,6 +25,13 @@ module Plastic
         reader.read(session:, from:, to:, claim:)
       rescue => error
         TokenUsage.none("the #{harness} record could not be read: #{error.message}")
+      end
+
+      # The usage of an ended `run`. The run stores its end in whole seconds, and the worker turn that ran the done command is
+      # written before the command reads the clock, so it can fall up to one second after the stored end. The read runs to the
+      # end of that second.
+      def read_run(run, claim)
+        read(harness: run.harness, session: run.session_id, from: Time.iso8601(run.started_at), to: Time.iso8601(run.ended_at) + END_SECOND, claim:)
       end
 
       def self.missing(harness) = harness.to_s.empty? ? "no harness record: the claim named no harness" : "no harness record: Plastic reads none for #{harness}"
