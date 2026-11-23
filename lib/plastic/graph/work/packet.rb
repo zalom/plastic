@@ -33,18 +33,12 @@ module Plastic
 
         def to_h
           { "node" => { "id" => @node.id, "title" => @node.title, "kind" => @node.kind, "state" => @node.state },
-            "criterion" => criterion, "inputs" => inputs, "needs" => needs, "schema" => schema, "output" => output_text,
+            "criterion" => criterion, "inputs" => @retrieval.structure.node_paths(@node), "needs" => needs, "schema" => schema, "output" => output_text,
             "rulings" => rules.rulings, "constraints" => rules.constraints, "omitted" => rules.omitted }
         end
 
         # The line of the text answer that gives the text of the criterion key.
         def criterion_line = "criterion text: #{criterion.fetch("text")}"
-
-        # The input paths of the node in the order given; none when it reads no file.
-        def inputs = @retrieval.structure.node_inputs(@node.intent_id).select { |row| row.node_id == @node.id }.map(&:path)
-
-        # The lines of the text answer that give the input paths, one line each.
-        def input_lines = inputs.map { |path| "input: #{path}" }
 
         # The lines of the text answer that give the output of each needed node.
         def need_lines = needs.map { |need| Packet.need_line(need) }

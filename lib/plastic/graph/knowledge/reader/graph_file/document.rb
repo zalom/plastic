@@ -7,6 +7,7 @@ require_relative "../../../rows/edge"
 require_relative "../../../rows/node"
 require_relative "../../../rows/node_input"
 require_relative "../../../rows/run"
+require_relative "legacy_inputs"
 require_relative "legacy_nodes"
 require_relative "../../../rows/verdict"
 
@@ -55,7 +56,7 @@ module Plastic
 
             def parsed(text)
               data = object(JSON.parse(text.dup.force_encoding(Encoding::UTF_8)))
-              data && LegacyNodes.new(data).call
+              data && LegacyNodes.new(LegacyInputs.new(data).call).call
             rescue JSON::ParserError => error
               refuse(error.message.lines.first.chomp)
             end

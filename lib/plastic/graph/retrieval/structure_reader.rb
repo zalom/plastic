@@ -19,6 +19,9 @@ module Plastic
 
         def nodes(intent_id = nil) = read(:nodes, intent_id)
         def node_inputs(intent_id = nil) = read(:node_inputs, intent_id)
+        # The input paths of a node, or of the node id in an intent, in the order given.
+        def node_paths(node) = paths_of(*node.to_h.values_at(:intent_id, :id))
+        def paths_of(intent_id, node_id) = node_inputs(intent_id).select { |row| row.node_id == node_id }.map(&:path)
         def runs(intent_id = nil) = read(:runs, intent_id)
         def edges(intent_id = nil) = read(:edges, intent_id)
         def approvals(intent_id = nil) = read(:approvals, intent_id)
