@@ -17,8 +17,11 @@ module Plastic
 
         def lacks_cost? = !ended_at.nil? && cost_usd.nil?
 
-        # What the harness record is asked for: the session of the claim and the run's window, `grace` seconds past the stored end.
-        def record_query(grace) = { harness:, session: session_id, from: Time.iso8601(started_at), to: Time.iso8601(ended_at) + grace }
+        # The window of the run, `grace` seconds past the stored end.
+        def window(grace) = Time.iso8601(started_at)..(Time.iso8601(ended_at) + grace)
+
+        # What the harness record is asked for: the session of the claim and the run's window.
+        def record_query(grace) = { harness:, session: session_id, from: window(grace).begin, to: window(grace).end }
 
         # The command the claim turn of the run holds, such as "485 n2".
         def claim_text = "#{intent_id} #{node_id}"

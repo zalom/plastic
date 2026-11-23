@@ -21,10 +21,19 @@ module Plastic
           path = Dir.glob(File.join(@home, ".claude", "projects", "*", "#{session}.jsonl")).min
           return TokenUsage.none("no Claude Code transcript for session #{session}") unless path
 
-          worker, window = self.class.subagent(path, session, from..to, claim) || [path, from..to]
+          found = self.class.subagent(path, session, from..to, claim)
+          worker, window = found || [path, from..to]
           name = File.basename(worker, ".jsonl")
           entries = Jsonl.read(worker)
-          entries ? Transcript.new(entries, window).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
+          entries ? Transcript.new(entries, window, subagent: !found.nil?).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
+        end
+
+        # The cost of each window of the main file of `session`, in order, nil where the transcript cannot tell it. The file is read
+        # once for all the windows. No subagent file is read: Claude Code writes its `cost-state` lines to the main file only.
+        def costs(session:, windows:)
+          path = Dir.glob(File.join(@home, ".claude", "projects", "*", "#{session}.jsonl")).min
+          entries = path && Jsonl.read(path)
+          windows.map { |window| entries && Transcript.new(entries, window).run_cost }
         end
 
         # [file, window] of the subagent that ran the claim, or nil. The turn that runs the claim is written before the command

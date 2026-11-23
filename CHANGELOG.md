@@ -5,7 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
-- A run's cost is filled after the run ended. The session end hook and `plastic intent end` read the Claude Code transcript again for runs that have no cost and store the cost it holds by then, because Claude Code writes the cost when the session stops, after the done command read the record. The cost was empty on every run. A Codex run keeps no cost, as its log holds none.
+- A run's cost is filled after the run ended. The session end hook and `plastic intent end` read the main Claude Code transcript again, once per session, for runs that have no cost and store the cost it holds by then, because Claude Code writes the cost when the session stops, after the done command read the record. Only runs of a main session get a cost: the session's own runs and headless workers started with `claude -p`. A run a subagent worked keeps none, because Claude Code writes no cost for a subagent, and a run after other work with no cost total before it keeps none, because its share cannot be told. A Codex run keeps none, as its log holds none.
 
 ## 3.0.0-beta.17
 
