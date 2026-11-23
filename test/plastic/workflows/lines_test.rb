@@ -29,6 +29,10 @@ class LinesTest < Minitest::Test
     assert_equal "node: n1 open Build, deadline 30 minutes", lines.node(Node.new(id: "n1", state: "open", title: "Build", deadline: 30))
   end
 
+  def test_a_node_line_names_the_node_it_was_found_in_before_its_deadline
+    assert_equal "node: n2 open Extra, found in n1, deadline 30 minutes", lines.node(Node.new(id: "n2", state: "open", title: "Extra", deadline: 30), "n1")
+  end
+
   def test_a_ready_node_line_leaves_out_the_state
     assert_equal "ready: n1 Build", lines.ready_node(Node.new(id: "n1", state: "open", title: "Build"))
   end
