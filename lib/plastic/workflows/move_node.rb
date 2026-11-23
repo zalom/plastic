@@ -113,10 +113,10 @@ module Plastic
       def self.record_usage(context)
         intent_id, id = context.intent_id, context.id
         ended = [finisher_run(context, context.retrieval.node(intent_id, id))].compact.select(&:ended_at)
-        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}")) }
+        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run)) }
       end
 
-      def self.read_usage(context, run, claim) = Harnesses::RunRecord.new(home: context.user_home.to_s).read_run(run, claim)
+      def self.read_usage(context, run) = Harnesses::RunRecord.new(home: context.user_home.to_s).read_run(run)
 
       def self.settle(context, moved, state)
         context[:problem] = moved ? nil : refusal(context, state)

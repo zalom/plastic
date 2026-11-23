@@ -17,17 +17,13 @@ module Plastic
       end
 
       # Reads again each ended Claude Code run of `runs` with no cost and stores the cost found. Returns the runs that took one.
-      def call(runs)
-        runs.select { |run| lacks_cost?(run) }.select { |run| fill(run) }
-      end
+      def call(runs) = runs.select { |run| run.lacks_cost? && run.harness == HARNESS }.select { |run| fill(run) }
 
       private
 
-      def lacks_cost?(run) = run.harness == HARNESS && run.ended_at && run.cost_usd.nil?
-
       def fill(run)
-        cost = @record.read_run(run, "#{run.intent_id} #{run.node_id}").cost_usd
-        cost && @work.record_cost(intent_id: run.intent_id, id: run.node_id, number: run.number, cost:)
+        cost = @record.read_run(run).cost_usd
+        cost && @work.record_cost(**run.cost_key, cost:)
       end
     end
   end

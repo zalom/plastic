@@ -46,11 +46,10 @@ class RunCostFillSessionEndTest < Plastic::TestCase
 
   def test_a_run_with_no_cost_takes_it_when_the_session_ends_and_the_transcript_holds_it
     add_cost(run_without_cost, 1.25)
-    assert_nil run_row[2]
+    result = end_session
 
-    assert_equal [0, ""], end_session.then { |result| [result.code, result.err] }
+    assert_equal [0, "", ""], [result.code, result.err, run_row[3]]
     assert_in_delta 1.25, run_row[2]
-    assert_equal "", run_row[3]
   end
 
   def test_a_session_end_with_no_cost_in_the_transcript_leaves_the_run_as_it_was

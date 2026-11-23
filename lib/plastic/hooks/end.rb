@@ -16,10 +16,9 @@ module Plastic
       def respond(event)
         return no_session unless session_id
 
-        graphs = Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock)
         work = graphs.work
         work.end_session(session_id, reason: event[:reason])
-        fill_costs(graphs)
+        fill_costs
         work.release_claims(session_id)
         nil
       end
@@ -27,11 +26,11 @@ module Plastic
       private
 
       # The cost of a run is written by Claude Code when the session stops, after the done command read the record.
-      def fill_costs(graphs)
+      def graphs = (@graphs ||= Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock))
+
+      def fill_costs
         runs = graphs.retrieval.structure.runs.select { |run| run.session_id == session_id }
         Harnesses::CostFill.new(home: environment.home.to_s, work: graphs.work).call(runs)
-      rescue => error
-        environment.err.puts "plastic hook: the cost was not filled: #{Failed.describe(error)}"
       end
 
       def back_up_the_day = CLI::DayBackup.new(environment).back_up(:end_session)
