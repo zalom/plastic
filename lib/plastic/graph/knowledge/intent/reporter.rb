@@ -41,24 +41,24 @@ module Plastic
           def problem(report, selection) = report.problem(selection, @folder)
 
           # Compares the file with the latest `reported` line of any origin, as the sync counts them (Reports::RECORDED).
-          def state(report)
-            digest = Digest::SHA256.hexdigest(body(report))
-            State.of(store.row(LATEST, intent_id: report.id, path: report.path), digest)
-          end
+          def state(report) = State.of(store.row(LATEST, **report.key), report.digest(@folder))
 
           # The bytes of the report, for the sha256 of its log line.
-          def body(report) = report.body(@folder)
+          def body(intent, path) = ReportFile.new(intent, path).body(@folder)
 
           # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
-          def write(report, text)
+          def write(intent, path, text) = record(ReportFile.new(intent, path), text)
+
+          private
+
+          # The report row, the outcome line, and the reference of the row.
+          def record(report, text)
             id = report.id
             path = report.path
-            writer.write(id, path, body(report))
+            writer.write(id, path, report.body(@folder))
             outcome(id, report, text)
             @retrieval.reference(id, path).fetch(:uri)
           end
-
-          private
 
           # Puts the line of the report under Reports: a report recorded again keeps its one line, and the line of the path
           # with the other form of the setting is replaced, not left beside the new one.

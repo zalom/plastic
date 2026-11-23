@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require "digest"
 require_relative "../reports"
 require_relative "../sync_selection"
+require_relative "../../evidence/text"
 require_relative "outcome_section"
 
 module Plastic
@@ -36,6 +38,12 @@ module Plastic
             Reports.path_problem(path) || type_problem(selection) || file_problem(folder) ||
               ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(folder))
           end
+
+          # The columns that find the record of this report in the work log.
+          def key = { intent_id: id, path: }
+
+          # The sha256 of the bytes of the file.
+          def digest(folder) = Digest::SHA256.hexdigest(body(folder))
 
           # The bytes of the file.
           def body(folder) = folder.read(file).force_encoding(Encoding::UTF_8)

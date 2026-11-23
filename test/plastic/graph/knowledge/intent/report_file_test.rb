@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require "tmpdir"
+require_relative "../../../../../lib/plastic/graph/knowledge/intent"
 require_relative "../../../../../lib/plastic/graph/knowledge/intent/report_file"
+require_relative "../../../../../lib/plastic/graph/knowledge/store_folder"
+require_relative "../../../../../lib/plastic/graph/knowledge/sync_selection"
 
 class ReportFileTest < Minitest::Test
   Intent = Struct.new(:intent_id, :dir)
@@ -26,5 +30,34 @@ class ReportFileTest < Minitest::Test
     body = "# Outcome\n\n## Reports\n\n- #{report.path}, asked: \"x\"\n"
 
     assert_equal "#{body}- #{report.path}\n", report.outcome(body, "", "## Reports")
+  end
+
+  def problem(path, files = {}, type_read: true)
+    Dir.mktmpdir do |root|
+      files.each { |name, bytes| FileUtils.mkdir_p(File.dirname(File.join(root, name))).then { File.binwrite(File.join(root, name), bytes) } }
+      selection = Struct.new(:read) { def reads_type?(_path) = read }.new(type_read)
+      file = Plastic::Graph::Knowledge::Intent::ReportFile.new(Intent.new("1", "i"), path)
+      file.problem(selection, Plastic::Graph::Knowledge::StoreFolder.new(root))
+    end
+  end
+
+  def test_a_path_outside_the_reports_folder_is_a_problem
+    refute_nil problem("outcome.md", { "i/outcome.md" => "x" })
+  end
+
+  def test_a_type_the_sync_does_not_read_is_a_problem
+    assert_includes problem("resources/output/reports/a.html", { "i/resources/output/reports/a.html" => "x" }, type_read: false), "cannot be a report"
+  end
+
+  def test_a_missing_file_is_a_problem
+    assert_equal "no file i/resources/output/reports/a.html", problem("resources/output/reports/a.html")
+  end
+
+  def test_a_binary_file_is_a_problem
+    assert_includes problem("resources/output/reports/a.html", { "i/resources/output/reports/a.html" => "\x00\x01\x02binary" }), "is not text"
+  end
+
+  def test_a_text_file_in_the_reports_folder_has_no_problem
+    assert_nil problem("resources/output/reports/a.html", { "i/resources/output/reports/a.html" => "<p>x</p>\n" })
   end
 end

@@ -42,7 +42,7 @@ module Plastic
 
           step "record the report", done: ->(context) { context.state.kind == :unchanged || !context.reference.nil? },
             changes: { knowledge: "The report is recorded, read into the rows and listed under Reports in the outcome" } do |context|
-            context[:reference] = context.work.report_intent(Report.of(context), Report.text(context))
+            context[:reference] = context.work.report_intent(context.intent, context.path, Report.text(context))
           end
 
           read "say what was recorded" do |context|
