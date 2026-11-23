@@ -15,6 +15,8 @@ module Plastic
             class Node
               OLD_FIELDS = %w[retries judge verdict].freeze
 
+              def self.old?(hash) = (%w[by] + OLD_FIELDS).any? { |field| hash.key?(field) }
+
               def initialize(node)
                 @node = node
               end
@@ -53,7 +55,7 @@ module Plastic
             end
 
             def call
-              nodes = Array(@data["nodes"]).grep(Hash).select { |node| (%w[by] + Node::OLD_FIELDS).any? { |field| node.key?(field) } }
+              nodes = Array(@data["nodes"]).grep(Hash).select { |node| Node.old?(node) }
               return @data if nodes.empty?
 
               runs = nodes.filter_map { |node| Node.new(node).run_row }
