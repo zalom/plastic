@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - `plastic sync up --dry-run` and `plastic sync down --dry-run` no longer fail with "attempt to write a readonly database" on a store that holds a half-written backup. The preview twin leaves `backups/` out, as the real sync already does, and the comparison names no backup file.
+- `plastic edge add` now says a missing node is missing ("edge n1 to n9 is missing a node: ...", exit 1) and says refused only with exit 3. The edge writer returns `:missing` or `:refused` from the reason itself, not by reading the message, and its comment names its three results.
 
 ## 3.0.0-beta.11
 
