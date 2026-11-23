@@ -11,7 +11,7 @@ that is a ruling.
 The sections of `spec.md` are `## Goal`, `## Done criteria`, `## Open decisions` and
 `## Constraints`. Each done criterion is a bullet that starts with its key, such as
 `- [c1] text`. Under `## Constraints`, a bullet says what the work must keep true. The
-briefs and the claim packets print those bullets, the first 20 of them.
+claim packet of a node carries those bullets, the first 20 of them.
 
 Record each owner decision with `plastic intent rule ID "TEXT"`. When a new
 ruling replaces an older one, name it with `--supersedes RULING_ID`, and the
