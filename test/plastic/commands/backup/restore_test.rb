@@ -60,6 +60,13 @@ class BackupRestoreTest < Plastic::TestCase
     assert_nothing_changed home, restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "references"), "references"
   end
 
+  JUNK = "20261399000000"
+
+  def junk_done(home, **extra)
+    FileUtils.mkdir_p(File.join(backups_dir(home), JUNK))
+    Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(JUNK, status: "done", goal: "full", **extra)
+  end
+
   def mark_second(home, status)
     Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(SECOND, status:, goal: "full")
   end
@@ -124,6 +131,21 @@ class BackupRestoreTest < Plastic::TestCase
     result = restore_call(home, "--store", "alpha", "--timestamp", FIRST)
 
     assert_call result, code: 0, out: ["restore: backed up the current databases as", "because: the rows are restored and the files are not; ask the person"]
+  end
+
+  def test_latest_skips_a_done_folder_whose_name_is_not_a_real_time
+    home = seeded_home
+    junk_done(home)
+
+    assert_equal 0, restore_call(home, "--store", "alpha", "--latest").code
+    assert_equal 2, intent_count(home)
+  end
+
+  def test_latest_with_only_a_done_folder_whose_name_is_not_a_real_time_refuses_as_with_none
+    home = fresh_home
+    junk_done(home)
+
+    assert_refused_with_usage restore_call(home, "--store", "alpha", "--latest"), "no done backup of alpha to restore"
   end
 
   def test_restoring_the_latest_with_no_done_backup_refuses_with_usage
