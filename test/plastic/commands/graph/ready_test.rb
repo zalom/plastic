@@ -118,3 +118,102 @@ class GraphReadyTest < Plastic::TestCase
     refute_includes result.out, "ready:"
   end
 end
+
+# Done criteria of intent 513: a failed or parked node and what waits on it are named as the region to re-plan.
+class GraphReadyRegionTest < Plastic::TestCase
+  ENV_S = { "PLASTIC_SESSION" => "s-1" }.freeze
+
+  def call(*args) = plastic("graph", "ready", *args, table: Plastic::CLI::TABLE)
+
+  def step(*args) = plastic(*args, table: Plastic::CLI::TABLE, env: ENV_S)
+
+  def chain
+    open_keyed_intent
+    %w[a b c d].each { |title| step("node", "add", "1", title, "--criterion", "done") }
+    step("edge", "add", "1", "n1", "n2")
+    step("edge", "add", "1", "n2", "n3")
+  end
+
+  def fail_first
+    chain
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "fail", "1", "n1", "broke")
+  end
+
+  def test_a_failed_node_names_the_nodes_that_wait_on_it_transitively
+    fail_first
+
+    assert_includes call("1").out, "repair: n1 a is failed; waiting on it: n2 b, n3 c"
+  end
+
+  def test_a_node_that_does_not_depend_on_it_is_not_in_the_region
+    fail_first
+
+    refute_match(/waiting on it:.*n4/, call("1").out)
+  end
+
+  def test_a_failed_node_with_nothing_waiting_names_none
+    open_keyed_intent
+    step("node", "add", "1", "a", "--criterion", "done")
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "fail", "1", "n1", "broke")
+
+    assert_includes call("1").out, "repair: n1 a is failed; nothing waits on it"
+  end
+
+  def test_a_parked_node_is_a_region_root
+    chain
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "impede", "1", "n1", "blocked")
+
+    assert_includes call("1").out, "repair: n1 a is impeded; waiting on it: n2 b, n3 c"
+  end
+
+  def test_a_node_that_is_done_is_left_out_of_the_region
+    chain
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "done", "1", "n1", "ok")
+    step("node", "claim", "1", "n2", "--agent", "tester")
+    step("node", "fail", "1", "n2", "broke")
+
+    assert_includes call("1").out, "repair: n2 b is failed; waiting on it: n3 c"
+  end
+
+  def test_with_nothing_ready_the_next_line_points_at_the_re_planning_commands
+    open_keyed_intent
+    step("node", "add", "1", "a", "--criterion", "done")
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "fail", "1", "n1", "broke")
+
+    result = call("1")
+
+    assert_match(/^next: plastic node add 1 TITLE --criterion KEY$/, result.out)
+    assert_includes result.out, "because: node n1 is failed; re-plan it and what waits on it"
+  end
+
+  def test_a_ready_node_still_offers_its_claim_beside_the_region
+    fail_first
+
+    assert_match(/^next: plastic node claim 1 n4 --agent NAME/, call("1").out)
+  end
+
+  def test_the_json_answer_carries_each_region
+    fail_first
+
+    repairs = JSON.parse(call("1", "--json").out).dig("result", "repairs")
+
+    assert_equal [{ "id" => "n1", "title" => "a", "state" => "failed", "downstream" => [{ "id" => "n2", "title" => "b", "state" => "open" }, { "id" => "n3", "title" => "c", "state" => "open" }] }], repairs
+  end
+
+  def test_the_json_answer_carries_no_region_when_nothing_failed
+    chain
+
+    assert_equal [], JSON.parse(call("1", "--json").out).dig("result", "repairs")
+  end
+
+  def test_a_graph_with_nothing_failed_prints_no_repair_line
+    chain
+
+    refute_includes call("1").out, "repair:"
+  end
+end
