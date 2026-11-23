@@ -404,7 +404,7 @@ newest migration the store records from those rows. A migration that changes sto
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
 migration that writes every stored time in UTC and the migration that drops the node columns
 `judge` and `verdict` have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
-23 November 2026, following the owner's ruling for intent 498. `docs/contributing/MIGRATIONS.md`
+23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,
