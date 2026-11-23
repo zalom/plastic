@@ -14,8 +14,12 @@ module Plastic
             [file, time..run.end] if file
           end
 
+          # The run's start is stored in whole seconds, and the claim turn is written just before the claim command runs, so it is less
+          # than one second after that cut start. A claim counts as at or before the start while it falls before the next whole second.
+          SECOND = 1
+
           # The latest claim at or before the start of the run, else the earliest inside it.
-          def self.pick(found, run) = found.select { |time, _| time <= run.begin }.max_by(&:first) || found.min_by(&:first)
+          def self.pick(found, run) = found.select { |time, _| time < run.begin + SECOND }.max_by(&:first) || found.min_by(&:first)
 
           def initialize(entries, run, pattern)
             @entries = entries
