@@ -87,11 +87,10 @@ module Plastic
         end
 
         # Records a report of the intent; `text` is Reporter::MANDATORY for a report the setting names, else empty.
-        def report_intent(intent, path, text)
-          intent_id = intent.intent_id
+        def report_intent(report, text)
           @log.recorded do
-            reporter.write(intent, path, text).tap do
-              @log.line(intent_id, "reported", text, path:, body: reporter.body(intent, path))
+            reporter.write(report, text).tap do
+              @log.line(report.id, "reported", text, path: report.path, body: reporter.body(report))
             end
           end
         end

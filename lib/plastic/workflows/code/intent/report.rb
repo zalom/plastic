@@ -29,7 +29,7 @@ module Plastic
             pass: ->(context) { !CLOSED.include?(context.status) }
 
           read "check the report" do |context|
-            context[:problem] = context.work.report_problem(context.intent, context.path, context.settings.selection)
+            context[:problem] = context.work.report_problem(Report.of(context), context.settings.selection)
           end
 
           gate "%{problem}", stops: :failure,
@@ -37,12 +37,12 @@ module Plastic
             pass: ->(context) { context.problem.nil? }
 
           read "find an earlier record" do |context|
-            context[:state] = context.work.report_state(context.intent, context.path)
+            context[:state] = context.work.report_state(Report.of(context))
           end
 
           step "record the report", done: ->(context) { context.state.kind == :unchanged || !context.reference.nil? },
             changes: { knowledge: "The report is recorded, read into the rows and listed under Reports in the outcome" } do |context|
-            context[:reference] = context.work.report_intent(context.intent, context.path, Report.text(context))
+            context[:reference] = context.work.report_intent(Report.of(context), Report.text(context))
           end
 
           read "say what was recorded" do |context|
@@ -50,6 +50,9 @@ module Plastic
           end
 
           outcome :done, offers: "plastic next", because: "the outcome lists the report and the sync reads it"
+
+          # The file of the report the command names.
+          def self.of(context) = Plastic::Graph::Knowledge::Intent::ReportFile.new(context.intent, context.path)
 
           # What the command says: a first record, a record again of a changed file, or that nothing was written.
           def self.words(state, path)

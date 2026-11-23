@@ -34,6 +34,9 @@ module Plastic
 
         def read(rel) = File.binread(path(rel))
 
+        # The path of the file with every link resolved.
+        def real(rel) = File.realpath(path(rel))
+
         # The SHA-256 of the file, or nil when it is gone.
         def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
 
