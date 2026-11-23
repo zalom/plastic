@@ -71,6 +71,16 @@ class NodeClaimPacketTest < Plastic::TestCase
     assert_equal ["node: n2 Test", "criterion: works", "criterion text: It works", "input: run the suite", "needs: n1 {\"files\":[\"a.rb\"],\"count\":1}"], lines.first(5)
   end
 
+  def test_the_text_claim_says_the_output_is_a_json_file
+    assert_includes cli("node", "claim", "1", "n1", "--agent", "tester").out, "output: a JSON file, given with plastic node done 1 n1 TEXT --output PATH\n"
+  end
+
+  def test_the_json_packet_says_the_output_is_a_json_file
+    result = JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out)
+
+    assert_equal "a JSON file, given with plastic node done 1 n1 TEXT --output PATH", result.dig("result", "packet", "output")
+  end
+
   def test_the_text_claim_says_a_needed_node_has_no_output
     finish_first
 
