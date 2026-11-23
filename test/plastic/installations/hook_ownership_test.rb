@@ -24,6 +24,10 @@ class HookOwnershipTest < Minitest::Test
     assert ownership.own?("ruby '/home/me/.claude/hooks/plastic-session-start.rb'")
   end
 
+  def test_an_old_qmd_hook_launcher_is_owned_so_an_update_can_remove_it
+    assert ownership.own?("ruby '/home/me/.claude/hooks/plastic-qmd-search.rb'")
+  end
+
   def test_the_codex_dispatcher_of_an_earlier_install_is_owned
     assert ownership.own?("/home/me/.codex/hooks/codex-hook")
   end

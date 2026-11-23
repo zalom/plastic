@@ -61,6 +61,7 @@ module Plastic
       # Never merge these into claude_launcher_names: that method is what doctor's
       # hooks_exist demands be present on disk, so a retired name there makes a correct
       # install report missing launchers.
+      # The qmd-search name stays only so an old QMD hook can be removed.
       RETIRED_HOOK_NAMES = %w[
         edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget
         qmd-search retrieval-gate model-instructions opus-manual
