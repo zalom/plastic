@@ -47,8 +47,8 @@ link. With no ready intent, both name the first active intent instead.
 
 | Command | Result |
 | ------- | ------ |
-| `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`, and an archived one fails and offers `plastic intent unarchive ID`. |
-| `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
+| `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`, and an archived one fails and offers `plastic intent unarchive ID`. The calling session becomes the driver of the intent. Another session's live driver claim, renewed within 15 minutes and not ended with its session, refuses the call with exit 3 and names that session; `--take-over REASON` takes the claim on the owner's word and writes the old and the new driver to the work log. |
+| `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. It takes the driver claim and `--take-over REASON` as `plastic intent start` does. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
 | `plastic intent grant ID REASON --owner` | Grants one extra review round, on the owner's word, to an intent whose review rounds are used and not accepted. It writes one `granted` work log line with the reason; each line adds one round, and a call while a round is left is refused. Without `--owner` it exits 2 and writes nothing. |
 

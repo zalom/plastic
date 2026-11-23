@@ -40,7 +40,7 @@ so they are never versioned. The files printed from them are.
 
 | Database | Tables |
 | -------- | ------ |
-| `work_graph.db` | `nodes`, `edges`, `work_log`, `runs` |
+| `work_graph.db` | `nodes`, `edges`, `work_log`, `runs`, `drivers` |
 | `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows and outside the backups; the commands the table below names keep it current, and `plastic doctor` rebuilds it |
 | `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`, and the old text of each value a migration rewrote, in `changed_values_VERSION`; made by the first migration that keeps rows or values, and read only by `plastic migration down` and `plastic migration purge` |
@@ -188,7 +188,7 @@ text that Plastic prints in the planning hand-off.
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
-They take no lock.
+They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver.
 `plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and
@@ -285,8 +285,8 @@ order, and later hooks read it from the session row.
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
-| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node claims, and runs the stop gate with the settings of the harness the session row names. |
-| Session end | `plastic hook end` | Sets the end time and the reason. |
+| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node and driver claims, and runs the stop gate with the settings of the harness the session row names. |
+| Session end | `plastic hook end` | Sets the end time and the reason, and releases the node claims and the driver claims of the session. |
 | Every other event | Nothing | No hook runs. |
 | Message display (Claude Code) | The screens launcher | Paints the screens when the setting `screens` (set with `plastic config set KEY VALUE`) turns them on. |
 | Status line (Claude Code) | The statusline launcher | Prints the status line when the setting `statusline` (set with `plastic config set KEY VALUE`) turns it on. |

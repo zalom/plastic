@@ -13,6 +13,7 @@ require_relative "knowledge/ruling/writer"
 require_relative "knowledge/link/writer"
 require_relative "knowledge/sync"
 require_relative "knowledge/archive/writer"
+require_relative "writers_scope"
 
 module Plastic
   module Graph
@@ -20,10 +21,7 @@ module Plastic
     class Writers
       extend Forwardable
 
-      # The databases, folder, retrieval and session every writer is built on.
-      Scope = Data.define(:databases, :retrieval, :folder, :session, :clock)
-
-      def_delegators :@scope, :databases, :retrieval, :folder, :session, :clock
+      def_delegators :@scope, :databases, :retrieval, :folder, :session, :clock, :drivers, :release
 
       def initialize(databases, retrieval, folder, session, clock = Time)
         @scope = Scope.new(databases:, retrieval:, folder:, session:, clock:)

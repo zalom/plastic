@@ -18,7 +18,7 @@ module Plastic
           clear_declarations
           summary "Starts the intent: it goes in progress and names its worktree."
 
-          sets :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing, :start_command
+          sets :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing, :start_command, :driver_problem, :driver_status
 
           read "read the intent and its spec" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -57,10 +57,28 @@ module Plastic
             because: "an archived intent cannot start; unarchive it first",
             pass: ->(context) { !context.retrieval.archives.archived?(context.intent_id) }
 
+          read "check the driver" do |context|
+            context[:driver_status] = nil
+            context[:driver_problem] = context.work.driver_problem(context.intent_id, context.session)
+          end
+
+          # The refusal of a second live driver. The owner's word, `--take-over REASON`, takes the claim.
+          gate "%{driver_problem}; on the owner's word, plastic %{start_words} %{intent_id} --take-over REASON takes it over",
+            stops: :refusal, words: "another session is the live driver of the intent and no take-over was named",
+            pass: ->(context) { context.driver_problem.nil? || !context.take_over.to_s.strip.empty? }
+
           def self.delivery_started?(context) = context.retrieval.intent(context.intent_id).status == "in_progress"
 
           step "go in progress", done: method(:delivery_started?), changes: { work: "The intent goes in progress" } do |context|
             context.work.activate_intent(context.intent_id)
+          end
+
+          step "take the driver claim", done: ->(context) { !context.driver_status.nil? },
+            changes: { claims: "This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver" } do |context|
+            status, holder = context.work.drive_intent(intent_id: context.intent_id, by: context.session, take_over: context.take_over.to_s.strip)
+            raise Refused, "intent #{context.intent_id} is driven by session #{holder}" if status == :held
+
+            context[:driver_status] = status
           end
 
           read "name the code worktree" do |context|

@@ -20,6 +20,9 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 
+  # The driver migration is the newest and removes its version alone, so one more down comes first.
+  def drivers_down(home) = down(home)
+
   def test_a_new_store_has_no_judge_or_verdict_column_on_a_node
     home = fresh_home
     Plastic::Graph::Database::ConnectionPool.release(home)
@@ -60,6 +63,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def test_a_down_puts_the_empty_columns_back_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    drivers_down(home)
     down(home)
     undone = down(home)
 
@@ -68,6 +72,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def test_a_down_keeps_each_node_row
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    drivers_down(home)
     down(home)
     down(home)
 
@@ -77,6 +82,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
   def test_a_down_and_an_update_give_back_the_migrated_store
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
     before = alpha_rows(home, "work_graph.db", "SELECT * FROM nodes")
+    drivers_down(home)
     down(home)
     migrate_store(home)
 

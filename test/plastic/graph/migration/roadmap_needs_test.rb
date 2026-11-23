@@ -132,11 +132,15 @@ end
 class RoadmapNeedsDownTest < Plastic::TestCase
   include RoadmapStoreHelpers
 
+  # The driver migration is the newest and removes its version alone, so its down comes first and the next down undoes the roadmap migration.
+  def undo_drivers(home) = Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
+
   def down_result(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
 
   def test_a_down_puts_the_roadmap_rows_back_and_removes_the_needs_links
     home = roadmap_home
     migrate_store(home)
+    undo_drivers(home)
     Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
 
     assert_equal [[], 4, 3], [needs(home), count(home, "work_graph.db", "roadmap_items"), count(home, "work_graph.db", "roadmap_edges")]
@@ -145,6 +149,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
   def test_a_down_removes_only_the_needs_links_the_migration_wrote
     home = roadmap_home
     migrate_store(home)
+    undo_drivers(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("INSERT INTO links (from_ref, to_ref, kind, at, origin_id) VALUES ('3', '1', 'needs', '2026-11-23T00:00:00Z', 'o')") }
     Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
 
@@ -154,6 +159,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
   def test_a_down_says_how_many_needs_links_it_removed
     home = roadmap_home
     migrate_store(home)
+    undo_drivers(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
 
     assert_equal [2, {}], [undone.removed, undone.built]
@@ -169,6 +175,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
     home = roadmap_home
     SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute("DELETE FROM roadmap_edges WHERE \"from\" = 'b'") }
     migrate_store(home)
+    undo_drivers(home)
 
     assert_includes down_result(home).out, "down: removed 1 needs link that the migration wrote"
   end
@@ -176,6 +183,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
   def test_the_down_workflow_prints_removed_and_not_built_links
     home = roadmap_home
     migrate_store(home)
+    undo_drivers(home)
     result = down_result(home)
 
     assert_includes result.out, "down: removed 2 needs links that the migration wrote"
