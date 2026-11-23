@@ -18,9 +18,9 @@ class ReporterTest < Minitest::Test
     def write(*args) = @written << args
   end
 
-  def restate(body, text, reporter: Plastic::Graph::Knowledge::Intent::Reporter)
+  def restate(body, text, reporter: Plastic::Graph::Knowledge::Intent::Reporter, retrieval: Retrieval.new(body))
     report = Plastic::Graph::Knowledge::Intent::ReportFile.new(Intent.new("1", "store/1--x"), "resources/output/reports/a.html")
-    reporter.new({}, Retrieval.new(body), nil).restate(report, text)
+    reporter.new({}, retrieval, nil).restate(report, text)
   end
 
   def test_an_outcome_that_does_not_list_the_report_is_not_written
@@ -37,5 +37,9 @@ class ReporterTest < Minitest::Test
 
     assert_equal [true, [["1", "outcome.md", "# Outcome\n\n## Reports\n\n- resources/output/reports/a.html (mandatory)\n"]]],
       [reporter.restate(report, "mandatory"), reporter.written]
+  end
+
+  def test_an_intent_with_no_outcome_file_is_not_written
+    refute restate(nil, "mandatory", retrieval: Struct.new(:none) { def fetch(*) = nil }.new)
   end
 end
