@@ -18,6 +18,7 @@ module PreviousStore
   NODES = "20261123100000"
   NEEDS = "20261123120000"
   DRIVERS = "20261123130000"
+  DEADLINE = "20261123154000"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
   NODE_COLUMNS = %w[judge verdict].freeze
   ROADMAP = "originals/roadmaps/plan.md"
