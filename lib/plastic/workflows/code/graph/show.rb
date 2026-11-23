@@ -29,8 +29,13 @@ module Plastic
           end
 
           read "print each run" do |context|
-            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
+            runs = context.retrieval.structure.runs(context.intent_id)
+            runs.each { |run| context.print(Lines.run_line(run)) }
+            context.data("runs", runs.map { |run| run_data(run) })
           end
+
+          # A run as data for a JSON answer: its node, number, start, end and length in whole seconds, nil while it runs.
+          def self.run_data(run) = { "node" => run.node_id, "number" => run.number, "started_at" => run.started_at, "ended_at" => run.ended_at, "length_seconds" => Lines.seconds(run) }
 
           # The node each found node was found in, by the found node.
           def self.found_in(edges) = edges.reject(&:needs?).to_h { |edge| [edge.from, edge.to] }

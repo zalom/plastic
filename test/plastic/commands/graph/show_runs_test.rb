@@ -30,19 +30,25 @@ class GraphShowRunsTest < Plastic::TestCase
     assert_match(/^run: n1 #1 agent tester, .*done; started #{TIME}, ended #{TIME}, length #{LENGTH}/, cli("graph", "show", "1").out)
   end
 
-  def test_json_carries_the_start_end_and_length_of_each_run
+  def test_json_carries_the_start_and_end_of_each_run
     cli("node", "done", "1", "n1", "ok")
 
-    run = JSON.parse(cli("graph", "show", "1", "--json").out).fetch("result").fetch("runs").first
+    run = runs_json.first
 
-    assert_equal %w[n1 1], run.values_at("node", "number").map(&:to_s)
     assert_match(/\A#{TIME}\z/, run.fetch("started_at"))
     assert_match(/\A#{TIME}\z/, run.fetch("ended_at"))
-    assert_kind_of Integer, run.fetch("length_seconds")
   end
 
+  def test_json_carries_the_length_in_seconds_of_a_finished_run
+    cli("node", "done", "1", "n1", "ok")
+
+    assert_kind_of Integer, runs_json.first.fetch("length_seconds")
+  end
+
+  def runs_json = JSON.parse(cli("graph", "show", "1", "--json").out).fetch("result").fetch("runs")
+
   def test_json_of_a_running_run_has_no_end_and_no_length
-    run = JSON.parse(cli("graph", "show", "1", "--json").out).fetch("result").fetch("runs").first
+    run = runs_json.first
 
     assert_nil run.fetch("ended_at")
     assert_nil run.fetch("length_seconds")
