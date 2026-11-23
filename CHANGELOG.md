@@ -5,7 +5,6 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
-- `Graph::WorkGraph` is now `Graph::GraphWriter`, the write side of all three graphs (the store databases, the printed store files and the machine's own database). No behavior changes. The architecture page and its figures name it, and no longer say `Graph::RetrievalGraph` writes nothing: `repair` and `reindex` write its derived tables.
 
 - `plastic intent judge ID` and `plastic intent verdict ID accept TEXT` refuse with exit 3 while a done criterion of the spec has no done node serving it. They name each such criterion and the repair, `plastic node add ID TITLE --criterion KEY`, then claim and finish the node. An accept can no longer leave an intent that `plastic intent end` refuses for the same reason; both commands read one method, `WorkCheck#uncovered_keys`. A revise is still recorded.
 - For code work only, the planning handoff tells the agent to map the code with an architecture mapping tool such as Enola, and to read the project's `AGENTS.md`, before it plans the graph, so the graph is planned from the real architecture. An intent whose project names no repository gets no such sentence. `plastic intent end` no longer asks for an `Architecture map:` line in outcome.md and no longer refuses without one; an old line is ignored. `plastic architecture status` and `plastic architecture refresh` say the same and ask for no record. Plastic still runs no such tool.
@@ -148,8 +147,6 @@ This version was not published separately. Its changes shipped with 2.0.1.
 - Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
 
 ## Unreleased
-
-- `Graph::WorkGraph` is now `Graph::GraphWriter`, the write side of all three graphs (the store databases, the printed store files and the machine's own database). No behavior changes. The architecture page and its figures name it, and no longer say `Graph::RetrievalGraph` writes nothing: `repair` and `reindex` write its derived tables.
 
 - Intent 391: Plastic calls only tools native to macOS and Linux. Install checks only git and
   sqlite3; `doctor` checks only the harness it runs from; `plastic update` reads the GitHub
