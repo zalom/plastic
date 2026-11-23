@@ -42,4 +42,10 @@ class ReporterTest < Minitest::Test
   def test_an_intent_with_no_outcome_file_is_not_written
     refute restate(nil, "mandatory", retrieval: Struct.new(:none) { def fetch(*) = nil }.new)
   end
+
+  def test_the_reporter_takes_a_report_file_and_has_no_intent_and_path_wrappers
+    reporter = Plastic::Graph::Knowledge::Intent::Reporter
+
+    assert_equal [true, false, false], [reporter.public_method_defined?(:record), reporter.public_method_defined?(:write), reporter.public_method_defined?(:body)]
+  end
 end

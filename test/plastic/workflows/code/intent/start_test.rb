@@ -8,7 +8,11 @@ class WorkflowStartIntentTest < Plastic::TestCase
 
   def start(session: "s-1", intent_id: "1")
     run_workflow(Plastic::Workflows::Code::Intent::Start, harness: scoped_harness(session:), graphs: session_graphs, intent_id:,
-      start_words: "intent start").first
+      start_words: "intent start", take_over: "").first
+  end
+
+  def start_with(graphs)
+    run_workflow(Plastic::Workflows::Code::Intent::Start, harness: scoped_harness(session: "s-1"), graphs:, intent_id: "1", start_words: "intent start", take_over: "")
   end
 
   def approve(intent_id = "1") = plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
@@ -74,5 +78,15 @@ class WorkflowStartIntentTest < Plastic::TestCase
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-2")
 
     assert_equal :done, start
+  end
+
+  def test_a_claim_lost_to_another_session_refuses_and_names_it
+    specified_intent
+    approve
+    graphs = session_graphs
+    graphs.work.define_singleton_method(:drive_intent) { |**| [:held, "s-9"] }
+    error = assert_raises(Plastic::Refused) { start_with(graphs) }
+
+    assert_equal "intent 1 is driven by session s-9", error.message
   end
 end

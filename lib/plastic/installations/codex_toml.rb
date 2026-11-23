@@ -3,6 +3,7 @@
 require "yaml"
 require_relative "../config/agent_models"
 require_relative "files"
+require_relative "role_text"
 
 module Plastic
   module Installations
@@ -13,17 +14,17 @@ module Plastic
 
       module_function
 
-      def render(source, override, effort_override)
-        front, body = split(File.read(source))
+      def render(source, override, effort_override, workers = nil)
+        front, body = split(RoleText.fill(File.read(source), workers))
         name = front["name"] || File.basename(source, ".md")
         front = front.merge("name" => name.to_s)
         fields = model_fields(model_for(front, override), effort: effort_for(front, effort_override))
         "#{[heading(front), fields, instructions(body)].reject(&:empty?).join("\n")}\n"
       end
 
-      def write(root, source, override, effort_override)
+      def write(root, source, override, effort_override, workers = nil)
         target = File.join(root, "#{File.basename(source, ".md")}.toml")
-        Files.write_text(target, render(source, override, effort_override))
+        Files.write_text(target, render(source, override, effort_override, workers))
         target
       end
 

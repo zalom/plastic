@@ -91,3 +91,38 @@ class EndDailyBackupTest < Plastic::TestCase
     assert_equal ["start of day", "end of day"], backup_reasons(home, "beta")
   end
 end
+
+# A session end releases the driver claims and the node claims of the session at once.
+class EndReleasesClaimsTest < Plastic::TestCase
+  def setup
+    super
+    open_intent
+    store_graphs.work.activate_intent("1")
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
+    work.drive_intent(intent_id: "1", by: "s-1")
+    node = work.add_node(intent_id: "1", title: "Build", criterion: "it works")
+    work.claim_node(intent_id: "1", id: node.id, by: "s-1")
+  end
+
+  def end_session(session) = plastic("hook", "end", input: "{}", env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE)
+
+  def drivers = store_graphs.databases.fetch(:store).rows("SELECT session_id FROM drivers")
+
+  def test_the_end_releases_the_driver_claim_of_the_session
+    end_session("s-1")
+
+    assert_empty drivers
+  end
+
+  def test_the_end_opens_the_node_claimed_by_the_session
+    end_session("s-1")
+
+    assert_equal ["open", nil], retrieval.node("1", "n1").to_h.values_at(:state, :claimed_by)
+  end
+
+  def test_the_end_of_another_session_keeps_the_claims
+    end_session("s-2")
+
+    assert_equal [1, "claimed"], [drivers.size, retrieval.node("1", "n1").state]
+  end
+end

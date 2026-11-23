@@ -14,7 +14,7 @@ module Plastic
     # Stop: stamps the session's last turn, renews its node claims, then runs
     # the stop gate.
     class Stop < CLI::Hook
-      changes(local: "The last turn of the session is stamped, and the reply is added to the chat history when chat_sync is full", work: "The node claims of the session are renewed")
+      changes(local: "The last turn of the session is stamped, and the reply is added to the chat history when chat_sync is full", work: "The node claims and the driver claims of the session are renewed")
 
       def respond(event)
         return no_session unless session_id

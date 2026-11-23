@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_23_120000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_23_130000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -73,6 +73,12 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.text :model
     t.integer :input_tokens, :output_tokens, :cache_read_tokens, :cache_write_tokens
     t.real :cost_usd
+  end
+
+  # The live driver of an intent: the session that acts on it, as `claimed_by` names the session that holds a node. `seen_at` is its last renewal.
+  create_table :drivers, key: %i[intent_id origin_id] do |t|
+    t.kept :intent_id, :origin_id, :session_id
+    t.text :claimed_at, :seen_at
   end
 
   create_table :edges, key: %i[intent_id from to kind origin_id] do |t|
@@ -180,7 +186,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   end
 
   database :local, "plastic.db", %i[command_runs sessions settings printed chat_messages store_migrations]
-  database :work, "work_graph.db", %i[nodes edges work_log runs]
+  database :work, "work_graph.db", %i[nodes edges work_log runs drivers]
   database :knowledge, "knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents
     legacy_intents_data document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar]
   database :retrieval, "retrieval_graph.db", %i[document_passages document_fts]
