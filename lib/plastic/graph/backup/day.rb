@@ -112,8 +112,11 @@ module Plastic
 
         # The day in the taken_at time of the status file; a folder written before it was recorded reads its folder name.
         def day_of(name)
-          @folders.report(name)["taken_at"]&.then { |stamp| read_day("#{name}/status.yml", stamp) } || FolderName.time(name).getlocal(@zone).strftime("%F")
+          @folders.report(name)["taken_at"]&.then { |stamp| read_day("#{name}/status.yml", stamp) } || name_day(name)
         end
+
+        # The day a folder name stands for, or none when the name is not a real time.
+        def name_day(name) = (FolderName.time(name).getlocal(@zone).strftime("%F") if FolderName.readable?(name))
 
         def read_day(file, stamp)
           Plastic.local_day(stamp, @zone)
