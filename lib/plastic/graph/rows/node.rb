@@ -8,7 +8,8 @@ module Plastic
     module Work
       # One unit of work inside an intent. The harness picks `kind`; `claimed_by` names the session that holds a claimed node.
       # `criterion` is the key of the spec's done criterion the node serves,
-      # `findings` what the work showed, `seen_at` the last renewal of the claim, and `answered_at` when the owner last answered; each claim is a run.
+      # `findings` what the work showed, `seen_at` the last renewal of the claim, `answered_at` when the owner last answered, and `deadline`
+      # the minutes a claim may run before `graph ready` reports the node as overdue, or nil for none; each claim is a run.
       #
       #   open -> claimed -> done
       #                   -> failed -> open
@@ -16,7 +17,7 @@ module Plastic
       #                   -> impeded -> open
       #   open -> removed
       Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :input, :output, :question, :answer,
-        :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at) do
+        :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at, :deadline) do
         include Record
 
         def refusal(to) = "node #{id} is #{state}; it cannot move to #{to}"
