@@ -8,17 +8,20 @@ module Plastic
           # Turns the nodes of an older graph file, which named a worker in `by`
           # and counted `retries`, into the nodes and runs the rows hold now. A
           # node with a worker gets one run; a claimed node keeps its claim and
-          # its run stays open.
+          # its run stays open. The fields `judge` and `verdict`, which a node no
+          # longer has, are read past.
           class LegacyNodes
-            # One node of an older graph file, which gives up its `by` and `retries` and may give one run.
+            # One node of an older graph file, which gives up its `by`, `retries`, `judge` and `verdict` and may give one run.
             class Node
+              OLD_FIELDS = %w[retries judge verdict].freeze
+
               def initialize(node)
                 @node = node
               end
 
               def run_row
                 worker = @node.delete("by").to_s
-                @node.delete("retries")
+                OLD_FIELDS.each { |field| @node.delete(field) }
                 return nil if worker.empty?
 
                 claimed? ? open_run(worker) : closed_run(worker)
@@ -50,7 +53,7 @@ module Plastic
             end
 
             def call
-              nodes = Array(@data["nodes"]).grep(Hash).select { |node| node.key?("by") || node.key?("retries") }
+              nodes = Array(@data["nodes"]).grep(Hash).select { |node| (%w[by] + Node::OLD_FIELDS).any? { |field| node.key?(field) } }
               return @data if nodes.empty?
 
               runs = nodes.filter_map { |node| Node.new(node).run_row }

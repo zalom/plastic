@@ -5,6 +5,7 @@ require_relative "../../../test_helpers/previous_store"
 
 # Migration 20261123100000 drops the columns judge and verdict of the nodes table. No code reads them and no real store fills them.
 class GraphNodeJudgeColumnsTest < Plastic::TestCase
+  include BackupHomes
   include PreviousStore
 
   NOW = Time.utc(2026, 11, 23, 12, 0, 0)
