@@ -181,14 +181,14 @@ text that Plastic prints in the planning hand-off.
 | Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. When a run ends, `Harnesses::RunRecord` reads the model, tokens and cost of the worker from the harness's own local record into the run, and never fails the move. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
 | Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
-| Close | `plastic intent end` | The completion row. |
+| Close | `plastic intent end` | The completion row, and the release of the intent's driver claim. |
 | Park | `plastic intent park` | The parked status and its reason, while the intent is in progress. |
 
 ![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
-They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver.
+They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it.
 `plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and

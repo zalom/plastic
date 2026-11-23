@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic intent end` releases the driver claim of the intent in the same step that closes it, and prints `driver claim: released, held by session S`. Before, the claim stayed until its session ended or it lapsed, so it showed as live.
 - QMD is gone from Plastic's instructions, help and contributor docs. `plastic help tools` no longer has a QMD section, and a guard test fails when a shipped file names QMD outside the changelog and the two installer lists that remove an old `qmd-search` hook.
 - A node reads several input paths. `plastic node add` takes `--input` more than once and keeps the order, an empty path is refused, the claim packet carries `inputs` in place of `input` with one `input:` line for each path, and `plastic graph show` and graph.json list every path. A migration moves each stored input into the new table `node_inputs`.
 
