@@ -85,6 +85,26 @@ class RunCostFillSessionEndTest < Plastic::TestCase
     assert_equal [0, "", nil], [result.code, result.err, run_row[2]]
   end
 
+  def test_a_run_a_subagent_worked_stays_with_no_cost_at_the_session_end
+    path = run_without_cost
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE runs SET worker_session = 'agent-w1'") }
+    add_cost(path, 1.25)
+    end_session
+
+    assert_nil run_row[2]
+  end
+
+  def test_the_claims_of_the_session_are_released_when_the_fill_raises
+    run_without_cost
+    as_session("node", "add", "1", "Next", "--criterion", "tests-pass")
+    as_session("node", "claim", "1", "n2", "--agent", "w1")
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE runs SET started_at = 'junk' WHERE node_id = 'n1'") }
+    result = end_session
+
+    assert_equal [0, "open"], [result.code, retrieval.node("1", "n2").state]
+    assert_includes result.err, "the cost was not filled"
+  end
+
   def test_a_run_whose_transcript_is_missing_stays_with_no_cost_and_nothing_fails
     run_without_cost
     FileUtils.rm_f(Dir.glob(File.join(@home, ".claude", "projects", "*", "s-1.jsonl")))
