@@ -28,7 +28,7 @@ module Plastic
 
           gate "%{problem}", stops: :failure,
             words: "an end of the edge is not a node of the intent",
-            pass: ->(context) { context.kind != :failure }
+            pass: ->(context) { context.kind != :missing }
 
           gate "%{problem}", stops: :refusal,
             words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is a removed node",
