@@ -20,18 +20,21 @@ module Plastic
           path = Dir.glob(File.join(@home, ".claude", "projects", "*", "#{session}.jsonl")).min
           return TokenUsage.none("no Claude Code transcript for session #{session}") unless path
 
-          window = from..to
-          worker = self.class.subagent(path, session, window, claim) || path
+          worker, window = self.class.subagent(path, session, from..to, claim) || [path, from..to]
           name = File.basename(worker, ".jsonl")
           entries = Jsonl.read(worker)
           entries ? Transcript.new(entries, window).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
         end
 
-        def self.subagent(path, session, window, claim)
+        # [file, window] of the subagent that ran the claim, or nil. The turn that runs the claim is written before the command
+        # executes, so before the run's stored start: the window of the worker starts at that turn and ends with the run.
+        def self.subagent(path, session, run, claim)
           pattern = /node claim #{Regexp.escape(claim)}(\s|\z)/
-          Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort.find do |file|
-            Transcript.new(Jsonl.read(file) || [], window).claimed?(pattern)
+          Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort.each do |file|
+            started = Transcript.new(Jsonl.read(file) || [], run).claimed_at(pattern)
+            return [file, started..run.end] if started
           end
+          nil
         end
       end
     end
