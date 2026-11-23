@@ -17,12 +17,12 @@ class StableDocsGuardTest < Minitest::Test
     assert_equal [], named
   end
 
-  def test_the_short_start_opens_with_project_new_after_the_install
+  def test_the_short_start_opens_with_project_new
     start = read("README.md")[/^## Quick start\n(.*?)(?=^## )/m, 1].to_s
     commands = start.lines.map(&:strip).grep(/\Aplastic /)
 
-    assert_equal "plastic init", commands.first.split("#").first.strip
-    assert_match(/\Aplastic project new /, commands[1])
+    assert_match(/\Aplastic project new /, commands.first)
+    refute_includes start, "plastic init"
   end
 
   def test_the_release_lines_page_holds_the_channel_commands
