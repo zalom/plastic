@@ -12,7 +12,7 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 ## The loop
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready, each
-   with its `kind`. Stop when the list is empty.
+   with its `kind`. Stop when the ready nodes and `result.repairs` are both empty.
 2. For each ready node, up to the limit below, pick a worker. Claim nothing for it: the worker
    claims its own node, and the claim answer carries `result.packet`, the brief for the worker.
 3. Start one subagent or background worker for the node, of the role that fits its kind:
@@ -31,11 +31,13 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 ## Repair the region
 
 When `result.repairs` is not empty, a node failed or waits on the owner. Each entry names that
-node and the not-done nodes `downstream` of it. Keep working the ready nodes outside the region, and
-re-plan that region: add the nodes that replace the work with `plastic node add`, change the needs
-with `plastic edge add` and `plastic edge remove`, drop an open node with `plastic node remove`, or
-retry the stopped node with `plastic node release` or `plastic node resolve`. Plastic changes no
-node for you.
+node and the not-done nodes `downstream` of it. Keep working the ready nodes outside the region.
+Retry a `failed` node with `plastic node release`, or re-plan its region: add the nodes that
+replace the work with `plastic node add`, change the needs with `plastic edge add` and
+`plastic edge remove`, and drop an open node with `plastic node remove`. A `needs_info` or `impeded`
+node goes to the owner: report its question or impediment and stop that node. Only the owner
+answers it with `plastic node resolve`; re-plan its region after the owner decides. Plastic
+changes no node for you.
 
 ## The limit
 
