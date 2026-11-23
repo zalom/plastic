@@ -22,8 +22,8 @@ the tag and the GitHub release for a version that has no tag yet. `install.sh` a
    carries the fix. No commit lands on `beta` except the cut itself.
 3. **Switches only where they pay off.** A change that alters stored data, the storage
    layer or the lock, or one that may be dropped, ships behind a config switch that is off by
-   default. The exceptions are the migrations that have no switch, each by a ruling; the list is in
-   [the architecture](contributing/ARCHITECTURE.md). Every other change goes straight in.
+   default. The exceptions are the migrations that have no switch; each is listed, with its reason, on
+   [the architecture page](contributing/ARCHITECTURE.md). Every other change goes straight in.
 4. **Stable waits.** `main` takes no release until the shaping ends and the owner opens it.
 
 ## Cut a beta

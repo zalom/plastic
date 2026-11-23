@@ -4,11 +4,10 @@ Start here, then follow the area you need.
 
 ## The `plastic` command
 - [reference/commands/](reference/commands/README.md): one page for each command, written from the code.
-- [usage/](usage/FEATURES.md): features, the audit guide, tracking and the node lifecycle.
+- [usage/](usage/FEATURES.md): features, the [command list](usage/commands.md), the audit guide, tracking and the node lifecycle.
 - [contributing/](contributing/ARCHITECTURE.md): the system architecture in drawings, the command
-  architecture, the coding practices, the branches, and the gates.
-- [release-lines.md](release-lines.md): the alpha, beta and stable lines, and how to follow a
-  pre-release channel.
+  architecture, the coding practices, the branches, and the gates. The
+  [release lines](release-lines.md) page belongs to this area.
 
 ## Orientation
 - [contributing/ARCHITECTURE.md](contributing/ARCHITECTURE.md): the system and its parts in
