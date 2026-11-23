@@ -3,6 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/previous_store"
 require_relative "../../../../lib/plastic/graph/migration/migration_down"
+require_relative "../../../../lib/plastic/commands/migration/down"
 
 # The migration that turns each roadmap's item order into needs links between the intents the items opened, then
 # drops the roadmap tables and keeps their rows in legacy.db.
@@ -90,6 +91,48 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
 
     assert_equal [[], 4, 3], [needs(home), count(home, "work_graph.db", "roadmap_items"), count(home, "work_graph.db", "roadmap_edges")]
+  end
+
+  def test_a_down_removes_only_the_needs_links_the_migration_wrote
+    home = roadmap_home
+    migrate_store(home)
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("INSERT INTO links (from_ref, to_ref, kind, at, origin_id) VALUES ('3', '1', 'needs', '2026-11-23T00:00:00Z', 'o')") }
+    Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
+
+    assert_equal [%w[3 1]], needs(home)
+  end
+
+  def test_a_down_says_how_many_needs_links_it_removed
+    home = roadmap_home
+    migrate_store(home)
+    undone = Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
+
+    assert_equal [2, {}], [undone.removed, undone.built]
+  end
+
+  def test_the_down_workflow_prints_removed_and_not_built_links
+    home = roadmap_home
+    migrate_store(home)
+    result = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
+
+    assert_includes result.out, "down: removed 2 needs links that the migration wrote"
+    refute_match(/built 2/, result.out.join("\n"))
+  end
+
+  def test_two_roadmaps_that_hold_the_same_intent_pair_write_one_link_and_skip_the_other
+    home = roadmap_home
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
+      database.execute_batch(<<~SQL)
+        INSERT INTO roadmaps VALUES ('copy', 'Copy', 'g', 'then', 'then', 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'a', 1, 1, 'A', NULL, NULL, '1', NULL, 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'b', 1, 2, 'B', NULL, NULL, '2', NULL, 'o');
+        INSERT INTO roadmap_edges VALUES ('copy', 'a', 'b', 'after', 'o');
+      SQL
+    end
+    report = migrate_store(home)
+
+    assert_equal [%w[2 1], %w[3 2]], needs(home)
+    assert_match(/wrote 2 needs links.*skipped 1 roadmap edge\b/, report.notes.join("\n"))
   end
 
   def test_a_new_store_declares_no_roadmap_table
