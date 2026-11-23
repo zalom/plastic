@@ -34,14 +34,21 @@ class RetrievalDocumentationTest < Minitest::Test
     lib/plastic/installations/hook_ownership.rb
   ].freeze
 
+  SKIPPED_FOLDERS = %w[.git .claude .varar .enola coverage tmp node_modules runtime/bundle runtime/.bundle test].freeze
+
   def test_no_shipped_file_names_qmd_outside_the_kept_places
-    shipped = ChildProcess.capture2("git", "-C", ROOT, "ls-files").first.split("\n").reject { |path| path.start_with?("test/") }
-    named = (shipped - KEPT_QMD_FILES).select do |path|
-      file = File.join(ROOT, path)
-      File.file?(file) && File.read(file).force_encoding("UTF-8").scrub.match?(/qmd/i)
-    end
+    shipped = shipped_files
+
+    assert_includes shipped, "PLASTIC.md", "the file listing is empty or wrong"
+    named = (shipped - KEPT_QMD_FILES).select { |path| File.read(File.join(ROOT, path)).force_encoding("UTF-8").scrub.match?(/qmd/i) }
 
     assert_empty named
+  end
+
+  def shipped_files
+    Dir.glob("**/*", File::FNM_DOTMATCH, base: ROOT).select do |path|
+      File.file?(File.join(ROOT, path)) && SKIPPED_FOLDERS.none? { |folder| path == folder || path.start_with?("#{folder}/") }
+    end
   end
 
   def test_tools_help_has_no_qmd_section_and_still_names_enola
@@ -49,6 +56,10 @@ class RetrievalDocumentationTest < Minitest::Test
 
     refute_match(/qmd/i, content)
     assert_includes content, "Enola"
+  end
+
+  def test_the_installed_plastic_template_points_to_the_store_search
+    assert_includes File.read(File.join(ROOT, "PLASTIC.md")), "plastic search TERMS"
   end
 
   def test_the_installed_plastic_template_has_no_qmd

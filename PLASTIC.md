@@ -7,6 +7,8 @@ gives one command's options, and `plastic help tools` covers RTK and Enola.
 the work stopped and what runs next, across several projects with `--stores a,b`. When a
 person says "continue", run it. `plastic next` prints that one action.
 
+Search the stores with `plastic search TERMS` before re-deriving a decision, spec or outcome.
+
 When a person says "Load project X" or "Load projects X, Y, Z", run `plastic project load`
 with those projects, do what its `then:` line says, and run it again to refresh. The next work
 waits for the person's ask.
