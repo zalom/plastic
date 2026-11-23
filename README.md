@@ -90,8 +90,6 @@ It downloads the newest stable release, checks it against its published checksum
 and installs Plastic into the ones you pick. [Enola](INSTALL.md#enola) is an optional tool that
 maps code architecture.
 
-`install.sh` installs the stable release only. Run `plastic update` to follow a beta or alpha release.
-
 ### A clean Mac
 
 The Ruby 2.6 that macOS ships is too old. Run `brew install ruby` and put its `bin` folder on your
@@ -127,14 +125,17 @@ at the new launcher and keeps your stores and settings. See
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic init                # Pick the agents to install into
 
-# 2. See what is open
+# 2. Register your repository as a project
+plastic project new blog ~/code/blog
+
+# 3. See what is open
 plastic status
 
-# 3. Open an intent and start it
+# 4. Open an intent and start it
 plastic intent new "Add a --version flag"
 plastic intent start 1
 
-# 4. Ask what to do next, at any time
+# 5. Ask what to do next, at any time
 plastic next
 ```
 
@@ -242,25 +243,23 @@ plastic project new blog ~/code/blog  # Register a project and leave its store r
 plastic project links                 # List the links that name an intent or a ruling this store lacks
 plastic sync up --dry-run             # Show what would change
 plastic sync down                     # Write the store files from the databases
-plastic backup --store alpha          # Copy the databases of one store (or --store global) into a UTC-named folder
-plastic backup --store alpha --live   # The same, printing each line of backup.log as it is written
-plastic backup list --store alpha     # Folder, start time, status and goal of each backup
-plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
-plastic backup purge --store alpha --failed   # Delete the backups that failed
-plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
-plastic migration list --store alpha  # The store's version, its kept rows, its ledger, and what a down would undo
-plastic migration down --store alpha  # Put back the rows the newest migration kept in legacy.db, after a backup
-plastic migration purge 20261119000000 --store alpha   # Remove the rows one migration kept, so it can no longer be undone
+plastic backup --store blog          # Copy the databases of one store (or --store global) into a UTC-named folder
+plastic backup --store blog --live   # The same, printing each line of backup.log as it is written
+plastic backup list --store blog     # Folder, start time, status and goal of each backup
+plastic backup purge --store blog --older-than 2026-09-01   # Delete older backups
+plastic backup purge --store blog --failed   # Delete the backups that failed
+plastic backup restore --store blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
+plastic migration list --store blog  # The store's version, its kept rows, its ledger, and what a down would undo
+plastic migration down --store blog  # Put back the rows the newest migration kept in legacy.db, after a backup
+plastic migration purge 20261119000000 --store blog   # Remove the rows one migration kept, so it can no longer be undone
 ```
 
 ### Product
 ```bash
 plastic init                          # Install into the agents you pick
 plastic install --reinstall           # Copy the files again and sync every agent
-plastic update                        # Next version on the current channel
-plastic update --channel alpha        # Move to the alpha channel
+plastic update                        # The newest stable release
 plastic rollback                      # Switch back to the previous release
-plastic rollback --version 2.0.0-alpha.27
 plastic uninstall                     # Remove Plastic from the agents you pick. Your stores stay.
 plastic version                       # The installed version and its channel
 plastic doctor                        # The installation, the databases and the hooks of this agent
@@ -357,50 +356,9 @@ step and records what it reports.
 
 ## Configuration
 
-`~/.plastic/config.yml` is printed from the settings rows in `plastic.db`. It shows the
-settings you changed, in a `global` section and one section per harness, and holds no anchors:
-
-```yaml
-global:
-  runner:
-    stop_hook: true                  # Keep working while a node is ready
-  backup:
-    daily: true                      # Keep 24 hours of backups, with two copies a day
-harnesses:
-  codex:
-    agents:
-      models:
-        plastic-executor: gpt-5.5    # One agent's model under Codex
-```
-
-A sync always reads the Markdown notes and the graph of each intent. Under `resources/`, it reads
-`output/reports` and `output/files` by file type, Markdown and HTML unless `sync.types` names others,
-in `output/reports` only a report recorded with `plastic intent report ID PATH` or one that
-`reports.mandatory` names,
-the `references` folder when `sync.references` is on, and never `tmp`. A file of a type not yet
-named is skipped once, with one line that gives the `plastic config set sync.types` command to
-include it. `plastic init` offers images and videos picked. Tool output, packets, plans and notes go to
-`resources/tmp`, and copies of outside material go to `resources/references`.
-
-With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
-Plastic command or hook of the day copies the databases of every store as the start-of-day
-backup, and each session end after it replaces the day's end-of-day backup. A store always keeps
-its newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so
-they find the backups as they are. Plastic runs no background process for this, and
-`backup.daily` is off by default.
-
-`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
-table of each store. While it is off, `plastic update` leaves that table in place. Turn it on
-with `plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each
-store keeps the table in its `legacy.db` before the drop. The switch is off by default.
-
-```bash
-plastic config list                         # Every key with its value
-plastic config set runner.stop_hook true    # Write a global key
-plastic config get agents.models.plastic-executor --harness codex
-```
-
-See the [page of `config`](docs/reference/commands/config/README.md) for every key and file.
+`plastic config list` prints every setting, `plastic config set KEY VALUE` writes one, and
+`~/.plastic/config.yml` is printed from them. [The features page](docs/usage/FEATURES.md#settings)
+says what each setting does, and the [page of `config`](docs/reference/commands/config/README.md) lists the keys.
 
 ### Uninstall
 
@@ -417,7 +375,7 @@ stores under `~/.plastic` stay.
 - **[docs/reference/commands/](docs/reference/commands/README.md)**: one page for each `plastic` command.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
 - **[Drive a graph from any harness](docs/usage/drive-from-any-harness.md)**: the loop a script or an SDK runs to work a graph.
-- **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
+- **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices, the gates and the [release lines](docs/release-lines.md).
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 
 ## Privacy
