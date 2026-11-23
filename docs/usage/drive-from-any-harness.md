@@ -93,8 +93,8 @@ under each finding that no command repairs, a `repair:` line under each finding 
 - Give each driver its own `PLASTIC_SESSION`. The claim holds the name of the session that took it. When
   `PLASTIC_SESSION` is not set, Plastic uses the session of the harness, and then `terminal-` and the login
   at a terminal. Two drivers that share a name share a claim.
-- A claim lapses after 900 seconds without a renewal. The worker never runs `plastic`, so the driver
-  renews the claim with `plastic node renew ID NODE`, for example every five minutes, while the worker runs.
+- A claim lapses after 900 seconds without a renewal. When a driver hands out nodes, each worker
+  renews its own claim with `plastic node renew ID NODE`, for example every five minutes, while it runs.
 - Exit code 3 means Plastic refused the call, for example when another session took a lapsed
   claim. Stop that node and do not retry with other options.
 - After three runs of one node, the next claim moves it to `needs_info` with a question for the

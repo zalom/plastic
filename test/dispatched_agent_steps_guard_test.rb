@@ -10,7 +10,7 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
   # The driver role is the one agent that runs the graph loop, so it names these commands by design.
   DRIVER = File.join(ROOT, "agents", "plastic-driver.md")
   SUBJECTS = (Dir[File.join(ROOT, "agents", "*.md")] - [DRIVER]).sort
-  ORCHESTRATOR = /plastic (?:roadmap )?auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node (?!(?:claim|done|fail)\b)\w+|(?<!plastic )node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
+  ORCHESTRATOR = /plastic (?:roadmap )?auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node (?!(?:claim|renew|done|fail)\b)\w+|(?<!plastic )node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
 
   def orchestrator_steps(text) = text.each_line.with_index(1).filter_map { |line, number| "#{number}: #{line.strip}" if line.match?(ORCHESTRATOR) }
 
@@ -38,7 +38,7 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
   end
 
   def test_the_detector_leaves_the_handed_node_commands_alone
-    ["Run plastic node claim ID NODE.", "Finish with plastic node done ID NODE TEXT --output PATH.", "Or plastic node fail ID NODE TEXT."]
+    ["Run plastic node claim ID NODE.", "Finish with plastic node done ID NODE TEXT --output PATH.", "Or plastic node fail ID NODE TEXT.", "Keep it with plastic node renew ID NODE."]
       .each { |line| assert_empty orchestrator_steps(line), line }
   end
 

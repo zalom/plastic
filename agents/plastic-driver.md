@@ -55,5 +55,5 @@ read the graph again.
 
 ## Report
 
-End with the nodes started, the nodes finished with their output, the nodes that failed, asked or
-were impeded with the reason, and the nodes still ready.
+End with the nodes started, the nodes finished with their output, the nodes that failed with the
+reason, and the nodes still ready.
