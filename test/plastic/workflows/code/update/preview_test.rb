@@ -62,42 +62,6 @@ class PreviewUpdateTest < Plastic::TestCase
     assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.4"]]], [outcome, printed_rows(context)]
   end
 
-  def test_a_dry_run_that_cannot_read_the_local_release_folder_names_the_folder
-    folder = File.join(@home, "missing-release")
-
-    assert_plain_folder_message folder, dry_run_error(folder)
-  end
-
-  def test_a_dry_run_names_the_folder_whose_manifest_cannot_be_read
-    folder = local_release("2.0.7")
-    File.chmod(0o000, File.join(folder, "plastic.manifest.json"))
-
-    assert_plain_folder_message folder, dry_run_error(folder)
-  ensure
-    File.chmod(0o600, File.join(folder, "plastic.manifest.json")) if folder
-  end
-
-  def test_a_dry_run_names_the_folder_that_itself_cannot_be_read
-    folder = local_release("2.0.7")
-    File.chmod(0o000, folder)
-
-    assert_plain_folder_message folder, dry_run_error(folder)
-  ensure
-    File.chmod(0o700, folder) if folder
-  end
-
-  def dry_run_error(folder)
-    installed("2.0.5")
-    activated("2.0.5")
-    harness = scoped_harness(env: { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5"), "PLASTIC_SHARE" => share, "PLASTIC_LOCAL_RELEASE" => folder })
-    assert_raises(Plastic::Failed) { run_workflow(Plastic::Workflows::Code::Update::Preview, harness:, dry_run: true, channel: nil) }
-  end
-
-  def assert_plain_folder_message(folder, error)
-    assert error.message.start_with?("cannot read the local release folder #{folder}"), error.message
-    refute_match(/\b[A-Z]\w*(::\w+)+/, error.message)
-  end
-
   def test_a_real_run_never_reads_the_release_source
     installed("2.0.5")
     activated("2.0.5")

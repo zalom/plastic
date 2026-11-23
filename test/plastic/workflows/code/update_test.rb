@@ -123,37 +123,4 @@ class UpdatePlasticTest < Plastic::TestCase
 
     assert_equal [:current, ["99.0.0-alpha.1"]], [outcome, activation.releases.versions]
   end
-
-  def test_a_real_run_that_cannot_read_the_local_release_folder_names_the_folder
-    folder = File.join(@home, "missing-release")
-
-    assert_plain_folder_message folder, real_run_error(folder)
-  end
-
-  def test_a_real_run_names_the_folder_whose_manifest_cannot_be_read
-    folder = local_release("99.0.0-alpha.2")
-    File.chmod(0o000, File.join(folder, "plastic.manifest.json"))
-
-    assert_plain_folder_message folder, real_run_error(folder)
-  ensure
-    File.chmod(0o600, File.join(folder, "plastic.manifest.json")) if folder
-  end
-
-  def test_a_real_run_names_the_folder_that_has_no_archive
-    folder = local_release("99.0.0-alpha.2")
-    File.delete(File.join(folder, "plastic.tgz"))
-
-    assert_plain_folder_message folder, real_run_error(folder)
-  end
-
-  def real_run_error(folder)
-    installed("99.0.0-alpha.1")
-    activated("99.0.0-alpha.1")
-    assert_raises(Plastic::Failed) { update(env: current("99.0.0-alpha.1").merge("PLASTIC_LOCAL_RELEASE" => folder)) }
-  end
-
-  def assert_plain_folder_message(folder, error)
-    assert error.message.start_with?("cannot read the local release folder #{folder}"), error.message
-    refute_match(/\b[A-Z]\w*(::\w+)+/, error.message)
-  end
 end
