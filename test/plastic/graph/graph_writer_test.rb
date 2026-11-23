@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 
-class WorkGraphTest < Plastic::TestCase
+class GraphWriterTest < Plastic::TestCase
   def work = store_graphs.work
 
   def run_session(graphs) = graphs.databases[:local].row("SELECT session_id FROM command_runs WHERE subject = 1").fetch("session_id")
@@ -34,7 +34,7 @@ class WorkGraphTest < Plastic::TestCase
     assert_predicate work.backups.restorer, :claimed?
   end
 
-  def test_a_sync_plan_applies_through_the_work_graph
+  def test_a_sync_plan_applies_through_the_graph_writer
     open_intent
     write("store/1--alpha/spec.md", "# Spec\n")
     plan = work.sync_plan(:up, {})

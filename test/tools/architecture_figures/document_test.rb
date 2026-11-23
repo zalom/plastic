@@ -72,7 +72,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
 
   def test_every_class_and_path_the_document_names_exists
     assert_empty unknown_names(document)
-    assert_equal ["IntentProgress", "lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::WorkGraph` `lib/plastic/gone.rb` `lib/plastic/cli.rb` `Owner`")
+    assert_equal ["IntentProgress", "lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::GraphWriter` `lib/plastic/gone.rb` `lib/plastic/cli.rb` `Owner`")
   end
 
   def test_every_plastic_command_the_document_names_is_in_the_command_table
