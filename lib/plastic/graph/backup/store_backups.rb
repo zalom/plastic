@@ -53,9 +53,12 @@ module Plastic
         private
 
         def entry(number, name)
-          Entry.new(number, name, FolderName.time(name).localtime.strftime("%Y-%m-%d %H:%M:%S"),
+          Entry.new(number, name, started(name),
             folders.status(name), folders.goal(name), flag(name))
         end
+
+        # The local start time of a folder, or unknown when its name is not a real time.
+        def started(name) = FolderName.readable?(name) ? FolderName.time(name).localtime.strftime("%Y-%m-%d %H:%M:%S") : "unknown"
 
         def flag(name)
           recorded = folders.report(name)["digest"]
