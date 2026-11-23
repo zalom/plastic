@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
+
 ## 3.0.0-beta.12
 
 - `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.

@@ -3,6 +3,7 @@
 require "find"
 require "fileutils"
 require "sqlite3"
+require_relative "../../../backup/folders"
 
 module Plastic
   module Graph
@@ -12,7 +13,7 @@ module Plastic
           # Copies a store folder into a twin: hard links for files, vacuumed copies for databases.
           class Mirror
             DATABASE = /\.db\z/
-            BACKUPS = "backups"
+            BACKUPS = Backup::Folders::NAME
             SIDECAR = /\.db-(?:wal|shm|journal)\z/
 
             def initialize(source, target)
