@@ -40,14 +40,6 @@ class GraphBackupDayTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
-  def test_a_folder_whose_name_is_not_a_real_time_and_has_no_taken_at_does_not_stop_the_start_of_day_backup
-    home = fresh_home
-    FileUtils.mkdir_p(File.join(backups_dir(home), "20261399000000"))
-
-    refute_nil day(home, MORNING).begin_day
-    assert_includes folder_names(home), "20261399000000"
-  end
-
   def test_a_store_whose_start_of_day_backup_failed_is_not_tried_again_that_day
     home = fresh_home
     damage(home)

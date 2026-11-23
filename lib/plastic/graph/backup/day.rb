@@ -4,9 +4,11 @@ require "fileutils"
 require "yaml"
 require_relative "../backup"
 require_relative "copy"
+require_relative "day_reader"
 require_relative "folder_name"
 require_relative "folders"
 require_relative "purger"
+require_relative "site"
 require_relative "source_check"
 require_relative "writer"
 
@@ -32,16 +34,13 @@ module Plastic
         FINISH = "end of day"
         FAILED_START = "failed-start-of-day.yml"
 
-        # A file under backups/ holds a time that is no time; the message names the file and the value.
-        class Unreadable < StandardError; end
+        Unreadable = DayReader::Unreadable
 
         def initialize(root, slug, now:, copy: Copy.new(now:), zone: nil)
-          @root = root
-          @slug = slug
+          @site = Site.new(root, slug)
           @now = now
           @copy = copy
-          @zone = zone
-          @folders = Folders.new(root)
+          @days = DayReader.new(@site.folders, now:, zone:)
         end
 
         # Takes the start-of-day backup when the day has none yet.
@@ -56,9 +55,11 @@ module Plastic
 
         private
 
-        def sources = @copy.sources(@root)
+        def folders = @days.folders
 
-        def started? = done_today(START).any? || failed_start_today?
+        def sources = @copy.sources(@site.root)
+
+        def started? = @days.done(START).any? || failed_start_today?
 
         def start
           write(START)
@@ -67,62 +68,40 @@ module Plastic
           raise
         end
 
-        def failed_start_file = File.join(@folders.dir, FAILED_START)
+        def failed_start_file = File.join(folders.dir, FAILED_START)
 
         def record_failed_start
-          FileUtils.mkdir_p(@folders.dir)
+          FileUtils.mkdir_p(folders.dir)
           File.write(failed_start_file, { "at" => Plastic.timestamp(@now) }.to_yaml)
         end
 
         def failed_start_today?
           file = failed_start_file
-          File.file?(file) && today?(read_day(FAILED_START, YAML.safe_load_file(file).to_h["at"]))
+          File.file?(file) && @days.today?(@days.read_day(FAILED_START, YAML.safe_load_file(file).to_h["at"]))
         end
 
         def finish
-          earlier = done_today(FINISH)
-          return if holds_store?(earlier.last)
+          earlier = @days.done(FINISH)
+          newest = earlier.last
+          return if newest && folders.report(newest)["fingerprint"] == fingerprint
 
-          earlier.each { |name| purger.remove(name) } if write(FINISH)
+          write(FINISH) && earlier.each { |name| purger.remove(name) }
         end
 
-        def holds_store?(name) = !name.nil? && @folders.report(name)["fingerprint"] == fingerprint
-
-        def fingerprint = SourceCheck.new(sources.map { |name| File.join(@root, "#{name}.db") }).fingerprint
+        def fingerprint = SourceCheck.new(sources.map { |name| File.join(@site.root, "#{name}.db") }).fingerprint
 
         # The backup row, or nil when another process took the folder name; only a written backup is followed by the purge.
         def write(reason)
-          before = @folders.names
-          Writer.new(@root, @slug, now: @now, copy: @copy, reason:).call&.tap { purger.sweep(now: @now, keep: @folders.names.select { |name| today?(day_of(name)) }) }
+          before = folders.names
+          Writer.new(@site.root, @site.slug, now: @now, copy: @copy, reason:).call&.tap { purger.sweep(now: @now, keep: @days.today_names) }
         rescue
-          remove_failed(@folders.names - before)
+          remove_failed(before)
           raise
         end
 
-        def remove_failed(names) = names.select { |name| @folders.status(name) == "failed" }.each { |name| purger.remove(name) }
+        def remove_failed(before) = (folders.names - before).select { |name| folders.status(name) == "failed" }.each { |name| purger.remove(name) }
 
-        def purger = Purger.new(@root, retention: Purger::DAILY_RETENTION)
-
-        # The folders of the day that are done and record the reason, oldest first.
-        def done_today(reason)
-          @folders.names.select { |name| today?(day_of(name)) && @folders.status(name) == "done" && @folders.report(name)["reason"] == reason }
-        end
-
-        def today?(day) = day == @now.getlocal(@zone).strftime("%F")
-
-        # The day in the taken_at time of the status file; a folder written before it was recorded reads its folder name.
-        def day_of(name)
-          @folders.report(name)["taken_at"]&.then { |stamp| read_day("#{name}/status.yml", stamp) } || name_day(name)
-        end
-
-        # The day a folder name stands for, or none when the name is not a real time.
-        def name_day(name) = (FolderName.time(name).getlocal(@zone).strftime("%F") if FolderName.readable?(name))
-
-        def read_day(file, stamp)
-          Plastic.local_day(stamp, @zone)
-        rescue ArgumentError
-          raise Unreadable, "#{File.join(Folders::NAME, file)} holds #{stamp}, which is not a time; fix or delete the file"
-        end
+        def purger = Purger.new(@site.root, retention: Purger::DAILY_RETENTION)
       end
     end
   end
