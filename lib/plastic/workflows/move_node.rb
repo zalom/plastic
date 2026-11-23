@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "node_output"
+require_relative "lines"
 require_relative "../harnesses/run_record"
 
 module Plastic
@@ -47,7 +48,7 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :intent, :problem, :moved, :held_elsewhere
+        sets :intent, :problem, :moved, :held_elsewhere, :first_ready
         intent_steps
         output_steps if verb == :done_node
         move_steps(verb, shape)
@@ -101,7 +102,20 @@ module Plastic
       def self.result_steps(shape)
         state = shape.fetch(:state)
         read(shape.fetch(:say)) { |context| context.print("node: #{context.id} #{state}") }
+        ready_steps if state == "done"
         outcome :done, offers: shape.fetch(:offers), because: "node %{id} is #{state}"
+      end
+
+      # After a node is done: the nodes now ready are named, and the next line claims the first. With none ready, the outcome stays the
+      # graph ready command.
+      def self.ready_steps
+        read("name the nodes now ready") do |context|
+          ready = context.retrieval.ready_nodes(context.intent_id)
+          context[:first_ready] = ready.first&.id
+          ready.each { |node| context.print(Lines.ready_node(node)) }
+        end
+        outcome :claim_ready, if: ->(context) { context.first_ready }, offers: "plastic node claim %{intent_id} %{first_ready} --agent NAME",
+          because: "node %{id} is done; node %{first_ready} is ready"
       end
 
       def self.run_move(context, verb, shape)
