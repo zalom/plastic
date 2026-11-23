@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/previous_store"
 
-# Migration 20261124090000 drops the five roadmap tables that a release before the roadmap removal made again on a
+# Migration 20261124090000 drops the five roadmap tables that a checkout from before the schema gate made again on a
 # migrated store, keeps their rows when one holds any, and its down builds them again in the old shape.
 class GraphEmptyRoadmapTablesTest < Plastic::TestCase
   include BackupHomes
@@ -27,7 +27,7 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
 
   def table_texts(home) = alpha_rows(home, "work_graph.db", "SELECT sql FROM sqlite_master WHERE name IN ('#{TABLES.join("', '")}')").flatten
 
-  # The store of the migrated release after an older release opened it: the five tables are back, with no row.
+  # The store of the migrated release after a checkout from before the schema gate opened it: the five tables are back, with no row.
   def remade
     migrated_previous_home.tap do |home|
       SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute_batch(DDL) }

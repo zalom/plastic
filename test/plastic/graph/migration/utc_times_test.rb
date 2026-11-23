@@ -37,6 +37,8 @@ class GraphUtcTimesTest < Plastic::TestCase
 
   def with_rows(home, sql) = home.tap { SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(sql) } }
 
+  ROADMAP_TABLES = %w[roadmaps batches roadmap_items roadmap_edges roadmap_log written_needs_links].freeze
+
   def times(home)
     [alpha_rows(home, "knowledge_graph.db", "SELECT opened_at, closed_at, updated_at FROM intents WHERE intent_id IN ('91', '92') ORDER BY intent_id"),
       alpha_rows(home, "work_graph.db", "SELECT at FROM work_log WHERE intent_id = '91'").flatten]
@@ -44,8 +46,8 @@ class GraphUtcTimesTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(without_usage(home), "alpha", NOW).call
 
-  # The tables that hold a row. The down of the empty roadmap tables migration builds five empty tables, which the next run keeps as empty copies in legacy.db.
-  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }.reject { |_table, rows| rows.empty? }
+  # Every table, but the five roadmap tables and the table the roadmap migration makes from them: the down of the empty roadmap tables migration builds them empty, and the next run keeps them as empty copies in legacy.db.
+  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }.reject { |table, _rows| ROADMAP_TABLES.any? { |name| table.start_with?(name) } }
 
   def test_the_migration_writes_every_time_with_an_offset_in_utc_and_leaves_dates_utc_times_and_blanks
     assert_equal AFTER, times(migrated)
