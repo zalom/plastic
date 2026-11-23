@@ -28,10 +28,15 @@ module Plastic
 
         def all = with_repairs.map(&:text)
 
+        # The findings that stop the first claim: a loop and a need on a removed node.
+        def blocking = edge_findings.all
+
         # The findings, each with the command that repairs it (nil when no command does).
-        def with_repairs = node_findings + EdgeFindings.new(@intent_id, nodes, edges).all + criterion_finding + schema_findings
+        def with_repairs = node_findings + edge_findings.all + edge_findings.unlinked + criterion_finding + schema_findings
 
         private
+
+        def edge_findings = @edge_findings ||= EdgeFindings.new(@intent_id, nodes, edges)
 
         def nodes = @nodes ||= @retrieval.structure.nodes(@intent_id)
 

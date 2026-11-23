@@ -42,7 +42,7 @@ module Plastic
             end
           end
 
-          def self.advice(finding) = finding.repair ? "repair: #{finding.repair}" : "hand edit: #{finding.hand}"
+          def self.advice(finding) = finding.advice
 
           gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? || !context.repair.nil? }
 

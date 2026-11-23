@@ -2,12 +2,14 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../../graph/knowledge/spec"
+require_relative "../../../graph/work/start_check"
 
 module Plastic
   module Workflows
     module Code
       module Intent
-        # Writes the go-ahead row of an open or in progress intent. A second call changes nothing.
+        # Writes the go-ahead row of an open or in progress intent, then prints the findings of its graph; none refuses.
+        # A second call changes nothing.
         class Approve < CodeWorkflow
           clear_declarations
 
@@ -24,6 +26,8 @@ module Plastic
 
           read "say what was written" do |context|
             context.print("approved: #{context.intent_id}")
+            check = Plastic::Graph::Work::StartCheck.new(context.retrieval, context.retrieval.intent(context.intent_id), context.scope.root)
+            check.lines.each { |line| context.print(line) }
           end
 
           outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} has the owner's go-ahead"
