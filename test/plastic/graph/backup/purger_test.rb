@@ -101,4 +101,12 @@ class GraphBackupPurgerInterruptedTest < Plastic::TestCase
 
     assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(File.join(home, "stores", "alpha")).interrupted(now:)
   end
+
+  def test_interrupted_names_folders_with_no_status_file_older_than_five_minutes
+    root = File.join(fresh_home, "stores", "alpha")
+    folders = Plastic::Graph::Backup::Folders.new(root)
+    %w[20260301100000 20260301100800].each { |name| FileUtils.mkdir_p(folders.path(name)) }
+
+    assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(root).interrupted(now: Time.utc(2026, 3, 1, 10, 10, 0))
+  end
 end

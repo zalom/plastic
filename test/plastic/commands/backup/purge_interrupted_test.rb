@@ -26,6 +26,33 @@ class BackupPurgeInterruptedTest < Plastic::TestCase
     home
   end
 
+  def bare(home, name) = FileUtils.mkdir_p(File.join(backups_dir(home), name))
+
+  def test_interrupted_deletes_a_folder_with_no_status_file_older_than_five_minutes
+    home = fresh_home
+    bare(home, STOPPED)
+    bare(home, RUNNING)
+
+    assert_includes purge_call(home, "--store", "alpha", "--interrupted", clock: NOW).out, "purged: alpha/#{STOPPED}"
+    assert_equal [RUNNING], folder_names(home)
+  end
+
+  def test_a_preview_lists_a_folder_with_no_status_file_and_deletes_nothing
+    home = fresh_home
+    bare(home, STOPPED)
+
+    assert_includes purge_call(home, "--store", "alpha", "--interrupted", "--dry-run", clock: NOW).out, "preview: purge alpha/#{STOPPED}"
+    assert_equal [STOPPED], folder_names(home)
+  end
+
+  def test_failed_leaves_a_folder_with_no_status_file
+    home = fresh_home
+    bare(home, STOPPED)
+    purge_call(home, "--store", "alpha", "--failed", clock: NOW)
+
+    assert_equal [STOPPED], folder_names(home)
+  end
+
   def test_interrupted_deletes_only_the_in_progress_backup_older_than_five_minutes
     home = seeded_home
 
