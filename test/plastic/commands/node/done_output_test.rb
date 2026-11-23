@@ -15,7 +15,7 @@ class NodeDoneOutputTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def output_file(text = JSON_TEXT, name: "output.json")
@@ -112,7 +112,7 @@ class NodeDoneOutputSecondHomeTest < Minitest::Test
     with_two_homes do |first, second|
       path = File.join(first.home, "output.json")
       File.binwrite(path, NodeDoneOutputTest::JSON_TEXT)
-      first.command!("node", "claim", "1", "n2")
+      first.command!("node", "claim", "1", "n2", "--agent", "tester")
       first.command!("node", "done", "1", "n2", "built", "--output", path)
       move_files(first, second)
       second.command!("sync", "up")

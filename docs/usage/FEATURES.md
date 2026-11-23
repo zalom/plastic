@@ -35,13 +35,13 @@ outer one. With neither, the global store answers.
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
-| `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress, the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
+| `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress with the best passages of the retrieval graph for each (at most 3 intents and 2 passages each, on `context:` lines), the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
 | `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
 | `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and prints the count. |
 
-`continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the
-entries that are ready, in flight or blocked. With no roadmap, both name the first active
-intent instead.
+`continue` and `next` read the same frontier: the ready intents. An intent is ready when every intent
+it needs, by a `needs` link, is done or abandoned. `plastic intent link ID needs OTHER` writes the
+link. With no ready intent, both name the first active intent instead.
 
 ## Auto mode
 
@@ -49,23 +49,23 @@ intent instead.
 | ------- | ------ |
 | `plastic intent start ID` | Sets a future, open or parked intent in progress for guided work, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. A done or abandoned intent fails and offers `plastic next`, and an archived one fails and offers `plastic intent unarchive ID`. |
 | `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. |
-| `plastic roadmap auto SLUG` | Starts the roadmap's first free item with an intent, or opens its first ready item and starts it. An item is free when it is not parked and no other session claimed one of its nodes or ran a command on its intent within 15 minutes. With no item free yet it offers `plastic roadmap show SLUG` and names the items it waits on, and with every item done or dropped it offers `plastic roadmap show SLUG`. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
+| `plastic intent grant ID REASON --owner` | Grants one extra review round, on the owner's word, to an intent whose review rounds are used and not accepted. It writes one `granted` work log line with the reason; each line adds one round, and a call while a round is left is refused. Without `--owner` it exits 2 and writes nothing. |
 
-`plastic intent new` writes a future intent, and `plastic roadmap open` writes an open one.
+`plastic intent new` writes a future intent.
 `plastic intent start` and `plastic intent auto` run no version control command: they print the
 worktree, and the agent makes it. They end on `plastic intent spec ID` while the spec is unsettled or
 the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic intent brief ID`
 otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
 the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim`, names the session that works a node. It
-fails for an intent that is not in progress, offers `plastic next` for a done or abandoned one, and
-refuses one without the go-ahead.
+refuses, with exit 3, an intent that is not in progress or without the go-ahead, and a node that
+is blocked, held or capped; it offers `plastic next` for a done or abandoned intent.
 
 ## Drive a graph from any harness
 
 `plastic graph ready ID --json` lists the ready nodes as fields, and `plastic node claim ID NODE --json`
-returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, and
-the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
+returns `result.packet`: the node, its criterion, its input, the stored output of each node it needs, the
+rulings in force, the spec's constraints, what the lists left out, and the path of its schema file. `plastic node done ID NODE TEXT --output PATH` stores a file of JSON as
 the node's output and refuses a file that is not JSON. `plastic graph check` finds a schema file that
 names no live node and prints a `hand edit:` line for each finding no command repairs. [Drive a graph from any harness](drive-from-any-harness.md) shows the loop.
 
@@ -96,8 +96,6 @@ could not hold it safely.
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
 | `plastic intent archive (ID \| --older-than DATE) --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
-| `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
-| `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 
 `plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic sync down` or `plastic sync up`, and it offers no command.
 `plastic uninstall --dry-run` lists every path the uninstall would remove or change.
@@ -226,7 +224,7 @@ finds nothing to move and says `sorted: nothing to move`.
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
 then one heading for each family: intent, project, sync, session, config, backup, migration, document,
-architecture, node, edge, graph, roadmap and hook. `plastic help FAMILY` lists one family, and
+architecture, node, edge, graph and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.
 

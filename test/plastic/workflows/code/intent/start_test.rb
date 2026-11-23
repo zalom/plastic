@@ -45,7 +45,7 @@ class WorkflowStartIntentTest < Plastic::TestCase
   def test_a_done_intent_fails
     open_intent(status: "done")
 
-    error = assert_raises(Plastic::Failed) { start }
+    error = assert_raises(Plastic::Refused) { start }
     assert_includes error.message, "intent 1 is done"
   end
 

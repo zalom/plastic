@@ -10,7 +10,7 @@ require_relative "../../../lib/plastic/workflows/code/intent/end/prepare"
 
 # Each agent workflow of intent end is entered by an edge of the chain whose condition leaves a step of the workflow to do, so its done ending cannot be reached.
 class UnreachableEndingsTest < Minitest::Test
-  Facts = Struct.new(:requirements, :judged, :delivery_recorded, :map_recorded)
+  Facts = Struct.new(:requirements, :judged, :delivery_recorded)
 
   FINISH = Plastic::Workflows::Agent::Intent::End
   CHECK_DELIVERY = Plastic::Workflows::Agent::Intent::End::CheckDelivery
@@ -26,7 +26,7 @@ class UnreachableEndingsTest < Minitest::Test
 
   def finishing_facts = [{ requirements: ["a record"], judged: true }, { requirements: [], judged: false }, { requirements: ["a record"], judged: false }].map { |each| Facts.new(**each) }
 
-  def delivery_facts = [[true, false], [false, true], [false, false]].map { |delivery, map| Facts.new(requirements: [], judged: true, delivery_recorded: delivery, map_recorded: map) }
+  def delivery_facts = [false].map { |delivery| Facts.new(requirements: [], judged: true, delivery_recorded: delivery) }
 
   def test_the_done_ending_of_finishing_the_records_is_marked_unreachable
     assert outcome(FINISH, :done).unreachable
@@ -58,7 +58,7 @@ class UnreachableEndingsTest < Minitest::Test
   end
 
   def test_the_edge_into_checking_the_delivery_does_not_hold_once_no_step_of_it_is_left
-    facts = Facts.new(requirements: [], judged: true, delivery_recorded: true, map_recorded: true)
+    facts = Facts.new(requirements: [], judged: true, delivery_recorded: true)
 
     refute entered(:unverified, facts)
     assert_empty left(CHECK_DELIVERY, facts)

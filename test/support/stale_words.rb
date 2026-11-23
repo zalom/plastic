@@ -11,10 +11,8 @@ module StaleWords
     lib/plastic/doctor/core.rb
     lib/plastic/graph/backup/integrity.rb
     lib/plastic/graph/database/local.rb
-    lib/plastic/graph/knowledge/legacy/savepoint_log.rb
     lib/plastic/graph/knowledge/reader/intent_file.rb
     lib/plastic/graph/knowledge/reader/log_file.rb
-    lib/plastic/graph/knowledge/store_path.rb
     lib/plastic/graph/knowledge/sync/old_savepoints.rb
     lib/plastic/graph/migration/home_migration.rb
     lib/plastic/graph/migration/store_migration.rb

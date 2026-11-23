@@ -328,7 +328,7 @@ class PrintAfterWriteTest < Plastic::TestCase
     keyed
     run_cli("intent", "approve", "1")
     run_cli("intent", "auto", "1")
-    run_cli("node", "claim", "1", "n1")
+    run_cli("node", "claim", "1", "n1", "--agent", "tester")
     run_cli("node", "done", "1", "n1", "it passes")
 
     assert_files_level
@@ -363,30 +363,6 @@ class PrintAfterWriteTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_files_level
     assert_path_exists store_path("store/1--fresh/graph.json")
-  end
-
-  def roadmap_with_two_items
-    run_cli("roadmap", "new", "r1")
-    run_cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
-    run_cli("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done")
-    run_cli("roadmap", "add", "r1", "1", "b", "--title", "B")
-  end
-
-  def test_roadmap_adds_and_logs_print_the_roadmap_file
-    roadmap_with_two_items
-    run_cli("roadmap", "log", "r1", "a", "a log line")
-
-    assert_files_level("roadmaps/")
-    assert_includes File.read(store_path("roadmaps/r1.md")), "A"
-  end
-
-  def test_roadmap_drop_and_open_print_the_roadmap_file_and_the_intent
-    roadmap_with_two_items
-    run_cli("roadmap", "drop", "r1", "b")
-    run_cli("roadmap", "open", "r1", "a")
-
-    assert_files_level("roadmaps/")
-    assert_path_exists store_path("store/1--a/graph.json")
   end
 
   def test_a_refused_write_leaves_a_hand_edited_graph_json_alone

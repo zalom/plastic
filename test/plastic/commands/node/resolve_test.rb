@@ -3,10 +3,10 @@
 require_relative "../../../test_helper"
 
 class NodeResolveCaseTest < Plastic::TestCase
-  def test_resolving_a_node_that_is_open_exits_1_and_names_its_status
+  def test_resolving_a_node_that_is_open_exits_3_and_names_its_status
     alpha_with_node(approved: false)
 
-    assert_case line('node resolve 1 n1 "Claude Code"'), code: 1, out: "", err: ["node n1 is open; it cannot move to open"]
+    assert_case line('node resolve 1 n1 "Claude Code"'), code: 3, out: "", err: ["node n1 is open; it cannot move to open"]
   end
 end
 
@@ -17,7 +17,7 @@ class NodeResolveTest < Plastic::TestCase
     super
     open_keyed_intent
     cli("node", "add", "1", "a", "--criterion", "done")
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def test_resolving_a_needs_info_node_opens_it_and_offers_the_claim
@@ -25,7 +25,7 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
+    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1 --agent NAME\nbecause: node n1 is open\n"
   end
 
   def test_an_answer_that_holds_column_names_is_stored_unchanged
@@ -40,13 +40,13 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "access granted")
 
-    assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1"]
+    assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1 --agent NAME"]
     assert_equal "open", retrieval.node("1", "n1").state
   end
 
   def test_resolving_a_claimed_node_is_refused
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 1, err: "plastic: node n1 is claimed; it cannot move to open\n"
+    assert_call result, code: 3, err: "plastic: refused, node n1 is claimed; it cannot move to open\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
   end
 end

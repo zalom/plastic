@@ -9,7 +9,7 @@ shows the loop a driver runs.
 
 1. Run `plastic graph ready ID --json`. Its `result.nodes` lists the nodes that are ready. Each is
    `{id, title, kind, criterion, state, needs}`. Stop when the list is empty.
-2. For each ready node, run `plastic node claim ID NODE --json`. The answer carries
+2. For each ready node, run `plastic node claim ID NODE --agent NAME --json`. The answer carries
    `result.packet`, the brief for the worker.
 3. Start the worker with the packet. It does the work.
 4. Record the result with `plastic node done ID NODE TEXT --output PATH`, or with
@@ -28,10 +28,13 @@ Two or more ready nodes have no edge between them, so a driver may work them at 
 | `criterion` | `{key, text}` of the done criterion the node serves. |
 | `input` | The input the planner wrote on the node. |
 | `needs` | One `{id, title, output}` for each node this one needs. `output` is the parsed JSON that node stored, or `null` when it stored none. |
+| `rulings` | The intent's rulings in force as `{id, text}`, the newest 20, with superseded rulings left out. |
+| `constraints` | The bullets under the spec's `## Constraints` heading, the first 20. |
+| `omitted` | How many `rulings` or `constraints` the lists left out; `{}` when none. |
 | `schema` | The absolute path of `resources/tmp/schemas/NODE.json` in the intent folder, or `null` when no such file exists. |
 
 The text claim prints the same facts as lines: `node:`, `criterion:`, `criterion text:`, `input:`,
-`needs:` and `schema:`.
+`needs:`, `ruling:`, `constraint:`, `omitted:` and `schema:`.
 
 ## Keep the output of a node
 

@@ -7,7 +7,7 @@ require_relative "../../../../lib/plastic/graph/work/next_pick"
 class WorkClaimClockTest < Plastic::TestCase
   ROOT = File.expand_path("../../../..", __dir__)
 
-  READERS = %w[lib/plastic/workflows/code/roadmap/auto.rb lib/plastic/graph/work/next_pick.rb lib/plastic/workflows/delivery_ownership.rb
+  READERS = %w[lib/plastic/graph/work/next_pick.rb lib/plastic/workflows/delivery_ownership.rb
     lib/plastic/hooks/stop_gate.rb lib/plastic/hooks/recap.rb].freeze
 
   def test_no_reader_of_a_claim_reads_the_machine_clock

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../link"
+require_relative "../intent_needs"
 
 module Plastic
   module Graph
@@ -24,12 +25,12 @@ module Plastic
             local_target_problem(target)
           end
 
-          # Why the link would be refused, or nil: a self link, or one already there.
+          # Why the link would be refused, or nil: a self link, one already there, or a needs link to a non-intent or round a loop.
           def refusal(id, target, kind)
             return "intent #{id} cannot link to itself" if id == target
             return "intent #{id} already has a #{kind} link to #{target}" if @retrieval.links(id).any? { |link| link.joins?([id, target, kind]) }
 
-            nil
+            needs_refusal(id, target) if kind == "needs"
           end
 
           def add_link(from_ref:, to_ref:, kind:)
@@ -48,6 +49,14 @@ module Plastic
           end
 
           private
+
+          # Why a needs link is refused, or nil: its target is not an intent of this store, or it would close a loop.
+          def needs_refusal(from, to)
+            return "a needs link names an intent of this store, not #{to}" unless @retrieval.intent(to)
+
+            cycle = IntentNeeds.new(@retrieval).loop_path(from, to)
+            "intent #{from} needing #{to} would close a loop: #{cycle.join(" -> ")}" if cycle
+          end
 
           def local_target_problem(target)
             return nil if target.include?(":")

@@ -12,7 +12,7 @@ module Plastic
         intent_subject
         argument :path, label: "PATH", text: "the report, a path inside the intent folder under resources/output/reports/"
         reads :work
-        writes :knowledge
+        writes :knowledge, :retrieval
         prints :intent
 
         workflow :code_report_intent, next: :noop

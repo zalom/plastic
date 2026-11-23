@@ -19,7 +19,7 @@ module Plastic
           SQL
 
           REMOVE_SQL = <<~SQL
-            DELETE FROM edges WHERE intent_id = :intent_id AND "from" = :from AND "to" = :to AND origin_id = :origin
+            DELETE FROM edges WHERE intent_id = :intent_id AND "from" = :from AND "to" = :to AND origin_id = :origin AND kind = 'needs'
             RETURNING "from"
           SQL
 
@@ -37,8 +37,8 @@ module Plastic
           # Returns [true, nil] when the edge is written, or [false, the reason it is refused].
           def add_edge(intent_id:, from:, to:)
             store.atomically do
-              problem = refusal(intent_id, from, to)
-              problem ? [false, problem] : [moved(ADD_SQL, intent_id:, from:, to:), nil]
+              problem, kind = refusal(intent_id, from, to)
+              problem ? [false, problem, kind] : [moved(ADD_SQL, intent_id:, from:, to:), nil, nil]
             end
           end
 
@@ -59,7 +59,7 @@ module Plastic
 
           def refusal(intent_id, from, to)
             reason = self_reason(from, to) || node_reason(intent_id, from, to) || edge_reason(intent_id, from, to)
-            reason && "edge #{from} to #{to} is refused: #{reason}"
+            reason && ["edge #{from} to #{to} is refused: #{reason}", (:failure if reason.end_with?("is not a node of intent #{intent_id}")) || :refusal]
           end
 
           def self_reason(from, to) = ("a node cannot need itself" if from == to)

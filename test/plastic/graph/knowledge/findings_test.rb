@@ -21,7 +21,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
 
   def finish(id, findings:)
     @work.claim_node(intent_id: "1", id:, by: "a")
-    @work.done_node(intent_id: "1", id:, judge: "tests", findings:)
+    @work.done_node(intent_id: "1", id:, findings:)
   end
 
   def test_an_intent_with_criteria_and_one_verified_node_has_no_finding
@@ -57,7 +57,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     criteria
     2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
 
-    assert_equal ["node n1 has no edge", "node n2 has no edge"], findings
+    assert_equal ["node n1 has no edge", "node n2 has no edge", "the graph has 2 nodes and no edge at all"], findings
   end
 
   def test_linked_nodes_have_no_edge_finding
@@ -94,7 +94,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     criteria
     2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
 
-    assert_equal [["node n1 has no edge", "plastic edge add 1 n1 TO"], ["node n2 has no edge", "plastic edge add 1 n2 TO"]], repairs
+    assert_equal [["node n1 has no edge", "plastic edge add 1 n1 TO"], ["node n2 has no edge", "plastic edge add 1 n2 TO"], ["the graph has 2 nodes and no edge at all", "plastic edge add 1 FROM TO"]], repairs
   end
 
   def test_no_done_criterion_names_the_command_that_prints_how_to_write_one
@@ -136,5 +136,52 @@ class KnowledgeFindingsTest < Plastic::TestCase
     @work.add_edge(intent_id: "1", from: "n1", to: "n2")
 
     assert_empty repairs
+  end
+end
+
+class KnowledgeFindingsNoEdgeTest < Plastic::TestCase
+  Findings = Plastic::Graph::Knowledge::Findings
+
+  def setup
+    super
+    @intent = open_intent
+    @work = store_graphs.work
+    write("#{@intent.dir}/spec.md", "## Done criteria\n- It works\n")
+    sync_up
+  end
+
+  def texts = Findings.new(retrieval, "1").with_repairs.map { |finding| [finding.text, finding.repair] }
+
+  def test_several_nodes_with_no_edge_at_all_are_named_once_with_the_command_that_adds_an_edge
+    3.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+
+    assert_includes texts, ["the graph has 3 nodes and no edge at all", "plastic edge add 1 FROM TO"]
+  end
+
+  def test_one_node_alone_is_not_a_graph_with_no_edge
+    @work.add_node(intent_id: "1", title: "Node")
+
+    assert_empty texts
+  end
+
+  def test_a_graph_with_an_edge_is_not_named
+    2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+
+    assert_empty texts
+  end
+
+  def test_only_a_loop_or_a_need_on_a_removed_node_blocks
+    3.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+
+    assert_empty Findings.new(retrieval, "1").blocking
+  end
+
+  def test_a_need_on_a_removed_node_blocks
+    2.times { |index| @work.add_node(intent_id: "1", title: "Node #{index}") }
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    @work.remove_node(intent_id: "1", id: "n1", reason: "gone")
+
+    assert_equal ["node n2 needs n1, which is removed"], Findings.new(retrieval, "1").blocking.map(&:text)
   end
 end

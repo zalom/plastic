@@ -96,7 +96,7 @@ class CommandReferencePageFilesTest < Minitest::Test
   end
 
   def test_a_command_that_changes_nothing_says_so
-    text = readme("roadmap show")
+    text = readme("graph show")
 
     assert_includes text, "This command changes nothing."
     refute_includes text, "| What changes |"

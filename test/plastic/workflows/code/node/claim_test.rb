@@ -6,7 +6,9 @@ require_relative "../../../../../lib/plastic/workflows/code/node/claim"
 class ClaimNodeTest < Plastic::TestCase
   def setup
     super
-    open_intent
+    intent = open_intent
+    write("#{intent.dir}/spec.md", "## Done criteria\n- It works\n")
+    sync_up
     store_graphs.work.approve_intent("1")
     store_graphs.work.activate_intent("1")
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs", input: "spec.md")
@@ -31,7 +33,7 @@ class ClaimNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Ship", criterion: "it ships")
     store_graphs.work.add_edge(intent_id: "1", from: "n1", to: "n2")
 
-    error = assert_raises(Plastic::Failed) { claim("n2") }
+    error = assert_raises(Plastic::Refused) { claim("n2") }
 
     assert_match(/node n2 needs a node that is not done/, error.message)
     assert_equal "open", retrieval.node("1", "n2").state

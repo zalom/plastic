@@ -60,7 +60,7 @@ class IntentApproveTest < Plastic::TestCase
     define_method(:"test_a_#{status}_intent_fails_with_no_row") do
       open_intent(status:)
 
-      assert_equal 1, cli("intent", "approve", "1").code
+      assert_equal 3, cli("intent", "approve", "1").code
       assert_empty work_rows("approvals")
     end
   end

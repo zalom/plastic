@@ -82,9 +82,9 @@ class AttachedStoreTest < Plastic::TestCase
   def test_the_phrases_name_each_file_that_a_call_wrote_in_order
     store.transaction do |batch|
       batch.put(:clusters, { name: "Core", intent_id: "1" })
-      batch.put(:roadmaps, { slug: "r", title: "R", goal: "G" })
+      batch.put(:work_log, { intent_id: "1", position: 1, at: "2026-11-23T00:00:00+01:00", kind: "noted", text: "t" })
     end
 
-    assert_equal ["1 roadmap in work_graph.db", "1 cluster in knowledge_graph.db"], store.phrases
+    assert_equal ["1 work log line in work_graph.db", "1 cluster in knowledge_graph.db"], store.phrases
   end
 end

@@ -142,7 +142,7 @@ end
 
 class BackupRestoreDeclarationTest < Minitest::Test
   def test_it_declares_that_it_writes_every_store_database_it_can_replace
-    assert_equal Plastic::Graph::Schema.store.sort, Plastic::Commands::Backup::Restore.writes.uniq.sort
+    assert_equal [*Plastic::Graph::Schema.store, :retrieval].sort, Plastic::Commands::Backup::Restore.writes.uniq.sort
   end
 end
 

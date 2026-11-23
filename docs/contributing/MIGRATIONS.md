@@ -145,6 +145,16 @@ After `plastic update`, run `plastic sync down` so the printed files carry the U
 sync up reads each time in the files into UTC, so a file an earlier release printed with an
 offset still gives UTC rows.
 
+Migration `20261123120000` turns the roadmaps into needs links and drops the five roadmap tables
+of `work_graph.db`. Its data step, `RoadmapNeeds` in `lib/plastic/graph/migration/roadmap_needs.rb`,
+reads the roadmap edges that `legacy.db` kept and writes one `needs` link from the intent of the
+later item to the intent of the earlier one. An edge is skipped, and counted in the migrate notes,
+when an item has no intent, when both items belong to one intent, or when the link would close a
+loop. The migration is in `KEEPS` and keeps the five tables whole as `<table>_20261123120000`. It
+has no switch. Its down, `RoadmapNeedsLinks`, removes every `needs` link and puts the five tables
+back from `legacy.db`. A store that never had the tables keeps nothing, and its down removes the
+version alone.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as
@@ -164,9 +174,20 @@ behind `migrate.drop_document_revisions`, so the three run in the same `plastic 
 To hold a new migration, add its version and its switch to `HELD`, and add the switch to
 `lib/plastic/config/defaults.rb`, off.
 
-Migration `20261121090000`, which writes every stored time in UTC, is the one exception to this
-rule. The owner ruled on 22 November 2026 that it has no switch: it changes the text of a time
-and not the time it names, and the code that reads times expects UTC.
+Two migrations are exceptions to this rule. Migration `20261121090000`, which writes every stored
+time in UTC, has no switch: the owner ruled on 22 November 2026 that it changes the text of a time
+and not the time it names, and the code that reads times expects UTC. Migration `20261123100000`,
+which drops the node columns `judge` and `verdict`, has no switch either: Jev chose that on
+23 November 2026 (ruling D1 of intent 488), following the owner's ruling for intent 498.
+
+Migration `20261123100000` drops the columns `judge` and `verdict` of `nodes` in `work_graph.db`.
+No code read or wrote them, and the nodes of all 15 real stores held no value in either. It has no
+switch, as the owner ruled on 22 November 2026 for the roadmap migration of intent 498: a held
+migration would leave some stores on a layout with the columns and others without. A store keeps
+nothing of it in `legacy.db`, and the backup that every migration run takes first holds the
+columns. It is in `ALONE`, and its down, `NodeJudgeColumns` in `REBUILDS`, adds both columns
+back, empty. A graph file that an earlier release printed with the two fields still reads: the
+sync reads past them.
 
 ## The ledger
 

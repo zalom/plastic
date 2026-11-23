@@ -69,4 +69,14 @@ class KnowledgeSpecTest < Plastic::TestCase
   def test_a_bullet_reads_nil_for_a_line_that_is_not_one
     assert_equal ["Done", nil], [Spec.bullet("- [X] Done "), Spec.bullet("Done")]
   end
+
+  def test_constraints_are_the_bullets_under_the_constraints_heading
+    read = spec("## Constraints\n- No new gem\n- [ ] Keep it plain\n\n## Notes\n- Other\n")
+
+    assert_equal ["No new gem", "Keep it plain"], read.constraints
+  end
+
+  def test_a_spec_without_constraints_has_none
+    assert_empty spec("## Done criteria\n- It ships\n").constraints
+  end
 end

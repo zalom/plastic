@@ -5,7 +5,7 @@ require_relative "edge_walk/cyclic"
 module Plastic
   module Graph
     # Walks the edges of one graph from a node, with a stack and a visited set, so a chain of any length ends. It
-    # takes the edges as [from, to] pairs and decides what a node reaches, which a work graph and a roadmap share.
+    # takes the edges as [from, to] pairs and decides what a node reaches, which a work graph and the needs links between intents share.
     class EdgeWalk
       def initialize(pairs)
         @successors = pairs.each_with_object(Hash.new { |hash, key| hash[key] = [] }) { |(from, to), index| index[from] << to }

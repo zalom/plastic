@@ -42,7 +42,7 @@ module Plastic
             end
           end
 
-          def self.advice(finding) = finding.repair ? "repair: #{finding.repair}" : "hand edit: #{finding.hand}"
+          def self.advice(finding) = finding.advice
 
           gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? || !context.repair.nil? }
 
@@ -54,7 +54,7 @@ module Plastic
           end
 
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
-          outcome :done, offers: "plastic node claim %{intent_id} %{first}", because: "node %{first} is ready"
+          outcome :done, offers: "plastic node claim %{intent_id} %{first} --agent NAME", because: "node %{first} is ready"
         end
       end
     end

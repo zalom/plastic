@@ -3,6 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/project/load"
 require_relative "../../../test_helpers/schema_versions"
+require_relative "../../../../lib/plastic/graph/evidence/writer"
 
 # Calls and fixtures the project load tests share.
 module ProjectLoadHelper
@@ -196,6 +197,16 @@ class ProjectLoadEdgeTest < Plastic::TestCase
     assert_empty values(result, "read:") + values(result, "architecture:")
   end
 
+  def test_a_store_that_lost_only_its_retrieval_file_names_that_file
+    register("blog")
+    work("blog")
+    store = File.join(@plastic_home, "stores", "blog")
+    FileUtils.rm_f(File.join(store, "retrieval_graph.db"))
+
+    assert_equal ["#{store} (missing retrieval_graph.db)"], values(load("blog"), "store:")
+    refute_path_exists File.join(store, "retrieval_graph.db")
+  end
+
   def test_an_empty_store_folder_is_named_and_left_empty
     register("blog")
     store = File.join(@plastic_home, "stores", "blog")
@@ -241,5 +252,63 @@ class ProjectLoadEdgeTest < Plastic::TestCase
     earlier = store_intent("blog", "Early in UTC", status: "done", closed_at: "2026-11-21T02:00:00Z")
 
     assert_equal [later.intent_id, earlier.intent_id], values(load("blog"), "delivered:").map { |line| line.split[1] }
+  end
+end
+
+# The passages of the retrieval graph that a project load gives for the work in play.
+class ProjectLoadRetrievalTest < Plastic::TestCase
+  include ProjectLoadHelper
+
+  def test_an_intent_in_play_gets_the_best_passages_of_the_other_intents_for_its_title
+    register("blog")
+    started = store_intent("blog", "Write the about page", status: "in_progress")
+    index("blog", "7", "spec.md", "the about page uses a two column grid")
+    index("blog", "8", "notes.md", "unrelated words on deployment")
+
+    assert_equal ["for #{started.intent_id}: 7/spec.md - the about page uses a two column grid"], values(load("blog"), "context:")
+  end
+
+  def test_the_passages_of_the_intent_in_play_itself_are_not_its_context
+    register("blog")
+    started = store_intent("blog", "Write the about page", status: "in_progress")
+    index("blog", started.intent_id, "spec.md", "the about page is the goal")
+
+    assert_empty values(load("blog"), "context:")
+  end
+
+  def test_each_intent_in_play_gets_at_most_two_passages
+    register("blog")
+    store_intent("blog", "Write the about page", status: "in_progress")
+    %w[1 2 3].each { |id| index("blog", id, "spec.md", "the about page, version #{id}") }
+
+    assert_equal 2, values(load("blog"), "context:").size
+  end
+
+  def test_a_passage_is_cut_to_a_bounded_length_on_one_line
+    register("blog")
+    store_intent("blog", "Write the about page", status: "in_progress")
+    index("blog", "7", "spec.md", "the about page\n#{"long " * 200}")
+
+    row = values(load("blog"), "context:").first
+
+    assert_operator row.length, :<=, 260
+    refute_includes row, "\n"
+  end
+
+  def test_a_project_with_no_work_in_play_prints_no_context
+    register("blog")
+    store_intent("blog", "Idea")
+    index("blog", "7", "spec.md", "idea")
+
+    assert_empty values(load("blog"), "context:")
+  end
+
+  private
+
+  def index(slug, intent_id, path, body)
+    graphs = Plastic::Graph.create(home: @plastic_home, store: slug)
+    origin = Plastic::Graph::Origin.new(@plastic_home).id
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write(intent_id, path, body)
+    graphs.retrieval.repair
   end
 end

@@ -9,7 +9,7 @@ class VerdictPrepareTest < Plastic::TestCase
   def test_a_done_intent_stops_the_call
     open_intent(status: "done")
 
-    assert_raises(Plastic::Failed) { prepare }
+    assert_raises(Plastic::Refused) { prepare }
   end
 
   def test_an_open_intent_passes_the_gate

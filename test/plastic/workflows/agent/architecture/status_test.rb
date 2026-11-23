@@ -16,4 +16,10 @@ class CheckArchitectureTest < Plastic::TestCase
 
     assert_includes sole(handoff.steps), "the choice of tool is yours"
   end
+
+  def test_the_check_ties_the_map_to_planning_code_work
+    handoff, = run_workflow(Plastic::Workflows::Agent::Architecture::Status)
+
+    assert_includes sole(handoff.steps), "before you plan code work"
+  end
 end

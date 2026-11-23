@@ -5,6 +5,7 @@ require_relative "../../../code_workflow"
 require_relative "../../../graph"
 require_relative "../../../graph/knowledge/store_folder"
 require_relative "../../../graph/work/store_resume"
+require_relative "../../worktree"
 
 module Plastic
   module Workflows
@@ -52,10 +53,11 @@ module Plastic
           end
 
           def self.report(context, slug)
-            home = context.scope.plastic_home
+            scope = context.scope
+            home = scope.plastic_home
             session = context.session
             retrieval = Plastic::Graph.open(home:, store: slug, session:, clock: context.clock).retrieval
-            Plastic::Graph::Work::StoreResume.new(retrieval, Plastic::Graph::Knowledge::StoreFolder.new(File.join(home, "stores", slug)), session, now: context.now)
+            Plastic::Graph::Work::StoreResume.new(retrieval, Plastic::Graph::Knowledge::StoreFolder.new(File.join(home, "stores", slug)), session, now: context.now, work: Plastic::Workflows::Worktree.work(scope, slug))
           end
 
           def self.offer_next(context, reports)

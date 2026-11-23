@@ -45,7 +45,7 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | Close the work | Closes a delivered intent once its verdict, nodes and outcome allow it, or prints what is missing |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store: SQLite databases, printed to plain Markdown |
-| Steer a long delivery | Reads a roadmap as a graph and prints its first ready item |
+| Steer a long delivery | Reads the `needs` links between intents and prints the first ready intent |
 | Protect the record | Copies one store's databases into a new backup folder, and puts a backup back |
 
 Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
@@ -184,6 +184,7 @@ plastic intent new "TITLE"            # Create a future intent
 plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
 plastic intent start 12               # Set it in progress for guided work and print the code worktree
 plastic intent park 12 "TEXT"         # Park started work with the reason it waits
+plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
@@ -199,22 +200,17 @@ plastic intent end 12                   # Close as delivered, after the merge
 plastic intent abandon 12               # Close as abandoned
 ```
 
-### Graphs and roadmaps
+### Graphs and needs links
 ```bash
 plastic graph show 12                 # The work graph of intent 12
 plastic graph ready 12                # The nodes ready to start
 plastic graph check 12                # Find a done node with no findings, an isolated node, a retry cap, a loop or a stray schema file
-plastic node claim 12 n3              # Claim a ready node
+plastic node claim 12 n3 --agent NAME  # Claim a ready node
 plastic node done 12 n3 "TEXT"        # Close a claimed node with its findings
 plastic node resolve 12 n3 "TEXT"     # Reopen a node that needs info or is impeded
 plastic node remove 12 n3 --dry-run   # Preview a node removal
 plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal
-plastic roadmap next SLUG             # The first ready item of a roadmap
-plastic roadmap show SLUG             # The state screen of one roadmap
-plastic roadmap check SLUG            # List loops, dangling edges and items with no intent
-plastic roadmap drop SLUG ITEM --dry-run        # Preview a dropped item
-plastic roadmap edge remove SLUG FROM TO --dry-run   # Preview an edge removal
-plastic roadmap log SLUG "TEXT"       # Append a log line to a roadmap
+plastic intent link 12 needs 7       # Intent 12 waits for intent 7
 ```
 
 A `--dry-run` call runs in a disposable copy of the store. It prints what it would
@@ -223,13 +219,12 @@ write, never touches the original, and ends with the same call without `--dry-ru
 ### Auto teams
 ```bash
 plastic intent auto 12                 # Set the intent in progress for agent delivery and print the code worktree
-plastic roadmap auto my-roadmap        # Start the next item of a roadmap for agent delivery
 plastic intent brief 12                # Print the brief an agent starts from
 ```
 
 ### Search
 ```bash
-plastic search recovery flow --source-project blog --limit 20  # Ranked passages
+plastic search recovery flow --source-project blog --limit 20  # Ranked passages for the words of a question; quote a phrase to keep it whole
 plastic document get REFERENCE --json                           # One immutable document
 plastic document batch REFERENCE... --json                      # Documents in request order
 plastic intent discover 12 recovery flow                         # Save candidate provenance
@@ -242,7 +237,7 @@ plastic architecture refresh --project blog                      # Tell the agen
 ```bash
 plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
 plastic project list                  # The registered projects with their paths
-plastic project load blog shop        # A short digest of each project: paths, files to read, work in play, last deliveries
+plastic project load blog shop        # A short digest of each project: paths, files to read, work in play with its passages, last deliveries
 plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
 plastic project links                 # List the links that name an intent or a ruling this store lacks
 plastic sync up --dry-run             # Show what would change
@@ -276,7 +271,7 @@ plastic doctor                        # The installation, the databases and the 
 plastic help                          # All commands, grouped in families
 plastic help intent                   # The commands of one family
 plastic help intent end               # The usage line of one command
-plastic help roadmaps                 # One help topic
+plastic help tools                    # One help topic
 ```
 
 ## Global options
@@ -434,7 +429,7 @@ from RubyGems when a release installs. See [SECURITY.md](SECURITY.md) for every 
 
 ## Built with Plastic
 
-Plastic is developed through Plastic. The roadmap, the intents, the plans, the decisions and
+Plastic is developed through Plastic. The intents, the plans, the decisions and
 the outcomes behind each release are part of the record.
 
 ## Contributing

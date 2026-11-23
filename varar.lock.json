@@ -38,7 +38,7 @@
       ]
     },
     "varar/status.md": {
-      "sourceHash": "fnv1a:dbcefa24",
+      "sourceHash": "fnv1a:c0cf0d49",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

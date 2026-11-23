@@ -5,6 +5,8 @@ require_relative "errors"
 require_relative "code_workflow/gate"
 require_relative "code_workflow/read"
 require_relative "code_workflow/step"
+require_relative "code_workflow/open_intent_gates"
+require_relative "code_workflow/criteria_coverage_gate"
 
 module Plastic
   # A workflow of Ruby steps. The steps run in order, each one once per
@@ -22,6 +24,9 @@ module Plastic
     STOPS = %i[refusal failure].freeze
     GATE_OPTIONS = %i[stops pass offers because words].freeze
 
+    extend OpenIntentGates
+    extend CriteriaCoverageGate
+
     class << self
       def lane = "code"
 
@@ -29,7 +34,9 @@ module Plastic
 
       # A check that stops the call when pass: is false, and prints `reason`.
       # stops: :refusal ends in exit 3 and names an owner step. stops:
-      # :failure ends in exit 1 and names something the agent can fix.
+      # :failure ends in exit 1 and names something the agent can fix: a missing record, a bad input, a file that
+      # cannot be read. A rule that says no (a closed intent, a blocked node, a missing go-ahead) is always :refusal.
+      # test/refusal_exit_guard_test.rb checks it.
       # because: is the line that says why; the reason serves when it is left out.
       def gate(reason, **rule)
         unknown = rule.keys - GATE_OPTIONS

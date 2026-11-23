@@ -27,9 +27,9 @@ module Plastic
 
           attr_reader :database, :folder, :retrieval, :snapshot
 
-          def unavailable(intent_id) = [false, "intent #{intent_id} is not archived", :failure]
+          def unavailable(intent_id) = [false, "intent #{intent_id} is not archived", :refusal]
 
-          def elsewhere(intent_id) = [false, "intent #{intent_id} is archived and its snapshot is on the first home; unarchive it there", :failure]
+          def elsewhere(intent_id) = [false, "intent #{intent_id} is archived and its snapshot is on the first home; unarchive it there", :refusal]
 
           def restore(intent_id)
             intent = retrieval.intent(intent_id)

@@ -12,7 +12,7 @@ class NodeAskTest < Plastic::TestCase
   end
 
   def test_asking_about_a_claimed_node_offers_the_resolution
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
 
     result = cli("node", "ask", "1", "n1", "which way?")
 
@@ -21,7 +21,7 @@ class NodeAskTest < Plastic::TestCase
   end
 
   def test_a_question_that_holds_column_names_is_stored_unchanged
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "ask", "1", "n1", "see :id and :intent_id")
 
     assert_equal "see :id and :intent_id", retrieval.node("1", "n1").question
@@ -30,7 +30,7 @@ class NodeAskTest < Plastic::TestCase
   def test_asking_about_an_open_node_is_refused
     result = cli("node", "ask", "1", "n1", "which way?")
 
-    assert_call result, code: 1, err: "plastic: node n1 is open; it cannot move to needs_info\n"
+    assert_call result, code: 3, err: "plastic: refused, node n1 is open; it cannot move to needs_info\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
   end
 
   def test_the_text_is_required

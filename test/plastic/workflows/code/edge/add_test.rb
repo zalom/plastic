@@ -27,7 +27,7 @@ class AddEdgeTest < Plastic::TestCase
   end
 
   def test_a_self_edge_fails_with_no_edge
-    error = assert_raises(Plastic::Failed) { add("n1", "n1") }
+    error = assert_raises(Plastic::Refused) { add("n1", "n1") }
 
     assert_equal "edge n1 to n1 is refused: a node cannot need itself", error.message
     assert_empty retrieval.structure.edges("1")

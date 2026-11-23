@@ -9,7 +9,7 @@ module Plastic
       class Get < Routine
         argument :reference, label: "REF", text: "plastic://STORE/INTENT/PATH?revision=SHA256"
         option :passage, switch: "--passage N", text: "one-based bounded passage position"
-        reads :knowledge
+        reads :knowledge, :retrieval
 
         workflow :code_get_document, next: :noop
       end

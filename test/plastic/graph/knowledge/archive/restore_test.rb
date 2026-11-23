@@ -30,10 +30,10 @@ class KnowledgeArchiveRestoreTest < Plastic::TestCase
     writer.archive("1")
     emptied = Archive::Restore.new(@graphs.databases.fetch(:store), @graphs.retrieval, folder, snapshot: ->(_id) { Struct.new(:entries).new([]) })
 
-    assert_equal [false, "intent 1 is archived and its snapshot is on the first home; unarchive it there", :failure], emptied.call("1")
+    assert_equal [false, "intent 1 is archived and its snapshot is on the first home; unarchive it there", :refusal], emptied.call("1")
   end
 
   def test_an_intent_that_is_not_archived_fails
-    assert_equal [false, "intent 1 is not archived", :failure], restore.call("1")
+    assert_equal [false, "intent 1 is not archived", :refusal], restore.call("1")
   end
 end

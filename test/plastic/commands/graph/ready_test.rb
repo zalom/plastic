@@ -10,7 +10,7 @@ class GraphReadyCaseTest < Plastic::TestCase
     alpha_specified(TWO_CRITERIA)
     ran("intent approve 1", "node add 1 Build --criterion tests-pass", "node add 1 Test --criterion suite-green", "edge add 1 n2 n1")
 
-    assert_case line("graph ready 1"), code: 0, out: ["ready: n2 Test", "next: plastic node claim 1 n2"]
+    assert_case line("graph ready 1"), code: 0, out: ["ready: n2 Test", "next: plastic node claim 1 n2 --agent NAME"]
   end
 
   def test_an_intent_with_no_nodes_has_nothing_ready
@@ -44,7 +44,7 @@ class GraphReadyTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes result.out, "ready: n1 a"
-    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
+    assert_match(/^next: plastic node claim 1 n1 --agent NAME\b/, result.out)
   end
 
   def test_a_node_whose_need_is_not_done_is_not_ready
@@ -58,9 +58,9 @@ class GraphReadyTest < Plastic::TestCase
 
   def test_claimed_work_leaves_nothing_ready_and_no_next_line
     two_linked_nodes
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
-    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n2", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call("1")
 
@@ -79,7 +79,7 @@ class GraphReadyTest < Plastic::TestCase
 
   def test_the_json_answer_names_the_nodes_a_ready_node_needs
     two_linked_nodes
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal [["n2", ["n1"]]], ready_nodes_json.map { |node| [node["id"], node["needs"]] }
@@ -108,9 +108,9 @@ class GraphReadyTest < Plastic::TestCase
 
   def test_claimed_work_says_why_nothing_is_ready
     two_linked_nodes
-    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
-    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", "1", "n2", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call("1")
 

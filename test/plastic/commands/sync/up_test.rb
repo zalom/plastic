@@ -5,7 +5,6 @@ require_relative "../../../../lib/plastic/commands/sync/up"
 require "json"
 require_relative "../../../test_helpers/delivered_homes"
 require_relative "../../../test_helpers/two_homes"
-require_relative "../../../../lib/plastic/commands/roadmap/show"
 
 class SyncUpTest < Plastic::TestCase
   fixtures :legacy
@@ -13,7 +12,6 @@ class SyncUpTest < Plastic::TestCase
   def import = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def legacy_metadata
-    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 1 Build alpha — queued\n")
     write("store/1--alpha-service/spec.md", "# Spec\n\n## Decisions\n- D1 Keep local ownership\n")
   end
 
@@ -30,13 +28,6 @@ class SyncUpTest < Plastic::TestCase
 
     assert_equal ["D1 Keep local ownership"], retrieval.rulings("1").map(&:text)
     assert retrieval.links("1").any? { |link| link.kind == "source" && link.to_ref == "global:51" }
-  end
-
-  def test_sync_up_imports_the_roadmap
-    legacy_metadata
-    import
-
-    assert_equal ["1"], retrieval.roadmaps.items("ship").map(&:intent_id)
   end
 
   def test_sync_up_wrote_line_names_the_rows_and_leaves_out_the_command_run
@@ -247,13 +238,6 @@ class SyncUpGeneratedTest < Plastic::TestCase
     dry, kept, real = preview_then_apply(path, "{\"hand\":true}\n") { |home| call_in(home, "intent", "new", "Beta") }
 
     assert_equal [1, true, "{\"hand\":true}\n", 1], [dry.code, dry.err.include?("sync down --overwrite #{path}"), kept, real.code], dry.out + dry.err
-  end
-
-  def test_a_preview_of_sync_up_names_a_changed_roadmap_it_cannot_read_and_exits_as_the_real_run_does
-    path = "roadmaps/r1.md"
-    dry, kept, real = preview_then_apply(path, "# by hand\n") { |home| call_in(home, "roadmap", "new", "r1") }
-
-    assert_equal [1, true, "# by hand\n", 1], [dry.code, dry.err.include?("sync down --overwrite #{path}"), kept, real.code], dry.out + dry.err
   end
 
   def conflicting_spec(home)
@@ -509,7 +493,7 @@ class SyncUpGraphArchiveRefusalTest < Minitest::Test
       second.command!("sync", "up")
       call = second.command("intent", "unarchive", "1")
 
-      assert_equal [1, [[nil]], false], [call.code, query(second, "SELECT restored_at FROM archives"), File.exist?(second.path(DIR))]
+      assert_equal [3, [[nil]], false], [call.code, query(second, "SELECT restored_at FROM archives"), File.exist?(second.path(DIR))]
       assert_match(/snapshot is on the first home/, call.reason)
     end
   end
@@ -599,7 +583,7 @@ class SyncUpGraphClaimTest < Minitest::Test
     with_two_homes do |_first, second|
       second.command!("sync", "up")
 
-      assert_includes second.command!("node", "claim", "1", "n2").out, "n2"
+      assert_includes second.command!("node", "claim", "1", "n2", "--agent", "tester").out, "n2"
     end
   end
 end
@@ -810,15 +794,6 @@ end
 class SyncLegacyMetadataTest < Plastic::TestCase
   fixtures :legacy
 
-  ROADMAP = <<~MARKDOWN
-    # Ship the client
-
-    ## Batches
-
-    - [x] 1 Build alpha — delivered
-    - [ ] 1a Deploy the gateway — queued
-  MARKDOWN
-
   def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def spec_with(decisions) = "# Spec\n\n## Decisions\n#{decisions.map { |line| "- #{line}\n" }.join}"
@@ -840,64 +815,10 @@ class SyncLegacyMetadataTest < Plastic::TestCase
     assert_equal ["D1 Use a shared server"], retrieval.rulings("1").map(&:text)
   end
 
-  def test_a_roadmap_with_no_batch_heading_lands_in_batch_one
-    write("roadmaps/ship.md", ROADMAP)
-
-    apply
-
-    assert_equal [[1, "Ship the client"]], retrieval.roadmaps.batches("ship").map { |batch| [batch.position, batch.title] }
-    assert_equal [1, 1], retrieval.roadmaps.items("ship").map(&:batch)
-  end
-
-  def test_an_imported_item_names_the_intent_with_its_id
-    write("roadmaps/ship.md", ROADMAP)
-
-    apply
-
-    assert_equal %w[1 1a], retrieval.roadmaps.items("ship").map(&:intent_id)
-  end
-
-  def test_savepoint_lines_join_the_roadmap_log
-    write("roadmaps/ship.md", ROADMAP)
-    write("roadmaps/ship.savepoint.md", "2026-09-01T10:00:00+02:00 Batch 1 opened\n")
-
-    apply
-
-    assert_equal ["Batch 1 opened"], retrieval.roadmaps.log("ship").map(&:text)
-    assert_nil retrieval.roadmaps.find("ship.savepoint")
-  end
-
   def test_a_second_apply_says_no_store_is_left
     apply
 
     assert_equal 0, apply.code
-  end
-
-  def test_a_batch_with_no_goal_prints_without_a_dash
-    write("roadmaps/ship.md", ROADMAP)
-    apply
-
-    result = plastic("roadmap", "show", "ship", table: Plastic::CLI::TABLE)
-
-    assert_includes result.out, "batch 1: Ship the client\n"
-    assert_equal 0, result.code
-    assert_equal "", result.err
-  end
-
-  def test_a_roadmap_title_loses_its_roadmap_prefix
-    write("roadmaps/ship.md", ROADMAP.sub("# Ship", "# Roadmap: Ship"))
-
-    apply
-
-    assert_equal "Ship the client", retrieval.roadmaps.find("ship").title
-  end
-
-  def test_waits_read_in_number_order
-    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 9 A — queued\n- [ ] 10 B — queued\n- [ ] 11 C — queued\n\n" \
-                              "## Graph\n\n- 9 needs nothing\n- 10 needs nothing\n- 11 needs 10 9\n")
-    apply
-
-    assert_equal %w[9 10], retrieval.roadmaps.edges("ship").map(&:from)
   end
 
   def test_a_store_that_fails_halfway_gets_its_folder_back
@@ -910,20 +831,5 @@ class SyncLegacyMetadataTest < Plastic::TestCase
       assert_raises(RuntimeError) { rollback.call { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
       assert_equal ["INDEX.md"], Dir.children(root)
     end
-  end
-
-  def test_a_roadmap_line_it_cannot_read_refuses_the_import
-    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 9 A\n")
-
-    call = apply
-
-    assert_equal 1, call.code
-    assert_includes call.err, "no status on roadmap item"
-  end
-
-  def test_an_unknown_roadmap_is_refused
-    call = plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE)
-
-    assert_call call, code: 1, out: "", err: "plastic: no roadmap nosuch\n"
   end
 end

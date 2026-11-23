@@ -1,6 +1,6 @@
 # plastic graph show
 
-Print every node and edge of an intent.
+Print every node, with the node it was found in, and every need of an intent.
 
 ```sh
 plastic graph show ID

@@ -112,12 +112,6 @@ module Plastic
           batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :id", id: intent_id)
         end
       end
-
-      def seed_roadmap(home, *items)
-        call_in(home, "roadmap", "new", "r1")
-        call_in(home, "roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
-        items.each { |item| call_in(home, "roadmap", "add", "r1", "1", item, "--title", item.upcase) }
-      end
     end
   end
 end

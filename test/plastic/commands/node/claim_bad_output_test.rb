@@ -18,7 +18,7 @@ class NodeClaimBadOutputTest < Plastic::TestCase
     cli("node", "add", "1", "Build", "--criterion", KEY)
     cli("node", "add", "1", "Test", "--criterion", KEY)
     cli("edge", "add", "1", "n1", "n2")
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "done", "1", "n1", "built")
     hold_output("n1", "not json")
   end
@@ -30,24 +30,24 @@ class NodeClaimBadOutputTest < Plastic::TestCase
   end
 
   def test_a_claim_with_a_needed_node_that_holds_output_that_is_not_json_fails_and_names_the_node
-    result = cli("node", "claim", "1", "n2")
+    result = cli("node", "claim", "1", "n2", "--agent", "tester")
 
     assert_equal 1, result.code
     assert_equal "plastic: node n1 holds output that is not JSON\n", result.err.lines.first
   end
 
   def test_the_refused_claim_offers_graph_check
-    assert_includes cli("node", "claim", "1", "n2").out, "next: plastic graph check 1\n"
+    assert_includes cli("node", "claim", "1", "n2", "--agent", "tester").out, "next: plastic graph check 1\n"
   end
 
   def test_the_refused_claim_writes_no_run_and_leaves_the_node_open
-    cli("node", "claim", "1", "n2")
+    cli("node", "claim", "1", "n2", "--agent", "tester")
 
     assert_equal "open", retrieval.node("1", "n2").state
     assert_empty retrieval.structure.runs("1").select { |run| run.node_id == "n2" }
   end
 
   def test_the_refusal_is_no_parser_crash
-    refute_includes cli("node", "claim", "1", "n2").err, "ParserError"
+    refute_includes cli("node", "claim", "1", "n2", "--agent", "tester").err, "ParserError"
   end
 end

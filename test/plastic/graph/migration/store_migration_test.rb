@@ -245,6 +245,7 @@ class AlphaStoreMigrationTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
     Plastic::Graph::Database::ConnectionPool.created.clear
     SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    SQLite3::Database.open(store_path(home, "work_graph.db")) { |db| PreviousStore.older_work_layout(db) }
     home
   end
 
@@ -252,11 +253,10 @@ class AlphaStoreMigrationTest < Plastic::TestCase
 
   def test_an_alpha_store_at_stamp_1_records_every_version_and_keeps_its_layout
     home = alpha_home
-    before = without_versions(home)
     report = migrate(home)
 
     assert_equal [["alpha"], Plastic::Graph::MIGRATIONS.versions(:store)], [report.migrated, recorded_versions(store_path(home, "knowledge_graph.db"))]
-    assert_equal before, without_versions(home)
+    assert_equal fresh_layouts.transform_values { |tables| tables.except("schema_migrations") }, without_versions(home)
   end
 end
 

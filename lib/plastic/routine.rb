@@ -91,7 +91,7 @@ module Plastic
     # arguments and options always win, nil included.
     def context(command_run)
       klass = self.class
-      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope, settings), clock: environment.clock)
+      Context.new(declared: klass.declared_facts, facts: command_run.facts.merge(klass.given_facts, parsed, preview_facts), graphs: routine_graphs, harness: Context::Harness.of(environment, scope, settings), clock: environment.clock)
     end
 
     def chain = self.class.chain
@@ -130,6 +130,6 @@ module Plastic
 
     # A command that writes keeps its command run, so a resumed write finds
     # its facts. A read, and a dry run, keep none.
-    def keeps_command_run? = self.class.writes.any? && !parsed[:dry_run]
+    def keeps_command_run? = self.class.writes.any? && !self.class.keeps_no_command_run? && !parsed[:dry_run]
   end
 end

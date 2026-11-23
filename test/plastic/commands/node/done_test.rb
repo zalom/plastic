@@ -4,10 +4,10 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/node/done"
 
 class NodeDoneCaseTest < Plastic::TestCase
-  def test_finishing_a_node_nobody_claimed_exits_1_and_names_its_status
+  def test_finishing_a_node_nobody_claimed_exits_3_and_names_its_status
     alpha_with_node(approved: false)
 
-    assert_case line('node done 1 n1 "Example verification"'), code: 1, out: "", err: ["node n1 is open; it cannot move to done"]
+    assert_case line('node done 1 n1 "Example verification"'), code: 3, out: "", err: ["node n1 is open; it cannot move to done"]
   end
 end
 
@@ -22,7 +22,7 @@ class NodeDoneTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def test_finishing_a_claimed_node_offers_the_ready_set
@@ -45,7 +45,7 @@ class NodeDoneTest < Plastic::TestCase
 
   def test_file_option_limits_the_read_to_that_file
     cli("node", "add", "1", "Second", "--criterion", KEY)
-    cli("node", "claim", "1", "n2")
+    cli("node", "claim", "1", "n2", "--agent", "tester")
     dir = retrieval.intent("1").dir
     write("#{dir}/a.md", "# a\n")
     write("#{dir}/b.md", "# b\n")
@@ -56,7 +56,7 @@ class NodeDoneTest < Plastic::TestCase
 
   def test_two_claimed_nodes_each_finish_with_their_own_file
     cli("node", "add", "1", "Second", "--criterion", KEY)
-    cli("node", "claim", "1", "n2")
+    cli("node", "claim", "1", "n2", "--agent", "tester")
     dir = retrieval.intent("1").dir
     write("#{dir}/a.md", "# a\n")
     write("#{dir}/b.md", "# b\n")

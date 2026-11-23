@@ -14,7 +14,7 @@ class WorkLoggedNodesTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "delivery").work
@@ -65,7 +65,7 @@ class WorkLoggedNodesTest < Plastic::TestCase
 
   def move_a_new_node(move, number)
     cli("node", "add", "1", "More", "--criterion", KEY)
-    cli("node", "claim", "1", "n#{number}")
+    cli("node", "claim", "1", "n#{number}", "--agent", "tester")
     write("#{dir}/findings.md", "# #{move}\n")
     work.public_send(move, intent_id: "1", id: "n#{number}", by: "delivery", files: [], **MOVES.fetch(move).first)
   end

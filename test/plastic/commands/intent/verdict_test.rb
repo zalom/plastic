@@ -5,7 +5,7 @@ require_relative "../../../test_helper"
 class IntentVerdictCaseTest < Plastic::TestCase
   def test_an_accept_after_the_work_is_done_prints_round_1_and_offers_the_end
     alpha_with_node
-    ran("intent auto 1", "node claim 1 n1", "node done 1 n1 Built")
+    ran("intent auto 1", "node claim 1 n1 --agent tester", "node done 1 n1 Built")
 
     assert_case line('intent verdict 1 accept "Every criterion holds"'), code: 0,
       out: ["verdict: accept round 1", "next: plastic intent end 1"]
@@ -70,7 +70,7 @@ class IntentVerdictTest < Plastic::TestCase
     result = verdict("revise", "two")
 
     assert_equal [1, 2], verdicts.map { |row| row.fetch("round") }
-    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent and a follow-up intent"]
+    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent, a follow-up intent and one more round: plastic intent grant 1 REASON --owner"]
     refute_match(/^next:/, result.out)
   end
 
@@ -116,7 +116,7 @@ class IntentVerdictAcceptGateTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "auto", "1")
     cli("node", "add", "1", "Deliver", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
   end
 
   def test_an_accept_with_a_claimed_node_exits_1_names_the_graph_show_command_and_writes_no_row
@@ -189,7 +189,7 @@ class IntentVerdictRefusalTest < Plastic::TestCase
       open_intent(status:)
       result = cli("intent", "verdict", "1", "accept", "x")
 
-      assert_equal [1, []], [result.code, work_rows("verdicts")]
+      assert_equal [3, []], [result.code, work_rows("verdicts")]
     end
   end
 end

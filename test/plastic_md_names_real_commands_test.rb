@@ -44,7 +44,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def test_the_detector_leaves_commands_topics_and_placeholders_alone
-    text = "`plastic intent new TITLE`, `plastic help roadmaps`, `plastic help TOPIC`, `plastic hook`, `plastic graph resume`"
+    text = "`plastic intent new TITLE`, `plastic help tools`, `plastic help TOPIC`, `plastic hook`, `plastic graph resume`"
 
     assert_empty unknown_names(text)
   end

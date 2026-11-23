@@ -10,7 +10,7 @@ module Plastic
     # takes, what it works on, and which graphs it reads and writes.
     module Declarations
       GRAPHS = %i[work knowledge retrieval].freeze
-      PRINTS = %i[intent roadmap index].freeze
+      PRINTS = %i[intent index].freeze
       OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
 
       # The arguments that name the thing a call works on, such as the
@@ -69,6 +69,13 @@ module Plastic
 
       # `skips_daily_backup` keeps the start-of-day backup and its purge out
       # of the call, for a command that must find the backups as they are.
+      # `keeps_no_command_run` keeps the run record of a call out of the work
+      # database, for a command that must work when that database is damaged
+      # or does not exist yet. It does not change what graphs the command writes.
+      def keeps_no_command_run = (@keeps_no_command_run = true)
+
+      def keeps_no_command_run? = @keeps_no_command_run == true
+
       def skips_daily_backup = (@skips_daily_backup = true)
 
       def skips_daily_backup? = @skips_daily_backup == true

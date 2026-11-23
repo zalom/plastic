@@ -12,22 +12,17 @@ class DbSchemaTest < Plastic::TestCase
   SCHEMA_PATH = File.join(KERNEL, "plastic/graph/db/schema.rb")
   BUILDER_PATH = File.join(KERNEL, "plastic/graph/db/schema_file.rb")
 
-  # The DDL of every table that existed before the schema file, pinned from origin/alpha.
+  # The DDL of every table that existed before the schema file, pinned from origin/alpha; the nodes hash is the DDL after migration 20261123100000 dropped judge and verdict.
   OLD_DDL = {
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "cfa14e4507a75f95cc241d0316046a819ab03b5fad0b179dbacbc2c53936dac8",
+    nodes: "941c8ce987df8d0916ce28662c252924939faf1f0f5bbf47e958edca2313cd9d",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
     rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
     links: "1403ac943dc60477e4ad8e0dbd95027029fe8ae233064ca39a4a6540859e7c69",
-    roadmaps: "c6cef5175e6cd02789ef8006f7280fca6ab9d89ed7c11a667c070a38cc988891",
-    batches: "e44629686139e8f6c96cbabe4005b0d6e6bd62b0fae2dcd5603368adc03614ef",
-    roadmap_items: "3eb970cd95cc301cf27fbce6f08ed6bcd4b62b0d3b4629e8861d271003dc6192",
-    roadmap_edges: "295dfb63b0b77f8fc56e9894ce896c006c27aa9728b5683e2637cf1b276f7c1b",
-    roadmap_log: "ed05eef89c9592b5b36da98a8cdd28009314de634a6663e56fc3fc73314ac3cd",
     archives: "1063eeec2b8c6c26d12bb3b369574b04a85a42c45093c5c945acc35f969f9070",
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",
     sqlar: "e009afa1c7e455192a87f15934d1082e9f304b49ceffeab8aece9948142713b1",
@@ -46,7 +41,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed chat_messages store_migrations]],
-      work: ["work_graph.db", %i[nodes edges work_log roadmaps batches roadmap_items roadmap_edges roadmap_log runs]],
+      work: ["work_graph.db", %i[nodes edges work_log runs]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
         document_heads retrieval_contexts retrieval_discoveries
         rulings links printed sqlar]],
@@ -73,7 +68,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261121090000", ""], [status.success?, out, err]
+    assert_equal [true, "20261123120000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

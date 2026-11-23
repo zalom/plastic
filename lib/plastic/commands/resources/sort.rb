@@ -8,6 +8,7 @@ module Plastic
     module Resources
       # Moves the files of one store into the resources layout and rewrites the links that point at them.
       class Sort < Routine
+        writes :retrieval
         include CLI::BackupStore
 
         option :store, switch: "--store SLUG", required: true, text: "the registered project whose resources the call sorts"

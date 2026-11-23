@@ -25,8 +25,9 @@ class IntentReportTest < Plastic::TestCase
   def test_a_report_records_with_no_words
     result = call("1", REPORT)
 
-    assert_equal [0, ""], [result.code, result.err]
-    assert_equal [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]], reported
+    assert_equal [0, "", [["1", REPORT, "", Digest::SHA256.hexdigest("<p>page</p>\n")]]], [result.code, result.err, reported]
+    assert_includes result.out, "reported: #{REPORT}"
+    refute_includes result.out, "reported again"
   end
 
   def test_the_asked_option_is_a_usage_error_and_writes_nothing
@@ -35,10 +36,10 @@ class IntentReportTest < Plastic::TestCase
     assert_equal [2, [], OUTCOME], [result.code, reported, outcome]
   end
 
-  def test_a_closed_intent_exits_1_and_writes_nothing
+  def test_a_closed_intent_exits_3_and_writes_nothing
     store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
 
-    assert_equal [1, [], OUTCOME], [call("1", REPORT).code, reported, outcome]
+    assert_equal [3, [], OUTCOME], [call("1", REPORT).code, reported, outcome]
   end
 
   def test_an_older_line_with_the_asked_words_stays_beside_the_new_line
@@ -62,12 +63,38 @@ class IntentReportTest < Plastic::TestCase
     assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
   end
 
-  def test_a_second_record_of_the_same_path_writes_nothing
+  def test_a_second_record_of_an_unchanged_report_writes_nothing_and_says_so
     call("1", REPORT)
     result = call("1", REPORT)
 
     assert_equal [0, 1], [result.code, reported.size]
     assert_equal 1, outcome.scan(REPORT).size
+    assert_includes result.out, "unchanged: #{REPORT} is already recorded with this sha256; nothing written"
+  end
+
+  def test_a_changed_report_is_recorded_again_with_its_new_sha256
+    call("1", REPORT)
+    write("#{retrieval.intent("1").dir}/#{REPORT}", "<p>changed</p>\n")
+    sync_up
+    result = call("1", REPORT)
+
+    changed = Digest::SHA256.hexdigest("<p>changed</p>\n")
+
+    assert_equal [Digest::SHA256.hexdigest("<p>page</p>\n"), changed], reported.map(&:last)
+    assert_includes result.out, "reported again: #{REPORT} (sha256 #{changed})"
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
+  end
+
+  def test_a_report_changed_back_to_an_older_sha256_is_recorded_again
+    call("1", REPORT)
+    write("#{retrieval.intent("1").dir}/#{REPORT}", "<p>changed</p>\n")
+    sync_up
+    call("1", REPORT)
+    write("#{retrieval.intent("1").dir}/#{REPORT}", "<p>page</p>\n")
+    sync_up
+    call("1", REPORT)
+
+    assert_equal 3, reported.size
   end
 
   def test_a_mandatory_report_records_with_no_words
@@ -87,10 +114,13 @@ class IntentReportTest < Plastic::TestCase
 
   def test_a_report_recorded_on_another_machine_counts_as_recorded
     store_database.transaction do |batch|
-      batch.put(:work_log, { intent_id: "1", position: 90, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: REPORT, sha256: "", text: "on another machine", origin_id: "other-machine" })
+      batch.put(:work_log, { intent_id: "1", position: 90, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path: REPORT, sha256: Digest::SHA256.hexdigest("<p>page</p>\n"), text: "on another machine", origin_id: "other-machine" })
     end
 
-    assert_equal [0, OUTCOME], [call("1", REPORT).code, outcome]
+    result = call("1", REPORT)
+
+    assert_equal [0, OUTCOME, 1], [result.code, outcome, reported.size]
+    assert_includes result.out, "unchanged: #{REPORT} is already recorded with this sha256; nothing written"
   end
 
   def test_an_unknown_intent_exits_1_and_writes_nothing

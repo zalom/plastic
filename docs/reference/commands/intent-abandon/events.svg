@@ -93,10 +93,10 @@
 <rect x="480" y="64" width="330" height="46" rx="6" class="stop-failure"/>
 <text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="492" y="100" class="t" text-anchor="start">No intent &lt;intent id&gt; in this store.</text>
-<path d="M 424 90 L 432 90 L 432 149 L 480 149" class="wire-failure"/>
+<path d="M 424 90 L 432 90 L 432 149 L 480 149" class="wire-refusal"/>
 <path d="M 472 144 L 480 149 L 472 154 Z" class="head"/>
-<rect x="480" y="118" width="330" height="62" rx="6" class="stop-failure"/>
-<text x="492" y="136" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<rect x="480" y="118" width="330" height="62" rx="6" class="stop-refusal"/>
+<text x="492" y="136" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="154" class="t" text-anchor="start">Intent &lt;intent id&gt; is &lt;status&gt;; it can no</text>
 <text x="492" y="170" class="t" text-anchor="start">longer be abandoned.</text>
 <path d="M 64 115 L 64 206" class="wire"/>

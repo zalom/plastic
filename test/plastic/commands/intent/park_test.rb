@@ -35,45 +35,45 @@ class IntentParkTest < Plastic::TestCase
     assert_equal %w[parked], [listed("1").fetch("status")]
   end
 
-  def test_an_open_intent_exits_1_and_stays_open
+  def test_an_open_intent_exits_3_and_stays_open
     open_intent
 
     result = park("1", "waits on review")
 
-    assert_equal [1, "open", "plastic: intent 1 is open; only an intent in progress parks\n"], [result.code, status_of("1"), result.err]
+    assert_equal [3, "open", "plastic: refused, intent 1 is open; only an intent in progress parks\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"], [result.code, status_of("1"), result.err]
   end
 
-  def test_a_future_intent_exits_1_and_stays_future
+  def test_a_future_intent_exits_3_and_stays_future
     open_intent(status: "future")
 
     result = park("1", "waits on review")
 
-    assert_call result, code: 1, out: "", err: "plastic: intent 1 is future; only an intent in progress parks\n"
+    assert_call result, code: 3, out: "", err: "plastic: refused, intent 1 is future; only an intent in progress parks\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal "future", status_of("1")
   end
 
-  def test_a_parked_intent_exits_1_and_keeps_its_first_reason
+  def test_a_parked_intent_exits_3_and_keeps_its_first_reason
     open_intent(status: "parked", reason: "first")
 
     result = park("1", "second")
 
-    assert_call result, code: 1, out: "", err: "plastic: intent 1 is parked; only an intent in progress parks\n"
+    assert_call result, code: 3, out: "", err: "plastic: refused, intent 1 is parked; only an intent in progress parks\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal %w[parked first], [status_of("1"), retrieval.intent("1").reason]
   end
 
-  def test_a_done_intent_exits_1_and_stays_done
+  def test_a_done_intent_exits_3_and_stays_done
     open_intent
     set_status("1", "done")
 
-    assert_call park("1", "late"), code: 1, out: "", err: "plastic: intent 1 is done; only an intent in progress parks\n"
+    assert_call park("1", "late"), code: 3, out: "", err: "plastic: refused, intent 1 is done; only an intent in progress parks\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal "done", status_of("1")
   end
 
-  def test_an_abandoned_intent_exits_1_and_stays_abandoned
+  def test_an_abandoned_intent_exits_3_and_stays_abandoned
     open_intent
     set_status("1", "abandoned")
 
-    assert_call park("1", "late"), code: 1, out: "", err: "plastic: intent 1 is abandoned; only an intent in progress parks\n"
+    assert_call park("1", "late"), code: 3, out: "", err: "plastic: refused, intent 1 is abandoned; only an intent in progress parks\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal "abandoned", status_of("1")
   end
 

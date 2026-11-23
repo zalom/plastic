@@ -26,7 +26,6 @@ module WorkflowNameTable
     agent_judge_intent: "Agent::Intent::Judge",
     code_record_verdict: "Code::Intent::Verdict",
     code_start_intent: "Code::Intent::Start",
-    code_auto_roadmap: "Code::Roadmap::Auto",
     code_preview_sync: "Code::Sync::Up::Preview",
     code_preview_sync_down: "Code::Sync::Down::Preview",
     code_check_graph: "Code::Graph::Check",
@@ -37,16 +36,6 @@ module WorkflowNameTable
     code_pick_next: "Code::Next",
     code_add_link: "Code::Intent::Link",
     code_remove_link: "Code::Intent::Unlink",
-    code_create_roadmap: "Code::Roadmap::New",
-    code_write_roadmap_batch: "Code::Roadmap::Batch",
-    code_add_roadmap_item: "Code::Roadmap::Add",
-    code_show_roadmap: "Code::Roadmap::Show",
-    code_next_roadmap: "Code::Roadmap::Next",
-    code_drop_roadmap_item: "Code::Roadmap::Drop",
-    code_open_roadmap_item: "Code::Roadmap::Open",
-    code_check_roadmap: "Code::Roadmap::Check",
-    code_log_roadmap: "Code::Roadmap::Log",
-    code_remove_roadmap_edge: "Code::Roadmap::Edge::Remove",
     code_delivery_next: "Code::Intent::Brief::Next",
     agent_advance_delivery: "Agent::Shared::AdvanceDelivery",
     code_prepare_ending: "Code::Intent::End::Prepare",
@@ -115,7 +104,8 @@ module WorkflowNameTable
     code_resolve_node: "Code::Node::Resolve",
     code_preview_sort_resources: "Code::Resources::Sort::Preview",
     code_sort_resources: "Code::Resources::Sort",
-    code_park_intent: "Code::Intent::Park"
+    code_park_intent: "Code::Intent::Park",
+    code_grant_round: "Code::Intent::Grant"
   }.freeze
 end
 
@@ -142,8 +132,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_one_hundred_and_four_keys_in_order
-    assert_equal 104, MAPPING.size
+  def test_the_registry_holds_the_ninety_four_keys_in_order
+    assert_equal 94, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

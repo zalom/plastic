@@ -20,6 +20,6 @@ This command changes nothing.
 
 | Step | The text the agent gets |
 | --- | --- |
-| 1 | Regenerate the project's architecture map with an architecture mapping tool such as Enola; the choice of tool is yours. Read the new map for context. When you deliver an intent, note the tool, the source revision the map describes, what it covers and what it leaves out as the Architecture map: line under Verification in outcome.md. |
+| 1 | Regenerate the project's architecture map with an architecture mapping tool such as Enola; the choice of tool is yours. Read the new map for context, together with the project's AGENTS.md, before you plan code work. Plastic runs no tool and asks for no record of the map. |
 
 The command is `Plastic::Commands::Architecture::Refresh`, in [`commands/architecture/refresh.rb`](../../../../lib/plastic/commands/architecture/refresh.rb).

@@ -12,20 +12,31 @@ module Plastic
         class Add < CodeWorkflow
           clear_declarations
 
-          sets :problem, :id
+          sets :id, :input_problem, :found_problem, :found_refusal
 
-          read "check the intent" do |context|
-            context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || kind_problem(context) || criterion_problem(context)
+          open_intent_gates "nodes"
+
+          read "check the kind and the criterion" do |context|
+            context[:input_problem] = kind_problem(context) || criterion_problem(context)
+            context[:found_problem], context[:found_refusal] = found_in_problems(context)
           end
 
-          gate "%{problem}", stops: :failure,
-            words: "the intent is missing, done or abandoned, the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
-            pass: ->(context) { context.problem.nil? }
+          gate "%{input_problem}", stops: :failure,
+            words: "the kind is not orchestrator, work or retrieval, or the criterion key is not one of the spec",
+            pass: ->(context) { context.input_problem.nil? }
+
+          gate "%{found_problem}", stops: :failure,
+            words: "the node the new work was found in is not a live node of the intent",
+            pass: ->(context) { context.found_problem.nil? }
+
+          gate "%{found_refusal}", stops: :refusal,
+            words: "the node the new work was found in is removed",
+            pass: ->(context) { context.found_refusal.nil? }
 
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|
             node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
-              input: context.input, kind: context.kind || "work")
+              input: context.input, kind: context.kind || "work", found_in: context.found_in)
             context[:id] = node.id
           end
 
@@ -38,6 +49,18 @@ module Plastic
             return nil if kind.nil? || Plastic::Graph::Work::Node::KINDS.include?(kind)
 
             "kind #{kind.inspect} is not a node kind; the kinds are: #{Plastic::Graph::Work::Node::KINDS.join(", ")}"
+          end
+
+          # [the failure, the refusal]: a missing node fails, a removed node is refused, as `edge add` does.
+          def self.found_in_problems(context)
+            found_in = context.found_in
+            return [nil, nil] if found_in.nil?
+
+            intent_id = context.intent_id
+            state = context.retrieval.node(intent_id, found_in)&.state
+            return ["#{found_in} is not a node of intent #{intent_id}", nil] if state.nil?
+
+            [nil, ("#{found_in} is removed" if state == "removed")]
           end
 
           def self.criterion_problem(context)

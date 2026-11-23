@@ -54,13 +54,13 @@ class IntentReviseTest < Plastic::TestCase
     assert_call second, code: 0, out: ["why was: The owner moved the goal\nwhy: The goal moved again\n", "next: plastic intent revise 1 Gamma --why The\\ goal\\ moved\\ again\n"]
   end
 
-  def test_a_done_intent_exits_1_with_no_row_written_and_offers_plastic_next
+  def test_a_done_intent_exits_3_with_no_row_written_and_offers_plastic_next
     open_intent
     set_status("done")
 
     result = call("1", "Beta, after grilling")
 
-    assert_equal [1, true], [result.code, result.err.include?("intent 1 is done")]
+    assert_equal [3, true], [result.code, result.err.include?("intent 1 is done")]
     assert_match(/^next: plastic next/, result.out)
     assert_equal ["Alpha"] * 2, [retrieval.intent("1").title, what_in_file]
   end

@@ -8,7 +8,7 @@ require "minitest/autorun"
 class DispatchedAgentStepsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SUBJECTS = Dir[File.join(ROOT, "agents", "*.md")].sort
-  ORCHESTRATOR = /plastic (?:roadmap )?auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node \w+|node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
+  ORCHESTRATOR = /plastic auto\b|plastic intent (?:end|abandon|note|rule|verdict|approve|start|auto|park)\b|plastic node \w+|node claim|plastic edge \w+|plastic session note|plastic sync\b|savepoint-note|insight-append/
 
   def orchestrator_steps(text) = text.each_line.with_index(1).filter_map { |line, number| "#{number}: #{line.strip}" if line.match?(ORCHESTRATOR) }
 
@@ -24,8 +24,8 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
 
   def test_the_detector_catches_each_orchestrator_command
     ["Take the intent with plastic auto ID.", "Run plastic auto take 7.", "Close with plastic intent end ID.",
-      "Run plastic node claim 7 n1.", "node claim it first", "Record plastic node done ID NODE TEXT.",
-      "Start it with plastic intent start 7.", "Deliver it with plastic intent auto 7.", "Pick with plastic roadmap auto r1.",
+      "Run plastic node claim 7 n1 --agent tester.", "node claim it first", "Record plastic node done ID NODE TEXT.",
+      "Start it with plastic intent start 7.", "Deliver it with plastic intent auto 7.",
       "Add plastic edge add 7 n1 n2.", "plastic intent note ID TEXT", "scripts/insight-append DIR TEXT"]
       .each { |line| refute_empty orchestrator_steps(line), line }
   end

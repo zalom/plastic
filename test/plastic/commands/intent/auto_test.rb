@@ -4,7 +4,6 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/auto"
 
 class IntentAutoTest < Plastic::TestCase
-  include RoadmapHelper
   include AutoHelper
 
   def test_a_clear_spec_with_a_go_ahead_goes_in_progress_and_offers_the_brief
@@ -67,13 +66,13 @@ class IntentAutoTest < Plastic::TestCase
     assert_equal "in_progress", status_of("1")
   end
 
-  def test_a_done_intent_exits_1_and_offers_plastic_next
+  def test_a_done_intent_exits_3_and_offers_plastic_next
     open_intent
     set_status("1", "done")
 
     result = call("1")
 
-    assert_equal [1, "next: plastic next", "done"], [result.code, next_line(result), status_of("1")]
+    assert_equal [3, "next: plastic next", "done"], [result.code, next_line(result), status_of("1")]
     assert_includes result.err, "intent 1 is done"
   end
 
@@ -82,12 +81,12 @@ class IntentAutoTest < Plastic::TestCase
     as_session("intent", "archive", "1", env: {})
   end
 
-  def test_an_archived_intent_exits_1_offers_unarchive_and_changes_nothing
+  def test_an_archived_intent_exits_3_offers_unarchive_and_changes_nothing
     archived_future_intent
 
     result = call("1")
 
-    assert_call result, code: 1, err: "plastic: intent 1 is archived\n",
+    assert_call result, code: 3, err: "plastic: refused, intent 1 is archived\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n",
       out: "next: plastic intent unarchive 1\nbecause: an archived intent cannot start; unarchive it first\n"
     assert_equal ["future", []], [status_of("1"), retrieval.unarchived_intents]
   end
@@ -125,15 +124,6 @@ class IntentAutoTest < Plastic::TestCase
     assert_includes result.err, "no intent 9 in this store"
   end
 
-  def test_a_roadmap_slug_is_not_an_intent_id
-    store_graphs.work.write_batch("r1", 1, fields: roadmap_fields("T", goal: "G", done: "d"))
-
-    result = call("r1")
-
-    assert_equal [1, ""], [result.code, next_line(result).to_s]
-    assert_includes result.err, "no intent r1 in this store"
-  end
-
   def test_an_active_intent_stays_in_progress_and_takes_no_lock
     intent = active_intent
 
@@ -161,10 +151,10 @@ class IntentAutoSessionTest < Plastic::TestCase
     intent
   end
 
-  def test_a_session_that_ended_exits_1_and_names_the_session
+  def test_a_session_that_ended_exits_3_and_names_the_session
     result = call(ended_session_intent.intent_id)
 
-    assert_equal 1, result.code
+    assert_equal 3, result.code
     assert_includes result.err, "session s-1 ended; start a new session or resume it"
   end
 

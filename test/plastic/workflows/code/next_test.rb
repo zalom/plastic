@@ -45,7 +45,7 @@ class PickNextTest < Plastic::TestCase
     store_graphs.work.activate_intent("1")
     store_graphs.work.add_node(intent_id: "1", title: "Build")
 
-    assert_equal [:done, "plastic node claim 1 n1", "node n1 is ready"], pick
+    assert_equal [:done, "plastic node claim 1 n1 --agent NAME", "node n1 is ready"], pick
   end
 
   def test_two_open_intents_hand_the_choice_to_the_agent

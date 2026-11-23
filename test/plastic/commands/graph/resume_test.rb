@@ -57,7 +57,7 @@ module GraphResumeHelper
   def intent_with_nodes_in_each_state
     intent = ready_intent
     %w[a b c d].each { |title| add_node(intent, title) }
-    %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id) }
+    %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id, "--agent", "tester") }
     node("done", intent, "n1", "ok")
     node("fail", intent, "n3", "broke")
     node("ask", intent, "n4", "which way")
@@ -127,7 +127,7 @@ class GraphResumeTest < Plastic::TestCase
     intent = ready_intent
     add_node(intent, "a")
 
-    assert_equal "next: plastic node claim 1 n1", next_line(call)
+    assert_equal "next: plastic node claim 1 n1 --agent NAME", next_line(call)
     assert_equal next_line(plastic("next", table: Plastic::CLI::TABLE)), next_line(call)
   end
 
@@ -136,11 +136,29 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
+    assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
       "then add dependencies with plastic edge add. An edge FROM TO means TO reads, changes or tests what FROM makes. " \
       "Nodes with no path between them may run at the same time. A red test node comes before the code it tests. " \
       "Run plastic graph check 1 after the edges and repair each finding it names, then use plastic graph ready 1."
     refute_includes result.out, "then: (because"
+  end
+
+  def test_an_intent_with_no_nodes_and_no_repository_is_not_told_to_map_the_code
+    ready_intent
+
+    refute_includes lines(call).find { |line| line.start_with?("then: ") }, "architecture mapping tool"
+  end
+
+  def test_an_intent_with_no_nodes_in_a_project_with_a_repository_is_told_to_map_the_code_and_read_agents_md_before_planning
+    register("b")
+    intent = store_intent("b", "Beta")
+    clear_spec("b", intent)
+    plastic("intent", "start", intent.intent_id, "--project", "b", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+    then_line = lines(call("--stores", "b")).find { |line| line.start_with?("then: ") }
+
+    assert_includes then_line, "Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+      "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal"
   end
 
   def test_several_open_intents_and_no_lock_pick_none
@@ -168,7 +186,7 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 (because node n1 is ready)", "next: plastic node claim 1 n1"]
+    wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 --agent NAME (because node n1 is ready)", "next: plastic node claim 1 n1 --agent NAME"]
 
     assert_equal [0, "", wanted, 3], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("log: ") }]
   end
@@ -342,5 +360,15 @@ class GraphResumeRebuildTest < Plastic::TestCase
     work.add_ruling(intent_id: intent.intent_id, text: "kept")
 
     assert(lines(call).any? { |line| line.start_with?("log: - ") && line.include?(" ruled ") })
+  end
+end
+
+class GraphResumeBlockedTest < Plastic::TestCase
+  def test_a_store_whose_open_intent_waits_names_what_it_waits_on
+    open_intent("Alpha")
+    open_intent("Beta", status: "parked")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_includes plastic("graph", "resume", table: Plastic::CLI::TABLE).out, "nothing is ready: intent 1 waits on intent 2"
   end
 end

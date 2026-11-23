@@ -42,7 +42,7 @@ module Plastic
       end
 
       def refuse_missing(values)
-        missing = @options.find { |option| option.required && values[option.name].nil? }
+        missing = @options.find { |option| option.required && values[option.name].to_s.strip.empty? }
         raise Usage, "missing #{missing.switch.split.first}" if missing
       end
 

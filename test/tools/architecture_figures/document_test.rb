@@ -8,7 +8,7 @@ require_relative "../../support/repository_files"
 class ArchitectureFiguresDocumentTest < Minitest::Test
   include ArchitectureFiguresHelper
 
-  NO_DRAWING = "Roadmaps, links, archive and backup"
+  NO_DRAWING = "Links, archive and backup"
   REMOVED = [/hook continue/, /\bFrontier\b/, /IntentProgress/, /(?<!::)\bLegacy\b(?!::)/, /does not call it yet/].freeze
   OLD_PAGE = %r{(?<![\w-])architecture\.md|docs/resources/|\.\./resources/}
   CLASS_NAME = /\A[A-Z]\w*(?:::\w+)+\z|\A[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+\z/
@@ -72,7 +72,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
 
   def test_every_class_and_path_the_document_names_exists
     assert_empty unknown_names(document)
-    assert_equal ["IntentProgress", "lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::WorkGraph` `lib/plastic/gone.rb` `lib/plastic/cli.rb` `Owner`")
+    assert_equal ["IntentProgress", "lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::GraphWriter` `lib/plastic/gone.rb` `lib/plastic/cli.rb` `Owner`")
   end
 
   def test_every_plastic_command_the_document_names_is_in_the_command_table

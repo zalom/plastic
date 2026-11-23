@@ -12,6 +12,10 @@ module Plastic
 
       def session = harness.session
 
+      def running_harness = harness.name.to_s
+
+      def user_home = harness.user_home
+
       def scope = harness.scope
 
       def settings = harness.settings

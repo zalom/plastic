@@ -48,12 +48,12 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "%{start_words} names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
-          gate "%{session_problem}", stops: :failure,
+          gate "%{session_problem}", stops: :refusal,
             words: "the session of the call has ended",
             pass: ->(context) { context.session_problem.nil? }
-          gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot start; pick other work",
+          gate "%{closed_problem}", stops: :refusal, offers: "plastic next", because: "a closed intent cannot start; pick other work",
             pass: ->(context) { context.closed_problem.nil? }
-          gate "intent %{intent_id} is archived", stops: :failure, offers: "plastic intent unarchive %{intent_id}",
+          gate "intent %{intent_id} is archived", stops: :refusal, offers: "plastic intent unarchive %{intent_id}",
             because: "an archived intent cannot start; unarchive it first",
             pass: ->(context) { !context.retrieval.archives.archived?(context.intent_id) }
 

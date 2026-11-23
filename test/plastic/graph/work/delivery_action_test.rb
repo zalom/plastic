@@ -12,7 +12,7 @@ class WorkDeliveryActionCase < Plastic::TestCase
     @work.activate_intent("1")
   end
 
-  def action(intent_id = "1") = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id).call
+  def action(intent_id = "1", work: :general) = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id, work:).call
 
   def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
 
@@ -29,8 +29,14 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
     assert_includes instructions, "plastic node add 1 TITLE --criterion KEY"
   end
 
-  def test_the_planning_instruction_starts_with_fetching_the_architecture_map
-    assert action.last.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
+  def test_the_planning_instruction_of_code_work_starts_with_mapping_the_code_and_reading_agents_md
+    assert action(work: :code).last.start_with?("Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+      "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal")
+  end
+
+  def test_the_planning_instruction_of_work_with_no_repository_starts_with_the_goal_and_names_no_mapping_tool
+    assert action.last.start_with?("Read the intent's goal")
+    refute_includes action.last, "architecture"
   end
 
   def test_the_planning_instruction_carries_the_planning_directive
@@ -53,7 +59,7 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_a_ready_node_is_claimed
     plan("Build")
 
-    assert_equal ["plastic node claim 1 n1", "node n1 is ready", nil], action
+    assert_equal ["plastic node claim 1 n1 --agent NAME", "node n1 is ready", nil], action
   end
 
   def test_a_failed_node_is_released_before_anything_else
@@ -122,7 +128,7 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_all_nodes_done_points_to_the_intent_end
     plan("Build")
     claim("n1")
-    @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
+    @work.done_node(intent_id: "1", id: "n1", findings: "green")
 
     assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
   end
