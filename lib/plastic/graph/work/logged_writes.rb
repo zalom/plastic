@@ -86,6 +86,9 @@ module Plastic
           @log.recorded { amendments.each { |amendment| amendment.write(@log) } }
         end
 
+        # Rewrites the outcome line of a report already recorded; no row and no log line. True when the outcome changed.
+        def restate_report(intent, path, text) = @log.recorded { reporter.restate(intent, path, text) }
+
         # Records a report of the intent; `text` is Reporter::MANDATORY for a report the setting names, else empty.
         def report_intent(intent, path, text)
           intent_id = intent.intent_id

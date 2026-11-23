@@ -46,6 +46,14 @@ module Plastic
           # The bytes of the report, for the sha256 of its log line.
           def body(intent, path) = ReportFile.new(intent, path).body(@folder)
 
+          # Rewrites only the outcome line of a report already recorded, for a changed form of the setting; no row, no log
+          # line. True when the outcome changed: only a line in the other form of the setting is rewritten, and a report the
+          # outcome does not list stays unlisted.
+          def restate(intent, path, text)
+            report = ReportFile.new(intent, path)
+            report.stale?(@retrieval.fetch(report.id, FILE)&.body.to_s, text) && outcome(report.id, report, text)
+          end
+
           # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
           def write(intent, path, text) = record(ReportFile.new(intent, path), text)
 
@@ -65,6 +73,7 @@ module Plastic
           def outcome(id, report, text)
             updated = report.outcome(@retrieval.fetch(id, FILE)&.body.to_s, text, HEADING)
             writer.write(id, FILE, updated) if updated
+            !updated.nil?
           end
 
           def store = @databases.fetch(:store)

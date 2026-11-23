@@ -15,7 +15,7 @@ module Plastic
           CLOSED = %w[done abandoned].freeze
           MANDATORY = Plastic::Graph::Knowledge::Intent::Reporter::MANDATORY
 
-          sets :intent, :status, :problem, :state, :reference
+          sets :intent, :status, :problem, :state, :reference, :restated
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -45,8 +45,13 @@ module Plastic
             context[:reference] = context.work.report_intent(context.intent, context.path, Report.text(context))
           end
 
+          step "rewrite the outcome line", done: ->(context) { context.state.kind != :unchanged || !context.restated.nil? },
+            changes: { knowledge: "The Reports line of an unchanged report takes the form the mandatory setting names now; no row, no log line" } do |context|
+            context[:restated] = context.work.restate_report(context.intent, context.path, Report.text(context))
+          end
+
           read "say what was recorded" do |context|
-            context.print(Report.words(context.state, context.path))
+            context.print(Report.words(context.state, context.path, context.restated))
           end
 
           outcome :done, offers: "plastic next", because: "the outcome lists the report and the sync reads it"
@@ -55,12 +60,19 @@ module Plastic
           def self.of(context) = Plastic::Graph::Knowledge::Intent::ReportFile.new(context.intent, context.path)
 
           # What the command says: a first record, a record again of a changed file, or that nothing was written.
-          def self.words(state, path)
+          def self.words(state, path, restated = false)
             case state.kind
-            when :unchanged then "unchanged: #{path} is already recorded with this sha256; nothing written"
+            when :unchanged then unchanged_words(path, restated)
             when :changed then "reported again: #{path} (sha256 #{state.sha256})"
             else "reported: #{path}"
             end
+          end
+
+          # The words for an unchanged file: nothing written, or only the outcome line rewritten.
+          def self.unchanged_words(path, restated)
+            return "unchanged: #{path} is already recorded with this sha256; nothing written" unless restated
+
+            "unchanged: #{path} is already recorded with this sha256; outcome line rewritten, no row and no log line"
           end
 
           # The text of the log line: MANDATORY for a path the setting reports.mandatory names, else none.
