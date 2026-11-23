@@ -34,6 +34,17 @@ module Plastic
         end
       end
 
+      def test_a_link_to_a_folder_inside_backups_does_not_refuse_the_copy
+        with_home do |home|
+          seed_intents(home, "Alpha")
+          outside = File.join(File.dirname(home), "outside")
+          FileUtils.mkdir_p([outside, store_file(home, "backups")])
+          File.symlink(outside, store_file(home, "backups", "folder"))
+
+          assert_nil files(home).refuse_folder_links
+        end
+      end
+
       def test_a_link_to_a_folder_refuses_naming_the_link
         with_home do |home|
           seed_intents(home, "Alpha")
