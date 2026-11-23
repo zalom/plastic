@@ -41,18 +41,6 @@ module Plastic
                 AND state IN (%<states>s) %<guard>s)
           SQL
 
-          RELEASE_RUNS_SQL = <<~SQL
-            UPDATE runs SET ended_at = :now, result = 'released'
-            WHERE origin_id = :origin AND ended_at IS NULL
-              AND EXISTS (SELECT 1 FROM nodes WHERE nodes.intent_id = runs.intent_id AND nodes.id = runs.node_id
-                AND nodes.origin_id = :origin AND nodes.state = 'claimed' AND nodes.claimed_by = :session)
-          SQL
-
-          RELEASE_NODES_SQL = <<~SQL
-            UPDATE nodes SET state = 'open', claimed_by = NULL, claimed_at = NULL, seen_at = NULL, updated_at = :now
-            WHERE origin_id = :origin AND state = 'claimed' AND claimed_by = :session
-          SQL
-
           def initialize(databases, retrieval, clock: Time)
             @databases = databases
             @retrieval = retrieval
@@ -98,15 +86,6 @@ module Plastic
                 UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin
                   AND intent_id IN (SELECT intent_id FROM intents WHERE status = 'in_progress' AND origin_id = :origin)
               SQL
-            end
-          end
-
-          # The session ended: each node it claims is open again, and its run ends as released.
-          def release_session(session)
-            bind = { now: Plastic.timestamp(@clock.now), session:, origin: @retrieval.origin_id }
-            @databases.fetch(:store).transaction do |batch|
-              batch.add(RELEASE_RUNS_SQL, **bind)
-              batch.add(RELEASE_NODES_SQL, **bind)
             end
           end
 

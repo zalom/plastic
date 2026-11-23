@@ -164,6 +164,20 @@ class IntentStartDriverTest < Plastic::TestCase
     assert_includes result.err, "intent 1 is driven by session s-1"
   end
 
+  def test_any_command_of_the_driver_session_renews_the_claim
+    drive("s-1")
+    @clock.now = START + (10 * 60)
+    plastic("intent", "show", "1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE, clock: @clock)
+
+    assert_equal [3, "s-1"], [drive("s-2", minutes: 20).code, driver]
+  end
+
+  def test_a_driver_that_ran_no_command_lapses_after_fifteen_minutes
+    drive("s-1")
+
+    assert_equal [0, "s-2"], [drive("s-2", minutes: 20).code, driver]
+  end
+
   def test_a_second_session_calling_auto_is_refused_the_same_way
     drive("s-1", command: "auto")
 

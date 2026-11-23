@@ -22,7 +22,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | What changes | Where | Reach |
 | --- | --- | --- |
 | The intent goes in progress | the work graph database, in the store folder | goes with the store |
-| This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver | the work graph database, in the store folder | goes with the store |
+| This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver | the work graph database, in the store folder | stays on this machine |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.

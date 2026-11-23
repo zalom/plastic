@@ -74,7 +74,7 @@ module Plastic
           end
 
           step "take the driver claim", done: ->(context) { !context.driver_status.nil? },
-            changes: { work: "This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver" } do |context|
+            changes: { claims: "This session becomes the driver of the intent; a take-over or a lapsed claim leaves one work log line with the old and the new driver" } do |context|
             status, holder = context.work.drive_intent(intent_id: context.intent_id, by: context.session, take_over: context.take_over.to_s.strip)
             raise Refused, "intent #{context.intent_id} is driven by session #{holder}" if status == :held
 

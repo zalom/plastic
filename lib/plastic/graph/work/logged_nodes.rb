@@ -2,6 +2,7 @@
 
 require_relative "node_result"
 require_relative "driver/writer"
+require_relative "node/release"
 
 module Plastic
   module Graph
@@ -16,6 +17,7 @@ module Plastic
           @writers = writers
           @log = log
           @drivers = Driver::Writer.new(writers.databases, writers.retrieval, clock: writers.clock)
+          @release = Node::Release.new(writers.databases, writers.retrieval, clock: writers.clock)
         end
 
         # Why the session may not drive the intent, or nil when it may.
@@ -33,7 +35,7 @@ module Plastic
         def renew_claims(session) = @log.recorded { [@writers.nodes.renew_claims(session), @drivers.renew(session)] }
 
         # The session ended: its node claims and its driver claims go at once.
-        def release_claims(session) = @log.recorded { [@writers.nodes.release_session(session), @drivers.release(session)] }
+        def release_claims(session) = @log.recorded { [@release.call(session), @drivers.release(session)] }
 
         def add_node(intent_id:, **fields)
           @log.recorded { @writers.nodes.add_node(intent_id:, **fields).tap { |node| node && @log.line(intent_id, "added", node.title.to_s, node: node.id) } }
