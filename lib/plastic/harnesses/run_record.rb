@@ -17,16 +17,14 @@ module Plastic
       # The usage of the run of `harness` session `session` from `from` to `to`, claimed with `claim`, such as "485 n2".
       def read(harness:, session:, from:, to:, claim:)
         reader = @readers[harness.to_s]
-        return TokenUsage.none(missing(harness)) unless reader
+        return TokenUsage.none(self.class.missing(harness)) unless reader
 
         reader.read(session:, from:, to:, claim:)
       rescue => error
         TokenUsage.none("the #{harness} record could not be read: #{error.message}")
       end
 
-      private
-
-      def missing(harness) = harness.to_s.empty? ? "no harness record: the claim named no harness" : "no harness record: Plastic reads none for #{harness}"
+      def self.missing(harness) = harness.to_s.empty? ? "no harness record: the claim named no harness" : "no harness record: Plastic reads none for #{harness}"
     end
   end
 end

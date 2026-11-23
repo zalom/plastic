@@ -57,7 +57,8 @@ class HarnessesRunRecordCodexTest < Plastic::TestCase
 
   def test_a_log_whose_first_count_lies_inside_the_run_grows_from_zero
     write_codex("s-1", jsonl(
-      { timestamp: "later", type: "turn_context", payload: { model: "gpt-x" } },
+      { timestamp: "2026-11-12T11:00:00Z", type: "turn_context", payload: { model: "gpt-x" } },
+      { timestamp: "later", type: "turn_context", payload: { model: "ignored" } },
       { type: "event_msg", payload: { type: "token_count", info: { total_token_usage: "none" } } },
       codex_count("2026-11-12T12:05:00Z", input: 300, cached: 100, output: 30)
     ))

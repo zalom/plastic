@@ -47,6 +47,14 @@ class HarnessesRunRecordTest < Plastic::TestCase
     assert_in_delta 0.25, read.cost_usd
   end
 
+  def test_a_cost_state_written_before_the_run_gives_no_cost
+    write_claude("s-1", jsonl(claude_cost(4.0), claude_turn("2026-11-12T12:01:00Z", id: "m1")))
+    usage = read
+
+    assert_nil usage.cost_usd
+    assert_includes usage.note, "cost not found"
+  end
+
   def test_a_record_with_no_cost_state_names_the_cost_as_not_found
     write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "m1")))
     usage = read

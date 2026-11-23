@@ -52,10 +52,10 @@ module PreviousStore
   # Undoes the run usage migration, the time migration, the page migration, the trim and the report migration, the five newest, so the next down undoes the drop.
   def back_to_drop(home) = home.tap { 5.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # Undoes the run usage migration and the time migration, the two newest, which keep nothing in a store of the previous release, so the next down undoes the one before them.
   # Undoes the run usage migration, the newest, which removes its version alone, so the next down undoes the one before it.
   def without_usage(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
+  # Undoes the run usage migration and the time migration, the two newest, which keep nothing in a store of the previous release, so the next down undoes the one before them.
   def utc_down(home) = home.tap { 2.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # A migrated store whose run usage migration, time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
