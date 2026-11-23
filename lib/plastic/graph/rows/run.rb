@@ -26,6 +26,9 @@ module Plastic
         # The command the claim turn of the run holds, such as "485 n2".
         def claim_text = "#{intent_id} #{node_id}"
 
+        # The window and the claim text of the run, as the main file of a session is asked for it.
+        def claimed_window(grace) = [window(grace), claim_text]
+
         # The keys of the writer that fills the cost of this run.
         def cost_key = { intent_id:, id: node_id, number: }
       end
