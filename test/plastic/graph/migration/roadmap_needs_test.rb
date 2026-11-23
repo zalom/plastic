@@ -124,8 +124,8 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
       database.execute_batch(<<~SQL)
         INSERT INTO roadmaps VALUES ('copy', 'Copy', 'g', 'then', 'then', 'o');
-        INSERT INTO roadmap_items VALUES ('copy', 'a', 1, 1, 'A', NULL, NULL, '1', NULL, 'o');
-        INSERT INTO roadmap_items VALUES ('copy', 'b', 1, 2, 'B', NULL, NULL, '2', NULL, 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'a', 1, 1, 'A', NULL, NULL, '1', NULL, 'then', 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'b', 1, 2, 'B', NULL, NULL, '2', NULL, 'then', 'o');
         INSERT INTO roadmap_edges VALUES ('copy', 'a', 'b', 'after', 'o');
       SQL
     end
