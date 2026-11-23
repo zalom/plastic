@@ -124,6 +124,15 @@ class GraphBackupRestorerTest < Plastic::TestCase
     assert_equal ["the backup #{empty} holds no database files", before], [error.message, [bytes("work_graph"), folder_names(@restore_home)]]
   end
 
+  def test_a_backup_in_progress_with_no_database_file_yet_is_refused_naming_its_status
+    empty = "20260201100000"
+    FileUtils.mkdir_p(File.join(backups_dir(@restore_home), empty))
+    Plastic::Graph::Backup::Folders.new(root).write_report(empty, status: "in-progress", goal: "full")
+    error = assert_raises(Restorer::NotDone) { restorer.call(empty) }
+
+    assert_includes error.message, "in-progress"
+  end
+
   def test_the_status_file_is_never_copied_into_the_store
     restorer.call(STAMP)
 
