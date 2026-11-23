@@ -121,21 +121,17 @@ at the new launcher and keeps your stores and settings. See
 ## Quick start
 
 ```bash
-# 1. Install for your agent
-curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic init                # Pick the agents to install into
-
-# 2. Register your repository as a project
+# 1. Register your repository as a project
 plastic project new blog ~/code/blog
 
-# 3. See what is open
+# 2. See what is open
 plastic status
 
-# 4. Open an intent and start it
+# 3. Open an intent and start it
 plastic intent new "Add a --version flag"
 plastic intent start 1
 
-# 5. Ask what to do next, at any time
+# 4. Ask what to do next, at any time
 plastic next
 ```
 
@@ -143,7 +139,7 @@ plastic next
 `CLAUDE.md` into it when they are missing. `plastic intent start` prints the worktree to create and
 asks you to run it again once it exists.
 
-Restart your agent after the install. [The command list](docs/usage/commands.md) shows the commands
+Restart your agent after the install described under Installation. [The command list](docs/usage/commands.md) shows the commands
 by task, and the [command reference](docs/reference/commands/README.md) has a page for each.
 
 ## How it works
