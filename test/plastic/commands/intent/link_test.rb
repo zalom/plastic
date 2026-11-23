@@ -106,7 +106,7 @@ class IntentNeedsLinkTest < Plastic::TestCase
 
   def unlink(*args) = plastic("intent", "unlink", *args, table: Plastic::CLI::TABLE)
 
-  def needs(id) = store_graphs.retrieval.links(id).select { |found| found.kind == "needs" }.map(&:to_ref)
+  def needs(id) = store_graphs.retrieval.links(id).select { |found| found.kind == "needs" && found.from_ref == id }.map(&:to_ref)
 
   def test_needs_is_a_kind_that_writes_one_link
     open_intent
