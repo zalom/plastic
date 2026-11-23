@@ -12,6 +12,43 @@ class MigrationListTest < Plastic::TestCase
 
   def down(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
+  def json_list(home) = plastic("migration", "list", "--store", "alpha", "--json", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
+
+  # A home whose store alpha this release made, so it records every migration and its legacy.db holds nothing.
+  def fresh_home
+    home = File.join(Dir.mktmpdir, ".plastic")
+    FileUtils.mkdir_p(File.join(home, "stores", "alpha"))
+    File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{Dir.mktmpdir}\n")
+    Plastic::Graph.create(home:, store: "alpha")
+    forget(home)
+    home
+  end
+
+  def fresh_lines(home)
+    newest = recorded(home).last
+    ["store: alpha is at migration #{newest}", "legacy: alpha keeps no rows in legacy.db", "no migration of alpha is in the ledger",
+     "down: would undo migration #{newest} and put back no rows"]
+  end
+
+  def test_a_list_of_a_fresh_store_prints_every_line
+    home = fresh_home
+
+    assert_call list(home), code: 0, out: fresh_lines(home).map { |line| "#{line}\n" }.join
+  end
+
+  def test_a_list_of_a_fresh_store_in_json_gives_every_line
+    home = fresh_home
+    result = json_list(home)
+
+    assert_call result, code: 0, out: /"output"/
+    assert_equal fresh_lines(home), JSON.parse(result.out).dig("result", "output")
+  end
+
+  def test_a_list_says_the_newest_migration_that_kept_nothing_puts_back_no_rows
+    assert_call list(migrated_previous_home), code: 0,
+      out: ["legacy: migration #{DROP} keeps 1 row of document_revisions", "down: would undo migration #{DRIVERS} and put back no rows\n"]
+  end
+
   def test_a_list_prints_each_ledger_row_of_the_store_in_the_zone_of_the_machine
     assert_call list(migrated_to_drop), code: 0,
       out: ["#{shown("2026-11-19T12:00:00Z")}  up  #{DROP}  1 row of document_revisions"]
