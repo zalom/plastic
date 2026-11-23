@@ -105,32 +105,39 @@ class IntentReportTest < Plastic::TestCase
     assert_includes outcome, "- #{REPORT} (mandatory)\n"
   end
 
-def test_a_report_that_becomes_mandatory_keeps_one_line
-  call("1", REPORT)
-  seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
-  call("1", REPORT)
+  def change_report
+    write("#{retrieval.intent("1").dir}/#{REPORT}", "<p>changed</p>\n")
+    sync_up
+  end
 
-  assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT} (mandatory)\n", outcome
-end
+  def test_a_report_that_becomes_mandatory_keeps_one_line
+    call("1", REPORT)
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
+    change_report
+    call("1", REPORT)
 
-def test_a_report_that_stops_being_mandatory_keeps_one_line
-  seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
-  call("1", REPORT)
-  seed_config(@plastic_home, "global:\n  reports:\n    mandatory: []\n")
-  call("1", REPORT)
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT} (mandatory)\n", outcome
+  end
 
-  assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
-end
+  def test_a_report_that_stops_being_mandatory_keeps_one_line
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
+    call("1", REPORT)
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: []\n")
+    change_report
+    call("1", REPORT)
 
-def test_an_older_asked_line_stays_when_the_mandatory_setting_changes
-  older = "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"the page\"\n- #{REPORT}\n"
-  write("#{retrieval.intent("1").dir}/outcome.md", older)
-  sync_up
-  seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
-  call("1", REPORT)
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
+  end
 
-  assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"the page\"\n- #{REPORT} (mandatory)\n", outcome
-end
+  def test_an_older_asked_line_stays_when_the_mandatory_setting_changes
+    older = "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"the page\"\n- #{REPORT}\n"
+    write("#{retrieval.intent("1").dir}/outcome.md", older)
+    sync_up
+    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
+    call("1", REPORT)
+
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}, asked: \"the page\"\n- #{REPORT} (mandatory)\n", outcome
+  end
 
   def test_a_recorded_report_is_read_by_the_next_sync
     call("1", REPORT)
