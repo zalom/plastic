@@ -36,6 +36,12 @@ works the nodes itself, one at a time. Plastic starts no worker.
    `plastic node fail`, `plastic node ask` or `plastic node impede` when the worker could not
    finish. Go back to step 1.
 
+`plastic graph ready ID --json` also carries `result.repairs`: one entry for each node that failed
+or waits on the owner (`failed`, `needs_info` or `impeded`), with `id`, `title`, `state` and the
+not-done nodes `downstream` of it through needs edges, transitively. It is empty when nothing
+stopped. The ready list keeps meaning the nodes that can be claimed now; the driver re-plans the
+region with `plastic node add`, `plastic edge add`, `plastic edge remove` and `plastic node remove`.
+
 Two or more ready nodes have no edge between them, so a driver may work them at the same time.
 
 ## The packet

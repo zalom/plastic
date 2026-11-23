@@ -19,7 +19,7 @@ person talks to, moves a node. The agents it dispatches do the work and report b
 
 `plastic node add` writes an `open` node, keyed to one done criterion of `spec.md`.
 `plastic edge add ID FROM TO` says that one node needs another. A node is ready when every node
-it needs is done, and `plastic graph ready ID` lists the ready nodes. Only an `open` node can be
+it needs is done, and `plastic graph ready ID` lists the ready nodes, and for a failed, needs_info or impeded node a `repair:` line naming the nodes that wait on it, the region to re-plan. Only an `open` node can be
 removed.
 
 Work found while doing a node is added with `plastic node add ID TITLE --criterion KEY --found-in NODE`. The node must be in the same intent: a missing node exits 1 and a removed node exits 3, each naming it. The link is a `found_in` edge from the new node to the node it was found in: `plastic graph show` prints it as `found in NODE` on the new node, and it adds no need and changes no readiness.

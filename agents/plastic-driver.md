@@ -28,6 +28,15 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
    five minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
 
+## Repair the region
+
+When `result.repairs` is not empty, a node failed or waits on the owner. Each entry names that
+node and the not-done nodes `downstream` of it. Keep working the ready nodes outside the region, and
+re-plan that region: add the nodes that replace the work with `plastic node add`, change the needs
+with `plastic edge add` and `plastic edge remove`, drop an open node with `plastic node remove`, or
+retry the stopped node with `plastic node release` or `plastic node resolve`. Plastic changes no
+node for you.
+
 ## The limit
 
 Run at most {{driver.max_workers}} workers at once. This is the setting `driver.max_workers`,

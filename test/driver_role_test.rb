@@ -28,6 +28,11 @@ class DriverRoleTest < Minitest::Test
     assert_includes ROLE, "work the nodes yourself"
   end
 
+  def test_it_re_plans_the_region_a_failed_node_leaves
+    assert_includes ROLE, "`result.repairs`"
+    assert_includes ROLE, "re-plan that region"
+  end
+
   def test_a_new_limit_takes_effect_at_a_reinstall
     assert_includes ROLE, "`plastic install --reinstall`"
   end
