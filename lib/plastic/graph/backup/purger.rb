@@ -40,6 +40,11 @@ module Plastic
         # The names of the folders whose backup failed.
         def failed = @folders.names.select { |name| @folders.status(name) == "failed" }
 
+        # The names of the folders left in-progress by a run that stopped: in-progress for longer than the claim window.
+        def interrupted(now:)
+          @folders.names.select { |name| @folders.status(name) == "in-progress" && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
+        end
+
         # Deletes the folder, or leaves it where it was.
         def remove(name)
           aside = move_aside(name)
