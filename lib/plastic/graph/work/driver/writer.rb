@@ -45,8 +45,6 @@ module Plastic
         # it lapsed or its session ended takes it. A live claim of another session is taken only with a reason, which
         # is the owner's word. The write is guarded by the holder it read, so two sessions cannot both win.
         class Writer
-          LAPSE = Node::LAPSE
-
           TAKE_SQL = <<~SQL
             INSERT INTO drivers (intent_id, origin_id, session_id, claimed_at, seen_at)
             VALUES (:intent_id, :origin, :by, :now, :now)

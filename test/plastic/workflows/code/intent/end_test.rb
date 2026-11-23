@@ -36,6 +36,7 @@ class CloseIntentTest < Plastic::TestCase
     assert_raises(Plastic::Failed) { close }
     assert_nil structure.completions("1").first
   end
+
   def drive(session) = session_graphs(session).work.drive_intent(intent_id: "1", by: session)
 
   def drivers = store_graphs.databases.fetch(:store).rows("SELECT session_id FROM drivers")
