@@ -18,12 +18,12 @@ module Plastic
         end
 
         # Whether the folder is strictly before the limit; no limit means every folder is.
-        def self.before?(name, limit) = limit ? time(name) < limit : true
+        def self.before?(name, limit) = limit ? readable?(name) && time(name) < limit : true
 
         # Whether the digits of the name make a real time; a name that does not has no age to judge.
+        # Ruby rolls 20200231000000 over to 2 March, so the time must format back to the name.
         def self.readable?(name)
-          time(name)
-          true
+          timestamp(time(name)) == name[0, 14]
         rescue ArgumentError
           false
         end
