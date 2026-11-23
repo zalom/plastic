@@ -155,6 +155,19 @@ has no switch. Its down, `RoadmapNeedsLinks`, removes every `needs` link and put
 back from `legacy.db`. A store that never had the tables keeps nothing, and its down removes the
 version alone.
 
+Migration `20261124090000` drops the five roadmap tables of `work_graph.db` again. Migration
+`20261123120000` had dropped them, but on the `plastic` store of one machine they came back, all empty.
+Every open of a store runs `CREATE TABLE IF NOT EXISTS` for each table that the code declares, so a
+release from before the roadmap removal, such as an older checkout run against the migrated store,
+makes each declared table that is missing. No code of this release declares them: `schema.rb` does
+not, and only the down of migration `20261123120000` makes them, from `legacy.db`. A migration that
+is already recorded never runs again, so the drop needs a new version. It has no switch. It is in
+`KEEPS` and `NON_EMPTY`: a table that holds a row is kept whole in `legacy.db` as
+`<table>_20261124090000` before the drop, an empty table is kept nowhere, and a store with none of
+the tables only records the version. Its down, `RoadmapTables` in `REBUILDS`, builds the five tables
+again, empty and in the old shape, and puts back each row that the migration kept. A store that
+never had the tables gets them empty from the down too.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as

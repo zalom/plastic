@@ -44,7 +44,8 @@ class GraphUtcTimesTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(without_usage(home), "alpha", NOW).call
 
-  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
+  # The tables that hold a row. The down of the empty roadmap tables migration builds five empty tables, which the next run keeps as empty copies in legacy.db.
+  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }.reject { |_table, rows| rows.empty? }
 
   def test_the_migration_writes_every_time_with_an_offset_in_utc_and_leaves_dates_utc_times_and_blanks
     assert_equal AFTER, times(migrated)

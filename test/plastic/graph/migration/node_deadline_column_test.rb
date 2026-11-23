@@ -50,6 +50,7 @@ class GraphNodeDeadlineColumnTest < Plastic::TestCase
 
   def test_a_down_drops_the_column_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    down(home)
     undone = down(home)
 
     assert_equal [DEADLINE, {}, false, false], [undone.version, undone.moved, columns(home).include?("deadline"), recorded(home).include?(DEADLINE)]
@@ -58,7 +59,7 @@ class GraphNodeDeadlineColumnTest < Plastic::TestCase
   def test_a_down_and_an_update_give_back_the_migrated_store
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
     before = alpha_rows(home, "work_graph.db", "SELECT * FROM nodes")
-    down(home)
+    2.times { down(home) }
     migrate_store(home)
 
     assert_equal [fresh_columns, before], [columns(home), alpha_rows(home, "work_graph.db", "SELECT * FROM nodes")]

@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Store migration `20261124090000` drops the five roadmap tables (`roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`) from `work_graph.db`. Migration `20261123120000` had dropped them, but a release from before the roadmap removal opened the migrated store afterwards and made them again, all empty. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. Its down builds the five tables again, empty and in the old shape. A new store never had them, and no code of this release declares them.
 - `plastic intent end` releases the driver claim of the intent in the same step that closes it, and prints `driver claim: released, held by session S`. Before, the claim stayed until its session ended or it lapsed, so it showed as live.
 - QMD is gone from Plastic's instructions, help and contributor docs. `plastic help tools` no longer has a QMD section, and a guard test fails when a shipped file names QMD outside the changelog and the two installer lists that remove an old `qmd-search` hook.
 
