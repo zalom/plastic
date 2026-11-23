@@ -28,6 +28,9 @@ module Plastic
           false
         end
 
+        # The local start time of a folder as text, or unknown when its name is not a real time.
+        def self.started(name) = readable?(name) ? time(name).localtime.strftime("%Y-%m-%d %H:%M:%S") : "unknown"
+
         # The moment a folder name stands for, in UTC.
         def self.time(name) = Time.utc(name[0, 4], name[4, 2], name[6, 2], name[8, 2], name[10, 2], name[12, 2])
       end
