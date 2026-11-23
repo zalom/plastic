@@ -3,7 +3,6 @@
 require_relative "../../test_helper"
 require "net/http"
 require "openssl"
-require "openssl"
 require "plastic/installations/https_fetch"
 
 class HttpsFetchTest < Plastic::TestCase

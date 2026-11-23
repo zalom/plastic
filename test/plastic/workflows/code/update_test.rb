@@ -123,6 +123,7 @@ class UpdatePlasticTest < Plastic::TestCase
 
     assert_equal [:current, ["99.0.0-alpha.1"]], [outcome, activation.releases.versions]
   end
+
   def test_a_real_run_that_cannot_read_the_local_release_folder_names_the_folder
     installed("99.0.0-alpha.1")
     activated("99.0.0-alpha.1")

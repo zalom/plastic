@@ -36,14 +36,14 @@ module Plastic
       attr_reader :http
 
       def response(url, headers = {}, hops = REDIRECTS)
-        answer = reach(url, headers)
+        answer = naming(url) { http.get_response(https(url), headers) }
         return answer if answer.is_a?(Net::HTTPSuccess)
 
         follow(url, answer, hops)
       end
 
-      def reach(url, headers)
-        http.get_response(https(url), headers)
+      def naming(url)
+        yield
       rescue *UNREACHABLE => error
         raise FetchError, "cannot reach #{url}: #{error.message}"
       end
