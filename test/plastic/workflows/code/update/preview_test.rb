@@ -38,6 +38,15 @@ class PreviewUpdateTest < Plastic::TestCase
     assert_equal [:done, [["from:", "2.0.5"], ["to:", "2.0.5"]]], [outcome, printed_rows(context)]
   end
 
+  def test_a_dry_run_prints_the_notice_of_the_release_source_it_reads
+    installed("2.0.5")
+    activated("2.0.5")
+
+    _, context = preview(newest: "2.0.7")
+
+    assert_includes printed_lines(context), "development mode: reading releases from #{File.join(@home, "release-2.0.7")}; this claims no release trust"
+  end
+
   def test_a_home_with_nothing_installed_is_refused
     error = assert_raises(Plastic::Refused) { preview }
 
@@ -53,11 +62,31 @@ class PreviewUpdateTest < Plastic::TestCase
     assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.4"]]], [outcome, printed_rows(context)]
   end
 
+  def test_a_real_run_never_reads_the_release_source
+    installed("2.0.5")
+    activated("2.0.5")
+    harness = scoped_harness(env: { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5"), "PLASTIC_SHARE" => share,
+                                    "PLASTIC_LOCAL_RELEASE" => File.join(@home, "missing-release") })
+
+    outcome, context = run_workflow(Plastic::Workflows::Code::Update::Preview, harness:, dry_run: false, channel: nil)
+
+    assert_equal [:continue, []], [outcome, printed_rows(context)]
+  end
+
   def test_a_real_run_prints_nothing_and_continues
     installed("2.0.1")
 
     outcome, context = preview(dry_run: false)
 
     assert_equal [:continue, []], [outcome, printed_rows(context)]
+  end
+
+  def printed_lines(context)
+    lines = []
+    output = Object.new
+    output.define_singleton_method(:raw) { |text| lines << text }
+    output.define_singleton_method(:row) { |*| nil }
+    context.print_to(output)
+    lines
   end
 end
