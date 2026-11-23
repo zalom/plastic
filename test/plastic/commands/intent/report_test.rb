@@ -105,37 +105,6 @@ class IntentReportTest < Plastic::TestCase
     assert_includes outcome, "- #{REPORT} (mandatory)\n"
   end
 
-  def test_an_unchanged_report_whose_setting_became_mandatory_gets_its_outcome_line_rewritten_and_no_log_line
-    call("1", REPORT)
-    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
-    result = call("1", REPORT)
-
-    assert_equal [0, 1], [result.code, reported.size]
-    assert_includes outcome, "- #{REPORT} (mandatory)\n"
-    assert_equal 1, outcome.scan(REPORT).size
-    assert_includes result.out, "unchanged: #{REPORT} is already recorded with this sha256"
-    assert_includes result.out, "outcome line rewritten"
-  end
-
-  def test_an_unchanged_report_whose_setting_stopped_being_mandatory_gets_its_plain_line_back
-    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: [page.html]\n")
-    call("1", REPORT)
-    seed_config(@plastic_home, "global:\n  reports:\n    mandatory: []\n")
-    call("1", REPORT)
-
-    assert_includes outcome, "- #{REPORT}\n"
-    refute_includes outcome, "(mandatory)"
-    assert_equal 1, reported.size
-  end
-
-  def test_an_unchanged_report_with_the_right_line_says_nothing_was_written
-    call("1", REPORT)
-    result = call("1", REPORT)
-
-    assert_includes result.out, "nothing written"
-    refute_includes result.out, "outcome line rewritten"
-  end
-
   def test_a_recorded_report_is_read_by_the_next_sync
     call("1", REPORT)
     plastic("sync", "up", table: Plastic::CLI::TABLE)

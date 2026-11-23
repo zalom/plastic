@@ -73,4 +73,44 @@ class IntentReportMandatoryTest < Plastic::TestCase
 
     assert_equal "# Outcome\n\n## Reports\n\n- #{REPORT} (mandatory)\n", retrieval.fetch(intent.intent_id, "outcome.md").body
   end
+
+  def reported_count = store_database.rows("SELECT 1 FROM work_log WHERE kind = 'reported'").size
+
+  def test_an_unchanged_report_that_becomes_mandatory_gets_its_line_rewritten
+    call
+    seed_config(@plastic_home, MANDATORY)
+    result = call
+
+    assert_equal [0, "#{OUTCOME}\n## Reports\n\n- #{REPORT} (mandatory)\n"], [result.code, outcome]
+  end
+
+  def test_an_unchanged_report_that_stops_being_mandatory_gets_its_plain_line_back
+    seed_config(@plastic_home, MANDATORY)
+    call
+    seed_config(@plastic_home, NOT_MANDATORY)
+    call
+
+    assert_equal "#{OUTCOME}\n## Reports\n\n- #{REPORT}\n", outcome
+  end
+
+  def test_rewriting_the_line_of_an_unchanged_report_adds_no_log_line
+    call
+    seed_config(@plastic_home, MANDATORY)
+    call
+
+    assert_equal 1, reported_count
+  end
+
+  def test_rewriting_the_line_of_an_unchanged_report_says_so
+    call
+    seed_config(@plastic_home, MANDATORY)
+
+    assert_includes call.out, "outcome line rewritten, no row and no log line"
+  end
+
+  def test_an_unchanged_report_with_the_right_line_says_nothing_was_written
+    call
+
+    assert_includes call.out, "nothing written"
+  end
 end

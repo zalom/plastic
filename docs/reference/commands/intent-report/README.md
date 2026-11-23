@@ -21,8 +21,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The report is recorded, read into the rows and listed under Reports in the outcome | the knowledge graph database, in the store folder | goes with the store |
-| The Reports line of an unchanged report takes the form the mandatory setting names now; no row, no log line | the knowledge graph database, in the store folder | goes with the store |
+| A new or changed report is recorded, read into the rows and listed under Reports in the outcome; an unchanged one only has its Reports line rewritten when the setting changed its form | the knowledge graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.

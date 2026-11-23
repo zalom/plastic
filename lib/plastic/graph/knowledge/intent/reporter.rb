@@ -49,29 +49,27 @@ module Plastic
           # Rewrites only the outcome line of a report already recorded, for a changed form of the setting; no row, no log
           # line. True when the outcome changed: only a line in the other form of the setting is rewritten, and a report the
           # outcome does not list stays unlisted.
-          def restate(intent, path, text)
-            report = ReportFile.new(intent, path)
-            report.stale?(@retrieval.fetch(report.id, FILE)&.body.to_s, text) && outcome(report.id, report, text)
-          end
+          def restate(report, text) = amend(report, :restated, text)
 
           # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
           def write(intent, path, text) = record(ReportFile.new(intent, path), text)
 
           private
 
-          # The report row, the outcome line, and the reference of the row.
+          # The report row, its line under Reports (a report recorded again keeps its one line, and the line of the other form
+          # of the setting is replaced, not left beside the new one), and the reference of the row.
           def record(report, text)
             id = report.id
             path = report.path
             writer.write(id, path, report.body(@folder))
-            outcome(id, report, text)
+            amend(report, :outcome, text)
             @retrieval.reference(id, path).fetch(:uri)
           end
 
-          # Puts the line of the report under Reports: a report recorded again keeps its one line, and the line of the path
-          # with the other form of the setting is replaced, not left beside the new one.
-          def outcome(id, report, text)
-            updated = report.outcome(@retrieval.fetch(id, FILE)&.body.to_s, text, HEADING)
+          # Writes what ReportFile#outcome or #restated makes of the outcome, when it makes one; true when it wrote.
+          def amend(report, how, setting)
+            id = report.id
+            updated = report.public_send(how, @retrieval.fetch(id, FILE)&.body.to_s, setting, HEADING)
             writer.write(id, FILE, updated) if updated
             !updated.nil?
           end

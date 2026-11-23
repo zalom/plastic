@@ -34,8 +34,12 @@ module Plastic
             OutcomeSection.for(without_stale(body, wanted), heading).add(wanted)
           end
 
-          # Whether the outcome lists this path in the other form of the setting than `text` names.
-          def stale?(body, text) = !(body.lines.map(&:chomp) & ([line(""), line(MANDATORY)] - [line(text)])).empty?
+          # The outcome with the line of the other form of the setting replaced, or nil when the outcome has no such line:
+          # a report it does not list stays unlisted.
+          def restated(body, text, heading)
+            stale = [line(""), line(MANDATORY)] - [line(text)]
+            outcome(body, text, heading) if (body.lines.map(&:chomp) & stale).any?
+          end
 
           # Why the file cannot be recorded, or nil: the questions the sync asks of `selection` before it reads a file
           # into documents, and the resolved file stays inside the reports folder of the intent.

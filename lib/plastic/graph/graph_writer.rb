@@ -28,8 +28,9 @@ module Plastic
       def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
       def_delegator "@logged.reporter", :problem, :report_problem
       def_delegator "@logged.reporter", :state, :report_state
+      def_delegator "@logged.reporter", :restate, :restate_report
       def_delegators :@logged, :close_intent, :abandon_intent, :park_intent, :approve_intent, :add_ruling, :add_verdict,
-        :revise_intent, :note_intent, :report_intent, :restate_report, :amend_intents, :add_node, :claim_node, :record_run, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
+        :revise_intent, :note_intent, :report_intent, :amend_intents, :add_node, :claim_node, :record_run, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
         :remove_node, :add_edge, :remove_edge
       def_delegators "@writers.nodes", :renew_claims
       def_delegators "@writers.verdicts", :rounds_left?
