@@ -28,11 +28,7 @@ module Plastic
         end
 
         # One `finding:` line for each finding, each followed by its repair or its hand edit.
-        def lines
-          findings.with_repairs.flat_map do |finding|
-            ["finding: #{finding.text}", finding.repair ? "repair: #{finding.repair}" : "hand edit: #{finding.hand}"]
-          end
-        end
+        def lines = findings.with_repairs.flat_map(&:lines)
 
         private
 

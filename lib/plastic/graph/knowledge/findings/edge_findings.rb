@@ -10,6 +10,12 @@ module Plastic
         # Either is nil when it does not apply.
         Finding = Data.define(:text, :repair, :hand) do
           def initialize(text:, repair:, hand: nil) = super
+
+          # The repair command, or the hand edit when no command repairs it.
+          # The `finding:` line followed by the advice line.
+          def lines = ["finding: #{text}", advice]
+
+          def advice = repair ? "repair: #{repair}" : "hand edit: #{hand}"
         end
 
         # The findings about the edges of one intent: a need on a removed node, and a loop that a hand-edited
@@ -20,16 +26,16 @@ module Plastic
             @removed = nodes.select { |node| node.state == "removed" }.to_set(&:id)
             @live = nodes.reject { |node| node.state == "removed" }.to_set(&:id)
             @needs = edges.select { |edge| edge.kind == "needs" }
-            @edge_count = edges.size
           end
 
           def all = removed_findings + loop_findings
 
           # A graph of several live nodes with no edge at all: the planner likely forgot the edges. It stops nothing.
           def unlinked
-            return [] if @live.size < 2 || @edge_count.positive?
+            count = @live.size
+            return [] if count < 2 || !@needs.empty?
 
-            [Finding.new("the graph has #{@live.size} nodes and no edge at all", "plastic edge add #{@intent_id} FROM TO")]
+            [Finding.new("the graph has #{count} nodes and no edge at all", "plastic edge add #{@intent_id} FROM TO")]
           end
 
           private
