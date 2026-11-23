@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Containers
     META = Diagram::Meta.new(file: "containers.svg", width: 1160, height: 770, title: "What runs and where Plastic keeps its data",
-      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
+      desc: "The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       install | zone | 10 10 1140 135 | Plastic install: ~/.local/share/plastic | | | |
       launcher | | 30 44 230 | ~/.local/bin/plastic | link | line | | Found on the PATH, / where you run plastic.
@@ -24,7 +24,6 @@ module ArchitectureFigures
       retrieval | cylinder | 600 405 250 | retrieval_graph.db | | | | passages, search entries
       backups | | 880 399 250 | backups/ | folder | line | | Copies of the work and knowledge databases, / one folder for each backup.
       index | | 40 585 250 | store/index.json | file | line | mono | Every intent, in order.
-      roadmaps | | 320 585 250 | roadmaps/ | folder | line | | One file for each roadmap, / printed from the rows.
       folder | | 600 585 530 | ID--slug/ | intent folder | line | | spec.md, graph.json, work.log, / outcome.md and context.json, printed from the rows.
     TABLE
     ARROWS = [
@@ -36,7 +35,6 @@ module ArchitectureFigures
       ["program.bottom@0.5", "knowledge.top"],
       ["program.bottom@0.8", "retrieval.top"],
       ["work.bottom", "index.top", ["printed"]],
-      ["work.bottom@0.85", "roadmaps.top@0.15"],
       ["knowledge.bottom", "folder.top@0.2", ["printed from the rows;", "sync up reads edits back"]]
     ].freeze
     NAMES = [

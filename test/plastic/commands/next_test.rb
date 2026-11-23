@@ -274,3 +274,32 @@ class DeliveryHandoffTest < Plastic::TestCase
     assert_includes claimed, "plastic node done 1 n1 TEXT"
   end
 end
+
+class NextFutureIntentTest < Plastic::TestCase
+  def need(from, to) = store_graphs.work.add_link(from_ref: from, to_ref: to, kind: "needs")
+
+  def test_a_future_intent_with_nothing_unfinished_to_wait_on_is_the_next_work
+    open_intent("Alpha", status: "future")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, true], [result.code, result.out.include?("because: intent 1 has no done criteria")]
+  end
+
+  def test_a_future_intent_that_needs_a_future_intent_waits_and_the_needed_one_is_next
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "future")
+    need("1", "2")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_includes result.out, "because: intent 2 has no done criteria"
+  end
+
+  def test_only_future_intents_all_waiting_say_what_they_wait_on
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "parked")
+    need("1", "2")
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_includes result.out, "because: nothing is ready: intent 1 waits on intent 2"
+  end
+end

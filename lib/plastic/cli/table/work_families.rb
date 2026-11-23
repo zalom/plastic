@@ -2,7 +2,7 @@
 
 module Plastic
   class CLI
-    # The families of the work graph and the hooks: the commands that start with node, edge, graph, roadmap or hook.
+    # The families of the work graph and the hooks: the commands that start with node, edge, graph or hook.
     # The table in table.rb adds them to the other families, in this order.
     WORK_FAMILIES = {
       "node" => {
@@ -26,19 +26,6 @@ module Plastic
         "graph ready" => ["Commands::Graph::Ready", "List the nodes ready to claim"],
         "graph resume" => ["Commands::Graph::Resume", "Say where each named store's work stopped and what runs next"],
         "graph show" => ["Commands::Graph::Show", "Print every node, with the node it was found in, and every need of an intent"]
-      },
-      "roadmap" => {
-        "roadmap new" => ["Commands::Roadmap::New", "Create a roadmap; write its batches with roadmap batch"],
-        "roadmap batch" => ["Commands::Roadmap::Batch", "Write one roadmap batch's goal and done criteria"],
-        "roadmap add" => ["Commands::Roadmap::Add", "Add an item to a roadmap batch, with the items it needs"],
-        "roadmap show" => ["Commands::Roadmap::Show", "Print a roadmap's batches and items"],
-        "roadmap next" => ["Commands::Roadmap::Next", "Print the first ready item, or what is in the way"],
-        "roadmap drop" => ["Commands::Roadmap::Drop", "Mark a roadmap item dropped; its edges stay as rows"],
-        "roadmap open" => ["Commands::Roadmap::Open", "Open a ready item's intent, with its spec held in rows"],
-        "roadmap auto" => ["Commands::Roadmap::Auto", "Start a roadmap's next item for agent delivery: its first free item in flight, or its first ready item, opened first"],
-        "roadmap check" => ["Commands::Roadmap::Check", "List a roadmap's loops, dangling edges and items with no intent"],
-        "roadmap log" => ["Commands::Roadmap::Log", "Append a log line to a roadmap, stamped with the session id"],
-        "roadmap edge remove" => ["Commands::Roadmap::Edge::Remove", "Remove one needs edge from a roadmap"]
       },
       "chat" => {
         "chat list" => ["Commands::Chat::List", "List the recorded chat messages of every store in time order, from a day on with --since"]

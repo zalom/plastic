@@ -76,7 +76,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 `alpha` is the one trunk. Every change and every fix goes to `alpha` by its own pull request, and CI runs the suite on each. `beta` is a snapshot of `alpha`, cut only on the owner's word. It takes no commits of its own and releases on the `beta` channel on a `-beta.N` version. `main` releases on the `latest` channel on a version with no suffix, and it stays frozen until the shaping ends. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
 
 ### Worktrees and node claims
-- One session drives an intent at a time. `plastic intent start`, `plastic intent auto` and `plastic roadmap auto` take the driver claim, which lapses after 15 minutes without a renewal, as a node claim does, and goes when the session ends. Another session is refused with exit 3 and the driver is named; the owner's word, `--take-over REASON`, takes it over.
+- One session drives an intent at a time. `plastic intent start` and `plastic intent auto` take the driver claim, which lapses after 15 minutes without a renewal, as a node claim does, and goes when the session ends. Another session is refused with exit 3 and the driver is named; the owner's word, `--take-over REASON`, takes it over.
 - One session works a node at a time. A node claim, `plastic node claim ID NODE --agent NAME`, names the
   session that holds it and opens one run of the node. The session renews its claims at every
   `plastic` command and at the stop hook, and a claim lapses after 15 minutes without a

@@ -5,7 +5,6 @@ require_relative "reader/index_file"
 require_relative "reader/cluster_file"
 require_relative "reader/link_file"
 require_relative "reader/intent_file"
-require_relative "reader/roadmap_file"
 require_relative "prints"
 require_relative "store_folder"
 require_relative "store_path"
@@ -24,6 +23,9 @@ module Plastic
         class Read
           # A file whose rows print nothing, such as an empty work.log, keeps its own hash.
           def line = "read #{path}"
+
+          # The print written again from the rows when there is one, else the print that keeps the file as it is.
+          def printed(fresh, folder) = fresh[path] || kept_print(folder)
 
           def kept_print(folder) = Prints::Print.new(path, folder.digest(path), nil)
         end
@@ -53,14 +55,11 @@ module Plastic
         def file_of(path)
           return index_file(path) if path == StoreFolder::INDEX
           return part_file(path) if Prints::Parts.path?(path)
-          return roadmap_file(path) if StorePath.roadmap?(path)
 
           intent_file(path)
         end
 
         def index_file(path) = IndexFile.new(@folder.read(path), @origin_id, @folder.intent_dirs, @intents)
-
-        def roadmap_file(path) = RoadmapFile.new(File.basename(path, ".md"), @folder.read(path))
 
         def part_file(path)
           index = @folder.read(StoreFolder::INDEX)

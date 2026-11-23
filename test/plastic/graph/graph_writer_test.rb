@@ -74,21 +74,6 @@ class GraphWriterTest < Plastic::TestCase
 
   def opened = yield(Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1"))
 
-  def test_a_roadmap_file_is_readable_once_printed_and_not_before
-    work.write_batch("r1", 1, fields: Plastic::Graph::Knowledge::Roadmap::Writer::Fields.new(title: "T", goal: "G", done: "d"))
-
-    refute work.roadmap_file_readable?("r1")
-    work.print_roadmap("r1")
-
-    assert work.roadmap_file_readable?("r1")
-  end
-
-  def test_a_roadmap_file_in_an_older_form_is_not_readable
-    folder.write("roadmaps/old.md", "not a roadmap form")
-
-    refute work.roadmap_file_readable?("old")
-  end
-
   def abandoned_intent
     opened { |graphs| graphs.work.write_intent(title: "Alpha") }
     opened { |graphs| graphs.work.print_intent("1") }

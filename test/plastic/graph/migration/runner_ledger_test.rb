@@ -21,7 +21,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
   def legacy(home, sql) = read_file(store_path(home, "legacy.db"), sql)
 
   def kept_counts(home)
-    tables = legacy(home, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten
+    tables = legacy(home, "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_#{DROP}' ORDER BY name").flatten
     tables.to_h { |name| [name.delete_suffix("_#{DROP}"), legacy(home, "SELECT count(*) FROM \"#{name}\"").flatten.first] }
   end
 
@@ -32,7 +32,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 1], ["alpha", "20261119180000", "up", "2026-11-16T12:00:00Z", 1],
       ["alpha", TRIM, "up", "2026-11-16T12:00:00Z", 1], ["alpha", PAGES, "up", "2026-11-16T12:00:00Z", 1],
       ["alpha", UTC, "up", "2026-11-16T12:00:00Z", 1], ["alpha", USAGE, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", NODES, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVERS, "up", "2026-11-16T12:00:00Z", 1]],
+      ["alpha", NODES, "up", "2026-11-16T12:00:00Z", 1], ["alpha", NEEDS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVERS, "up", "2026-11-16T12:00:00Z", 1]],
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 

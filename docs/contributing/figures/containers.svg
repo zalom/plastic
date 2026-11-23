@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 770" role="img" aria-labelledby="containers-title containers-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="containers-title">What runs and where Plastic keeps its data</title>
-  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
+  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and plastic.db. The program reads and writes four SQLite databases: plastic.db in the home, and work_graph.db, knowledge_graph.db and retrieval_graph.db in each store. Files are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
   <defs><marker id="containers-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -70,10 +70,6 @@
 <rect class="box" x="40" y="585" width="250" height="79" rx="8"/><rect x="40" y="585" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="56" y="609">store/index.json</text><text class="s" x="56" y="626">[file]</text>
 <text class="s" x="56" y="646">Every intent, in order.</text>
-<rect class="box" x="320" y="585" width="250" height="94" rx="8"/><rect x="320" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
-<text class="t" x="336" y="609">roadmaps/</text><text class="s" x="336" y="626">[folder]</text>
-<text class="s" x="336" y="646">One file for each roadmap,</text>
-<text class="s" x="336" y="661">printed from the rows.</text>
 <rect class="box" x="600" y="585" width="530" height="94" rx="8"/><rect x="600" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="616" y="609">ID--slug/</text><text class="s" x="616" y="626">[intent folder]</text>
 <text class="s" x="616" y="646">spec.md, graph.json, work.log,</text>
@@ -92,7 +88,6 @@
 <path class="flow" d="M 538.0 293 L 538.0 349 L 725.0 349 L 725.0 405" marker-end="url(#containers-arrow)"/>
 <path class="flow" d="M 165.0 472 L 165.0 585" marker-end="url(#containers-arrow)"/>
 <text class="al" x="165" y="533" text-anchor="middle">printed</text>
-<path class="flow" d="M 252.5 472 L 252.5 528 L 357.5 528 L 357.5 585" marker-end="url(#containers-arrow)"/>
 <path class="flow" d="M 445.0 472 L 445.0 528 L 706.0 528 L 706.0 585" marker-end="url(#containers-arrow)"/>
 <text class="al" x="576" y="508" text-anchor="middle">printed from the rows;</text>
 <text class="al" x="576" y="521" text-anchor="middle">sync up reads edits back</text>

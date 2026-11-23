@@ -362,3 +362,13 @@ class GraphResumeRebuildTest < Plastic::TestCase
     assert(lines(call).any? { |line| line.start_with?("log: - ") && line.include?(" ruled ") })
   end
 end
+
+class GraphResumeBlockedTest < Plastic::TestCase
+  def test_a_store_whose_open_intent_waits_names_what_it_waits_on
+    open_intent("Alpha")
+    open_intent("Beta", status: "parked")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_includes plastic("graph", "resume", table: Plastic::CLI::TABLE).out, "nothing is ready: intent 1 waits on intent 2"
+  end
+end

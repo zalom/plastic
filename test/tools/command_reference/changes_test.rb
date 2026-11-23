@@ -50,10 +50,6 @@ class CommandReferenceChangesTest < Minitest::Test
     assert_equal ["The index of the store is rewritten"], rows({}, [:index]).map(&:text)
   end
 
-  def test_a_print_of_the_roadmap_adds_the_row_of_its_files
-    assert_equal ["The files of the roadmap are rewritten"], rows({}, [:roadmap]).map(&:text)
-  end
-
   def test_a_command_with_no_change_and_no_print_has_no_row
     assert_empty rows({})
   end
@@ -85,9 +81,5 @@ class CommandReferenceChangesTest < Minitest::Test
     row = page("sync up").changes.find { |each| each.text == "The files of the intents and the index of the store are printed again from the rows" }
 
     assert_equal "goes with the store", row.reach
-  end
-
-  def test_roadmap_show_has_no_row
-    assert_empty page("roadmap show").changes
   end
 end

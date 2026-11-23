@@ -11,7 +11,6 @@ require_relative "work/approval/writer"
 require_relative "work/verdict/writer"
 require_relative "knowledge/ruling/writer"
 require_relative "knowledge/link/writer"
-require_relative "knowledge/roadmap/writer"
 require_relative "knowledge/sync"
 require_relative "knowledge/archive/writer"
 require_relative "writers_scope"
@@ -48,8 +47,6 @@ module Plastic
       def rulings = built(:rulings) { Knowledge::Ruling::Writer.new(databases, retrieval, session:, clock:) }
 
       def links = built(:links) { Knowledge::Link::Writer.new(databases, retrieval, clock:) }
-
-      def roadmaps = built(:roadmaps) { Knowledge::Roadmap::Writer.new(databases, retrieval, session:, clock:) }
 
       def sync = built(:sync) { Knowledge::Sync.new(folder:, retrieval:, databases:) }
 

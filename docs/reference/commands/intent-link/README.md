@@ -9,7 +9,7 @@ plastic intent link ID KIND TARGET
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent this link starts from | |
-| `KIND` | cites, supersedes, answers, source or chain | |
+| `KIND` | cites, supersedes, answers, needs, source or chain | |
 | `TARGET` | an intent, a ruling, or a ref with a store prefix | |
 
 ## The events of one call, step by step

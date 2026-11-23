@@ -11,7 +11,6 @@ module LegacyImportHelpers
   def files_and_bytes = Dir.glob("**/*", File::FNM_DOTMATCH, base: folder.root).select { |rel| folder.exist?(rel) && !rel.match?(/\.db(-wal|-shm|-journal)?\z/) }.sort.to_h { |rel| [rel, folder.read(rel)] }
 
   def break_the_store
-    folder.write("roadmaps/r1.md", "# R1\n\n## Batches\n\n### Batch 1 — A\n- [ ] 7 No status here\n")
     folder.write("INDEX.md", "#{folder.read("INDEX.md").force_encoding(Encoding::UTF_8)}\n- [3 — Gone](store/3--gone/3--gone.md)\n")
     folder.write("store/9--stray/spec.md", "# Stray\n")
     folder.write("store/1--alpha-service/graph.json", "{not json")
@@ -102,7 +101,7 @@ class KnowledgeSyncLegacyImportCheckTest < Plastic::TestCase
     break_the_store
     message = assert_raises(Plastic::Invalid) { import }.message
 
-    ["roadmaps/r1.md", "store/3--gone is in INDEX.md and has no folder", "store/9--stray has no entry in INDEX.md", "store/1--alpha-service/graph.json"].each do |named|
+    ["store/3--gone is in INDEX.md and has no folder", "store/9--stray has no entry in INDEX.md", "store/1--alpha-service/graph.json"].each do |named|
       assert_includes message, named
     end
   end

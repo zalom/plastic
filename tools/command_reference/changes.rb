@@ -10,8 +10,7 @@ module CommandReference
   class Changes
     PRINTED = {
       files: "The files of the intent and the index of the store are rewritten",
-      index: "The index of the store is rewritten",
-      roadmap: "The files of the roadmap are rewritten"
+      index: "The index of the store is rewritten"
     }.freeze
 
     def initialize(klass, flows)
@@ -40,7 +39,7 @@ module CommandReference
     def printed = printed_texts.map { |text| change(text, :store) }
 
     def printed_texts
-      [(PRINTED[:files] if prints.include?(:intent)), (PRINTED[:index] if prints == [:index]), (PRINTED[:roadmap] if prints.include?(:roadmap))].compact
+      [(PRINTED[:files] if prints.include?(:intent)), (PRINTED[:index] if prints == [:index])].compact
     end
   end
 end

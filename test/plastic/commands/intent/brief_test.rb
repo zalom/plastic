@@ -6,14 +6,6 @@ require_relative "../../../../lib/plastic/commands/intent/rule"
 require_relative "../../../../lib/plastic/commands/node/add"
 
 class IntentBriefCaseTest < Plastic::TestCase
-  def test_the_brief_of_an_intent_started_from_a_legacy_roadmap_carries_the_goal_and_the_done_criteria_of_its_batch
-    legacy_roadmap
-    ran("roadmap next make-it-useful --batch 1", "roadmap open make-it-useful 2")
-
-    assert_case line("intent brief 2"), code: 0, out: ["goal: Close the two blockers",
-      "criterion: a guest sees only their own order", "criterion: add to cart works on every page"]
-  end
-
   def test_the_brief_after_a_full_pass_of_the_work_graph_shows_the_rulings_and_the_ready_node
     work_graph_pass
 

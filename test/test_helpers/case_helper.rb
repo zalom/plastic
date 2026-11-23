@@ -13,28 +13,6 @@ module Plastic
       UNKEYED_CRITERION = "# Spec\n\n## Done criteria\n\n- the CLI ships\n"
 
       LEGACY_STORE = File.expand_path("../fixtures/legacy_store", __dir__)
-      LEGACY_ROADMAP = <<~MARKDOWN
-        # Roadmap: Make It Useful
-
-        ## Goal
-        The shop registers every button in the backend.
-
-        ## Waves
-
-        ### Wave 1 — Ship-stopping blockers
-        - [ ] 2 Lock down guest order access — queued
-        - [ ] 3 Un-nest the wishlist button — queued
-
-        ### Wave 2 — Core commerce
-        - [ ] 4 Fix the first-add cart quantity — queued
-
-        ## Graph
-        - 2 needs nothing
-        - 3 needs nothing
-        - 4 needs 2 3
-      MARKDOWN
-      BATCH_GOAL = 'roadmap batch make-it-useful 1 --goal "Close the two blockers" ' \
-                   '--done "a guest sees only their own order" --done "add to cart works on every page"'
       TWO_KEYED_CRITERIA = "# Spec\n\n## Done criteria\n\n- [ ] [it-is-done] it is done\n- [ ] [it-builds] it builds\n"
 
       # One command line, called in the test's own process.
@@ -70,14 +48,6 @@ module Plastic
         ran("intent start 1", "node add 1 Build --criterion tests-pass")
       end
 
-      # A legacy store with one roadmap file, read into rows, whose first batch has a goal and two done criteria.
-      def legacy_roadmap
-        FileUtils.cp_r(File.join(LEGACY_STORE, "."), store_root)
-        write("roadmaps/make-it-useful.md", LEGACY_ROADMAP)
-        sync_up
-        ran(BATCH_GOAL)
-      end
-
       # Intent 1 after a full pass of the work graph: two rulings, the second superseding the first,
       # two nodes with an edge, and the first node failed, released, claimed again and done.
       def work_graph_pass
@@ -86,17 +56,6 @@ module Plastic
         sync_up
         ran("intent approve 1", "intent start 1", 'node add 1 "do the thing" --criterion it-is-done', 'node add 1 "build it" --criterion it-builds',
           "edge add 1 n1 n2", "node claim 1 n1 --agent tester", "node fail 1 n1 broke", "node release 1 n1", "node claim 1 n1 --agent tester", 'node done 1 n1 "it passed"')
-      end
-
-      # The roadmap shop, whose first batch is Blockers.
-      def shop_batch
-        ran("roadmap new shop", 'roadmap batch shop 1 --title Blockers --goal "guest checkout is safe"')
-      end
-
-      # The shop batch with its first item, guest.
-      def shop_guest
-        shop_batch
-        ran('roadmap add shop 1 guest --title "Lock down guest orders"')
       end
     end
   end

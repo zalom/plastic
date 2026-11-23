@@ -56,9 +56,6 @@ module Plastic
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
 
-        # Every roadmap file on disk, by path. The event log an older release kept beside a roadmap is not one.
-        def roadmap_files = Dir.glob("roadmaps/*.md", base: root).reject { |path| StorePath.roadmap_log?(path) }.sort
-
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
         # Every file of every intent folder that the selection reads, dot files included.
