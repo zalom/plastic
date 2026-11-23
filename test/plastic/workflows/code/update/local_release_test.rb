@@ -55,6 +55,17 @@ class LocalReleaseUpdateTest < Plastic::TestCase
     assert_plain_folder_message folder, real_run_error(folder)
   end
 
+  def test_a_real_run_downloads_a_readable_local_release
+    folder = local_release("99.0.0-alpha.2")
+    installed("99.0.0-alpha.1")
+    activated("99.0.0-alpha.1")
+    harness = scoped_harness(env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_SHARE" => share, "PLASTIC_LOCAL_RELEASE" => folder })
+
+    outcome, context = run_workflow(Plastic::Workflows::Code::Update, harness:, channel: nil)
+
+    assert_equal [:downloaded, "99.0.0-alpha.2"], [outcome, context.release]
+  end
+
   private
 
   def dry_run_error(folder)
