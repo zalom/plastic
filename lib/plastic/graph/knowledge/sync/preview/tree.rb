@@ -8,8 +8,10 @@ module Plastic
     module Knowledge
       class Sync
         class Preview
-          # The files of a folder that a preview compares: no databases and no sidecars.
+          # The files of a folder that a preview compares: no backups, no databases and no sidecars.
           class Tree
+            LEFT_OUT = %r{\A#{Mirror::BACKUPS}/|#{Mirror::DATABASE.source}|#{Mirror::SIDECAR.source}}
+
             def initialize(root)
               @root = root
             end
@@ -17,13 +19,7 @@ module Plastic
             def files
               return [] unless File.directory?(@root)
 
-              Find.find(@root).select { |path| compared?(path) }.map { |path| path.delete_prefix("#{@root}/") }
-            end
-
-            private
-
-            def compared?(path)
-              File.file?(path) && !path.start_with?("#{@root}/#{Mirror::BACKUPS}/") && !path.match?(Mirror::DATABASE) && !path.match?(Mirror::SIDECAR)
+              Find.find(@root).select { |path| File.file?(path) }.map { |path| path.delete_prefix("#{@root}/") }.grep_v(LEFT_OUT)
             end
           end
         end
