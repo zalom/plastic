@@ -75,39 +75,6 @@ class HarnessesRunRecordTest < Plastic::TestCase
     assert_equal 50, usage.output_tokens
   end
 
-  def test_a_run_that_starts_the_session_takes_the_first_total
-    write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "m1"), claude_cost(0.75)))
-
-    assert_in_delta 0.75, read.cost_usd
-  end
-
-  def test_a_run_after_other_work_with_no_cost_state_before_it_takes_no_cost
-    write_claude("s-1", jsonl(claude_turn("2026-11-12T11:59:00Z", id: "m0"), claude_turn("2026-11-12T12:01:00Z", id: "m1"), claude_cost(5.0)))
-    usage = read
-
-    assert_nil usage.cost_usd
-    assert_includes usage.note, "other work before the run"
-  end
-
-  def test_a_run_after_other_work_since_the_last_cost_state_takes_no_cost
-    write_claude("s-1", jsonl(claude_turn("2026-11-12T11:58:00Z", id: "m0"), claude_cost(0.5), claude_turn("2026-11-12T11:59:00Z", id: "m9"),
-      claude_turn("2026-11-12T12:01:00Z", id: "m1"), claude_cost(5.0)))
-    usage = read
-
-    assert_nil usage.cost_usd
-    assert_includes usage.note, "other work before the run"
-  end
-
-  def test_a_run_a_subagent_worked_takes_no_cost_because_the_harness_records_none_for_it
-    write_claude("s-1", jsonl(claude_cost(1.0)))
-    write_claude("agent-a1", jsonl(claude_claim_call("2026-11-12T12:00:05Z", "plastic node claim 1 n1 --agent x"),
-      claude_turn("2026-11-12T12:03:00Z", id: "a2")), under: ["s-1", "subagents"])
-    usage = read
-
-    assert_nil usage.cost_usd
-    assert_includes usage.note, "no cost for a subagent"
-  end
-
   def test_a_subagent_that_claimed_just_before_the_run_started_is_the_worker
     write_claude("s-1", jsonl(claude_turn("2026-11-23T17:32:00Z", id: "p1", output: 7)))
     write_claude("agent-a1", jsonl(

@@ -24,11 +24,11 @@ module Plastic
 
       # Reads again each ended main-session Claude Code run of `runs` with no cost and stores the cost found. Reads each session's
       # file once. Returns the runs that took a cost.
-      def call(runs) = candidates(runs).group_by(&:session_id).flat_map { |session, group| fill(session, group) }
+      def call(runs) = self.class.candidates(runs).group_by(&:session_id).flat_map { |session, group| fill(session, group) }
+
+      def self.candidates(runs) = runs.select { |run| run.lacks_cost? && run.harness == HARNESS && !run.worker_session.to_s.start_with?(SUBAGENT) }
 
       private
-
-      def candidates(runs) = runs.select { |run| run.lacks_cost? && run.harness == HARNESS && !run.worker_session.to_s.start_with?(SUBAGENT) }
 
       def fill(session, group)
         costs = @claude.costs(session:, windows: group.map { |run| run.window(RunRecord::END_SECOND) })

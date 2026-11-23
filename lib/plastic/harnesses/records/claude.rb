@@ -12,6 +12,8 @@ module Plastic
       # inside the run is the worker: its own file, `SESSION/subagents/agent-ID.jsonl`, holds the usage. The reading of one file is
       # in Claude::Transcript. Docs: docs/usage/node-lifecycle.md.
       class Claude
+        SUBAGENT_NOTE = "cost not found: Claude Code writes no cost for a subagent, only for the session"
+
         def initialize(home:)
           @home = home
         end
@@ -25,7 +27,7 @@ module Plastic
           worker, window = found || [path, from..to]
           name = File.basename(worker, ".jsonl")
           entries = Jsonl.read(worker)
-          entries ? Transcript.new(entries, window, subagent: !found.nil?).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
+          entries ? Transcript.new(entries, window, no_cost: (SUBAGENT_NOTE if found)).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
         end
 
         # The cost of each window of the main file of `session`, in order, nil where the transcript cannot tell it. The file is read

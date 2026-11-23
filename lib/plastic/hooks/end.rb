@@ -25,15 +25,17 @@ module Plastic
 
       private
 
-      # The cost of a run is written by Claude Code when the session stops, after the done command read the record.
       def graphs = (@graphs ||= Wiring.graphs(home: scope.plastic_home, store: scope.slug, session: session_id, clock: environment.clock))
 
+      # Claude Code writes the cost of a run when the session stops, after the done command read the record. A fill that fails is
+      # named on stderr and stops nothing else.
       def fill_costs
-        runs = graphs.retrieval.structure.runs.select { |run| run.session_id == session_id }
-        Harnesses::CostFill.new(home: environment.home.to_s, work: graphs.work).call(runs)
+        Harnesses::CostFill.new(home: environment.home.to_s, work: graphs.work).call(session_runs)
       rescue => error
         environment.err.puts "plastic hook: the cost was not filled: #{Failed.describe(error)}"
       end
+
+      def session_runs = graphs.retrieval.structure.runs.select { |run| run.session_id == session_id }
 
       def back_up_the_day = CLI::DayBackup.new(environment).back_up(:end_session)
 

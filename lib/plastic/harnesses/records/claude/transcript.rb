@@ -20,16 +20,17 @@ module Plastic
           # The total of the last `cost-state` line among `entries`, nil when there is none.
           def self.total(entries) = entries.reverse.find { |entry| entry["type"] == "cost-state" }&.fetch("totalCostUSD", nil)
 
-          def initialize(entries, window, subagent: false)
+          def initialize(entries, window, no_cost: nil)
             @entries = entries
             @window = window
-            @subagent = subagent
+            @no_cost = no_cost
+            @alone = nil
           end
 
           def usage(name)
             return TokenUsage.none("no turn inside the run in the Claude Code transcript of session #{name}", worker_session: name) if windowed.empty?
 
-            figures(name, @subagent ? nil : cost)
+            figures(name, @no_cost ? nil : cost)
           end
 
           # The cost of the run alone, nil when the transcript cannot tell it.
@@ -40,12 +41,11 @@ module Plastic
           def figures(name, cost)
             input, output, cache_read, cache_write = COUNTS.map { |key| sum(key) }
             TokenUsage.new(worker_session: name, model: turns.last.dig("message", "model"), input_tokens: input, output_tokens: output,
-              cache_read_tokens: cache_read, cache_write_tokens: cache_write, cost_usd: cost, note: note(cost))
+              cache_read_tokens: cache_read, cache_write_tokens: cache_write, cost_usd: cost, note: cost ? "" : missing)
           end
 
-          def note(cost)
-            return "" if cost
-            return "cost not found: Claude Code writes no cost for a subagent, only for the session" if @subagent
+          def missing
+            return @no_cost if @no_cost
 
             alone? ? "cost not found: the Claude Code transcript holds no cost after the run" : "cost not found: the session did other work before the run, so the run's share of the total cannot be told"
           end
