@@ -5,6 +5,9 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The claim packet, in text and in JSON, says the output of a node is a JSON file given with `plastic node done ID NODE TEXT --output PATH`, and the driver and retriever roles say so too. Plastic still refuses output that is not JSON.
+- A run row names the worker subagent when a subagent ran the claim. The claim turn is written before the run's stored start, so the reader now takes the latest claim turn at or before the start; before, it fell back to the main session. A new role, `plastic-retriever`, is installed for Claude Code and Codex: read-only, for retrieval nodes. The driver role names it, says the driver picks each worker's `--agent` name, and says it waits for the harness's notice that a worker ended instead of polling.
+
 ## 3.0.0-beta.14
 
 - `plastic migration list` works on a store whose newest migration kept nothing in `legacy.db`, such as a fresh store. It failed with `KeyError: key not found: "20261123130000"` and exit 1. Its down line now reads "down: would undo migration VERSION and put back no rows", in text and in `--json`.

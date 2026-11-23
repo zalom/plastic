@@ -31,9 +31,6 @@ module Plastic
             figures(name, cost)
           end
 
-          # True when a turn inside the run ran a command that matches `pattern`.
-          def claimed?(pattern) = windowed.flat_map { |turn| self.class.commands(turn) }.any? { |command| command.match?(pattern) }
-
           private
 
           def figures(name, cost)

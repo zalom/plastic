@@ -19,7 +19,7 @@ class ClaimNodeTest < Plastic::TestCase
   def test_a_claimed_node_prints_its_brief
     outcome, context = claim
 
-    assert_equal [:done, ["node: n1 Build", "criterion: it runs", "criterion text: it runs", "input: spec.md"]], [outcome, context.printed]
+    assert_equal [:done, ["node: n1 Build", "criterion: it runs", "criterion text: it runs", "input: spec.md", "output: a JSON file, given with plastic node done 1 n1 TEXT --output PATH"]], [outcome, context.printed]
     assert_equal "claimed", retrieval.node("1", "n1").state
   end
 

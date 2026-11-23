@@ -13,7 +13,7 @@ class DriverRoleTest < Minitest::Test
   def test_it_pairs_each_node_kind_with_its_worker_role
     assert_match(/`orchestrator`.*`plastic-planner`/, ROLE)
     assert_match(/`work`.*`plastic-executor`/, ROLE)
-    assert_match(/`retrieval`.*read-only worker/, ROLE)
+    assert_match(/`retrieval`.*`plastic-retriever`/, ROLE)
   end
 
   def test_it_hands_the_worker_the_claim_packet
@@ -44,5 +44,19 @@ class DriverRoleTest < Minitest::Test
 
   def test_a_new_limit_takes_effect_at_a_reinstall
     assert_includes ROLE, "`plastic install --reinstall`"
+  end
+
+  def test_the_driver_picks_the_agent_name_for_each_worker
+    assert_includes ROLE, "You pick the `--agent` name for each worker"
+    assert_includes ROLE, "with the intent id and the node id"
+  end
+
+  def test_the_driver_waits_for_the_notice_and_never_polls
+    assert_includes ROLE, "waits for the harness's notice that a worker ended"
+    assert_includes ROLE, "does not poll in a loop"
+  end
+
+  def test_the_output_file_is_said_to_be_json
+    assert_includes ROLE, "PATH is a JSON file"
   end
 end

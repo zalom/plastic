@@ -15,7 +15,8 @@ module Plastic
       TIER_DEFAULTS = {
         "plastic-planner" => "opus",
         "plastic-executor" => "sonnet",
-        "plastic-driver" => "sonnet"
+        "plastic-driver" => "sonnet",
+        "plastic-retriever" => "sonnet"
       }.freeze
 
       # An agent file that no longer ships, and the agent that took its place.
