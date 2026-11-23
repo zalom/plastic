@@ -106,3 +106,68 @@ class NodeAddTest < Plastic::TestCase
     assert_equal [:intent_id], Plastic::Commands::Node::Add.subject
   end
 end
+
+class NodeAddInputTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def call(*args) = plastic("node", "add", *args, table: Plastic::CLI::TABLE)
+
+  def nodes = work_rows("nodes")
+
+  def input_rows = work_rows("node_inputs").sort_by { |row| row.fetch("position") }.map { |row| row.values_at("node_id", "position", "path") }
+
+  def test_two_input_paths_are_stored_in_the_order_given
+    specified
+
+    result = call("1", "do the thing", "--criterion", KEY, "--input", "docs/b.md", "--input", "docs/a.md")
+
+    assert_call result, code: 0, err: "", out: ["node: n1", "next: plastic edge add 1 FROM TO"]
+    assert_equal [["n1", 1, "docs/b.md"], ["n1", 2, "docs/a.md"]], input_rows
+  end
+
+  def test_one_input_path_is_stored_as_the_first_position
+    specified
+    call("1", "do the thing", "--criterion", KEY, "--input", "docs/a.md")
+
+    assert_equal [["n1", 1, "docs/a.md"]], input_rows
+  end
+
+  def test_a_node_with_no_input_path_stores_no_row
+    specified
+    call("1", "do the thing", "--criterion", KEY)
+
+    assert_empty input_rows
+  end
+
+  def test_a_path_given_twice_is_stored_as_given_in_its_place
+    specified
+    call("1", "do the thing", "--criterion", KEY, "--input", "a.md", "--input", "a.md")
+
+    assert_equal [["n1", 1, "a.md"], ["n1", 2, "a.md"]], input_rows
+  end
+
+  def empty_input_call
+    specified
+    call("1", "do the thing", "--criterion", KEY, "--input", "docs/a.md", "--input", "")
+  end
+
+  def test_an_empty_input_path_exits_2_naming_the_option
+    result = empty_input_call
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_includes result.err, "--input"
+  end
+
+  def test_an_empty_input_path_writes_no_node_and_no_input_row
+    empty_input_call
+
+    assert_equal [[], []], [nodes, input_rows]
+  end
+
+  def test_the_nodes_table_has_no_input_column
+    specified
+    call("1", "do the thing", "--criterion", KEY, "--input", "docs/a.md")
+
+    refute_includes nodes.first.keys, "input"
+  end
+end

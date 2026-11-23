@@ -93,7 +93,7 @@ class PrintsTest < Plastic::TestCase
     store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:edges, { intent_id: "1", from: "a", to: "b", kind: "needs" }) }
     graph = JSON.parse(Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text)
 
-    assert_equal({ "intent" => "1", "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "runs" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
+    assert_equal({ "intent" => "1", "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "node_inputs" => [], "runs" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
   end
 
   def test_a_kept_file_print_reads_its_bytes_only_to_write

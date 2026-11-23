@@ -4,7 +4,7 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/node/add"
 
 class AddNodeTest < Plastic::TestCase
-  def add(intent_id: "1") = run_workflow(Plastic::Workflows::Code::Node::Add, intent_id:, title: "Build", criterion: "runs", kind: nil, input: nil, found_in: nil, deadline: nil)
+  def add(intent_id: "1", deadline: nil) = run_workflow(Plastic::Workflows::Code::Node::Add, intent_id:, title: "Build", criterion: "runs", kind: nil, inputs: [], found_in: nil, deadline:)
 
   def test_a_node_is_written_open_and_named
     open_keyed_intent(key: "runs")
@@ -13,6 +13,13 @@ class AddNodeTest < Plastic::TestCase
 
     assert_equal [:done, ["node: n1"]], [outcome, context.printed]
     assert_equal [%w[n1 open Build]], retrieval.structure.nodes("1").map { |node| [node.id, node.state, node.title] }
+  end
+
+  def test_a_deadline_is_stored_as_whole_minutes
+    open_keyed_intent(key: "runs")
+    add(deadline: "30")
+
+    assert_equal [30], retrieval.structure.nodes("1").map(&:deadline)
   end
 
   def test_an_unknown_intent_fails_with_no_node

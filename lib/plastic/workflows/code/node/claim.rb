@@ -111,7 +111,7 @@ module Plastic
             packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)
-            context.print("input: #{node.input}") if node.input
+            context.retrieval.structure.node_paths(node).each { |path| context.print("input: #{path}") }
             context.print("last reason: #{node.reason}") if node.reason
             packet.answer_lines.each { |line| context.print(line) }
             context.data("packet", packet.to_h)
