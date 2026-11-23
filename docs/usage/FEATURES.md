@@ -33,7 +33,7 @@ outer one. With neither, the global store answers.
 | ------- | ------ |
 | `plastic status` | The work of every store, by group. |
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
-| `plastic next` | The next action in one line. `--why` adds the rule behind it. |
+| `plastic next` | The next action in one line, with the rule behind it on the `because:` line. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
 | `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress with the best passages of the retrieval graph for each (at most 3 intents and 2 passages each, on `context:` lines), the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
 | `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
@@ -57,7 +57,7 @@ link. With no ready intent, both name the first active intent instead.
 worktree, and the agent makes it. They end on `plastic intent spec ID` while the spec is unsettled or
 the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic intent brief ID`
 otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
-the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim`, names the session that works a node. It
+the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim ID NODE --agent NAME`, names the session that works a node and the agent that runs it; a claim without `--agent` exits 2. It
 refuses, with exit 3, an intent that is not in progress or without the go-ahead, and a node that
 is blocked, held or capped; it offers `plastic next` for a done or abandoned intent.
 
@@ -131,6 +131,43 @@ and `plastic config set KEY VALUE` writes one into the settings rows of `~/.plas
 the on/off settings on a choice screen. Each takes `--harness NAME` to work on the settings of one
 harness, and refuses a name the harness registry does not hold. See the
 [page of `config`](../reference/commands/config/README.md).
+
+`~/.plastic/config.yml` is printed from the settings rows. It shows the settings you changed, in a
+`global` section and one section per harness, and holds no anchors:
+
+```yaml
+global:
+  runner:
+    stop_hook: true                  # Keep working while a node is ready
+  backup:
+    daily: true                      # Keep 24 hours of backups, with two copies a day
+harnesses:
+  codex:
+    agents:
+      models:
+        plastic-executor: gpt-5.5    # One agent's model under Codex
+```
+
+A sync always reads the Markdown notes and the graph of each intent. Under `resources/`, it reads
+`output/reports` and `output/files` by file type, Markdown and HTML unless `sync.types` names others,
+in `output/reports` only a report recorded with `plastic intent report ID PATH` or one that
+`reports.mandatory` names, the `references` folder when `sync.references` is on, and never `tmp`. A
+file of a type not yet named is skipped once, with one line that gives the `plastic config set
+sync.types` command to include it. `plastic init` offers images and videos picked. Tool output,
+packets, plans and notes go to `resources/tmp`, and copies of outside material go to
+`resources/references`.
+
+With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
+Plastic command or hook of the day copies the databases of every store as the start-of-day backup,
+and each session end after it replaces the day's end-of-day backup. A store always keeps its
+newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so they
+find the backups as they are. Plastic runs no background process for this, and `backup.daily` is
+off by default.
+
+`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
+table of each store. While it is off, `plastic update` leaves that table in place. Turn it on with
+`plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each store
+keeps the table in its `legacy.db` before the drop. The switch is off by default.
 
 ## Chat history
 
@@ -223,8 +260,8 @@ finds nothing to move and says `sorted: nothing to move`.
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
-then one heading for each family: intent, project, sync, session, config, backup, migration, document,
-architecture, node, edge, graph and hook. `plastic help FAMILY` lists one family, and
+then one heading for each family: intent, project, sync, session, config, backup, migration, resources,
+document, architecture, node, edge, graph, chat and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.
 
