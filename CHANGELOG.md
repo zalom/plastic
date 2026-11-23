@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `Work::LoggedWrites` is split by what it writes: `LoggedIntents` for the intent writes and `LoggedRecords` for rulings, verdicts, notes, reports and amendments, so Reek reports no smell on it. `report_intent` takes the `ReportFile` value, and `Reporter#write` and `Reporter#body` are gone. No command changes.
 - `plastic intent report ID PATH` on an unchanged report now rewrites its line under Reports when the `reports.mandatory` setting changed its form, from `- PATH` to `- PATH (mandatory)` or back. It writes no row and no work log line, and says so. A report the outcome does not list stays unlisted.
 - The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
 - `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.

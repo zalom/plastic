@@ -43,21 +43,14 @@ module Plastic
           # Compares the file with the latest `reported` line of any origin, as the sync counts them (Reports::RECORDED).
           def state(report) = State.of(store.row(LATEST, **report.key), report.digest(@folder))
 
-          # The bytes of the report, for the sha256 of its log line.
-          def body(intent, path) = ReportFile.new(intent, path).body(@folder)
-
           # Rewrites only the outcome line of a report already recorded, for a changed form of the setting; no row, no log
           # line. True when the outcome changed: only a line in the other form of the setting is rewritten, and a report the
           # outcome does not list stays unlisted.
           def restate(report, text) = amend(report, :restated, text)
 
-          # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
-          def write(intent, path, text) = record(ReportFile.new(intent, path), text)
-
-          private
-
-          # The report row, its line under Reports (a report recorded again keeps its one line, and the line of the other form
-          # of the setting is replaced, not left beside the new one), and the reference of the row.
+          # Writes the report row and its line under Reports (a report recorded again keeps its one line, and the line of the
+          # other form of the setting is replaced, not left beside the new one); returns the reference of the row. `text` is
+          # MANDATORY for a report the setting names, else empty.
           def record(report, text)
             id = report.id
             path = report.path
@@ -65,6 +58,8 @@ module Plastic
             amend(report, :outcome, text)
             @retrieval.reference(id, path).fetch(:uri)
           end
+
+          private
 
           # Writes what ReportFile#outcome or #restated makes of the outcome, when it makes one; true when it wrote.
           def amend(report, how, setting)
