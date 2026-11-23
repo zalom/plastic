@@ -128,7 +128,7 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
   def test_all_nodes_done_points_to_the_intent_end
     plan("Build")
     claim("n1")
-    @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
+    @work.done_node(intent_id: "1", id: "n1", findings: "green")
 
     assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
   end

@@ -26,7 +26,7 @@ class ApproveGraphTest < Plastic::TestCase
   def test_approving_prints_the_hand_edit_of_a_finding_with_no_command
     @work.add_node(intent_id: "1", title: "Build", criterion: "it runs")
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
-    @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: " ")
+    @work.done_node(intent_id: "1", id: "n1", findings: " ")
 
     assert_includes approve.last.printed, "hand edit: edit the findings of node n1 in graph.json, then run plastic sync up and plastic graph check 1 again"
   end

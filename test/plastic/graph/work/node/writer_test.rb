@@ -61,7 +61,7 @@ class WorkNodeWriterTest < Plastic::TestCase
   def test_a_move_from_a_state_it_does_not_leave_writes_nothing
     add
 
-    assert_nil @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "ok")
+    assert_nil @work.done_node(intent_id: "1", id: "n1", findings: "ok")
     assert_equal "open", node("n1").state
   end
 
@@ -97,7 +97,7 @@ class WorkNodeWriterTest < Plastic::TestCase
   def test_done_records_the_judge_and_findings
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
-    done = @work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
+    done = @work.done_node(intent_id: "1", id: "n1", findings: "green")
 
     assert_equal %w[done tests green], [done.state, done.judge, done.findings]
   end

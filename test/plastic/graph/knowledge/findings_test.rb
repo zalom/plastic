@@ -21,7 +21,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
 
   def finish(id, findings:)
     @work.claim_node(intent_id: "1", id:, by: "a")
-    @work.done_node(intent_id: "1", id:, judge: "tests", findings:)
+    @work.done_node(intent_id: "1", id:, findings:)
   end
 
   def test_an_intent_with_criteria_and_one_verified_node_has_no_finding
