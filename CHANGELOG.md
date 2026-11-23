@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - `plastic graph show` prints the start, end and length of each run, and `running` for a run with no end; `--json` carries them under `runs`. After `plastic node done`, the nodes now ready are named and the `next:` line claims the first.
+- QMD is gone from Plastic's instructions, help and contributor docs. `plastic help tools` no longer has a QMD section, and a guard test fails when a shipped file names QMD outside the changelog and the two installer lists that remove an old `qmd-search` hook.
 
 ## 3.0.0-beta.17
 
