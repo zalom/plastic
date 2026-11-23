@@ -15,7 +15,7 @@ module Plastic
           @retrieval = retrieval
           @intent = intent
           @root = root
-          @first_claim = retrieval.structure.runs(intent.id).empty? # asked once, before the claim writes its run row
+          @first_claim = retrieval.structure.runs(intent.intent_id).empty? # asked once, before the claim writes its run row
         end
 
         # The words that refuse the first claim, or nil when the claim may go on or is not the first.
@@ -25,7 +25,7 @@ module Plastic
           blocking = findings.blocking
           return nil if blocking.empty?
 
-          "the graph of intent #{@intent.id} has a finding that stops the first claim: #{blocking.map { |finding| "#{finding.text}; repair: #{finding.repair}" }.join("; ")}"
+          "the graph of intent #{@intent.intent_id} has a finding that stops the first claim: #{blocking.map { |finding| "#{finding.text}; repair: #{finding.repair}" }.join("; ")}"
         end
 
         # One `finding:` line for each finding, each followed by its repair or its hand edit.
@@ -39,7 +39,7 @@ module Plastic
         def first_claim? = @first_claim
 
         def findings
-          @findings ||= Knowledge::Findings.new(@retrieval, @intent.id, schemas: Schemas.new(Knowledge::StoreFolder.new(@root), @intent.dir))
+          @findings ||= Knowledge::Findings.new(@retrieval, @intent.intent_id, schemas: Schemas.new(Knowledge::StoreFolder.new(@root), @intent.dir))
         end
       end
     end

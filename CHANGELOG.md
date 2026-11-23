@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - `plastic backup restore --latest` never picks a done backup folder whose name is not a real time, such as 20261399000000, which sorted after every real one; it restores the newest real-time done backup, and with none it refuses as before. The same holds for the backup sweep (the newest done and the newest migration backup it keeps) and for the unchanged check of an automatic backup, which now compare with the newest real-time folder.
+- The graph check at `plastic intent approve` and at the first `plastic node claim` reads the intent by its number. It read the database row id of the intent instead, such as 618 for intent 512, so a loop or a need on a removed node never stopped the first claim, every claim printed "intent 618 names no done criterion", and every claim counted as the first one.
 
 ## 3.0.0-beta.13
 
