@@ -87,7 +87,7 @@ class HarnessesRunRecordTest < Plastic::TestCase
     assert_equal ["agent-a1", "claude-haiku-5-5"], [usage.worker_session, usage.model]
   end
 
-  def test_a_subagent_claim_long_before_the_run_is_not_this_run
+  def test_a_subagent_that_claimed_long_before_the_run_and_still_works_is_the_worker
     write_claude("s-1", jsonl(claude_turn("2026-11-12T12:01:00Z", id: "p1")))
     write_claude("agent-a1", jsonl(claude_claim_call("2026-11-12T10:00:00Z", "plastic node claim 1 n1 --agent plastic-executor"),
       claude_turn("2026-11-12T12:03:00Z", id: "a2")), under: ["s-1", "subagents"])
