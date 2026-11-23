@@ -13,12 +13,17 @@ module Plastic
       VERSION = "20261123120000"
       # The needs links written, and the roadmap edges skipped.
       Result = Data.define(:written, :skipped) do
-        def line(slug)
-          return if written.zero? && skipped.zero?
+        def line(slug) = (written + skipped).zero? ? nil : [wrote(slug), skipping].compact.join(" and ")
 
-          text = "migrate: #{slug} wrote #{written} needs #{(written == 1) ? "link" : "links"} from the roadmap edges"
-          skipped.zero? ? text : "#{text} and skipped #{skipped} roadmap #{(skipped == 1) ? "edge" : "edges"} that cannot be a link; legacy.db keeps every roadmap row"
-        end
+        private
+
+        def wrote(slug) = "migrate: #{slug} wrote #{written} needs #{(written == 1) ? "link" : "links"} from the roadmap edges"
+
+        def skipping = if skipped.zero?
+                         nil
+                       else
+                         "skipped #{skipped} roadmap #{(skipped == 1) ? "edge" : "edges"} that cannot be a link; legacy.db keeps every roadmap row"
+                       end
       end
 
       EDGES = <<~SQL
@@ -42,8 +47,9 @@ module Plastic
         return Result.new(written: 0, skipped: 0) unless kept?
 
         pairs = @connection.read(NEEDS).map { |row| row.values_at("from_ref", "to_ref") }
-        written = @connection.read(EDGES).count { |edge| link(edge, pairs) }
-        Result.new(written:, skipped: @connection.read(EDGES).size - written)
+        edges = @connection.read(EDGES)
+        written = edges.count { |edge| link(edge, pairs) }
+        Result.new(written:, skipped: edges.size - written)
       end
 
       private
@@ -52,10 +58,10 @@ module Plastic
 
       # Writes the link of one edge and answers whether it was written.
       def link(edge, pairs)
-        from, to = edge.values_at("from_ref", "to_ref")
+        from, to, at, origin = edge.values_at("from_ref", "to_ref", "at", "origin_id")
         return false unless usable?(from, to) && EdgeWalk.new(pairs).path(to, from).nil?
 
-        @connection.execute(INSERT, [from, to, edge["at"], edge["origin_id"]])
+        @connection.execute(INSERT, [from, to, at, origin])
         pairs << [from, to]
         true
       end

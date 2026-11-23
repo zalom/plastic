@@ -222,27 +222,6 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     assert_equal [1, 0, 0], results.map(&:code), results.last.err
     assert_includes File.read(store_path("store/index.json")), "imported"
   end
-
-  def open_roadmap
-    cli("roadmap", "new", "r1")
-    cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "Batch goal", "--done", "batch done")
-    cli("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done")
-  end
-
-  def test_an_edited_index_refuses_roadmap_open
-    open_intent
-    open_roadmap
-    write("store/index.json", "{}\n")
-
-    assert_refused(cli("roadmap", "open", "r1", "a"), "store/index.json")
-  end
-
-  def test_an_edited_roadmap_file_refuses_roadmap_open
-    open_roadmap
-    write("roadmaps/r1.md", folder.read("roadmaps/r1.md").sub(/^# .*/, "# By hand"))
-
-    assert_refused(cli("roadmap", "open", "r1", "a"), "roadmaps/r1.md")
-  end
 end
 
 # A refusal of the hand edit check names a command, and that command clears the refusal.
@@ -337,14 +316,6 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
   end
 
   def holds?(path, text) = File.read(store_path(path)).include?(text)
-
-  def test_a_hand_edited_roadmap_is_refused_with_sync_up_which_reads_it_into_rows_and_clears_the_refusal
-    cli("roadmap", "new", "r1")
-    write("roadmaps/r1.md", File.read(store_path("roadmaps/r1.md")).sub(/^title:.*$/, "title: by hand"))
-    batch = -> { cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d") }
-
-    assert_equal ["next: plastic sync up", true, 0, true, true, 0], generated_round_trip("roadmaps/r1.md", "by hand", batch)
-  end
 
   def test_a_hand_edited_context_json_is_refused_with_sync_up_which_reads_it_into_rows_and_clears_the_refusal
     intent = specified

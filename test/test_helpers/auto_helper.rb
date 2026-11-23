@@ -10,7 +10,6 @@ module Plastic
 
       def start(*args, env: {}) = as_session("intent", "start", *args, env:)
 
-
       def as_session(*words, env:) = plastic(*words, env: { "PLASTIC_SESSION" => "s-1" }.merge(env), table: Plastic::CLI::TABLE)
 
       def write_spec(intent, text)

@@ -30,6 +30,6 @@ class RoadmapRemovalTest < Plastic::TestCase
   end
 
   def test_the_graph_writer_has_no_roadmap_method
-    refute Plastic::Graph::GraphWriter.public_instance_methods.grep(/roadmap/).any?
+    refute_predicate Plastic::Graph::GraphWriter.public_instance_methods.grep(/roadmap/), :any?
   end
 end

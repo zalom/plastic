@@ -51,11 +51,11 @@ module Plastic
           private
 
           # Why a needs link is refused, or nil: its target is not an intent of this store, or it would close a loop.
-          def needs_refusal(id, target)
-            return "a needs link names an intent of this store, not #{target}" unless @retrieval.intent(target)
+          def needs_refusal(from, to)
+            return "a needs link names an intent of this store, not #{to}" unless @retrieval.intent(to)
 
-            cycle = IntentNeeds.new(@retrieval).loop_path(id, target)
-            "intent #{id} needing #{target} would close a loop: #{cycle.join(" -> ")}" if cycle
+            cycle = IntentNeeds.new(@retrieval).loop_path(from, to)
+            "intent #{from} needing #{to} would close a loop: #{cycle.join(" -> ")}" if cycle
           end
 
           def local_target_problem(target)

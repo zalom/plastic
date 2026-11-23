@@ -60,7 +60,7 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     home = roadmap_home
     report = migrate_store(home)
 
-    assert(report.notes.any? { |note| note.match?(/skipped 1 roadmap edge\b/) }, report.notes.inspect)
+    assert_match(/skipped 1 roadmap edge\b/, report.notes.join("\n"))
   end
 
   def test_the_five_roadmap_tables_are_dropped_from_the_work_file
@@ -105,6 +105,23 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     report = migrate_store(home)
 
     assert_equal [%w[2 1], %w[3 2]], needs(home)
-    assert(report.notes.any? { |note| note.match?(/skipped 2 roadmap edges/) }, report.notes.inspect)
+    assert_match(/skipped 2 roadmap edges/, report.notes.join("\n"))
+  end
+end
+
+# The migrate line of one store: what was written and what was skipped.
+class RoadmapNeedsResultTest < Minitest::Test
+  Result = Plastic::Graph::RoadmapNeeds::Result
+
+  def test_a_store_with_nothing_to_write_or_skip_has_no_line
+    assert_nil Result.new(written: 0, skipped: 0).line("alpha")
+  end
+
+  def test_one_written_link_is_named_in_the_singular
+    assert_equal "migrate: alpha wrote 1 needs link from the roadmap edges", Result.new(written: 1, skipped: 0).line("alpha")
+  end
+
+  def test_one_skipped_edge_is_named_in_the_singular_after_the_links
+    assert_match(/wrote 2 needs links from the roadmap edges and skipped 1 roadmap edge that cannot be a link/, Result.new(written: 2, skipped: 1).line("alpha"))
   end
 end

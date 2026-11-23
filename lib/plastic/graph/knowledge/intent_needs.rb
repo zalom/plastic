@@ -22,7 +22,7 @@ module Plastic
         def waiting_on(id) = of(id).reject { |needed| finished?(needed) }
 
         # Every intent of `intents` that waits, with the ids it waits on.
-        def blocked(intents) = intents.to_h { |intent| [intent.intent_id, waiting_on(intent.intent_id)] }.reject { |_id, waits| waits.empty? }
+        def blocked(intents) = intents.map(&:intent_id).to_h { |id| [id, waiting_on(id)] }.reject { |_id, waits| waits.empty? }
 
         # The intents from `from` through `to` and back to `from` that a link from `from` to `to` would close, or nil.
         def loop_path(from, to)
@@ -34,7 +34,7 @@ module Plastic
 
         def finished?(id) = FINISHED.include?(@retrieval.intent(id)&.status)
 
-        def pairs = @pairs ||= @retrieval.every_link.select { |link| link.kind == "needs" }.map { |link| [link.from_ref, link.to_ref] }
+        def pairs = @pairs ||= @retrieval.every_link.select(&:needs?).map(&:ends)
       end
     end
   end

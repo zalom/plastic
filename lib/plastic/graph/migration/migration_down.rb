@@ -83,9 +83,7 @@ module Plastic
 
       def tables = alone? ? [] : @store.tables(version)
 
-      def alone? = LegacyKeep::ALONE.include?(version) || (kept_when_present?(version) && @store.tables(version).empty?)
-
-      def kept_when_present?(version) = LegacyKeep::VALUES.include?(version) || LegacyKeep::PRESENT.include?(version)
+      def alone? = LegacyKeep::ALONE.include?(version) || (LegacyKeep.kept_when_present?(version) && @store.tables(version).empty?)
 
       def check
         current

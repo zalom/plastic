@@ -46,9 +46,10 @@ module Plastic
         private
 
         def none_offer
-          return [nil, "nothing is open", nil] if @pick.blocked.empty?
+          blocked = @pick.blocked
+          return [nil, "nothing is open", nil] if blocked.empty?
 
-          id, needed = @pick.blocked.first
+          id, needed = blocked.first
           [nil, "nothing is ready: intent #{id} waits on #{needed.map { |each| "intent #{each}" }.join(", ")}", nil]
         end
 

@@ -78,7 +78,6 @@ module Plastic
 
         [Print.text("#{intent.dir}/#{WORK_LOG}", lines.map { |line| "#{line.line}\n" }.join)]
       end
-
     end
   end
 end

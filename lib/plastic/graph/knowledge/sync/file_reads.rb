@@ -67,10 +67,7 @@ module Plastic
             @databases.fetch(:store).transaction { |batch| batch.apply(applies) }
           end
 
-          def printed_of(found, fresh)
-            path = found.path
-            fresh[path] || found.kept_print(@folder)
-          end
+          def printed_of(found, fresh) = fresh[found.path] || found.kept_print(@folder)
         end
       end
     end

@@ -34,7 +34,7 @@ module Plastic
             [lines, written(read)]
           end
 
-          def legacy_read(parsed)
+          def legacy_read
             originals = @folder.intent_files.to_h { |path| [path, @folder.read(path)] }
             Read.new(originals, Decisions.read(@folder.intent_dirs, originals))
           end

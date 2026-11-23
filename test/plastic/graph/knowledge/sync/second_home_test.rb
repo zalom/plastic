@@ -7,39 +7,6 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
 
   fixtures :alpha_synced
 
-  def test_a_roadmap_file_with_no_row_is_read_into_rows
-    second_home_roadmap
-
-    assert_includes run_up, "read roadmaps/plan.md"
-    assert_equal ["Plan", ["First"]], [roadmaps.find("plan").title, roadmaps.items("plan").map(&:title)]
-  end
-
-  def test_a_read_roadmap_is_counted_as_pending_before_it_is_read_and_not_after
-    second_home_roadmap
-
-    assert_equal [1, 0], [plan.pending, run_up && plan.pending]
-  end
-
-  def test_a_roadmap_written_with_every_optional_field_left_out_is_read_on_a_second_home
-    text = bare_roadmap_text
-    forget_roadmap
-    write("roadmaps/plan.md", text)
-
-    assert_empty plan.unreadable_files
-    run_up
-
-    assert_equal [[nil, nil], [%w[1 2 after]], ["a note"]], [roadmaps.items("plan").map(&:title), edges_of_plan, roadmaps.log("plan").map(&:text)]
-  end
-
-  def edges_of_plan = roadmaps.edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }
-
-  def test_a_roadmap_file_with_rows_is_not_read_again
-    text = roadmap_text
-    write("roadmaps/plan.md", text)
-
-    refute_includes run_up, "read roadmaps/plan.md"
-  end
-
   def test_a_context_json_with_a_row_is_not_read_again_by_the_second_home
     write(CONTEXT, context_json)
     run_up
@@ -69,37 +36,17 @@ class KnowledgeSyncSecondHomeListingTest < Plastic::TestCase
 
   fixtures :alpha_synced
 
-  def rows_of_the_second_home
-    { roadmap: roadmaps.find("plan")&.title, old: roadmaps.find("old"), batches: roadmaps.batches("plan").map(&:position),
-      items: roadmaps.items("plan").map(&:item), **context_rows }
-  end
-
   def context_rows = { intents: retrieval.intents.map(&:intent_id), contexts: structure.contexts("1").size, discoveries: structure.discoveries("1").size }
 
   def test_a_broken_part_is_listed_and_every_good_part_is_read_into_every_table
-    write(CONTEXT, context_json)
-    write("roadmaps/old.md", "# Old\n")
-    second_home_roadmap
+    write(CONTEXT, "{nope")
+    write("store/1--alpha/graph.json", "junk")
 
-    assert_equal %w[roadmaps/old.md], plan.unreadable_files.keys
+    assert_equal [CONTEXT, "store/1--alpha/graph.json"], plan.unreadable_files.keys.sort
     run_up
 
-    assert_equal({ roadmap: "Plan", old: nil, batches: [1], items: %w[1], intents: ["1"], contexts: 1, discoveries: 1 }, rows_of_the_second_home)
-    assert_equal %w[roadmaps/old.md], plan.unreadable_files.keys
-  end
-
-  def test_a_broken_part_is_counted_as_pending_only_for_what_is_still_to_read
-    write("roadmaps/old.md", "# Old\n")
-    second_home_roadmap
-
-    assert_equal [1, 0], [plan.pending, run_up && plan.pending]
-  end
-
-  def test_only_the_files_of_a_second_home_are_files_this_home_holds_no_rows_for
-    write("store/1--alpha/graph.json", "junk")
-    write("roadmaps/old.md", "# Old\n")
-
-    assert_equal [%w[roadmaps/old.md store/1--alpha/graph.json], %w[roadmaps/old.md]], [plan.unreadable_files.keys.sort, plan.rowless_files]
+    assert_equal [CONTEXT, "store/1--alpha/graph.json"], plan.unreadable_files.keys.sort
+    assert_equal({ intents: ["1"], contexts: 0, discoveries: 0 }, context_rows)
   end
 
   def test_the_overwrite_offered_for_a_file_this_home_holds_rows_for_prints_it_and_the_next_sync_up_reads_clean
@@ -151,53 +98,13 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
 
   fixtures :alpha_synced
 
-  def test_a_roadmap_file_in_an_older_form_is_named_and_left_as_it_is
-    write("roadmaps/old.md", "# Old\n\n## Goal\n\nShip\n")
-
-    assert_includes plan.unreadable_files.fetch("roadmaps/old.md"), "older form"
-    run_up
-
-    assert_equal ["# Old\n\n## Goal\n\nShip\n", nil], [folder.read("roadmaps/old.md"), roadmaps.find("old")]
-  end
-
-  def test_the_log_file_beside_a_roadmap_is_not_a_roadmap_and_stays_as_it_is
-    write("roadmaps/old.savepoint.md", "2026-09-05T08:06:00Z  created  Roadmap created\n")
-
-    refute_includes plan.unreadable_files.keys, "roadmaps/old.savepoint.md"
-    run_up
-
-    assert_equal "2026-09-05T08:06:00Z  created  Roadmap created\n", folder.read("roadmaps/old.savepoint.md")
-  end
-
-  def test_a_roadmap_file_with_an_unknown_form_line_is_named_as_an_older_form
-    write("roadmaps/odd.md", "<!-- plastic roadmap form 9 -->\n")
-
-    assert_includes plan.unreadable_files.fetch("roadmaps/odd.md"), "older form"
-  end
-
-  def test_a_roadmap_file_that_names_another_slug_is_named_with_the_reason
-    text = roadmap_text
-    forget_roadmap
-    write("roadmaps/other.md", text)
-
-    assert_includes plan.unreadable_files.fetch("roadmaps/other.md"), "names the slug plan, not other"
-  end
-
-  def test_a_context_json_that_is_not_json_is_a_broken_part_left_as_it_is_and_the_roadmap_is_read
+  def test_a_context_json_that_is_not_json_is_a_broken_part_left_as_it_is
     write(CONTEXT, "{nope")
-    second_home_roadmap
 
     assert_includes plan.unreadable_files.fetch(CONTEXT), "not JSON"
     run_up
 
-    assert_equal [["Plan"], [], "{nope"], [[roadmaps.find("plan").title], structure.contexts("1"), folder.read(CONTEXT)]
-  end
-
-  def test_a_context_json_is_read_while_a_roadmap_file_is_broken
-    write("roadmaps/old.md", "# Old\n")
-    write(CONTEXT, context_json)
-
-    assert_equal [CONTEXT], Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval).paths
+    assert_equal [[], "{nope"], [structure.contexts("1"), folder.read(CONTEXT)]
   end
 
   def test_a_context_json_that_names_another_intent_is_a_broken_part
@@ -208,9 +115,9 @@ class KnowledgeSyncSecondHomeUnreadableTest < Plastic::TestCase
 
   def test_every_broken_part_is_named_in_one_run
     write(CONTEXT, "{nope")
-    write("roadmaps/old.md", "# Old\n")
+    write("store/1--alpha/graph.json", "junk")
 
-    assert_equal ["roadmaps/old.md", CONTEXT], plan.unreadable_files.keys.sort
+    assert_equal [CONTEXT, "store/1--alpha/graph.json"], plan.unreadable_files.keys.sort
   end
 end
 
