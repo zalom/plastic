@@ -5,6 +5,12 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.12
+
+- `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.
+- `plastic sync up --dry-run` and `plastic sync down --dry-run` no longer fail with "attempt to write a readonly database" on a store that holds a half-written backup. The preview twin leaves `backups/` out, as the real sync already does, and the comparison names no backup file.
+- `plastic edge add` now says a missing node is missing ("edge n1 to n9 is missing a node: ...", exit 1) and says refused only with exit 3. The edge writer returns `:missing` or `:refused` from the reason itself, not by reading the message, and its comment names its three results.
+
 ## 3.0.0-beta.11
 
 - Roadmaps are replaced by `needs` links between intents. `plastic intent link ID needs OTHER` says an intent waits for another, refuses a link that would close a loop, and `plastic next`, `plastic graph resume` and `plastic status` read the ready intents. Migration `20261123120000` turns each roadmap's item order into `needs` links and drops the five roadmap tables with no config switch; `legacy.db` keeps their rows and the down puts them back. An edge whose item has no intent, whose items share one intent, or that would close a loop is skipped and counted. The `plastic roadmap` commands, their reference pages, the `roadmaps` help chapter and the printed `roadmaps/` folder are gone. Old `roadmaps/` files stay on disk, no longer printed or read.

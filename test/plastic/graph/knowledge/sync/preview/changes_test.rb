@@ -51,4 +51,11 @@ class KnowledgeSyncPreviewChangesTest < Minitest::Test
 
     assert_empty Changes.new(@source, @twin).call
   end
+
+  def test_a_file_under_backups_is_left_out_of_the_comparison
+    FileUtils.mkdir_p(File.join(@source, "backups/1"))
+    put(@source, "backups/1/backup.log", "log")
+
+    assert_empty Changes.new(@source, @twin).call
+  end
 end

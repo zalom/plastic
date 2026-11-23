@@ -2,6 +2,7 @@
 
 require "digest"
 require_relative "outcome_section"
+require_relative "report_file"
 require_relative "../reports"
 require_relative "../sync_selection"
 require_relative "../../evidence/writer"
@@ -16,7 +17,7 @@ module Plastic
         class Reporter
           FILE = "outcome.md"
           HEADING = "## Reports"
-          MANDATORY = "mandatory"
+          MANDATORY = ReportFile::MANDATORY
           LATEST = "SELECT sha256 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path " \
                    "ORDER BY position DESC LIMIT 1"
           # What the record of a report says about the file now: :new, :changed or :unchanged, and the sha256 of the file.
@@ -37,57 +38,34 @@ module Plastic
 
           # Why `path` of `intent` cannot be recorded, or nil: the same questions the sync asks of `selection` before it
           # reads a file into documents, and the resolved file stays inside the reports folder of the intent.
-          def problem(intent, path, selection)
-            Reports.path_problem(path) || type_problem(path, selection) || file_problem(intent.dir, path) ||
-              ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(intent, path))
-          end
+          def problem(report, selection) = report.problem(selection, @folder)
 
           # Compares the file with the latest `reported` line of any origin, as the sync counts them (Reports::RECORDED).
-          def state(intent, path)
-            digest = Digest::SHA256.hexdigest(body(intent, path))
-            State.of(store.row(LATEST, intent_id: intent.intent_id, path:), digest)
-          end
+          def state(report) = State.of(store.row(LATEST, **report.key), report.digest(@folder))
 
           # The bytes of the report, for the sha256 of its log line.
-          def body(intent, path) = @folder.read("#{intent.dir}/#{path}").force_encoding(Encoding::UTF_8)
+          def body(intent, path) = ReportFile.new(intent, path).body(@folder)
 
           # Writes the report row and the outcome line; `text` is MANDATORY for a report the setting names, else empty.
-          def write(intent, path, text)
-            id = intent.intent_id
-            writer.write(id, path, body(intent, path))
-            outcome(id, line(path, text))
-            @retrieval.reference(id, path).fetch(:uri)
-          end
+          def write(intent, path, text) = record(ReportFile.new(intent, path), text)
 
           private
 
-          # Adds `line` under Reports, unless the outcome lists it already: a report recorded again keeps its one line.
-          def outcome(id, line)
-            current = @retrieval.fetch(id, FILE)&.body
-            return if current.to_s.lines.map(&:chomp).include?(line)
-
-            writer.write(id, FILE, OutcomeSection.for(current, HEADING).add(line))
+          # The report row, the outcome line, and the reference of the row.
+          def record(report, text)
+            id = report.id
+            path = report.path
+            writer.write(id, path, report.body(@folder))
+            outcome(id, report, text)
+            @retrieval.reference(id, path).fetch(:uri)
           end
 
-          def type_problem(path, selection)
-            "the sync does not read .#{SyncSelection.type_of(path)} files; #{path} cannot be a report" unless selection.reads_type?(path)
+          # Puts the line of the report under Reports: a report recorded again keeps its one line, and the line of the path
+          # with the other form of the setting is replaced, not left beside the new one.
+          def outcome(id, report, text)
+            updated = report.outcome(@retrieval.fetch(id, FILE)&.body.to_s, text, HEADING)
+            writer.write(id, FILE, updated) if updated
           end
-
-          def file_problem(dir, path)
-            return "no file #{dir}/#{path}" unless @folder.exist?("#{dir}/#{path}")
-
-            "#{path} leads outside #{dir}/#{Reports::FOLDER}" unless inside?(dir, path)
-          end
-
-          # Whether the file, with every link resolved, is still inside the reports folder of the intent.
-          def inside?(dir, path) = real("#{dir}/#{path}").start_with?("#{real("#{dir}/#{Reports::FOLDER}")}/")
-
-          def real(rel) = File.realpath(@folder.path(rel))
-
-          def text?(intent, path) = Retrieval::Evidence::Text.classify(path, @folder.read("#{intent.dir}/#{path}")) == :text
-
-          # `- PATH`, or `- PATH (mandatory)` for a report the setting names.
-          def line(path, text) = "- #{path} (#{text})".delete_suffix(" ()")
 
           def store = @databases.fetch(:store)
 
