@@ -7,7 +7,7 @@ module Plastic
   module Workflows
     module Code
       module Graph
-        # Lists the ready nodes of one intent's work graph.
+        # Lists the ready nodes of one intent's work graph, the regions to re-plan, and each claimed node past its deadline. It moves no node.
         class Ready < CodeWorkflow
           clear_declarations
 
@@ -33,6 +33,13 @@ module Plastic
             context.data("repairs", context.repairs)
           end
 
+          read "name the claims past their deadline" do |context|
+            now = context.now
+            overdue = context.retrieval.structure.nodes(context.intent_id).select { |node| node.overdue?(now) }
+            overdue.each { |node| context.print(overdue_line(node, now)) }
+            context.data("overdue", overdue.map { |node| overdue_data(node, now) })
+          end
+
           read "name the first region" do |context|
             context[:repair_id], context[:repair_state] = context.repairs.first&.values_at("id", "state")
           end
@@ -41,6 +48,13 @@ module Plastic
             waiting = region["downstream"].map { |node| "#{node["id"]} #{node["title"]}" }
             tail = waiting.empty? ? "nothing waits on it" : "waiting on it: #{waiting.join(", ")}"
             "repair: #{region["id"]} #{region["title"]} is #{region["state"]}; #{tail}"
+          end
+
+          def self.overdue_line(node, now) = "overdue: #{node.id} #{node.title} claimed #{node.claimed_minutes(now)} minutes ago, deadline #{node.deadline}"
+
+          # A claimed node past its deadline as data for a JSON answer: who holds it, for how many minutes, and its deadline.
+          def self.overdue_data(node, now)
+            { "id" => node.id, "title" => node.title, "claimed_by" => node.claimed_by, "claimed_minutes" => node.claimed_minutes(now), "deadline" => node.deadline }
           end
 
           # The ready nodes as data for a JSON answer: the fields of each and the ids of the nodes it needs.

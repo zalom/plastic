@@ -54,6 +54,15 @@ module Plastic
         # A claim the holder has not renewed within the lapse, at `now`.
         def lapsed?(now) = state == "claimed" && (last_seen.nil? || last_seen < now - Node::LAPSE)
 
+        # A claim that started more than `deadline` minutes before `now`. A node with no deadline is never overdue.
+        def overdue?(now) = state == "claimed" && !deadline.nil? && !claimed_at.to_s.empty? && claimed_for(now) > deadline * 60
+
+        # The seconds since the claim started, at `now`.
+        def claimed_for(now) = now - Time.parse(claimed_at)
+
+        # The whole minutes since the claim started, at `now`.
+        def claimed_minutes(now) = (claimed_for(now) / 60).floor
+
         # The last renewal of the claim, else its start; nil when the claim has neither.
         def last_seen
           stamp = [seen_at, claimed_at].find { |value| !value.to_s.empty? }
