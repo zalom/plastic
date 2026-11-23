@@ -112,10 +112,8 @@ module Plastic
       # run's note, and the move stands either way.
       def self.record_usage(context)
         intent_id, id = context.intent_id, context.id
-        run = finisher_run(context, context.retrieval.node(intent_id, id))
-        return unless run&.ended_at
-
-        context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}"))
+        ended = [finisher_run(context, context.retrieval.node(intent_id, id))].compact.select(&:ended_at)
+        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}")) }
       end
 
       def self.read_usage(context, run, claim)
