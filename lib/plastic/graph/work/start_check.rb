@@ -15,6 +15,7 @@ module Plastic
           @retrieval = retrieval
           @intent = intent
           @root = root
+          @first_claim = retrieval.structure.runs(intent.id).empty? # asked once, before the claim writes its run row
         end
 
         # The words that refuse the first claim, or nil when the claim may go on or is not the first.
@@ -30,9 +31,12 @@ module Plastic
         # One `finding:` line for each finding, each followed by its repair or its hand edit.
         def lines = findings.with_repairs.flat_map(&:lines)
 
+        # The lines a claim prints: the findings on the first claim of the intent, nothing on a later one.
+        def claim_lines = first_claim? ? lines : []
+
         private
 
-        def first_claim? = @retrieval.structure.runs(@intent.id).empty?
+        def first_claim? = @first_claim
 
         def findings
           @findings ||= Knowledge::Findings.new(@retrieval, @intent.id, schemas: Schemas.new(Knowledge::StoreFolder.new(@root), @intent.dir))

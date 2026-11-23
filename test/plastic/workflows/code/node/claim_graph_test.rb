@@ -66,4 +66,11 @@ class ClaimGraphTest < Plastic::TestCase
 
     assert_empty claim.last.printed.grep(/\Afinding:/)
   end
+
+  def test_a_later_claim_prints_no_finding
+    claim
+    @work.release_node(intent_id: "1", id: "n1")
+
+    assert_empty claim.last.printed.grep(/\Afinding:/)
+  end
 end

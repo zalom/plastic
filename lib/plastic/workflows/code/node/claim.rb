@@ -106,7 +106,7 @@ module Plastic
           read "print the brief" do |context|
             node = context.node
             context.print("node: #{node.id} #{node.title}")
-            context.start_check.lines.each { |line| context.print(line) }
+            context.start_check.claim_lines.each { |line| context.print(line) }
             packet = packet_for(context, node)
             context.print("criterion: #{node.criterion}")
             context.print(packet.criterion_line)
