@@ -142,7 +142,7 @@ class IntentJudgeUncoveredCriterionTest < Plastic::TestCase
 
   def test_a_done_node_for_the_criterion_lets_the_judge_run
     cli("node", "add", "1", "Deliver extra", "--criterion", "extra")
-    cli("node", "claim", "1", "n2")
+    cli("node", "claim", "1", "n2", "--agent", "plastic-executor")
     cli("node", "done", "1", "n2", "Acceptance passes for extra")
 
     assert_equal 0, cli("intent", "judge", "1").code
