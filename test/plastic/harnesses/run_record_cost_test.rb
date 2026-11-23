@@ -46,3 +46,25 @@ class HarnessesRunRecordCostTest < Plastic::TestCase
     assert_includes usage.note, "no cost for a subagent"
   end
 end
+
+# A headless worker writes the turn that runs its own claim just before the run's stored start, which is cut to whole seconds.
+class HarnessesRunRecordClaimTurnCostTest < Plastic::TestCase
+  include Plastic::TestHelpers::HarnessRecordFixtures
+
+  CLAIM = "plastic node claim 1 n1 --agent plastic-executor"
+
+  def read = Plastic::Harnesses::RunRecord.new(home: @home).read(harness: "claude-code", session: "s-1", from: Time.utc(2026, 11, 12, 12, 0, 1), to: Time.utc(2026, 11, 12, 12, 10, 0), claim: "1 n1")
+
+  def test_the_claim_turn_before_the_stored_start_is_part_of_the_run
+    write_claude("s-1", jsonl(claude_claim_call("2026-11-12T12:00:00.6Z", CLAIM), claude_turn("2026-11-12T12:00:05Z", id: "m1"), claude_cost(0.9)))
+
+    assert_in_delta 0.9, read.cost_usd
+  end
+
+  def test_earlier_work_before_the_claim_turn_leaves_the_cost_empty
+    write_claude("s-1", jsonl(claude_turn("2026-11-12T11:59:00Z", id: "m0"), claude_claim_call("2026-11-12T12:00:00.6Z", CLAIM),
+      claude_turn("2026-11-12T12:00:05Z", id: "m1"), claude_cost(0.9)))
+
+    assert_nil read.cost_usd
+  end
+end

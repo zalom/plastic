@@ -105,6 +105,17 @@ class RunCostFillSessionEndTest < Plastic::TestCase
     assert_includes result.err, "the cost was not filled"
   end
 
+  def test_the_claim_turn_written_before_the_stored_start_does_not_count_as_other_work
+    as_session("node", "claim", "1", "n1", "--agent", "w1")
+    path = write_claude("s-1", jsonl(claude_claim_call("2026-11-23T19:51:26.6Z", "plastic node claim 1 n1 --agent w1"), claude_turn(TURN, id: "m1")))
+    @clock.now = Time.utc(2026, 11, 23, 19, 51, 31.5r)
+    as_session("node", "done", "1", "n1", "ok")
+    add_cost(path, 0.9)
+    end_session
+
+    assert_in_delta 0.9, run_row[2]
+  end
+
   def test_a_run_whose_transcript_has_no_turn_inside_the_run_stays_with_no_cost
     run_without_cost
     write_claude("s-1", jsonl(claude_turn("2026-11-23T18:00:00Z", id: "early"), claude_cost(3.0)))
