@@ -5,6 +5,7 @@ require_relative "../../../../lib/plastic/commands/node/add"
 require_relative "../../../../lib/plastic/commands/graph/show"
 require_relative "../../../../lib/plastic/commands/graph/ready"
 require_relative "../../../../lib/plastic/commands/graph/check"
+require_relative "../../../../lib/plastic/commands/node/remove"
 
 class NodeAddFoundInTest < Plastic::TestCase
   def setup
@@ -55,5 +56,16 @@ class NodeAddFoundInTest < Plastic::TestCase
     ran("node add 1 Extra --criterion tests-pass")
 
     refute_includes line("graph show 1").out, "found in"
+  end
+end
+
+class NodeAddFoundInRemovedTest < Plastic::TestCase
+  def test_a_removed_found_in_node_exits_1_names_it_and_adds_no_node
+    alpha_specified
+    ran("intent approve 1", "intent start 1", "node add 1 Build --criterion tests-pass", "node remove 1 n1")
+    result = line("node add 1 Extra --criterion tests-pass --found-in n1")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "n1 is removed"
   end
 end

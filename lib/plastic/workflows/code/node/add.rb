@@ -51,8 +51,9 @@ module Plastic
             found_in = context.found_in
             return nil if found_in.nil?
 
-            state = context.retrieval.node(context.intent_id, found_in)&.state
-            return "#{found_in} is not a node of intent #{context.intent_id}" if state.nil?
+            intent_id = context.intent_id
+            state = context.retrieval.node(intent_id, found_in)&.state
+            return "#{found_in} is not a node of intent #{intent_id}" if state.nil?
 
             "#{found_in} is removed" if state == "removed"
           end

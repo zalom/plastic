@@ -12,4 +12,10 @@ class WorkEdgeTest < Plastic::TestCase
   def test_an_edge_does_not_touch_another_node
     refute edge.touches?("n3")
   end
+
+  def test_only_a_needs_edge_is_a_need_touching_a_node
+    found = Plastic::Graph::Work::Edge.from_h(intent_id: "1", from: "n2", to: "n1", kind: "found_in")
+
+    assert_equal [true, false], [edge.needs_touching?("n1"), found.needs_touching?("n1")]
+  end
 end

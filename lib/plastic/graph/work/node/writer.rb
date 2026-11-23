@@ -3,6 +3,7 @@
 require_relative "../../rows/node"
 require_relative "../../sql"
 require_relative "../../next_id"
+require_relative "../edge/writer"
 require_relative "claim"
 
 module Plastic
@@ -30,11 +31,6 @@ module Plastic
             resolve_node: { to: "open", from: %w[needs_info impeded], stamp: :answered_at }
           }.freeze
 
-          FOUND_IN_SQL = <<~SQL
-            INSERT INTO edges (intent_id, "from", "to", kind, origin_id)
-            VALUES (:intent_id, :from, :to, :kind, :origin)
-          SQL
-
           CAP_MOVE = { to: "needs_info", from: %w[open] }.freeze
 
           CLOSE_RUN_SQL = <<~SQL
@@ -58,7 +54,7 @@ module Plastic
             row = { intent_id:, id:, kind: "work", state: "open", updated_at: Plastic.timestamp(@clock.now) }.merge(fields)
             @databases.fetch(:store).transaction do |batch|
               batch.put(:nodes, row, statement: :insert)
-              found_in && batch.write(:edges, FOUND_IN_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
+              found_in && batch.write(:edges, Edge::Writer::ADD_SQL, intent_id:, from: id, to: found_in, kind: "found_in", origin: @retrieval.origin_id)
             end
             @retrieval.node(intent_id, id)
           end

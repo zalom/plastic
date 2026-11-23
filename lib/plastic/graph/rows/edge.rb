@@ -11,6 +11,8 @@ module Plastic
         include Record
 
         def touches?(node_id) = from == node_id || to == node_id
+
+        def needs_touching?(node_id) = kind == "needs" && touches?(node_id)
       end
     end
   end
