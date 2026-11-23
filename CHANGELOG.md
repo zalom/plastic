@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.
+
 ## 3.0.0-beta.12
 
 - `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.
@@ -400,7 +402,6 @@ This version was not published separately. Its changes shipped with 2.0.1.
 - Intent 383 repairs JSON output from script adapters, preserves project scope in next commands, respects blocked and completed work, and removes unnecessary mutation advice from reads. Packaged executable checks run in CI.
 - Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
 
-## Unreleased
 ## Released
 
 - `2.0.0-alpha.29` - shipped 2026-09-21 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); three fixes found at the alpha.28 install, delivered without an intent. `plastic install` accepts `--ledger-action`, the flag `update` and `rollback` hand to the target version, so `plastic update` no longer stops with a usage error. The Ruby floor rises to 4.0, the version the project is developed and tested on, and the preflight message, `mise.toml`, `install.sh`, and the install documents all name it. A backup adds `backups/` to the home's `.gitignore`, so the archives stay out of the store's history.
