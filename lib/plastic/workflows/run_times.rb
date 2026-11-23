@@ -8,14 +8,15 @@ module Plastic
     # When a run started and ended and how long it took. The times show in the zone of the machine, as every time a person reads does;
     # the length comes from the stored times.
     module RunTimes
-      # The `started ..., ended ..., length ...` part of a run line; a run with no end yet says running.
-      def self.line(run) = span(run.started_at, run.ended_at)
+      # The `started ..., ended ..., length ...` part of a run line; a run with no end yet says running. `zone` is an offset such as +09:00;
+      # with none, the times show in the zone of the machine.
+      def self.line(run, zone = nil) = span(run.started_at, run.ended_at, zone)
 
-      def self.span(started, ended)
+      def self.span(started, ended, zone = nil)
         return nil unless started
 
-        shown = "started #{Plastic.local(started)}"
-        ended ? "#{shown}, ended #{Plastic.local(ended)}, length #{length(seconds(started, ended))}" : "#{shown}, running"
+        shown = "started #{Plastic.local(started, zone)}"
+        ended ? "#{shown}, ended #{Plastic.local(ended, zone)}, length #{length(seconds(started, ended))}" : "#{shown}, running"
       end
 
       # The whole seconds from the start of a run to its end, from the stored times.
