@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.15
+
 - The claim packet, in text and in JSON, says the output of a node is a JSON file given with `plastic node done ID NODE TEXT --output PATH`, and the driver and retriever roles say so too. Plastic still refuses output that is not JSON.
 - A run row names the worker subagent when a subagent ran the claim. The claim turn is written before the run's stored start, so the reader now takes the latest claim turn at or before the start; before, it fell back to the main session. A new role, `plastic-retriever`, is installed for Claude Code and Codex: read-only, for retrieval nodes. The driver role names it, says the driver picks each worker's `--agent` name, and says it waits for the harness's notice that a worker ended instead of polling.
 
