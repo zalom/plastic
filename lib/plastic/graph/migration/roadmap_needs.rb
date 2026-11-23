@@ -33,12 +33,10 @@ module Plastic
         JOIN legacy."roadmap_items_#{VERSION}" t ON t.roadmap = e.roadmap AND t.item = e."to" AND t.origin_id = e.origin_id
         ORDER BY e.roadmap, f.position, t.position
       SQL
-      INTENT = "SELECT 1 FROM main.intents WHERE intent_id = ?"
       NEEDS = "SELECT from_ref, to_ref FROM main.links WHERE kind = 'needs'"
       # The keys of the links this step wrote, kept in legacy.db beside the roadmap tables so the down removes only these.
       # The name has no version suffix, so it is no legacy table to put back.
       WRITTEN = "written_needs_links"
-      RECORD = %(CREATE TABLE IF NOT EXISTS legacy."#{WRITTEN}" ("from_ref" TEXT NOT NULL, "to_ref" TEXT NOT NULL, PRIMARY KEY ("from_ref", "to_ref")))
       INSERT = "INSERT OR IGNORE INTO main.links (from_ref, to_ref, kind, at, origin_id) VALUES (?, ?, 'needs', COALESCE(?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')), ?)"
 
       # `keep` is the keep of the data step; the step keeps nothing more, since the tables are in legacy.db whole.
@@ -52,7 +50,7 @@ module Plastic
 
         pairs = @connection.read(NEEDS).map { |row| row.values_at("from_ref", "to_ref") }
         edges = @connection.read(EDGES)
-        @connection.execute(RECORD)
+        record_table
         written = edges.count { |edge| link(edge, pairs) }
         Result.new(written:, skipped: edges.size - written)
       end
@@ -76,7 +74,9 @@ module Plastic
 
       def usable?(from, to) = from && to && from != to && [from, to].all? { |id| intent?(id) }
 
-      def intent?(id) = !@connection.get_first_value(INTENT, [id]).nil?
+      def intent?(id) = !@connection.get_first_value("SELECT 1 FROM main.intents WHERE intent_id = ?", [id]).nil?
+
+      def record_table = @connection.execute(%(CREATE TABLE IF NOT EXISTS legacy."#{WRITTEN}" ("from_ref" TEXT NOT NULL, "to_ref" TEXT NOT NULL, PRIMARY KEY ("from_ref", "to_ref"))))
     end
   end
 end

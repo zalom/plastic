@@ -5,9 +5,8 @@ require_relative "../../../test_helpers/previous_store"
 require_relative "../../../../lib/plastic/graph/migration/migration_down"
 require_relative "../../../../lib/plastic/commands/migration/down"
 
-# The migration that turns each roadmap's item order into needs links between the intents the items opened, then
-# drops the roadmap tables and keeps their rows in legacy.db.
-class RoadmapNeedsMigrationTest < Plastic::TestCase
+# The previous release's store, with the roadmap tables filled, for the tests of the migration and its down.
+module RoadmapStoreHelpers
   include PreviousStore
 
   TABLES = %w[roadmaps batches roadmap_items roadmap_edges roadmap_log].freeze
@@ -50,6 +49,24 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
 
   def count(home, file, table) = alpha_rows(home, file, "SELECT count(*) FROM #{table}").first.first
 
+  # A second roadmap whose one edge joins the intents the first roadmap already joins.
+  def copy_roadmap(home)
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
+      database.execute_batch(<<~SQL)
+        INSERT INTO roadmaps VALUES ('copy', 'Copy', 'g', 'then', 'then', 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'a', 1, 1, 'A', NULL, NULL, '1', NULL, 'then', 'o');
+        INSERT INTO roadmap_items VALUES ('copy', 'b', 1, 2, 'B', NULL, NULL, '2', NULL, 'then', 'o');
+        INSERT INTO roadmap_edges VALUES ('copy', 'a', 'b', 'after', 'o');
+      SQL
+    end
+  end
+end
+
+# The migration that turns each roadmap's item order into needs links between the intents the items opened, then
+# drops the roadmap tables and keeps their rows in legacy.db.
+class RoadmapNeedsMigrationTest < Plastic::TestCase
+  include RoadmapStoreHelpers
+
   def test_each_roadmap_edge_becomes_a_needs_link_from_the_later_intent_to_the_earlier_one
     home = roadmap_home
     migrate_store(home)
@@ -85,6 +102,36 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
     assert_includes recorded(home), NEEDS
   end
 
+  def test_two_roadmaps_that_hold_the_same_intent_pair_write_one_link_and_skip_the_other
+    home = roadmap_home
+    copy_roadmap(home)
+    report = migrate_store(home)
+
+    assert_equal [%w[2 1], %w[3 2]], needs(home)
+    assert_match(/wrote 2 needs links.*skipped 2 roadmap edges/, report.notes.join("\n"))
+  end
+
+  def test_a_new_store_declares_no_roadmap_table
+    home = File.join(Dir.mktmpdir, ".plastic")
+    Plastic::Graph.create(home:, store: "alpha")
+
+    assert_empty work_tables(home) & TABLES
+  end
+
+  def test_an_edge_that_would_close_a_loop_is_skipped_and_counted_with_the_self_edge
+    home = roadmap_home
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute("INSERT INTO roadmap_edges VALUES ('plan', 'b', 'a', 'after', 'o')") }
+    report = migrate_store(home)
+
+    assert_equal [%w[2 1], %w[3 2]], needs(home)
+    assert_match(/skipped 2 roadmap edges/, report.notes.join("\n"))
+  end
+end
+
+# The down of the migration puts the roadmap rows back and takes off only the needs links the migration wrote.
+class RoadmapNeedsDownTest < Plastic::TestCase
+  include RoadmapStoreHelpers
+
   def test_a_down_puts_the_roadmap_rows_back_and_removes_the_needs_links
     home = roadmap_home
     migrate_store(home)
@@ -117,38 +164,6 @@ class RoadmapNeedsMigrationTest < Plastic::TestCase
 
     assert_includes result.out, "down: removed 2 needs links that the migration wrote"
     refute_match(/built 2/, result.out)
-  end
-
-  def test_two_roadmaps_that_hold_the_same_intent_pair_write_one_link_and_skip_the_other
-    home = roadmap_home
-    SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
-      database.execute_batch(<<~SQL)
-        INSERT INTO roadmaps VALUES ('copy', 'Copy', 'g', 'then', 'then', 'o');
-        INSERT INTO roadmap_items VALUES ('copy', 'a', 1, 1, 'A', NULL, NULL, '1', NULL, 'then', 'o');
-        INSERT INTO roadmap_items VALUES ('copy', 'b', 1, 2, 'B', NULL, NULL, '2', NULL, 'then', 'o');
-        INSERT INTO roadmap_edges VALUES ('copy', 'a', 'b', 'after', 'o');
-      SQL
-    end
-    report = migrate_store(home)
-
-    assert_equal [%w[2 1], %w[3 2]], needs(home)
-    assert_match(/wrote 2 needs links.*skipped 2 roadmap edges/, report.notes.join("\n"))
-  end
-
-  def test_a_new_store_declares_no_roadmap_table
-    home = File.join(Dir.mktmpdir, ".plastic")
-    Plastic::Graph.create(home:, store: "alpha")
-
-    assert_empty work_tables(home) & TABLES
-  end
-
-  def test_an_edge_that_would_close_a_loop_is_skipped_and_counted_with_the_self_edge
-    home = roadmap_home
-    SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute("INSERT INTO roadmap_edges VALUES ('plan', 'b', 'a', 'after', 'o')") }
-    report = migrate_store(home)
-
-    assert_equal [%w[2 1], %w[3 2]], needs(home)
-    assert_match(/skipped 2 roadmap edges/, report.notes.join("\n"))
   end
 end
 

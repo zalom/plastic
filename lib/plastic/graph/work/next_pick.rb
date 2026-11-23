@@ -24,6 +24,9 @@ module Plastic
         # The open and future intents that wait, each with the ids of the intents it still needs.
         def blocked = @blocked ||= needs.blocked(unstarted)
 
+        # The first intent that waits and the ids it needs, or nil when none waits.
+        def first_wait = blocked.first
+
         # The intents the pick chooses among: the claimed ones, else those in progress, else the open and future ones that are ready.
         def candidates
           @candidates ||= [claimed_intents, by_status("in_progress"), ready].find { |found| found.any? } || []

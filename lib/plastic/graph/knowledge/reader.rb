@@ -24,6 +24,9 @@ module Plastic
           # A file whose rows print nothing, such as an empty work.log, keeps its own hash.
           def line = "read #{path}"
 
+          # The print written again from the rows when there is one, else the print that keeps the file as it is.
+          def printed(fresh, folder) = fresh[path] || kept_print(folder)
+
           def kept_print(folder) = Prints::Print.new(path, folder.digest(path), nil)
         end
 

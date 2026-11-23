@@ -39,7 +39,7 @@ module Plastic
 
           def reprint(reads)
             fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| printed_of(found, fresh) })
+            @printer.print(reads.map { |found| found.printed(fresh, @folder) })
           end
 
           private
@@ -66,8 +66,6 @@ module Plastic
             applies = reads.map(&:apply)
             @databases.fetch(:store).transaction { |batch| batch.apply(applies) }
           end
-
-          def printed_of(found, fresh) = fresh[found.path] || found.kept_print(@folder)
         end
       end
     end

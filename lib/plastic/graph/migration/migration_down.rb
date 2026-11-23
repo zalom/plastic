@@ -125,11 +125,14 @@ module Plastic
       def undo
         undone = connection.atomically do
           connection.execute(DELETE, [version])
-          [tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }, @rebuilds.fetch(version, NONE).call(connection), REMOVALS[version]&.call(connection)]
+          [tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }, *rebuilt]
         end
         @store.give_back
         undone
       end
+
+      # The rows the older code expects, built, and the links the migration wrote, removed.
+      def rebuilt = [@rebuilds.fetch(version, NONE).call(connection), REMOVALS[version]&.call(connection)]
     end
   end
 end

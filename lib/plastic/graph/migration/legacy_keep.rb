@@ -23,9 +23,6 @@ module Plastic
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
       # row they drop that the rules still read, or a down of the earlier version rebuilds it.
       ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000].freeze
-      # The versions that keep the tables they drop only when the store has them; a down of one that kept none removes the
-      # version alone and takes its links off.
-      PRESENT = %w[20261123120000].freeze
       # The versions that keep the old text of values they rewrite, in a table made only when a value changed; a down
       # undoes one that kept no value by removing the version alone.
       VALUES = %w[20261121090000].freeze
@@ -54,7 +51,8 @@ module Plastic
       end
 
       # Whether a down can leave `version` with nothing in legacy.db: it keeps only when a value changed or a table was there.
-      def self.kept_when_present?(version) = VALUES.include?(version) || PRESENT.include?(version)
+      # (Migration 20261123120000 keeps its tables only when the store has them, and its down then takes its links off.)
+      def self.kept_when_present?(version) = VALUES.include?(version) || version == "20261123120000"
 
       # Runs just before the SQL of `version`.
       def call(version)
