@@ -14,6 +14,15 @@ module Plastic
             [file, time..run.end] if file
           end
 
+          # The window of a run read from the main file of its session: it starts at the turn that ran the claim when this file
+          # holds one, because that turn is written before the stored start, and is the run's own work.
+          def self.window(entries, run, claim)
+            time = new(entries, run, pattern(claim)).at
+            time ? time..run.end : run
+          end
+
+          def self.pattern(claim) = /node claim #{Regexp.escape(claim)}(\s|\z)/
+
           # The run's start is stored in whole seconds, and the claim turn is written just before the claim command runs, so it is less
           # than one second after that cut start. A claim counts as at or before the start while it falls before the next whole second.
           SECOND = 1

@@ -31,7 +31,7 @@ module Plastic
       private
 
       def fill(session, group)
-        costs = @claude.costs(session:, windows: group.map { |run| run.window(RunRecord::END_SECOND) })
+        costs = @claude.costs(session:, runs: group.map { |run| [run.window(RunRecord::END_SECOND), run.claim_text] })
         group.zip(costs).select { |run, cost| cost && @work.record_cost(**run.cost_key, cost:) }.map(&:first)
       end
     end

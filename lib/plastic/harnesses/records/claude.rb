@@ -27,22 +27,24 @@ module Plastic
           worker, window = found || [path, from..to]
           name = File.basename(worker, ".jsonl")
           entries = Jsonl.read(worker)
+          window = Claim.window(entries, window, claim) if entries && !found
           entries ? Transcript.new(entries, window, no_cost: (SUBAGENT_NOTE if found)).usage(name) : TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name)
         end
 
-        # The cost of each window of the main file of `session`, in order, nil where the transcript cannot tell it. The file is read
+        # The cost of each run of the main file of `session`, in order, nil where the transcript cannot tell it. A run is a
+        # [window, claim] pair. The file is read
         # once for all the windows. No subagent file is read: Claude Code writes its `cost-state` lines to the main file only.
-        def costs(session:, windows:)
+        def costs(session:, runs:)
           path = Dir.glob(File.join(@home, ".claude", "projects", "*", "#{session}.jsonl")).min
           entries = path && Jsonl.read(path)
-          windows.map { |window| entries && Transcript.new(entries, window).run_cost }
+          runs.map { |window, claim| entries && Transcript.new(entries, Claim.window(entries, window, claim)).run_cost }
         end
 
         # [file, window] of the subagent that ran the claim, or nil. The turn that runs the claim is written before the command
         # executes, so before the run's stored start: the window of the worker starts at that turn and ends with the run.
         def self.subagent(path, session, run, claim)
           files = Dir.glob(File.join(File.dirname(path), session, "subagents", "agent-*.jsonl")).sort
-          Claim.nearest(files, run, /node claim #{Regexp.escape(claim)}(\s|\z)/)
+          Claim.nearest(files, run, Claim.pattern(claim))
         end
       end
     end
