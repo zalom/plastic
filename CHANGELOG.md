@@ -6,6 +6,14 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - The README and INSTALL.md serve the stable release only: beta and alpha, with `plastic update --channel`, moved to `docs/release-lines.md`. The README keeps the pitch, the install, a short start that opens with `plastic project new`, and a pointer into `docs/`; the command list, the global options and the hook text moved to `docs/usage/commands.md`, the settings text moved to the features page, and the README no longer prints example output that no command prints. The features page no longer offers `plastic next --why` and names `node claim --agent`, the spec guide names the `## Constraints` section, and the architecture page says `plastic update` and `plastic install` rebuild a store's search index only when their migration compacts that store.
+- The name of the backups folder is spelled once, `Graph::Backup::Folders::NAME`. The store's ignore list (`StoreFolder::IGNORED`) and the sync preview (`Mirror::BACKUPS`) read it. The disposable copy that every `--dry-run` of a previewing command makes now leaves the backups folder out, so a preview on a store with about 700 MB of backups no longer copies them. No previewing command reads a backup, and the `plastic backup` commands run their own dry run, outside the copy.
+- `plastic update --dry-run` names the version a real run would install in its `to:` row: the running package when it is newer than the installed one, else the newest release on the channel, else the installed version. It printed the running package alone, so it showed 3.0.0-beta.10 while 3.0.0-beta.11 was published.
+
+## 3.0.0-beta.12
+
+- `plastic intent report ID PATH` keeps one line for a path under Reports when the setting `reports.mandatory` changes for it between two calls: the line of the other form, `- PATH` or `- PATH (mandatory)`, is replaced, and an older line with other words stays. The class behind it takes the intent and the path as one `ReportFile` value, which clears its four Reek smells.
+- `plastic sync up --dry-run` and `plastic sync down --dry-run` no longer fail with "attempt to write a readonly database" on a store that holds a half-written backup. The preview twin leaves `backups/` out, as the real sync already does, and the comparison names no backup file.
+- `plastic edge add` now says a missing node is missing ("edge n1 to n9 is missing a node: ...", exit 1) and says refused only with exit 3. The edge writer returns `:missing` or `:refused` from the reason itself, not by reading the message, and its comment names its three results.
 
 ## 3.0.0-beta.11
 
@@ -396,7 +404,6 @@ This version was not published separately. Its changes shipped with 2.0.1.
 - Intent 383 repairs JSON output from script adapters, preserves project scope in next commands, respects blocked and completed work, and removes unnecessary mutation advice from reads. Packaged executable checks run in CI.
 - Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
 
-## Unreleased
 ## Released
 
 - `2.0.0-alpha.29` - shipped 2026-09-21 on the alpha channel (install with `npx -y @zalom/plastic@alpha install --claude`); three fixes found at the alpha.28 install, delivered without an intent. `plastic install` accepts `--ledger-action`, the flag `update` and `rollback` hand to the target version, so `plastic update` no longer stops with a usage error. The Ruby floor rises to 4.0, the version the project is developed and tested on, and the preflight message, `mise.toml`, `install.sh`, and the install documents all name it. A backup adds `backups/` to the home's `.gitignore`, so the archives stay out of the store's history.

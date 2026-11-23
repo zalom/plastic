@@ -118,7 +118,7 @@ module Plastic
         def read_day(file, stamp)
           Plastic.local_day(stamp, @zone)
         rescue ArgumentError
-          raise Unreadable, "backups/#{file} holds #{stamp}, which is not a time; fix or delete the file"
+          raise Unreadable, "#{File.join(Folders::NAME, file)} holds #{stamp}, which is not a time; fix or delete the file"
         end
       end
     end

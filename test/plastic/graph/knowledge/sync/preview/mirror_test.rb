@@ -58,4 +58,17 @@ class KnowledgeSyncPreviewMirrorTest < Plastic::TestCase
     assert_equal ["work_graph.db"], Dir.children(@target)
     assert_equal [["kept"]], SQLite3::Database.new(File.join(@target, "work_graph.db"), readonly: true).execute("SELECT body FROM notes")
   end
+
+  def test_a_backup_folder_is_left_out_even_when_a_backup_database_has_a_hot_journal
+    backup = File.join(@source, "backups/20261122143051")
+    FileUtils.mkdir_p(backup)
+    File.write(File.join(backup, "work_graph-20261122143051.db"), "not a database")
+    File.write(File.join(backup, "work_graph-20261122143051.db-journal"), "hot journal")
+    FileUtils.mkdir_p(File.join(@source, "store"))
+    File.write(File.join(@source, "store/note.md"), "note")
+
+    Mirror.new(@source, @target).call
+
+    assert_equal ["store"], Dir.children(@target)
+  end
 end
