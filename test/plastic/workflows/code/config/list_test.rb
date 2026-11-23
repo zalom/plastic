@@ -17,6 +17,12 @@ class WorkflowListConfigTest < Plastic::TestCase
     assert_equal [:done, "off"], [outcome, printed_row(context, "review.pull_request")]
   end
 
+  def test_the_worker_limit_is_listed_at_three
+    _outcome, context = listed
+
+    assert_equal "3", printed_row(context, "driver.max_workers")
+  end
+
   def test_the_next_step_offers_to_set_a_setting
     outcome, context = listed
 

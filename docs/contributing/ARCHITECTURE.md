@@ -196,6 +196,12 @@ holds the node and lapses after 900 seconds without a renewal; each command of t
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
+The open Claude Code or Codex session is the driver of the graph loop. The installer writes the role
+`plastic-driver` for both harnesses, with the worker limit of `driver.max_workers` (3 by default)
+in its text. The session starts its own subagents or background workers, one for each ready node, of
+the role that fits the node's kind, and Plastic starts none. When the harness cannot start workers,
+the session works the nodes itself.
+
 A driver outside the session can run the same steps. `Graph::Work::Packet` builds the claim's packet from the retrieval graph, and `Graph::Work::Schemas` finds the schema file of a node at `resources/tmp/schemas/NODE.json`. Plastic names the file and never checks JSON against it: the harness does. `Workflows::NodeOutput` reads the file that `plastic node done --output` stores. [Drive a graph from any harness](../usage/drive-from-any-harness.md) shows the loop.
 
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
