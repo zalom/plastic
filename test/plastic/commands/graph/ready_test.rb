@@ -194,7 +194,7 @@ class GraphReadyRegionTest < Plastic::TestCase
   def test_a_ready_node_still_offers_its_claim_beside_the_region
     fail_first
 
-    assert_match(/^next: plastic node claim 1 n4 --agent NAME/, call("1").out)
+    assert_match(/^next: plastic node claim 1 n4 --agent NAME$/, call("1").out)
   end
 
   def test_the_json_answer_carries_each_region
