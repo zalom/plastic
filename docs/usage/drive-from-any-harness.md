@@ -118,6 +118,68 @@ under each finding that no command repairs, a `repair:` line under each finding 
   owner. The driver stops that node.
 - Run one driver for each intent. `plastic intent start` and `plastic intent auto` take a driver claim for the session, which lapses after 15 minutes without a renewal. A second session is refused with exit 3 and the name of the driver, unless it passes `--take-over REASON`.
 
+## Run a worker on a local model
+
+A worker can run on a small model served on the same machine. Plastic starts no model and makes no
+model call: it stores the model of each role and prints it, and the driver or the harness starts the
+worker. Both harnesses keep their own run records, so the run figures come from them as before.
+
+### Choose the model of a role
+
+The model of a role is the setting `agents.models.ROLE`. Set it for one harness, then reinstall so the
+role file carries it:
+
+```
+plastic config set agents.models.plastic-executor qwen3-coder:30b --harness claude
+plastic config set agents.models.plastic-executor gpt-oss:20b --harness codex
+plastic install --reinstall
+```
+
+A value that is not one of the tier aliases `opus`, `sonnet` and `haiku` is written as it stands: into
+the `model:` line of the Claude Code role file and the `model` field of the Codex role file. The model
+name is the name the local server lists, for example in `ollama list`. A driver that starts workers
+itself, as below, passes the same name on the command line.
+
+### Claude Code on a local Ollama server
+
+Ollama serves the Anthropic Messages API, so Claude Code needs only a base URL, a token Ollama ignores,
+and the model name. Checked on 24 November 2026 against the
+[Ollama page for Claude Code](https://docs.ollama.com/integrations/claude-code) and the
+[Ollama Anthropic compatibility page](https://docs.ollama.com/api/anthropic-compatibility):
+
+```
+ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_API_KEY="" \
+  claude -p "$PACKET" --model qwen3-coder:30b --output-format json
+```
+
+- Claude Code asks for its Sonnet, Haiku and Opus tiers for some steps. To send all of them to the local
+  model, set `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL` and
+  `ANTHROPIC_DEFAULT_OPUS_MODEL` to the same name.
+- A small context window is the usual failure. Raise the server's, for example `OLLAMA_CONTEXT_LENGTH=32768`
+  when starting `ollama serve`, because the claim packet and the role text are long.
+- Claude Code does not fall back to the Anthropic cloud when the server does not answer; the call fails.
+
+### Codex on a local Ollama server
+
+Codex runs a local model with `--oss`. Checked with `codex exec --help` on 24 November 2026, and against
+the [Ollama page for Codex](https://docs.ollama.com/integrations/codex):
+
+```
+codex exec --oss --local-provider ollama -m gpt-oss:20b "$PACKET"
+```
+
+- `--local-provider` takes `ollama` or `lmstudio`. Without it `codex exec` has no prompt to ask which one,
+  so name it. To set a default, put `oss_provider = "ollama"` in `~/.codex/config.toml`; the flag still wins.
+- The flag chooses the server. The model comes from `-m`, or from the `model` field of the role file when
+  the worker is a Codex subagent.
+- Ollama must be a version that the installed Codex supports; update both when `--oss` is refused.
+
+### What stays the same
+
+The loop, the claim packet, `plastic node done ID NODE TEXT --output PATH` and the schema check do not
+change. A small model may not follow the packet, so give a node a schema (see above) and read a refused
+output as a failed attempt: `plastic node fail ID NODE TEXT`.
+
 ## Build it on an SDK
 
 The loop does not change with the SDK. Each worker step is a call the SDK makes with the packet as
