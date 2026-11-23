@@ -63,6 +63,17 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     write(SPEC, "file change")
   end
 
+  def test_a_backup_left_half_written_does_not_stop_the_preview
+    backup = store_path("backups/20261122143051")
+    FileUtils.mkdir_p(backup)
+    File.write(File.join(backup, "knowledge_graph-20261122143051.db"), "half a database")
+    File.write(File.join(backup, "knowledge_graph-20261122143051.db-journal"), "hot journal")
+    before = snapshot(store_root)
+
+    assert_includes preview, "preview: paths that would change: 0"
+    assert_equal before, snapshot(store_root)
+  end
+
   def test_absolute_overwrite_path_is_resolved_against_original_store
     conflicting_spec
     before = snapshot(store_root)
