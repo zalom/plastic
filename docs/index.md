@@ -7,6 +7,8 @@ Start here, then follow the area you need.
 - [usage/](usage/FEATURES.md): features, the audit guide, tracking and the node lifecycle.
 - [contributing/](contributing/ARCHITECTURE.md): the system architecture in drawings, the command
   architecture, the coding practices, the branches, and the gates.
+- [release-lines.md](release-lines.md): the alpha, beta and stable lines, and how to follow a
+  pre-release channel.
 
 ## Orientation
 - [contributing/ARCHITECTURE.md](contributing/ARCHITECTURE.md): the system and its parts in

@@ -22,8 +22,8 @@ the tag and the GitHub release for a version that has no tag yet. `install.sh` a
    carries the fix. No commit lands on `beta` except the cut itself.
 3. **Switches only where they pay off.** A change that alters stored data, the storage
    layer or the lock, or one that may be dropped, ships behind a config switch that is off by
-   default. The one exception is the migration that writes every stored time in UTC, which has
-   no switch; the owner ruled so on 22 November 2026. Every other change goes straight in.
+   default. The exceptions are the migrations that have no switch, each by a ruling; the list is in
+   [the architecture](contributing/ARCHITECTURE.md). Every other change goes straight in.
 4. **Stable waits.** `main` takes no release until the shaping ends and the owner opens it.
 
 ## Cut a beta
@@ -40,6 +40,21 @@ version on `alpha` when an alpha release is wanted: the push that carries it pub
 
 The owner decides when a beta is cut. A switched-off change rides along in every cut, and
 turning its switch on in a later commit is what releases it.
+
+## Follow a pre-release channel
+
+`install.sh` installs the stable release only. To follow a beta or an alpha release, install the
+stable release, then name the channel:
+
+```bash
+plastic update --channel beta
+plastic update --channel alpha
+plastic update --channel stable   # Back to the stable channel
+```
+
+`plastic update` keeps the release it replaces, so `plastic rollback` can return to it. Without
+`--channel`, an update stays on the channel of the active release. `plastic version` prints the
+channel.
 
 ## Stable-line guarantees
 
