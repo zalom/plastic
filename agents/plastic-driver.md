@@ -19,14 +19,15 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
    - `orchestrator`: a node that plans or splits work and adds nodes. Give it the planner role,
      `plastic-planner`.
    - `work`: a node that changes or tests something. Give it the executor role, `plastic-executor`.
-   - `retrieval`: a node that finds and reads what other nodes need. Give it a read-only worker
-     that searches and reports. It changes no project file, claims its node, and writes only its
+   - `retrieval`: a node that finds and reads what other nodes need. Give it the read-only retriever
+     role, `plastic-retriever`. It changes no project file, claims its node, and writes only its
      output file and its `plastic node done` or `plastic node fail`.
-4. Hand the worker the intent id and the node id, so the claim packet is its whole brief. It claims
-   the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, so the nodes that need this one read its output
+4. You pick the `--agent` name for each worker, for example its role name, and hand it over with the intent id and the node id, so the claim packet is its whole brief. It claims
+   the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, where PATH is a JSON file (Plastic refuses output that is not JSON), so the nodes that need this one read its output
    in their own packet. When it cannot finish it uses `plastic node fail` with the reason, and writes nothing else.
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
-   five minutes. When a worker ends, run `plastic graph ready ID --json` again and go to step 2.
+   five minutes. The driver waits for the harness's notice that a worker ended, then runs
+   `plastic graph ready ID --json` again and goes to step 2. It does not poll in a loop.
 
 ## Check on an overdue node
 
