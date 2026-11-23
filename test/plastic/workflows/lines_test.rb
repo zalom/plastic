@@ -33,6 +33,14 @@ class LinesTest < Minitest::Test
     assert_equal "node: n2 open Extra, found in n1, deadline 30 minutes", lines.node(Node.new(id: "n2", state: "open", title: "Extra", deadline: 30), "n1")
   end
 
+  def test_a_node_line_with_a_deadline_of_one_minute_says_minute
+    assert_equal "node: n1 open Build, deadline 1 minute", lines.node(Node.new(id: "n1", state: "open", title: "Build", deadline: 1))
+  end
+
+  def test_one_minute_is_singular_and_any_other_count_is_plural
+    assert_equal ["1 minute", "2 minutes", "31 minutes"], [1, 2, 31].map { |count| lines.minutes(count) }
+  end
+
   def test_a_ready_node_line_leaves_out_the_state
     assert_equal "ready: n1 Build", lines.ready_node(Node.new(id: "n1", state: "open", title: "Build"))
   end

@@ -32,6 +32,20 @@ class GraphReadyOverdueTest < Plastic::TestCase
     assert_call result, code: 0, err: "", out: ["overdue: n1 Build claimed 42 minutes ago, deadline 30"]
   end
 
+  def test_a_claim_part_of_a_minute_past_its_deadline_names_the_minute_it_is_in
+    claimed_build("--deadline", "30")
+
+    result = ready(30.5)
+
+    assert_call result, code: 0, err: "", out: ["overdue: n1 Build claimed 31 minutes ago, deadline 30"]
+  end
+
+  def test_the_json_answer_rounds_the_minutes_of_the_claim_up
+    claimed_build("--deadline", "30")
+
+    assert_equal [31], overdue_json(30.5).map { |node| node["claimed_minutes"] }
+  end
+
   def test_a_claim_younger_than_its_deadline_is_not_reported
     claimed_build("--deadline", "30")
 
