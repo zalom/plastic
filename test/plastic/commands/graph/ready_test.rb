@@ -198,8 +198,29 @@ class GraphReadyRegionTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_match(/^next: plastic node add 1 TITLE --criterion KEY$/, result.out)
-    assert_includes result.out, "because: node n1 is failed; re-plan it and what waits on it"
+    assert_match(/^next: plastic node release 1 n1$/, result.out)
+    assert_includes result.out, "because: node n1 is failed; release it to retry it, or re-plan it and what waits on it with plastic node add"
+  end
+
+  def test_a_node_waiting_for_the_owner_offers_the_owners_resolve
+    open_keyed_intent
+    step("node", "add", "1", "a", "--criterion", "done")
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "ask", "1", "n1", "which way?")
+
+    result = call("1")
+
+    assert_match(/^next: plastic node resolve 1 n1 TEXT$/, result.out)
+    assert_includes result.out, "because: node n1 is needs_info; the owner answers it"
+  end
+
+  def test_an_impeded_node_offers_the_owners_resolve
+    open_keyed_intent
+    step("node", "add", "1", "a", "--criterion", "done")
+    step("node", "claim", "1", "n1", "--agent", "tester")
+    step("node", "impede", "1", "n1", "no access")
+
+    assert_match(/^next: plastic node resolve 1 n1 TEXT$/, call("1").out)
   end
 
   def test_a_ready_node_still_offers_its_claim_beside_the_region
