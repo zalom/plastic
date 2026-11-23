@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require "minitest/autorun"
+require_relative "test_helper"
+require_relative "support/child_process"
 
 class RetrievalDocumentationTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
@@ -34,7 +35,7 @@ class RetrievalDocumentationTest < Minitest::Test
   ].freeze
 
   def test_no_shipped_file_names_qmd_outside_the_kept_places
-    shipped = `git -C #{ROOT} ls-files`.split("\n").reject { |path| path.start_with?("test/") }
+    shipped = ChildProcess.capture2("git", "-C", ROOT, "ls-files").first.split("\n").reject { |path| path.start_with?("test/") }
     named = (shipped - KEPT_QMD_FILES).select do |path|
       file = File.join(ROOT, path)
       File.file?(file) && File.read(file).force_encoding("UTF-8").scrub.match?(/qmd/i)
