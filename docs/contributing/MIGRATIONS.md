@@ -168,6 +168,15 @@ Migration `20261121090000`, which writes every stored time in UTC, is the one ex
 rule. The owner ruled on 22 November 2026 that it has no switch: it changes the text of a time
 and not the time it names, and the code that reads times expects UTC.
 
+Migration `20261123100000` drops the columns `judge` and `verdict` of `nodes` in `work_graph.db`.
+No code read or wrote them, and the nodes of all 15 real stores held no value in either. It has no
+switch, as the owner ruled on 22 November 2026 for the roadmap migration of intent 498: a held
+migration would leave some stores on a layout with the columns and others without. A store keeps
+nothing of it in `legacy.db`, and the backup that every migration run takes first holds the
+columns. It is in `ALONE`, and its down, `NodeJudgeColumns` in `REBUILDS`, adds both columns
+back, empty. A graph file that an earlier release printed with the two fields still reads: the
+sync reads past them.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
