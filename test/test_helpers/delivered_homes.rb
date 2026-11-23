@@ -16,7 +16,7 @@ module DeliveredHomes
 
   def deliver(kernel)
     kernel.command!("intent", "auto", "1", env: SESSION)
-    kernel.command!("node", "claim", "1", "n2")
+    kernel.command!("node", "claim", "1", "n2", "--agent", "tester")
     kernel.command!("node", "done", "1", "n2", "The code is green")
     kernel.command!("intent", "verdict", "1", "accept", "Both nodes hold")
     kernel.write("#{DIR}/outcome.md", OUTCOME)

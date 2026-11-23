@@ -14,7 +14,7 @@ class GraphCheckOutputTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "done", "1", "n1", "built")
   end
 

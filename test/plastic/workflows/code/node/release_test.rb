@@ -17,7 +17,7 @@ class WorkflowReleaseNodeTest < Plastic::TestCase
 
     outcome, context = release
 
-    assert_equal ["plastic node claim 1 n1", "node n1 is open"], Plastic::Workflows::Code::Node::Release.closing(outcome, context)
+    assert_equal ["plastic node claim 1 n1 --agent NAME", "node n1 is open"], Plastic::Workflows::Code::Node::Release.closing(outcome, context)
     assert_equal "open", retrieval.node("1", "n1").state
   end
 

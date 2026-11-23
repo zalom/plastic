@@ -25,6 +25,9 @@ class UpdatePlasticTest < Plastic::TestCase
     Dir.glob(File.join(home, "{plastic.db,stores/*/knowledge_graph.db}")).each do |path|
       SQLite3::Database.open(path) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
     end
+    Dir.glob(File.join(home, "stores/*/work_graph.db")).each do |path|
+      SQLite3::Database.open(path) { |db| Plastic::Graph::RunUsageColumns::NAMES.each { |name| db.execute("ALTER TABLE runs DROP COLUMN #{name}") } }
+    end
     home
   end
 
@@ -59,6 +62,7 @@ class UpdatePlasticTest < Plastic::TestCase
       database.execute("DELETE FROM schema_migrations WHERE version = ?", [Plastic::Graph::MIGRATIONS.newest(:store)])
       database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, x'00', 'o')", [PAPER])
     end
+    SQLite3::Database.open(File.join(home, "stores", "alpha", "work_graph.db")) { |db| Plastic::Graph::RunUsageColumns::NAMES.each { |name| db.execute("ALTER TABLE runs DROP COLUMN #{name}") } }
     home
   end
 

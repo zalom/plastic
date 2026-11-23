@@ -599,7 +599,7 @@ class SyncUpGraphClaimTest < Minitest::Test
     with_two_homes do |_first, second|
       second.command!("sync", "up")
 
-      assert_includes second.command!("node", "claim", "1", "n2").out, "n2"
+      assert_includes second.command!("node", "claim", "1", "n2", "--agent", "tester").out, "n2"
     end
   end
 end

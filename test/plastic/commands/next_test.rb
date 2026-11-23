@@ -92,7 +92,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -107,7 +107,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -122,7 +122,7 @@ class NextTest < Plastic::TestCase
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
-    plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("node", "claim", intent.intent_id, "n1", "--agent", "tester", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
     plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
 
     result = call
@@ -141,7 +141,7 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1"
+    assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1 --agent NAME"
   end
 
   def test_several_candidates_request_a_choice
@@ -257,7 +257,7 @@ class DeliveryHandoffTest < Plastic::TestCase
   def test_a_done_graph_leads_to_explicit_intent_verification
     active_intent
     cli("node", "add", "1", "Ship", "--criterion", KEY)
-    cli("node", "claim", "1", "n1")
+    cli("node", "claim", "1", "n1", "--agent", "tester")
     cli("node", "done", "1", "n1", "Checked")
 
     result = cli("next")
@@ -269,7 +269,7 @@ class DeliveryHandoffTest < Plastic::TestCase
     active_intent
     cli("node", "add", "1", "Ship", "--criterion", KEY)
     brief = cli("intent", "brief", "1").out
-    claimed = cli("node", "claim", "1", "n1").out
+    claimed = cli("node", "claim", "1", "n1", "--agent", "tester").out
 
     [brief, claimed].each { |text| refute_includes text, "--judge" }
     assert_includes claimed, "plastic node done 1 n1 TEXT"

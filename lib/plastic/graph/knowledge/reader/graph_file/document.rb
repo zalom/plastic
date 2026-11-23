@@ -20,6 +20,9 @@ module Plastic
               approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, runs: Work::Run, edges: Work::Edge
             }.freeze
 
+            # What a run holds when its graph file came from a release before the harness and the usage were recorded.
+            UNRECORDED = { "harness" => "", "worker_session" => "", "usage_note" => "" }.freeze
+
             PUT_ONLY = { completions: Work::CompletionRow }.freeze
 
             attr_reader :error
@@ -41,7 +44,7 @@ module Plastic
               return [@data["approval"]].compact if table == :approvals
               return [@data["completion"]].compact if table == :completions
 
-              listed(table.to_s)
+              table == :runs ? listed("runs").map { |run| UNRECORDED.merge(run) } : listed(table.to_s)
             end
 
             private

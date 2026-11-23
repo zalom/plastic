@@ -85,7 +85,7 @@ module Plastic
         write("store/1--alpha/spec.md", TWO_KEYED_CRITERIA)
         sync_up
         ran("intent approve 1", "intent start 1", 'node add 1 "do the thing" --criterion it-is-done', 'node add 1 "build it" --criterion it-builds',
-          "edge add 1 n1 n2", "node claim 1 n1", "node fail 1 n1 broke", "node release 1 n1", "node claim 1 n1", 'node done 1 n1 "it passed"')
+          "edge add 1 n1 n2", "node claim 1 n1 --agent tester", "node fail 1 n1 broke", "node release 1 n1", "node claim 1 n1 --agent tester", 'node done 1 n1 "it passed"')
       end
 
       # The roadmap shop, whose first batch is Blockers.

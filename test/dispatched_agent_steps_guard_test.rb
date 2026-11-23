@@ -24,7 +24,7 @@ class DispatchedAgentStepsGuardTest < Minitest::Test
 
   def test_the_detector_catches_each_orchestrator_command
     ["Take the intent with plastic auto ID.", "Run plastic auto take 7.", "Close with plastic intent end ID.",
-      "Run plastic node claim 7 n1.", "node claim it first", "Record plastic node done ID NODE TEXT.",
+      "Run plastic node claim 7 n1 --agent tester.", "node claim it first", "Record plastic node done ID NODE TEXT.",
       "Start it with plastic intent start 7.", "Deliver it with plastic intent auto 7.", "Pick with plastic roadmap auto r1.",
       "Add plastic edge add 7 n1 n2.", "plastic intent note ID TEXT", "scripts/insight-append DIR TEXT"]
       .each { |line| refute_empty orchestrator_steps(line), line }

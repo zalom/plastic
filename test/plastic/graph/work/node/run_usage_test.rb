@@ -25,7 +25,7 @@ class WorkNodeRunUsageTest < Plastic::TestCase
 
   def usage(**fields)
     base = { worker_session: "agent-a1", model: "claude-opus-5-5", input_tokens: 3, output_tokens: 4, cache_read_tokens: 5, cache_write_tokens: 6, cost_usd: 0.25, note: "" }
-    Plastic::Harnesses::Usage.new(**base, **fields)
+    Plastic::Harnesses::TokenUsage.new(**base, **fields)
   end
 
   def claim = work.claim_node(intent_id: "1", id: "n1", by: "s-1", agent: "plastic-executor", harness: "claude-code")

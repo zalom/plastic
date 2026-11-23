@@ -14,6 +14,8 @@ module PreviousStore
   TRIM = "20261119190000"
   PAGES = "20261120090000"
   UTC = "20261121090000"
+  USAGE = "20261123090000"
+  USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
   ROADMAP = "originals/roadmaps/plan.md"
   MIGRATED_AT = Time.utc(2026, 11, 19, 12, 0, 0)
   REVISIONS = <<~SQL
@@ -31,8 +33,9 @@ module PreviousStore
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE])
     end
+    SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| USAGE_COLUMNS.each { |column| database.execute("ALTER TABLE runs DROP COLUMN #{column}") } }
     home
   end
 
@@ -42,13 +45,16 @@ module PreviousStore
     Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
   end
 
-  # Undoes the time migration, the page migration, the trim and the report migration, the four newest, so the next down undoes the drop.
-  def back_to_drop(home) = home.tap { 4.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  # Undoes the run usage migration, the time migration, the page migration, the trim and the report migration, the five newest, so the next down undoes the drop.
+  def back_to_drop(home) = home.tap { 5.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # Undoes the time migration, the newest, which keeps nothing in a store of the previous release, so the next down undoes the one before it.
-  def utc_down(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
+  # Undoes the run usage migration and the time migration, the two newest, which keep nothing in a store of the previous release, so the next down undoes the one before them.
+  # Undoes the run usage migration, the newest, which removes its version alone, so the next down undoes the one before it.
+  def without_usage(home) = home.tap { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
-  # A migrated store whose time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
+  def utc_down(home) = home.tap { 2.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+
+  # A migrated store whose run usage migration, time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
   def migrated_to_drop = back_to_drop(migrated_previous_home)
 
   def forget(home)

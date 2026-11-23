@@ -19,26 +19,26 @@ class NodeClaimCaseTest < Plastic::TestCase
   def test_claiming_a_ready_node_prints_it_with_its_criterion_and_offers_done
     alpha_with_node
 
-    assert_case line("node claim 1 n1"), code: 0,
+    assert_case line("node claim 1 n1 --agent tester"), code: 0,
       out: ["node: n1 Build", "criterion: tests-pass", "next: plastic node done 1 n1 TEXT"]
   end
 
   def test_claiming_the_node_whose_needs_are_met_prints_it_and_offers_done
     chained
 
-    assert_case line("node claim 1 n2"), code: 0,
+    assert_case line("node claim 1 n2 --agent tester"), code: 0,
       out: ["node: n2 Test", "criterion: suite-green", "next: plastic node done 1 n2 TEXT"]
   end
 
   def test_claiming_a_node_that_needs_an_undone_node_exits_3_and_names_the_ready_list
     chained
 
-    assert_case line("node claim 1 n1"), code: 3, out: "",
+    assert_case line("node claim 1 n1 --agent tester"), code: 3, out: "",
       err: ["node n1 needs a node that is not done; plastic graph ready 1 lists the nodes to claim"]
   end
 
   def test_claiming_in_a_missing_intent_exits_1_and_names_it
-    assert_case line("node claim 9 n1"), code: 1, out: "", err: ["no intent 9 in this store"]
+    assert_case line("node claim 9 n1 --agent tester"), code: 1, out: "", err: ["no intent 9 in this store"]
   end
 end
 
@@ -68,7 +68,7 @@ class NodeClaimTest < Plastic::TestCase
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
   end
 
-  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, "--agent", "tester", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def test_the_brief_includes_the_last_reason
     open_intent
@@ -172,7 +172,7 @@ class NodeClaimTest < Plastic::TestCase
 end
 
 class NodeClaimRefusalTest < Plastic::TestCase
-  def claim(*args) = plastic("node", "claim", "1", *args, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def claim(*args) = plastic("node", "claim", "1", *args, "--agent", "tester", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
@@ -235,14 +235,14 @@ class NodeClaimRefusalTest < Plastic::TestCase
     open_intent
     add_node("a")
 
-    result = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "" }, table: Plastic::CLI::TABLE)
+    result = plastic("node", "claim", "1", "n1", "--agent", "tester", env: { "PLASTIC_SESSION" => "" }, table: Plastic::CLI::TABLE)
 
     assert_equal [1, "plastic: node claim names no session; set PLASTIC_SESSION\n"], [result.code, result.err]
   end
 end
 
 class NodeClaimStartTest < Plastic::TestCase
-  def claim = plastic("node", "claim", "1", "n1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def claim = plastic("node", "claim", "1", "n1", "--agent", "tester", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def intent_with_node(status)
     open_keyed_intent(status:)

@@ -57,7 +57,7 @@ module GraphResumeHelper
   def intent_with_nodes_in_each_state
     intent = ready_intent
     %w[a b c d].each { |title| add_node(intent, title) }
-    %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id) }
+    %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id, "--agent", "tester") }
     node("done", intent, "n1", "ok")
     node("fail", intent, "n3", "broke")
     node("ask", intent, "n4", "which way")
@@ -127,7 +127,7 @@ class GraphResumeTest < Plastic::TestCase
     intent = ready_intent
     add_node(intent, "a")
 
-    assert_equal "next: plastic node claim 1 n1", next_line(call)
+    assert_equal "next: plastic node claim 1 n1 --agent NAME", next_line(call)
     assert_equal next_line(plastic("next", table: Plastic::CLI::TABLE)), next_line(call)
   end
 
@@ -168,7 +168,7 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 (because node n1 is ready)", "next: plastic node claim 1 n1"]
+    wanted = ["in play: 1 Alpha (in_progress)", "then: plastic node claim 1 n1 --agent NAME (because node n1 is ready)", "next: plastic node claim 1 n1 --agent NAME"]
 
     assert_equal [0, "", wanted, 3], [result.code, result.err, lines(result) & wanted, lines(result).count { |line| line.start_with?("log: ") }]
   end

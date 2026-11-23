@@ -22,7 +22,7 @@ module Plastic
           read "print each node and edge" do |context|
             context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
             context.retrieval.structure.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
-            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run(run)) }
+            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
           end
 
           outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"

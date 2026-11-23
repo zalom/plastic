@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "usage"
+require_relative "token_usage"
 require_relative "records/claude"
 require_relative "records/codex"
 
@@ -17,11 +17,11 @@ module Plastic
       # The usage of the run of `harness` session `session` from `from` to `to`, claimed with `claim`, such as "485 n2".
       def read(harness:, session:, from:, to:, claim:)
         reader = @readers[harness.to_s]
-        return Usage.none(missing(harness)) unless reader
+        return TokenUsage.none(missing(harness)) unless reader
 
         reader.read(session:, from:, to:, claim:)
       rescue StandardError => error
-        Usage.none("the #{harness} record could not be read: #{error.message}")
+        TokenUsage.none("the #{harness} record could not be read: #{error.message}")
       end
 
       private

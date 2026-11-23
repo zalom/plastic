@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../usage"
+require_relative "../token_usage"
 require_relative "jsonl"
 
 module Plastic
@@ -18,7 +18,7 @@ module Plastic
         # The usage of the run from `from` to `to`, claimed with `claim` (the intent id and node id), by `session`.
         def read(session:, from:, to:, claim:)
           path = Dir.glob(File.join(@home, ".claude", "projects", "*", "#{session}.jsonl")).min
-          return Usage.none("no Claude Code transcript for session #{session}") unless path
+          return TokenUsage.none("no Claude Code transcript for session #{session}") unless path
 
           worker = subagent(path, session, from..to, claim) || path
           usage(worker, File.basename(worker, ".jsonl"), from..to)
@@ -28,17 +28,17 @@ module Plastic
 
         def usage(path, name, window)
           entries = Jsonl.read(path)
-          return Usage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name) unless entries
+          return TokenUsage.none("the Claude Code transcript of session #{name} is unreadable", worker_session: name) unless entries
 
           turns = turns(entries, window)
-          return Usage.none("no turn inside the run in the Claude Code transcript of session #{name}", worker_session: name) if turns.empty?
+          return TokenUsage.none("no turn inside the run in the Claude Code transcript of session #{name}", worker_session: name) if turns.empty?
 
           totals(turns, name, cost(entries, window))
         end
 
         def totals(turns, name, cost)
           sums = %w[input_tokens output_tokens cache_read_input_tokens cache_creation_input_tokens].map { |key| turns.sum { |turn| turn.dig("message", "usage", key).to_i } }
-          Usage.new(worker_session: name, model: turns.last.dig("message", "model"), input_tokens: sums[0], output_tokens: sums[1],
+          TokenUsage.new(worker_session: name, model: turns.last.dig("message", "model"), input_tokens: sums[0], output_tokens: sums[1],
             cache_read_tokens: sums[2], cache_write_tokens: sums[3], cost_usd: cost, note: cost ? "" : "cost not found in the Claude Code transcript")
         end
 

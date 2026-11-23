@@ -23,7 +23,7 @@ module Plastic
     # whose harness records a run is read from. A call that has no harness has an empty name and no home.
     Harness = Struct.new(:session, :scope, :settings, :name, :user_home)
 
-    def_delegators :@collaborators, :session, :harness_name, :user_home, :scope, :settings, :clock, :work, :retrieval, :database
+    def_delegators :@collaborators, :session, :running_harness, :user_home, :scope, :settings, :clock, :work, :retrieval, :database
     def_delegators :@printed, :print_to
     def_delegator :@printed, :lines, :printed
 

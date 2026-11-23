@@ -20,7 +20,7 @@ module Plastic
 
       # One run of a node: its agent, the harness and the session that claimed it, how it ended, then what the harness record held
       # (the worker, the model, the tokens and the cost) and what it did not.
-      def self.run(run)
+      def self.run_line(run)
         state = run.open? ? "open" : run.result
         head = "run: #{run.node_id} ##{run.number} agent #{run.agent.to_s.empty? ? "none" : run.agent}, #{harness(run)}, #{state}"
         [head, usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")

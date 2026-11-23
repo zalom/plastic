@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../usage"
+require_relative "../token_usage"
 require_relative "jsonl"
 
 module Plastic
@@ -18,10 +18,10 @@ module Plastic
 
         def read(session:, from:, to:, claim: nil)
           path = Dir.glob(File.join(@home, ".codex", "sessions", "*", "*", "*", "rollout-*-#{session}.jsonl")).min
-          return Usage.none("no Codex session log for session #{session}") unless path
+          return TokenUsage.none("no Codex session log for session #{session}") unless path
 
           entries = Jsonl.read(path)
-          return Usage.none("the Codex session log of session #{session} is unreadable", worker_session: session) unless entries
+          return TokenUsage.none("the Codex session log of session #{session} is unreadable", worker_session: session) unless entries
 
           usage(entries, session, from, to)
         end
@@ -31,14 +31,14 @@ module Plastic
         def usage(entries, session, from, to)
           before = total(entries.select { |entry| (Jsonl.time(entry) || from) < from })
           final = total(entries.select { |entry| (Jsonl.time(entry) || to + 1) <= to })
-          return Usage.none("no turn inside the run in the Codex session log of session #{session}", worker_session: session) if final == before
+          return TokenUsage.none("no turn inside the run in the Codex session log of session #{session}", worker_session: session) if final == before
 
           growth = KEYS.zip(final.zip(before)).to_h { |key, (now, then_)| [key, now - then_] }
           figures(growth, model(entries, to), session)
         end
 
         def figures(growth, model, session)
-          Usage.new(worker_session: session, model:, input_tokens: growth["input_tokens"] - growth["cached_input_tokens"], output_tokens: growth["output_tokens"],
+          TokenUsage.new(worker_session: session, model:, input_tokens: growth["input_tokens"] - growth["cached_input_tokens"], output_tokens: growth["output_tokens"],
             cache_read_tokens: growth["cached_input_tokens"], cache_write_tokens: growth["cache_write_input_tokens"], cost_usd: nil,
             note: "cost not found: the Codex session log holds none")
         end
