@@ -86,3 +86,19 @@ class GraphBackupPurgerExpiryTest < Plastic::TestCase
     assert_empty purger(home).expired(now: NOW)
   end
 end
+
+class GraphBackupPurgerInterruptedTest < Plastic::TestCase
+  include BackupHomes
+
+  def test_interrupted_names_in_progress_folders_older_than_five_minutes_only
+    home = fresh_home
+    folders = Plastic::Graph::Backup::Folders.new(File.join(home, "stores", "alpha"))
+    now = Time.utc(2026, 3, 1, 10, 10, 0)
+    { "20260301100000" => "in-progress", "20260301100800" => "in-progress", "20260301095000" => "failed" }.each do |name, status|
+      FileUtils.mkdir_p(folders.path(name))
+      folders.write_report(name, status:, goal: "full")
+    end
+
+    assert_equal ["20260301100000"], Plastic::Graph::Backup::Purger.new(File.join(home, "stores", "alpha")).interrupted(now:)
+  end
+end
