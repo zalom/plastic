@@ -29,7 +29,10 @@ module Plastic
         end
 
         # The newest folder whose name is a real time; a name that is not one has no age to judge.
-        def latest = names.reverse.find { |name| FolderName.readable?(name) }
+        def latest = latest_where { true }
+
+        # The newest folder whose name is a real time and that the block accepts, or nil.
+        def latest_where = names.reverse.find { |name| FolderName.readable?(name) && yield(name) }
 
         def path(name) = File.join(dir, name)
 

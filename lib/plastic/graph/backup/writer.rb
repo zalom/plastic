@@ -89,7 +89,7 @@ module Plastic
         end
 
         def unchanged?(check, own)
-          newest = folders.names.reject { |name| name == own }.last
+          newest = folders.latest_where { |name| name != own }
           !newest.nil? && folders.report(newest)["fingerprint"] == check.fingerprint
         end
 
