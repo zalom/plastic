@@ -5,7 +5,7 @@ require_relative "node_result"
 module Plastic
   module Graph
     module Work
-      # The node and edge writes that leave a work log line.
+      # The node, edge and driver claim writes that leave a work log line.
       class LoggedNodes
         RESULT_KINDS = { done_node: "done", fail_node: "failed", ask_node: "asked", impede_node: "impeded" }.freeze
         PLAIN_KINDS = { release_node: "released", resolve_node: "resolved", remove_node: "removed" }.freeze
@@ -14,7 +14,26 @@ module Plastic
         def initialize(writers, log)
           @writers = writers
           @log = log
+          @drivers = writers.drivers
+          @release = writers.release
         end
+
+        # Why the session may not drive the intent, or nil when it may.
+        def driver_problem(intent_id, session) = @drivers.problem(intent_id, session)
+
+        # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
+        def drive_intent(intent_id:, by:, take_over: nil)
+          @log.recorded do
+            status, holder, line = @drivers.claim(intent_id:, by:, take_over:)
+            @log.line(intent_id, "driver", line) if line
+            [status, holder]
+          end
+        end
+
+        def renew_claims(session) = @log.recorded { [@writers.nodes.renew_claims(session), @drivers.renew(session)] }
+
+        # The session ended: its node claims and its driver claims go at once.
+        def release_claims(session) = @log.recorded { [@release.call(session), @drivers.release(session)] }
 
         def add_node(intent_id:, **fields)
           @log.recorded { @writers.nodes.add_node(intent_id:, **fields).tap { |node| node && @log.line(intent_id, "added", node.title.to_s, node: node.id) } }

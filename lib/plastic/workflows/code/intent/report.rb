@@ -61,7 +61,7 @@ module Plastic
 
           def self.restate(context) = (context[:restated] = context.work.restate_report(of(context), text(context)))
 
-          def self.write(context) = (context[:reference] = context.work.report_intent(context.intent, context.path, text(context)))
+          def self.write(context) = (context[:reference] = context.work.report_intent(of(context), text(context)))
 
           # What the command says: a first record, a record again of a changed file, or that nothing was written.
           def self.words(state, path)

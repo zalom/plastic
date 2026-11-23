@@ -17,7 +17,7 @@ module Plastic
       def copy
         choices = package.choices
         skills(exclude: advisor_exclusions) +
-          CodexAgents.new(package.root, models: choices.models(harness: "codex"), efforts: choices.efforts(harness: "codex"), skip: choices.skipped_roles)
+          CodexAgents.new(package.root, models: choices.models(harness: "codex"), efforts: choices.efforts(harness: "codex"), skip: choices.skipped_roles, workers: choices.max_workers)
             .call(File.join(home, "agents"))
       end
 

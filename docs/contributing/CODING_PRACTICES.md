@@ -63,4 +63,4 @@ Each long-lived branch has one role.
   no suffix, and it stays frozen until the shaping ends.
 
 `bin/release-check` checks that each branch releases the right kind of version.
-`docs/release-lines.md` holds the full rules.
+[The release lines](../release-lines.md) hold the full rules, and how to follow a pre-release channel.

@@ -15,7 +15,7 @@ module DeliveredHomes
   DROPPED = "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n"
 
   def deliver(kernel)
-    kernel.command!("intent", "auto", "1", env: SESSION)
+    kernel.command!("intent", "auto", "1", "--take-over", "the delivery runs in its own session", env: SESSION)
     kernel.command!("node", "claim", "1", "n2", "--agent", "tester")
     kernel.command!("node", "done", "1", "n2", "The code is green")
     kernel.command!("intent", "verdict", "1", "accept", "Both nodes hold")

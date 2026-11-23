@@ -22,9 +22,9 @@ class RetrievalDocumentationTest < Minitest::Test
   end
 
   def test_examples_use_context_from
-    readme = File.read(File.join(ROOT, "README.md"))
+    commands = File.read(File.join(ROOT, "docs/usage/commands.md"))
 
-    assert_includes readme, "intent context 12 --from selected-context.json"
+    assert_includes commands, "intent context 12 --from selected-context.json"
   end
 
   private

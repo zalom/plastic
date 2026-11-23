@@ -19,7 +19,8 @@ module Plastic
         "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [] },
         "reports" => { "mandatory" => [] },
         "advisor" => { "enabled" => true },
-        "backup" => { "daily" => false }
+        "backup" => { "daily" => false },
+        "driver" => { "max_workers" => 3 }
       }.freeze
 
       ADVISOR = "plastic-primary-advisor"
