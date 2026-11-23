@@ -41,6 +41,9 @@ REASON` parks started work with the reason it waits.
 When the owner says auto, background agents or processes run the delivery from the first step.
 The main session stays open as the orchestrator: it dispatches, records and reports, and
 never blocks on the work.
+For code work only, before it plans the graph, the agent maps the code with an architecture mapping
+tool such as Enola and reads the project's AGENTS.md. Plastic runs no such tool and asks for no
+record of the map.
 
 Agents run every command, from opening an intent to closing it, without asking. A person
 is in the loop for decisions and the direction of the work only. Exit codes: 0 succeeded,
