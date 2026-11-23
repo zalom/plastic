@@ -118,4 +118,14 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
 
     assert_equal [stamp(later)], folder_names(home)
   end
+
+  def test_a_newest_folder_whose_name_is_not_a_real_time_is_ignored_when_deciding_whether_a_backup_is_due
+    home = stale_home
+    add_intent(home)
+    Dir.mkdir(File.join(backups_dir(home), "20261399000000"))
+
+    result = Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+
+    assert_equal [:taken, [nil, "sync up"]], [result.status, backup_reasons(home).first(2)]
+  end
 end
