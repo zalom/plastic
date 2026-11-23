@@ -39,7 +39,7 @@ class CommandReferenceEventListTest < Minitest::Test
 
   def test_the_endings_that_no_call_can_reach_are_not_in_the_events_of_intent_end
     words = listed("intent end").flat_map { |event| event.stops.map(&:text) }
-    unreachable = ["The completion records are ready.", "The delivery and the architecture map it needs are recorded.", "Nothing the intent started is left running."]
+    unreachable = ["The completion records are ready.", "The delivery it needs is recorded.", "Nothing the intent started is left running."]
 
     assert_empty unreachable & words
   end

@@ -11,10 +11,16 @@ class RefreshArchitectureTest < Plastic::TestCase
     assert_equal "the agent refreshes the architecture map with its own tool", outcome.because
   end
 
-  def test_the_refresh_names_outcome_md_as_the_record_place
+  def test_the_refresh_asks_for_no_record_in_outcome_md
     outcome, = run_workflow(Plastic::Workflows::Agent::Architecture::Refresh)
 
-    assert_includes sole(outcome.steps), "under Verification in outcome.md"
-    refute_includes sole(outcome.steps), "context you submit"
+    refute_includes sole(outcome.steps), "outcome.md"
+    refute_includes sole(outcome.steps), "Architecture map:"
+  end
+
+  def test_the_refresh_ties_the_map_to_planning_code_work
+    outcome, = run_workflow(Plastic::Workflows::Agent::Architecture::Refresh)
+
+    assert_includes sole(outcome.steps), "before you plan code work"
   end
 end

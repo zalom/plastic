@@ -29,11 +29,11 @@ SLUG` tells the agent to regenerate the map. Both commands print instructions on
 chooses the mapping tool, runs it, and reads the result. Plastic does not run Enola and does not
 save the map, because the tool can produce it again at any time.
 
-Plastic also asks for the map at two points of an intent. When it hands planning to the agent, it
-tells the agent to fetch the map first. In `plastic intent end`, it tells the agent to fetch the map
-once more and to note the tool and the source revision as the Architecture map: line under Verification in outcome.md. The planning
-reminder is not checked. At the close, Plastic refuses a delivered close whose outcome.md lacks
-the line, but it does not check that the map is true.
+Plastic asks for the map at one point of an intent, and only for code work. When it hands planning
+to the agent in a project that names a repository, it tells the agent to map the code with a tool
+such as Enola and to read the project's `AGENTS.md`, so the graph is planned from the real
+architecture. Nothing runs after the plan or after delivery: `plastic intent end` asks for no map
+line, and the reminder before planning is not checked.
 
 ### Using them together
 
