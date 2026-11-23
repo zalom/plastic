@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "node_result"
-require_relative "driver/writer"
-require_relative "node/release"
 
 module Plastic
   module Graph
@@ -16,8 +14,8 @@ module Plastic
         def initialize(writers, log)
           @writers = writers
           @log = log
-          @drivers = Driver::Writer.new(writers.databases, writers.retrieval, clock: writers.clock)
-          @release = Node::Release.new(writers.databases, writers.retrieval, clock: writers.clock)
+          @drivers = writers.drivers
+          @release = writers.release
         end
 
         # Why the session may not drive the intent, or nil when it may.
