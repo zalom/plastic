@@ -29,9 +29,6 @@ module Plastic
 
         def files? = @outcome.values("Delivered").any? { |value| delivered_file?(value) }
 
-        # Files alone need no architecture map; a merge, a commit or no delivery line yet do.
-        def map_needed? = merged? || committed? || !files?
-
         # The first delivery line that is there but does not count, as 'Label: value', else nil.
         def rejection = LABELS.lazy.filter_map { |label, counted| line(label) unless public_send(counted) }.first
 
