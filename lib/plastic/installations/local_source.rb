@@ -15,14 +15,14 @@ module Plastic
       end
 
       def newest(_channel)
-        ReleaseFiles.new(directory).manifest.dig("release", "version")
-      rescue VerificationError => error
-        raise Failed, "cannot read the local release folder #{directory}: #{error.message}"
+        unreadable { ReleaseFiles.new(directory).manifest.dig("release", "version") }
       end
 
       def files(_version, target)
-        ReleaseFiles::NAMES.each { |name| FileUtils.cp(File.join(directory, name), File.join(target, name)) }
-        ReleaseFiles.new(target)
+        unreadable do
+          ReleaseFiles::NAMES.each { |name| FileUtils.cp(File.join(directory, name), File.join(target, name)) }
+          ReleaseFiles.new(target)
+        end
       end
 
       def notices = [format(DEVELOPMENT, directory)]
@@ -30,6 +30,12 @@ module Plastic
       private
 
       attr_reader :directory
+
+      def unreadable
+        yield
+      rescue VerificationError, SystemCallError => error
+        raise Failed, "cannot read the local release folder #{directory}: #{error.message}"
+      end
     end
   end
 end
