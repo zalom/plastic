@@ -53,8 +53,10 @@ module Plastic
             node.to_h.slice(:id, :title, :kind, :criterion, :state).transform_keys(&:to_s).merge("needs" => needs)
           end
 
-          outcome :repair, if: ->(context) { context.first.nil? && !context.repairs.empty? }, offers: "plastic node add %{intent_id} TITLE --criterion KEY",
-            because: "node %{repair_id} is %{repair_state}; re-plan it and what waits on it"
+          outcome :retry, if: ->(context) { context.first.nil? && context.repair_state == "failed" }, offers: "plastic node release %{intent_id} %{repair_id}",
+            because: "node %{repair_id} is failed; release it to retry it, or re-plan it and what waits on it with plastic node add"
+          outcome :ask_owner, if: ->(context) { context.first.nil? && context.repair_id }, offers: "plastic node resolve %{intent_id} %{repair_id} TEXT",
+            because: "node %{repair_id} is %{repair_state}; the owner answers it, then re-plan what waits on it with plastic node add if the answer changes the plan"
           outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
           outcome :done, offers: "plastic node claim %{intent_id} %{first} --agent NAME", because: "node %{first} is ready"
         end
