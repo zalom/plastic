@@ -77,3 +77,29 @@ class WorkReadyIntentPickTest < Plastic::TestCase
     assert_equal({ "1" => ["2"] }, pick.blocked)
   end
 end
+
+class WorkFuturePickTest < Plastic::TestCase
+  def pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now)
+
+  def test_a_future_intent_that_needs_nothing_is_picked
+    open_intent("Alpha", status: "future")
+
+    assert_equal "1", pick.intent.intent_id
+  end
+
+  def test_a_future_intent_that_needs_an_unfinished_future_intent_is_blocked
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "future")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_equal [{ "1" => ["2"] }, "2"], [pick.blocked, pick.intent.intent_id]
+  end
+
+  def test_a_future_intent_whose_needed_intent_is_done_is_ready
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "done")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_equal [{}, "1"], [pick.blocked, pick.intent.intent_id]
+  end
+end

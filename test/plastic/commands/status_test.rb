@@ -185,3 +185,21 @@ class StatusBlockedIntentTest < Plastic::TestCase
     refute_includes call.out, "waits on"
   end
 end
+
+class StatusFutureIntentTest < Plastic::TestCase
+  def call = plastic("status", table: Plastic::CLI::TABLE)
+
+  def test_a_store_with_only_future_intents_offers_next
+    open_intent("Alpha", status: "future")
+
+    assert_includes call.out, "next: plastic next"
+  end
+
+  def test_a_future_intent_that_needs_an_unfinished_intent_shows_what_it_waits_on
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "future")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_includes call.out, "waits on 2"
+  end
+end

@@ -80,3 +80,25 @@ class WorkBlockedOfferTest < Plastic::TestCase
     assert_equal ["plastic intent spec 2", "intent 2 has no done criteria", nil], offer
   end
 end
+
+class WorkFutureOfferTest < Plastic::TestCase
+  def offer
+    pick = Plastic::Graph::Work::NextPick.new(retrieval, "s-1", now: Time.now)
+    Plastic::Graph::Work::NextOffer.new(retrieval, pick).call
+  end
+
+  def test_an_approved_future_intent_offers_intent_start_naming_its_status
+    open_intent("Alpha", status: "future")
+    store_graphs.work.approve_intent("1")
+
+    assert_equal ["plastic intent start 1", "intent 1 is future", nil], offer
+  end
+
+  def test_only_blocked_future_intents_name_what_the_first_waits_on
+    open_intent("Alpha", status: "future")
+    open_intent("Beta", status: "parked")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_equal [nil, "nothing is ready: intent 1 waits on intent 2", nil], offer
+  end
+end

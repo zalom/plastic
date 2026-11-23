@@ -23,10 +23,14 @@ module Plastic
 
         FILE = "intent.md"
         OPEN = %w[open in_progress].freeze
+        UNSTARTED = %w[open future].freeze
         ARCHIVABLE = %w[done abandoned future].freeze
 
         # Open or in progress: the work a resume lists.
         def open? = OPEN.include?(status)
+
+        # Open or future: the work has not begun, so it is a candidate to start once what it needs is finished.
+        def unstarted? = UNSTARTED.include?(status)
 
         # Done or abandoned: the work is over.
         def closed? = GROUPS.fetch("finished").include?(status)
