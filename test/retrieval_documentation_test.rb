@@ -27,6 +27,33 @@ class RetrievalDocumentationTest < Minitest::Test
     assert_includes commands, "intent context 12 --from selected-context.json"
   end
 
+KEPT_QMD_FILES = %w[
+  CHANGELOG.md
+  lib/plastic/installations/hook_registry.rb
+  lib/plastic/installations/hook_ownership.rb
+].freeze
+
+def test_no_shipped_file_names_qmd_outside_the_kept_places
+  shipped = `git -C #{ROOT} ls-files`.split("\n").reject { |path| path.start_with?("test/") }
+  named = (shipped - KEPT_QMD_FILES).select do |path|
+    file = File.join(ROOT, path)
+    File.file?(file) && File.read(file).force_encoding("UTF-8").scrub.match?(/qmd/i)
+  end
+
+  assert_empty named
+end
+
+def test_tools_help_has_no_qmd_section_and_still_names_enola
+  content = File.read(File.join(ROOT, "docs/help/tools.md"))
+
+  refute_match(/qmd/i, content)
+  assert_includes content, "Enola"
+end
+
+def test_the_installed_plastic_template_has_no_qmd
+  refute_match(/qmd/i, File.read(File.join(ROOT, "PLASTIC.md")))
+end
+
   private
 
   def public_docs
