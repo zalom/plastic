@@ -12,7 +12,9 @@ module Plastic
       class Intent
         # One report of an intent: the intent that holds it and its path under resources/output/reports/. The intent and
         # the path travel together, so the Reporter takes one value, not two.
-        class ReportFile < Data.define(:intent, :path)
+        ReportFile = Data.define(:intent, :path)
+
+        class ReportFile
           MANDATORY = "mandatory"
 
           def id = intent.intent_id
