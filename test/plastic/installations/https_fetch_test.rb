@@ -2,6 +2,7 @@
 
 require_relative "../../test_helper"
 require "net/http"
+require "openssl"
 require "plastic/installations/https_fetch"
 
 class HttpsFetchTest < Plastic::TestCase
@@ -82,6 +83,46 @@ class HttpsFetchTest < Plastic::TestCase
     fetch(http).download("https://example.test/a", File.join(@home, "asset"), "Authorization" => "Bearer QQ==")
 
     assert_equal [{ "Authorization" => "Bearer QQ==" }, {}], http.headers
+  end
+
+  # Raises what Net::HTTP raises when the host cannot be reached.
+  class Unreachable
+    def initialize(error) = @error = error
+
+    def get_response(_uri, _headers) = raise(@error)
+  end
+
+  NETWORK_ERRORS = {
+    "connection refused" => Errno::ECONNREFUSED.new("connect(2) for example.test port 443"),
+    "name not resolved" => SocketError.new("getaddrinfo: nodename nor servname provided"),
+    "timeout" => Net::OpenTimeout.new("execution expired"),
+    "TLS failure" => OpenSSL::SSL::SSLError.new("certificate verify failed"),
+    "connection reset" => Errno::ECONNRESET.new
+  }.freeze
+
+  def test_a_network_error_is_a_plain_message_that_names_the_url
+    NETWORK_ERRORS.each do |label, cause|
+      error = assert_raises(Plastic::Installations::FetchError, label) { fetch(Unreachable.new(cause)).read("https://example.test/a") }
+
+      assert_match(%r{\Acannot reach https://example.test/a: }, error.message, label)
+      refute_match(/Errno|SocketError|Net::|OpenSSL/, error.message, label)
+    end
+  end
+
+  def test_a_network_error_on_a_download_names_the_url_too
+    error = assert_raises(Plastic::Installations::FetchError) do
+      fetch(Unreachable.new(Errno::ECONNREFUSED.new)).download("https://example.test/f", File.join(@home, "f"))
+    end
+
+    assert_match(%r{\Acannot reach https://example.test/f: }, error.message)
+  end
+
+  def test_a_fetch_error_is_a_failure_so_it_exits_1_without_its_class_name
+    assert_equal Plastic::Failed, Plastic::Installations::FetchError.superclass
+  end
+
+  def test_an_error_that_is_not_a_network_error_is_not_rescued
+    assert_raises(NoMethodError) { fetch(Unreachable.new(NoMethodError.new("bug"))).read("https://example.test/a") }
   end
 
   private
