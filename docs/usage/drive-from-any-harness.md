@@ -8,16 +8,17 @@ shows the loop a driver runs.
 ## The driver role
 
 When the driver is the open Claude Code or Codex session, `plastic install` writes the role
-`plastic-driver` for it, next to the planner and executor roles. The role tells the session to run
+`plastic-driver` for it, next to the planner, executor and retriever roles. The role tells the session to run
 the loop below: start one subagent or background worker for each ready node, of the role that fits
-the node's kind, and hand it the intent id and the node id. The worker claims its node, which
-prints the claim packet, and finishes it itself.
+the node's kind, and hand it the intent id and the node id. The driver picks the `--agent` name of each worker and hands it over with the ids. The worker claims its node, which
+prints the claim packet, and finishes it itself. The driver waits for the harness's notice that a worker ended, then reads
+`plastic graph ready ID --json` again; it does not poll in a loop.
 
 | Node kind | Worker |
 | --------- | ------ |
 | `orchestrator` | The planner role, `plastic-planner`. |
 | `work` | The executor role, `plastic-executor`. |
-| `retrieval` | A read-only worker that searches and reports. |
+| `retrieval` | The read-only retriever role, `plastic-retriever`. |
 
 The worker finishes with `plastic node done ID NODE TEXT --output PATH`, so the next node reads its
 output in its packet. At most 3 workers run at once. The setting `driver.max_workers` holds the
