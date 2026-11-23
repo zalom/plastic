@@ -29,13 +29,13 @@ module Plastic
 
         # The folders older than the retention, except the newest backup the runner took before a migration.
         def expired(now:)
-          kept = @folders.names.reverse.find { |name| @folders.report(name)["reason"] == "migration" }
+          kept = @folders.latest { |name| @folders.report(name)["reason"] == "migration" }
           names(older_than: now - @retention).reject { |name| name == kept }
         end
 
         # Deletes the expired folders, but keeps the newest backup that is done and the folders named in keep.
         def sweep(now:, keep: [])
-          newest_done = @folders.names.reverse.find { |name| @folders.status(name) == "done" }
+          newest_done = @folders.latest { |name| @folders.status(name) == "done" }
           (expired(now:) - [newest_done] - keep).each { |name| remove(name) }
         end
 
