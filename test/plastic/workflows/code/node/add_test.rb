@@ -4,7 +4,7 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/workflows/code/node/add"
 
 class AddNodeTest < Plastic::TestCase
-  def add(intent_id: "1") = run_workflow(Plastic::Workflows::Code::Node::Add, intent_id:, title: "Build", criterion: "runs", kind: nil, input: nil, found_in: nil)
+  def add(intent_id: "1") = run_workflow(Plastic::Workflows::Code::Node::Add, intent_id:, title: "Build", criterion: "runs", kind: nil, input: nil, found_in: nil, deadline: nil)
 
   def test_a_node_is_written_open_and_named
     open_keyed_intent(key: "runs")

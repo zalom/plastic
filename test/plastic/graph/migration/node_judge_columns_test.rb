@@ -20,8 +20,8 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 
-  # The driver migration is the newest and removes its version alone, so one more down comes first.
-  def drivers_down(home) = down(home)
+  # The deadline and driver migrations are the newest and remove their versions alone, so two more downs come first.
+  def drivers_down(home) = 2.times { down(home) }
 
   def test_a_new_store_has_no_judge_or_verdict_column_on_a_node
     home = fresh_home
