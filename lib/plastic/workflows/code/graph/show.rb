@@ -21,7 +21,7 @@ module Plastic
 
           read "print each node" do |context|
             found = found_in(context.retrieval.structure.edges(context.intent_id))
-            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node, found[node.id])) }
+            print_nodes(context, found)
           end
 
           read "print each need" do |context|
@@ -31,6 +31,23 @@ module Plastic
           read "print each run" do |context|
             context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
           end
+
+          # Each node's line, then one `input: PATH` line for each of its input paths in the order given.
+          def self.print_nodes(context, found)
+            intent_id = context.intent_id
+            structure = context.retrieval.structure
+            paths = structure.node_inputs(intent_id).group_by(&:node_id)
+            node_lines(structure.nodes(intent_id), found, paths).each { |line| context.print(line) }
+          end
+
+          def self.node_lines(nodes, found, paths) = nodes.flat_map { |node| node_block(node, found, paths) }
+
+          def self.node_block(node, found, paths)
+            id = node.id
+            [Lines.node(node, found[id]), *input_lines(paths, id)]
+          end
+
+          def self.input_lines(paths, node_id) = paths.fetch(node_id, []).map { |row| "input: #{row.path}" }
 
           # The node each found node was found in, by the found node.
           def self.found_in(edges) = edges.reject(&:needs?).to_h { |edge| [edge.from, edge.to] }
