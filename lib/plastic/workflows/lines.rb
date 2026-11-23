@@ -22,7 +22,7 @@ module Plastic
       # (the worker, the model, the tokens and the cost) and what it did not.
       def self.run_line(run)
         state = run.open? ? "open" : run.result
-        head = "run: #{run.node_id} ###{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
+        head = "run: #{run.node_id} ##{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
         [head, usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
       end
 
