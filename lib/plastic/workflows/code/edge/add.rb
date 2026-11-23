@@ -6,8 +6,8 @@ module Plastic
   module Workflows
     module Code
       module Edge
-        # Writes one guarded edge: fails on a self edge, a missing or removed
-        # node, a duplicate edge, or a loop back to its own start, each with its own reason.
+        # Writes one guarded edge. An end of the edge that is not a node of the intent fails with exit 1;
+        # a self edge, a duplicate edge, a loop back to its own start, or a removed node is refused with exit 3.
         class Add < CodeWorkflow
           clear_declarations
 
@@ -28,7 +28,7 @@ module Plastic
 
           gate "%{problem}", stops: :failure,
             words: "an end of the edge is not a node of the intent",
-            pass: ->(context) { context.kind != :failure }
+            pass: ->(context) { context.kind != :missing }
 
           gate "%{problem}", stops: :refusal,
             words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is a removed node",
