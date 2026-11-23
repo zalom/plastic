@@ -1,7 +1,7 @@
 # Plastic
 
 Plastic is one command, `plastic`. `plastic help` lists commands, `plastic help <command>`
-gives one command's options, and `plastic help tools` covers RTK, QMD and Enola.
+gives one command's options, and `plastic help tools` covers RTK and Enola.
 
 `plastic status` shows the work of every store by group. `plastic graph resume` says where
 the work stopped and what runs next, across several projects with `--stores a,b`. When a
