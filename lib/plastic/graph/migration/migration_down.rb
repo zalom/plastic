@@ -34,12 +34,14 @@ module Plastic
       class Trial < StandardError; end
       private_constant :Trial
 
-      # The version a down removed, the rows it put back by table, the rows it built by table, and the backup it took first.
-      Undone = Data.define(:version, :moved, :built, :backup, :ledger_gap)
+      # The version a down removed, the rows it put back by table, the rows it built by table, the needs links it removed
+      # (nil for a version that removes none), and the backup it took first.
+      Undone = Data.define(:version, :moved, :built, :removed, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
-      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
-                   "20261123120000" => RoadmapNeedsLinks }.freeze
+      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns }.freeze
+      # The versions whose down takes off the links the migration wrote, and answers how many.
+      REMOVALS = { "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }
 
       UNDO = "a down cannot undo it; restore a backup to go back"
@@ -70,9 +72,9 @@ module Plastic
       def call
         check
         backup = backed_up
-        moved, built = undo
+        moved, built, removed = undo
         ledger_gap = MigrationLedger.write(@home, @now) { |ledger| ledger.record(@slug, "down", version, moved:, undoable: false) }
-        Undone.new(version:, moved:, built:, backup:, ledger_gap:)
+        Undone.new(version:, moved:, built:, removed:, backup:, ledger_gap:)
       ensure
         @store.release
       end
@@ -123,7 +125,7 @@ module Plastic
       def undo
         undone = connection.atomically do
           connection.execute(DELETE, [version])
-          [tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }, @rebuilds.fetch(version, NONE).call(connection)]
+          [tables.to_h { |table| [table.table, table.restore.tap { table.drop }] }, @rebuilds.fetch(version, NONE).call(connection), REMOVALS[version]&.call(connection)]
         end
         @store.give_back
         undone

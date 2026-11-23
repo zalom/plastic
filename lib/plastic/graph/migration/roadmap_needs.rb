@@ -35,6 +35,10 @@ module Plastic
       SQL
       INTENT = "SELECT 1 FROM main.intents WHERE intent_id = ?"
       NEEDS = "SELECT from_ref, to_ref FROM main.links WHERE kind = 'needs'"
+      # The keys of the links this step wrote, kept in legacy.db beside the roadmap tables so the down removes only these.
+      # The name has no version suffix, so it is no legacy table to put back.
+      WRITTEN = "written_needs_links"
+      RECORD = %(CREATE TABLE IF NOT EXISTS legacy."#{WRITTEN}" ("from_ref" TEXT NOT NULL, "to_ref" TEXT NOT NULL, PRIMARY KEY ("from_ref", "to_ref")))
       INSERT = "INSERT OR IGNORE INTO main.links (from_ref, to_ref, kind, at, origin_id) VALUES (?, ?, 'needs', COALESCE(?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')), ?)"
 
       # `keep` is the keep of the data step; the step keeps nothing more, since the tables are in legacy.db whole.
@@ -48,6 +52,7 @@ module Plastic
 
         pairs = @connection.read(NEEDS).map { |row| row.values_at("from_ref", "to_ref") }
         edges = @connection.read(EDGES)
+        @connection.execute(RECORD)
         written = edges.count { |edge| link(edge, pairs) }
         Result.new(written:, skipped: edges.size - written)
       end
@@ -62,6 +67,9 @@ module Plastic
         return false unless usable?(from, to) && EdgeWalk.new(pairs).path(to, from).nil?
 
         @connection.execute(INSERT, [from, to, at, origin])
+        return false if @connection.changes.zero?
+
+        @connection.execute(%(INSERT INTO legacy."#{WRITTEN}" VALUES (?, ?)), [from, to])
         pairs << [from, to]
         true
       end
