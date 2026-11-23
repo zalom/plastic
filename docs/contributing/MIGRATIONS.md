@@ -208,6 +208,13 @@ value, so it has no switch, and a node it finds keeps no deadline. It is in `ALO
 `NodeDeadlineColumn` in `REBUILDS`, drops the column again; the backup that the down takes first holds
 any deadline a node had.
 
+Migration `20261123170000` lets a node read several input paths. It creates the table `node_inputs` in
+`work_graph.db`, one row for each path with its `position`, copies each stored `nodes.input` as
+position 1, and drops the column. It is in `ALONE`, and its down, `NodeInputsColumn` in `REBUILDS`,
+adds the column back, fills it from position 1 and drops the table; a node with more than one path
+keeps only the first, and the backup that the down takes first holds the rest. A graph file that an
+earlier release printed with `input` on a node still reads: the sync reads it as a row at position 1.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
