@@ -126,11 +126,11 @@ worker. Both harnesses keep their own run records, so the run figures come from 
 
 ### Choose the model of a role
 
-The model of a role is the setting `agents.models.ROLE`. Set it for one harness, then reinstall so the
-role file carries it:
+The model of a role is the setting `agents.models.ROLE`. Set it for one harness, named `claude-code`,
+`codex` or `hermes`, then reinstall so the role file carries it:
 
 ```
-plastic config set agents.models.plastic-executor qwen3-coder:30b --harness claude
+plastic config set agents.models.plastic-executor qwen3-coder:30b --harness claude-code
 plastic config set agents.models.plastic-executor gpt-oss:20b --harness codex
 plastic install --reinstall
 ```
@@ -155,8 +155,11 @@ ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama ANTHROPIC_
 - Claude Code asks for its Sonnet, Haiku and Opus tiers for some steps. To send all of them to the local
   model, set `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL` and
   `ANTHROPIC_DEFAULT_OPUS_MODEL` to the same name.
-- A small context window is the usual failure. Raise the server's, for example `OLLAMA_CONTEXT_LENGTH=32768`
-  when starting `ollama serve`, because the claim packet and the role text are long.
+- The model must support tool calling. Ollama refuses one that does not, for example `deepseek-r1:8b`
+  answers "does not support tools".
+- Give the server a context of 64k tokens or more, as the Ollama pages for Claude Code and Codex say, for
+  example `OLLAMA_CONTEXT_LENGTH=65536` when starting `ollama serve`. A small window is the usual failure,
+  because the claim packet and the role text are long.
 - Claude Code does not fall back to the Anthropic cloud when the server does not answer; the call fails.
 
 ### Codex on a local Ollama server
@@ -168,11 +171,31 @@ the [Ollama page for Codex](https://docs.ollama.com/integrations/codex):
 codex exec --oss --local-provider ollama -m gpt-oss:20b "$PACKET"
 ```
 
-- `--local-provider` takes `ollama` or `lmstudio`. Without it `codex exec` has no prompt to ask which one,
-  so name it. To set a default, put `oss_provider = "ollama"` in `~/.codex/config.toml`; the flag still wins.
+- `--local-provider` takes `ollama` or `lmstudio`. Without it, and with no default set, Codex 0.171.0 stops with
+  "No default OSS provider configured. Use --local-provider=provider or set oss_provider to one of: lmstudio,
+  ollama in config.toml". To set a default, put `oss_provider = "ollama"` in `~/.codex/config.toml`.
+- `codex exec` refuses to run outside a git repository; add `--skip-git-repo-check` for a worker that runs elsewhere.
+- The model must support tool calling and the server needs a context of 64k tokens or more, as for Claude Code.
 - The flag chooses the server. The model comes from `-m`, or from the `model` field of the role file when
   the worker is a Codex subagent.
 - Ollama must be a version that the installed Codex supports; update both when `--oss` is refused.
+
+### How a node reaches a local worker
+
+1. The driver runs `plastic graph ready ID --json` and takes a ready node. The node kind picks the role:
+   `work` goes to `plastic-executor`, `orchestrator` to `plastic-planner` and `retrieval` to
+   `plastic-retriever`. The setting `agents.models.ROLE` of that role names the local model.
+2. The driver runs `plastic node claim ID NODE --agent NAME --json`. The packet is `result.packet`.
+3. The driver starts the worker as its own process with the command of its harness above, the model of
+   the role and the packet as the prompt.
+4. The worker, or the driver for it, records the result with `plastic node done ID NODE TEXT --output PATH`.
+
+The role file carries only the model name, no base URL. A subagent that a cloud session starts therefore
+uses the endpoint of its parent session. To run on the local server, start the worker as its own
+`claude -p` or `codex exec` process with the environment above.
+
+The run record shows no cost for such a run: `claude -p` against Ollama reports `total_cost_usd` as 0.
+Tokens and timing still come from the harness's own record.
 
 ### What stays the same
 

@@ -21,6 +21,10 @@ class DocsLocalModelTest < Minitest::Test
     assert_includes DOC, "plastic install --reinstall"
   end
 
+  def test_the_docs_name_the_requirements_and_the_node_path
+    ["does not support tools", "64k", "--skip-git-repo-check", "No default OSS provider configured. Use --local-provider=provider", "`work` goes to `plastic-executor`", "plastic node claim ID NODE --agent NAME --json", "`total_cost_usd` as 0", "no base URL"].each { |phrase| assert_includes DOC, phrase }
+  end
+
   def test_the_official_sources_are_cited
     ["https://docs.ollama.com/integrations/claude-code", "https://docs.ollama.com/integrations/codex"].each { |url| assert_includes DOC, url }
   end
