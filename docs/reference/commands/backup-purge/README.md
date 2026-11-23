@@ -12,7 +12,7 @@ plastic backup purge --store SLUG (--older-than DATE | --all | --failed | --inte
 | `--older-than DATE` | delete the backups before this date or time |  |
 | `--all` | delete every backup of the store | `false` |
 | `--failed` | delete every backup whose status is failed | `false` |
-| `--interrupted` | delete every backup in progress for over five minutes, whether its run stopped or is only slow | `false` |
+| `--interrupted` | delete every backup in progress or with no status file for over five minutes, whether its run stopped or is only slow | `false` |
 | `--dry-run` | list what would be deleted and delete nothing | `false` |
 
 ## The workflows of one call

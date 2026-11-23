@@ -20,7 +20,7 @@ module Plastic
         option :older_than, switch: "--older-than DATE", text: "delete the backups before this date or time"
         option :all, switch: "--all", default: false, text: "delete every backup of the store"
         option :failed, switch: "--failed", default: false, text: "delete every backup whose status is failed"
-        option :interrupted, switch: "--interrupted", default: false, text: "delete every backup in progress for over five minutes, whether its run stopped or is only slow"
+        option :interrupted, switch: "--interrupted", default: false, text: "delete every backup in progress or with no status file for over five minutes, whether its run stopped or is only slow"
         option :dry_run, switch: "--dry-run", default: false, text: "list what would be deleted and delete nothing"
 
         workflow :code_preview_backup_purge do
