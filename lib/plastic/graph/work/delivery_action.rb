@@ -18,11 +18,11 @@ module Plastic
         MAP_FIRST = "Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
           "so you plan the graph from the real architecture; Plastic runs no tool. "
 
-        # `code` is true when the intent's project names a repository; only code work maps the code before planning.
-        def initialize(retrieval, intent_id, code: false)
+        # `work` is :code when the intent's project names a repository; only code work maps the code before planning.
+        def initialize(retrieval, intent_id, work: :general)
           @retrieval = retrieval
           @intent_id = intent_id
-          @code = code
+          @work = work
         end
 
         def call
@@ -50,7 +50,7 @@ module Plastic
         def live_in(state) = live.find { |node| node.state == state }
 
         def planning
-          [nil, "the harness must plan this intent", "#{MAP_FIRST if @code}" \
+          [nil, "the harness must plan this intent", "#{MAP_FIRST if @work == :code}" \
             "Read the intent's goal and done criteria. Add work with " \
             "plastic node add #{@intent_id} TITLE --criterion KEY, then add dependencies with plastic edge add. " \
             "#{PlanningDirective::EDGE_MEANING} Run plastic graph check #{@intent_id} after the edges and repair each finding it names, " \

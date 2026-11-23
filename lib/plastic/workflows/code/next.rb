@@ -19,7 +19,7 @@ module Plastic
 
         read "pick the intent and its next command" do |context|
           pick = Plastic::Graph::Work::NextPick.new(context.retrieval, context.session, now: context.now)
-          context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::NextOffer.new(context.retrieval, pick, code: Plastic::Workflows::Worktree.code?(context.scope)).call
+          context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::NextOffer.new(context.retrieval, pick, work: Plastic::Workflows::Worktree.work(context.scope)).call
         end
 
         outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the next step is the agent's to take"

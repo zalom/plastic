@@ -48,7 +48,7 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   def test_no_outcome_records_neither
     read = read_outcome
 
-    refute read.merged?
+    refute_predicate read, :merged?
   end
 
   def test_a_bold_label_counts

@@ -12,7 +12,7 @@ class WorkDeliveryActionCase < Plastic::TestCase
     @work.activate_intent("1")
   end
 
-  def action(intent_id = "1", code: false) = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id, code:).call
+  def action(intent_id = "1", work: :general) = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id, work:).call
 
   def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
 
@@ -30,7 +30,7 @@ class WorkDeliveryActionTest < WorkDeliveryActionCase
   end
 
   def test_the_planning_instruction_of_code_work_starts_with_mapping_the_code_and_reading_agents_md
-    assert action(code: true).last.start_with?("Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+    assert action(work: :code).last.start_with?("Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
       "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal")
   end
 
