@@ -113,4 +113,33 @@ class IntentReportMandatoryTest < Plastic::TestCase
 
     assert_includes call.out, "nothing written"
   end
+
+  def rows_of(path) = %w[documents document_heads].map { |table| store_database.rows("SELECT * FROM #{table} WHERE path = '#{path}'").map(&:values) }
+
+  def test_rewriting_the_line_leaves_the_rows_of_the_report_as_they_were
+    call
+    before = rows_of(REPORT)
+    seed_config(@plastic_home, MANDATORY)
+    call
+
+    assert_equal before, rows_of(REPORT)
+  end
+
+  def test_rewriting_the_line_gives_only_the_outcome_a_new_head
+    call
+    before = rows_of("outcome.md")
+    seed_config(@plastic_home, MANDATORY)
+    call
+
+    refute_equal before, rows_of("outcome.md")
+  end
+
+  def test_a_changed_setting_writes_nothing_when_the_outcome_does_not_list_the_report
+    write("#{retrieval.intent("1").dir}/outcome.md", OUTCOME)
+    store_database.transaction { |batch| batch.write(:work_log, "INSERT INTO work_log (intent_id, position, at, phase, node, session_id, kind, path, sha256, text, origin_id) VALUES ('1', 99, '', '', '', '', 'reported', '#{REPORT}', '#{Digest::SHA256.hexdigest("<p>page</p>\n")}', '', 'other')") }
+    seed_config(@plastic_home, MANDATORY)
+    call
+
+    assert_equal OUTCOME, outcome
+  end
 end
