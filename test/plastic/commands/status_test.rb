@@ -165,3 +165,23 @@ class StatusMissingStoreTest < Plastic::TestCase
     assert_includes result.out, "global has no store folder"
   end
 end
+
+class StatusBlockedIntentTest < Plastic::TestCase
+  def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)
+
+  def test_an_intent_that_needs_an_unfinished_intent_shows_what_it_waits_on
+    open_intent("Alpha")
+    open_intent("Beta")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    assert_match(/^\s*1 Alpha \(open\).*waits on 2/, call.out)
+  end
+
+  def test_an_intent_whose_needed_intents_are_done_shows_no_wait
+    open_intent("Alpha")
+    open_intent("Beta", status: "done")
+    store_graphs.work.add_link(from_ref: "1", to_ref: "2", kind: "needs")
+
+    refute_includes call.out, "waits on"
+  end
+end
