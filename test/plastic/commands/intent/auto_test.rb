@@ -4,7 +4,6 @@ require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/intent/auto"
 
 class IntentAutoTest < Plastic::TestCase
-  include RoadmapHelper
   include AutoHelper
 
   def test_a_clear_spec_with_a_go_ahead_goes_in_progress_and_offers_the_brief
@@ -123,15 +122,6 @@ class IntentAutoTest < Plastic::TestCase
 
     assert_equal [1, []], [result.code, claim_rows]
     assert_includes result.err, "no intent 9 in this store"
-  end
-
-  def test_a_roadmap_slug_is_not_an_intent_id
-    store_graphs.work.write_batch("r1", 1, fields: roadmap_fields("T", goal: "G", done: "d"))
-
-    result = call("r1")
-
-    assert_equal [1, ""], [result.code, next_line(result).to_s]
-    assert_includes result.err, "no intent r1 in this store"
   end
 
   def test_an_active_intent_stays_in_progress_and_takes_no_lock
