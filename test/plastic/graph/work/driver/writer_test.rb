@@ -138,4 +138,23 @@ class WorkDriverWriterTest < Plastic::TestCase
 
     assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the claim lapsed"], driver_lines
   end
+  def test_releasing_an_intent_deletes_its_claim_and_names_the_holder
+    drive
+
+    assert_equal ["s-1", nil], [work.release_driver("1"), driver_row]
+  end
+
+  def test_releasing_an_intent_leaves_the_claim_of_another_intent
+    store_graphs.work.write_intent(title: "Beta")
+    store_graphs.work.activate_intent("2")
+    drive
+    work.drive_intent(intent_id: "2", by: "s-1")
+    work.release_driver("1")
+
+    assert_equal ["2"], store_graphs.databases.fetch(:store).rows("SELECT intent_id FROM drivers").map { |row| row["intent_id"] }
+  end
+
+  def test_releasing_an_intent_nobody_drives_names_no_holder
+    assert_nil work.release_driver("1")
+  end
 end

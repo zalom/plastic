@@ -36,4 +36,33 @@ class CloseIntentTest < Plastic::TestCase
     assert_raises(Plastic::Failed) { close }
     assert_nil structure.completions("1").first
   end
+  def drive(session) = session_graphs(session).work.drive_intent(intent_id: "1", by: session)
+
+  def drivers = store_graphs.databases.fetch(:store).rows("SELECT session_id FROM drivers")
+
+  def test_the_close_releases_the_driver_claim_of_the_intent
+    ready
+    drive("s-1")
+
+    close
+
+    assert_empty drivers
+  end
+
+  def test_the_close_says_which_session_held_the_driver_claim
+    ready
+    drive("s-1")
+
+    _, context = close
+
+    assert_includes context.printed, "driver claim: released, held by session s-1"
+  end
+
+  def test_a_close_with_no_driver_claim_prints_no_release_line
+    ready
+
+    _, context = close
+
+    assert_equal ["intent: 1 done"], context.printed
+  end
 end
