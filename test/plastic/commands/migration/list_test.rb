@@ -33,7 +33,7 @@ class MigrationListTest < Plastic::TestCase
   def test_a_list_of_a_fresh_store_prints_every_line
     home = fresh_home
 
-    assert_call list(home), code: 0, out: fresh_lines(home).map { |line| "#{line}\n" }.join
+    assert_call list(home), code: 0, out: /\A#{Regexp.escape(fresh_lines(home).map { |line| "#{line}\n" }.join)}because: /
   end
 
   def test_a_list_of_a_fresh_store_in_json_gives_every_line

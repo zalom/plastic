@@ -44,7 +44,7 @@ module Plastic
           def self.down_line(context, kept)
             down = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
             refusal = down.refusal
-            refusal ? "down: #{refusal}" : "down: would undo migration #{down.version} and put back #{Migration.counted(kept.fetch(down.version))}"
+            refusal ? "down: #{refusal}" : "down: would undo migration #{down.version} and put back #{Migration.counted(kept.fetch(down.version, {}))}"
           end
 
           def self.kept(context)
