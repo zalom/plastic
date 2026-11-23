@@ -123,4 +123,14 @@ class UpdatePlasticTest < Plastic::TestCase
 
     assert_equal [:current, ["99.0.0-alpha.1"]], [outcome, activation.releases.versions]
   end
+  def test_a_real_run_that_cannot_read_the_local_release_folder_names_the_folder
+    installed("99.0.0-alpha.1")
+    activated("99.0.0-alpha.1")
+    missing = File.join(@home, "missing-release")
+
+    error = assert_raises(Plastic::Failed) { update(env: current("99.0.0-alpha.1").merge("PLASTIC_LOCAL_RELEASE" => missing)) }
+
+    assert_includes error.message, "cannot read the local release folder #{missing}"
+    refute_match(/Errno/, error.message)
+  end
 end

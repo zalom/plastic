@@ -62,6 +62,18 @@ class PreviewUpdateTest < Plastic::TestCase
     assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.4"]]], [outcome, printed_rows(context)]
   end
 
+  def test_a_dry_run_that_cannot_read_the_local_release_folder_names_the_folder
+    installed("2.0.5")
+    activated("2.0.5")
+    missing = File.join(@home, "missing-release")
+    harness = scoped_harness(env: { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5"), "PLASTIC_SHARE" => share, "PLASTIC_LOCAL_RELEASE" => missing })
+
+    error = assert_raises(Plastic::Failed) { run_workflow(Plastic::Workflows::Code::Update::Preview, harness:, dry_run: true, channel: nil) }
+
+    assert_includes error.message, "cannot read the local release folder #{missing}"
+    refute_match(/Errno/, error.message)
+  end
+
   def test_a_real_run_never_reads_the_release_source
     installed("2.0.5")
     activated("2.0.5")
