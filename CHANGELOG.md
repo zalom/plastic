@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.17
+
 - A run counts the worker turn that falls inside the second the run ended. The run's end is stored in whole seconds and the turn that runs the done command can be stamped a fraction of a second later, so its tokens were left out of the run.
 
 ## 3.0.0-beta.16
