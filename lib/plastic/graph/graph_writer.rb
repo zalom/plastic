@@ -17,7 +17,7 @@ module Plastic
     # home, and the rows and printed files of one store. Every write keeps
     # the store's databases out of its versioning. `session` names the
     # harness session this call runs as, nil when the harness sets none.
-    class WorkGraph
+    class GraphWriter
       extend Forwardable
 
       def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note

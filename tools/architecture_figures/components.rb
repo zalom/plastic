@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Components
     META = Diagram::Meta.new(file: "components.svg", width: 1240, height: 955, title: "The components of the plastic kernel",
-      desc: "The command line finds a row in CLI::TABLE and builds a Routine. The Command runs the workflow chain through Routine::Traversal, which finds each workflow in Workflows::REGISTRY, and it opens the Graph. Graph::WorkGraph writes every database through Graph::Writers, Graph::RetrievalGraph reads every database, and Graph::Printer prints files.")
+      desc: "The command line finds a row in CLI::TABLE and builds a Routine. The Command runs the workflow chain through Routine::Traversal, which finds each workflow in Workflows::REGISTRY, and it opens the Graph. Graph::GraphWriter writes every database through Graph::Writers, Graph::RetrievalGraph reads every database, and Graph::Printer prints files.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       commands | zone | 10 10 1220 235 | Commands: one call in, one report out | | | |
       routine | | 30 44 260 | Routine | class | code | mono | Runs one command to a report.
@@ -21,14 +21,14 @@ module ArchitectureFigures
       code | | 495 430 230 | CodeWorkflow | class | line | mono | Ruby steps, in order.
       agent | | 785 430 230 | AgentWorkflow | class | agent | mono | Steps in words for the agent.
       graph | zone | 10 565 1220 376 | Graph module | | | |
-      work | | 30 601 770 | Graph::WorkGraph | class | line | mono | The write side of every database.
+      work | | 30 601 770 | Graph::GraphWriter | class | line | mono | The write side of every graph: databases, printed files and the machine database.
       writers | | 880 601 330 | Graph::Writers | class | line | mono | Does the writes for the work graph.
       local | cylinder | 30 735 170 | plastic.db | | | |
       work_db | cylinder | 230 735 170 | work_graph.db | | | |
       knowledge_db | cylinder | 430 735 170 | knowledge_graph.db | | | |
       retrieval_db | cylinder | 630 735 170 | retrieval_graph.db | | | |
       database | | 880 722 330 | Graph::Database | class | code | mono | One SQLite file, one transaction a write.
-      retrieval | | 30 842 770 | Graph::RetrievalGraph | class | line | mono | The read side of every database. It writes nothing.
+      retrieval | | 30 842 770 | Graph::RetrievalGraph | class | line | mono | The read side of every database. Only repair and reindex write, to the derived tables.
       printer | | 880 842 330 | Graph::Printer | class | line | mono | Prints the rows as files.
     TABLE
     ARROWS = [
@@ -53,7 +53,7 @@ module ArchitectureFigures
     ].freeze
     NAMES = [
       *%w[CLI CLI::TABLE CLI::Declarations Scope Routine Routine::Traversal CLI::Hook Workflows::REGISTRY CodeWorkflow AgentWorkflow
-        Graph Graph::WorkGraph Graph::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
+        Graph Graph::GraphWriter Graph::Writers Graph::Database Graph::RetrievalGraph Graph::Printer].map { |name| ["class", name, name] },
       *%w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] }
     ].freeze
 
