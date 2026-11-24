@@ -204,3 +204,32 @@ class WorkDriverWriterAgentTest < Plastic::TestCase
     assert_equal "2026-11-23T08:10:00Z", driver_row["seen_at"]
   end
 end
+
+# Two sessions take a driver claim at once: the write is guarded by the holder each read, so the one that read a
+# holder that is gone by its write loses and is told who holds the claim.
+class WorkDriverWriterRaceTest < Plastic::TestCase
+  # A writer whose first read of the holder came before another session took the claim.
+  class StaleRead < Plastic::Graph::Work::Driver::Writer
+    private
+
+    def holder(intent_id)
+      return super if @read
+
+      @read = true
+      nil
+    end
+  end
+
+  def setup
+    super
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def test_a_claim_that_loses_the_race_is_held_by_the_session_that_won
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2").work.drive_intent(intent_id: "1", by: "s-2", mode: "auto")
+    writer = StaleRead.new(store_graphs.databases, store_graphs.retrieval)
+
+    assert_equal [:held, "s-2", nil], writer.claim(intent_id: "1", by: "s-1", mode: "auto", agent: "deliver")
+  end
+end
