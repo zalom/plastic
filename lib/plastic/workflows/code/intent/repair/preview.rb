@@ -21,7 +21,8 @@ module Plastic
             def self.plan(context)
               reports = Repair.reports(context).recorded_from(context.database(:store))
               closed = Knowledge::Resources::SortPlan.closed(context.retrieval)
-              Knowledge::Repair::Plan.new(Repair.folder(context), reports:, closed:, dirs: Repair.dirs(context), held: context.held.to_set)
+              Knowledge::Repair::Plan.new(Repair.folder(context), reports:, closed:, dirs: Repair.dirs(context), held: context.held.to_set,
+                links_left: context.links_left)
             end
 
             def self.lines(context)

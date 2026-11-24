@@ -13,12 +13,14 @@ module Plastic
         argument :intent_id, label: "ID", text: "the intent whose folder to repair", optional: true
         option :all, switch: "--all", default: false, text: "repair every intent folder of the store, and remove the retired entries of its store folder"
         option :dry_run, switch: "--dry-run", default: false,
-          text: "list the renames, the moves, the removals, the links that would change and the amendments of closed intents, and change nothing"
+          text: "list one line for each intent folder the repair would change, the links that would change and the amendments of closed intents, then the totals, and change nothing"
+        option :links_left, switch: "--links-left", default: false,
+          text: "also list each link the repair leaves as it is, which the totals otherwise count"
         writes :retrieval
 
         changes(knowledge: "The rows of the moved files move with them, the rows of the removed files go, and the rows of the files with changed links are rewritten",
           store: "Files are renamed, moved or removed where the layout says, the links that point at them are rewritten, and with --all the retired entries of the store folder go",
-          work: "Each change to a done or abandoned intent and each entry of an old revisions.md gets an amended work log line, printed to its work.log")
+          work: "A done or abandoned intent gets one amended work log line for the renames, moves and removals of its folder and one for each link it changes, and each entry of an old revisions.md gets one, printed to its work.log")
 
         backs_up_first
 

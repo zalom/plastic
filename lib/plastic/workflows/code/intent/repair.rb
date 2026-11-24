@@ -43,7 +43,8 @@ module Plastic
           def self.leftovers(context) = context.all ? Knowledge::Repair::StoreLeftovers.new(folder(context)) : nil
 
           def self.repair(context)
-            run = Knowledge::Repair::Run.new(folder(context), graphs(context), reports: reports(context), dirs: dirs(context), held: context.held.to_set)
+            run = Knowledge::Repair::Run.new(folder(context), graphs(context), reports: reports(context), dirs: dirs(context), held: context.held.to_set,
+              links_left: context.links_left)
             [*run.call, *leftovers(context)&.call]
           end
 
