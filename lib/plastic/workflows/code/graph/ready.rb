@@ -23,7 +23,7 @@ module Plastic
           read "list the ready nodes" do |context|
             context[:nodes] = context.retrieval.ready_nodes(context.intent_id)
             context[:first] = context.nodes.first&.id
-            context.nodes.each { |node| context.print("ready: #{node.id} #{node.title}") }
+            context.nodes.each { |node| context.print(Lines.ready_node(node)) }
             context.data("nodes", node_fields(context))
           end
 

@@ -2,6 +2,7 @@
 
 require_relative "../../../code_workflow"
 require_relative "../../lines"
+require_relative "../../run_times"
 
 module Plastic
   module Workflows
@@ -29,7 +30,15 @@ module Plastic
           end
 
           read "print each run" do |context|
-            context.retrieval.structure.runs(context.intent_id).each { |run| context.print(Lines.run_line(run)) }
+            runs = context.retrieval.structure.runs(context.intent_id)
+            runs.each { |run| context.print(Lines.run_line(run)) }
+            context.data("runs", runs.map { |run| run_data(run) })
+          end
+
+          # A run as data for a JSON answer: its node, number, start, end and length in whole seconds, nil while it runs.
+          def self.run_data(run)
+            started, ended = run.started_at, run.ended_at
+            { "node" => run.node_id, "number" => run.number, "started_at" => Plastic.local(started), "ended_at" => (Plastic.local(ended) if ended), "length_seconds" => (RunTimes.seconds(started, ended) if ended) }
           end
 
           # Each node's line, then one `input: PATH` line for each of its input paths in the order given.

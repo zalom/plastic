@@ -14,6 +14,23 @@ module Plastic
         include Record
 
         def open? = ended_at.nil?
+
+        def lacks_cost? = !ended_at.nil? && cost_usd.nil?
+
+        # The window of the run, `grace` seconds past the stored end.
+        def window(grace) = Time.iso8601(started_at)..(Time.iso8601(ended_at) + grace)
+
+        # What the harness record is asked for: the session of the claim and the run's window.
+        def record_query(grace) = window(grace).then { |range| { harness:, session: session_id, from: range.begin, to: range.end, claim: claim_text } }
+
+        # The command the claim turn of the run holds, such as "485 n2".
+        def claim_text = "#{intent_id} #{node_id}"
+
+        # The window and the claim text of the run, as the main file of a session is asked for it.
+        def claimed_window(grace) = [window(grace), claim_text]
+
+        # The keys of the writer that fills the cost of this run.
+        def cost_key = { intent_id:, id: node_id, number: }
       end
     end
   end

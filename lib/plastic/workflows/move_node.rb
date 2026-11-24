@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "node_output"
+require_relative "ready_after_done"
 require_relative "../harnesses/run_record"
 
 module Plastic
@@ -12,6 +13,8 @@ module Plastic
     # moves, and a subclass calls `move` once with its key. A refused move
     # keeps its run open, so the next call moves again.
     class MoveNode < CodeWorkflow
+      extend ReadyAfterDone
+
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
                         offers: "plastic node claim %{intent_id} %{id} --agent NAME" },
@@ -32,8 +35,6 @@ module Plastic
       RESULT_VERBS = %i[done_node fail_node ask_node impede_node].freeze
       # The moves that end a run, so what the harness's record holds of it is read and kept.
       RUN_ENDS = (RESULT_VERBS + [:release_node]).freeze
-      # The read of a run's usage runs this many seconds past the end the run stores, which is cut to whole seconds.
-      END_SECOND = 1
 
       CHANGES = {
         release_node: "The node is released and open again",
@@ -47,7 +48,7 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :intent, :problem, :moved, :held_elsewhere
+        sets :intent, :problem, :moved, :held_elsewhere, :first_ready
         intent_steps
         output_steps if verb == :done_node
         move_steps(verb, shape)
@@ -101,6 +102,7 @@ module Plastic
       def self.result_steps(shape)
         state = shape.fetch(:state)
         read(shape.fetch(:say)) { |context| context.print("node: #{context.id} #{state}") }
+        ready_steps if state == "done"
         outcome :done, offers: shape.fetch(:offers), because: "node %{id} is #{state}"
       end
 
@@ -115,15 +117,10 @@ module Plastic
       def self.record_usage(context)
         intent_id, id = context.intent_id, context.id
         ended = [finisher_run(context, context.retrieval.node(intent_id, id))].compact.select(&:ended_at)
-        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run, "#{intent_id} #{id}")) }
+        ended.each { |run| context.work.record_run(intent_id:, id:, by: context.session, usage: read_usage(context, run)) }
       end
 
-      # The run's end is stored in whole seconds, and the worker's turn that ran the done command is written before the command reads
-      # the clock, so it can fall up to one second after the stored end. The read runs to the end of that second.
-      def self.read_usage(context, run, claim)
-        Harnesses::RunRecord.new(home: context.user_home.to_s).read(harness: run.harness, session: run.session_id,
-          from: Time.iso8601(run.started_at), to: Time.iso8601(run.ended_at) + END_SECOND, claim:)
-      end
+      def self.read_usage(context, run) = Harnesses::RunRecord.new(home: context.user_home.to_s).read_run(run)
 
       def self.settle(context, moved, state)
         context[:problem] = moved ? nil : refusal(context, state)

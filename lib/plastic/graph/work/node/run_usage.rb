@@ -14,6 +14,11 @@ module Plastic
               AND number = (SELECT MAX(number) FROM runs WHERE intent_id = :intent_id AND node_id = :id AND origin_id = :origin)
           SQL
 
+          COST_SQL = <<~SQL
+            UPDATE runs SET cost_usd = :cost, usage_note = ''
+            WHERE intent_id = :intent_id AND node_id = :id AND number = :number AND origin_id = :origin AND ended_at IS NOT NULL AND cost_usd IS NULL
+          SQL
+
           def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
@@ -23,6 +28,11 @@ module Plastic
           def call(intent_id:, id:, by:, usage:)
             fields = usage.to_h.merge(worker_session: usage.worker_session.to_s)
             @databases.fetch(:store).transaction { |batch| batch.add(SQL, **fields, intent_id:, id:, by:, origin: @retrieval.origin_id) }.any?
+          end
+
+          # Fills the cost of run `number` when the record holds it only now. Returns true when the run took it.
+          def cost(intent_id:, id:, number:, cost:)
+            @databases.fetch(:store).transaction { |batch| batch.add(COST_SQL, intent_id:, id:, number:, cost:, origin: @retrieval.origin_id) }.any?
           end
         end
       end

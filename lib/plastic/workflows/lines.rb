@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../graph/knowledge/ruling_order"
+require_relative "run_times"
 
 module Plastic
   module Workflows
@@ -26,9 +27,12 @@ module Plastic
       # One run of a node: its agent, the harness and the session that claimed it, how it ended, then what the harness record held
       # (the worker, the model, the tokens and the cost) and what it did not.
       def self.run_line(run)
+        [run_head(run), RunTimes.line(run), usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
+      end
+
+      def self.run_head(run)
         state = run.open? ? "open" : run.result
-        head = "run: #{run.node_id} ##{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
-        [head, usage(run), run.usage_note].reject { |part| part.to_s.empty? }.join("; ")
+        "run: #{run.node_id} ##{run.number} agent #{agent_name(run.agent)}, #{harness(run.harness.to_s, run.session_id)}, #{state}"
       end
 
       def self.agent_name(agent) = agent.to_s.empty? ? "none" : agent
