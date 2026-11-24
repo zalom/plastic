@@ -2,7 +2,7 @@
 #
 # This file is the one place that names the files and folders of an intent. Every command that works
 # in an intent folder reads it through Plastic::Layout (lib/plastic/layout.rb): the new-intent file,
-# the sync, the resource sort, the readers, the completion check and the doctor. The intent folder
+# the sync, the repair, the readers, the completion check and the doctor. The intent folder
 # section of PLASTIC.md and docs/help/intent-folder.md are generated from it by
 # `ruby bin/layout-docs`, and a test fails when either one differs.
 #

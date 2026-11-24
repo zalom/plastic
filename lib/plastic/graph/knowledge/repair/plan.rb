@@ -93,7 +93,8 @@ module Plastic
             raise Refused, "#{path} #{UNREADABLE}" unless parsed.readable?
 
             dir = File.dirname(path)
-            parsed.entries.map { |entry| Change.of(:revision, dir, "revisions.md #{entry.label}: #{entry.text}", "revisions.md", at: entry.at) }
+            name = File.basename(path)
+            parsed.entries.map { |entry| Change.of(:revision, dir, "#{name} #{entry.label}: #{entry.text}", name, at: entry.at) }
           end
         end
       end

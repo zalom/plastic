@@ -2,7 +2,7 @@
 
 require_relative "../../../test_helper"
 
-# The records kept beside an intent: a report from its ReportFile value, and the amendments of the resource sort.
+# The records kept beside an intent: a report from its ReportFile value, and the amendments of a repair.
 class WorkLoggedRecordsTest < Plastic::TestCase
   include ConfigHomes
 

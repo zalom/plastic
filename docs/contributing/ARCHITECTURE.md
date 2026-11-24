@@ -347,7 +347,7 @@ whole chain against a temporary copy of the store and prints what the call would
 require it (open, done, abandoned) and a writer, and `intent.md`, `spec.md` and `outcome.md` have
 front matter and headings. The `legacy` entries name each file of an older layout, what a sync does
 with it and what a repair does. The `store_root` entries list what a store folder may hold. The sync,
-the resource sort, the readers, the completion check and the new-intent file take their names from it,
+the repair, the readers, the completion check and the new-intent file take their names from it,
 and `test/layout_names_guard_test.rb` fails when code outside the layout names a core file or a
 resources folder. `Strays` in `lib/plastic/graph/knowledge/sync/strays.rb` names every file that the layout does not allow. `ruby bin/layout-docs`
 builds the intent folder section of `PLASTIC.md` and `docs/help/intent-folder.md` from the layout file,
@@ -363,6 +363,7 @@ when every intent it needs is done or abandoned. `plastic next`, `plastic graph 
 | ------- | ------------ |
 | `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
 | `plastic intent archive ID` | Saves the whole intent folder in `knowledge_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent repair (ID \| --all)` | Applies the layout to old intent folders: renames and moves files where the layout says, removes retired files, and turns each entry of an old `revisions.md` into an `amended` line. A done or abandoned intent gets one `amended` line for each change. An intent that a driver or a live node claim holds is refused. `--dry-run` lists every change and writes nothing. |
 | `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
 | `plastic store backup --project SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic store backup list --project SLUG` | Lists the backups of a store. |
@@ -421,7 +422,7 @@ A migration that removes data keeps it in `legacy.db` in the same transaction, a
 newest migration the store records from those rows. A migration that changes stored data waits
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
 migration that writes every stored time in UTC, the migration that drops the node columns
-`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops ten leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
+`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops 10 leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
 23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 

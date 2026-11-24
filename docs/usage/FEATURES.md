@@ -223,8 +223,13 @@ passages, and prints `search index NAME: rebuilt`. A store whose evidence is gon
 the `plastic store backup list --project NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
 
-The doctor also names each store with files outside the resources layout, as `resources NAME: N files
-are outside the resources layout`, with the repair `plastic resources sort --project NAME`.
+The doctor also gives one `layout NAME ID--SLUG:` row for each intent folder that breaks the layout,
+and says what is wrong there: the files outside the layout, the retired files and an old
+`revisions.md`. The retired entries of the store folder, such as `.sessions/`, get one
+`layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
+NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
+person: its repair says to move it out of the store folder by hand. A `revisions.md` that the repair
+cannot read gets the same kind of repair by hand.
 
 ## Undo a migration
 
@@ -260,24 +265,31 @@ path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
 
-`plastic resources sort --project SLUG` moves the files of a store from the old places into this
-layout. It moves the rows with the files, rewrites the relative links that point at a moved
-file, and runs a sync up. A link that named no file before the move is left as it is. Both the
-run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
-also lists every move and changes nothing. A loose Markdown or HTML file moves to `resources/tmp/`, and a
-file directly under `resources/output/` of another type moves to `files/`. A file in
-`resources/output/reports/` that is neither recorded nor mandatory is named and moved to
-`resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays where
-it is. When the sort rewrites a link in a root note of a done or abandoned intent, it writes an
-`amended` line on that intent's work log with the file, the old link, the new link and the reason;
-the run lists each one, and `--dry-run` previews each one. A target that holds other bytes than
-the file that would move onto it stops the call with exit 3 and names the target. A second run
-finds nothing to move and says `sorted: nothing to move`.
+`plastic intent repair ID` applies this layout to the folder of one intent, and `plastic intent
+repair --all` applies it to every intent folder of the store and to the store folder. It renames
+a file that has an older name, and moves each other file to the folder the layout names. It moves
+the rows with the files, rewrites the relative links that point at a moved file, and runs a sync
+up. A link that named no file before the move is left as it is. A loose Markdown or HTML file moves
+to `resources/tmp/`, and a file directly under `resources/output/` of another type moves to
+`files/`. A file in `resources/output/reports/` that is neither recorded nor mandatory is named and
+moved to `resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays
+where it is. The repair removes the retired files, such as an old lock or `graph.md`. It turns each
+entry of an old `revisions.md` into an `amended` line with the date of the entry, then removes the
+file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
+and `.tmp/`, and names each entry that holds data and leaves it.
+
+A done or abandoned intent changes in its structure only, never in its work: each change writes one
+`amended` line on that intent's work log with the reason for its kind. An intent that a driver
+claim or a live node claim holds is refused with exit 3, and `--all` repairs the other intents
+first. Both the run and `--dry-run` list the links that change and the links left as they are;
+`--dry-run` also lists every change and every `amended` line, and writes nothing. A target that
+holds other bytes than the file that would move onto it stops the call with exit 3 and names the
+target. A second run finds nothing to change and says `repaired: nothing to change`.
 
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
-then one heading for each family: intent, project, sync, session, config, backup, migration, resources,
+then one heading for each family: intent, project, sync, session, config, backup, migration,
 document, architecture, node, edge, graph, chat and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.
