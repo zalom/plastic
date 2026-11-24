@@ -107,5 +107,6 @@ before and after is not ready for review.
 2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
    `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
    no tag yet. The release carries the three files `install.sh` downloads.
-3. Read [docs/release-lines.md](docs/release-lines.md) for the light trunk rules, how to cut
-   a beta and the stable-line guarantees.
+3. Read [docs/release-lines.md](docs/release-lines.md) for the release flow, how to release
+   a beta or a stable version, the two installs that prove a release, and the stable-line
+   guarantees.

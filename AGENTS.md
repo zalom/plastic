@@ -75,7 +75,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 #### Branches
 
-`alpha` is the one trunk. Every change and every fix goes to `alpha` by its own pull request, and CI runs the suite on each. `beta` is a snapshot of `alpha`, cut only on the owner's word. It takes no commits of its own and releases on the `beta` channel on a `-beta.N` version. `main` releases on the `latest` channel on a version with no suffix, and it stays frozen until the shaping ends. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
+`beta` holds the line being tested: once work moves from `alpha` to `beta`, it is built and fixed on `beta`, and `beta` is merged into `alpha` after each change lands. `alpha` holds new feature work that does not belong to that line. When the owner says a release is coming, `beta` is merged into `main` and released, `beta` moves to `main`, and `main` is merged into `alpha`. A fix to a stable release lands on `main`. `main` has no freeze. Every change goes to its branch by its own pull request, and CI runs the suite on each. `alpha` releases `-alpha.N`, `beta` releases `-beta.N` on the `beta` channel, and `main` releases a version with no suffix on the `latest` channel. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
 
 ### Worktrees and node claims
 - One session drives an intent at a time. `plastic intent start` and `plastic intent auto` take the driver claim, which lapses after 15 minutes without a renewal, as a node claim does, and goes when the session ends. Another session is refused with exit 3 and the driver is named; the owner's word, `--take-over REASON`, takes it over.
@@ -129,13 +129,12 @@ written.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
-- Plastic runs on a light trunk. Every change and every fix merges to `alpha` once CI passes.
-  A beta is a snapshot of `alpha`, cut only on the owner's word. `beta` takes no commits of
-  its own, and `main` is frozen until the shaping ends. A change to stored data, the storage
-  layer or the lock, or one that may be dropped, ships behind a config switch that is off by
-  default. The one exception is the migration that writes every stored time in UTC, which has no
-  switch (the owner ruled so on 22 November 2026). Read `docs/release-lines.md` for the rules, how to cut a beta and the stable-line
-  guarantees.
+- Plastic follows the owner's release flow of 24 November 2026. `beta` holds the line being
+  tested and takes its fixes, `alpha` holds new work, and `main` takes `beta` on the owner's word,
+  with no freeze. A migration ships clean, with no config switch, and every beta and stable
+  release first passes a clean install in an empty home and an update from the previous release.
+  Read `docs/release-lines.md` for the rules, the steps of each merge and release, and the
+  stable-line guarantees.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
   and the tag always matches the version in `package.json` (checked by `bin/lib/release_guard.rb`).

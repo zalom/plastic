@@ -222,11 +222,13 @@ kept nowhere, and a store with none of the tables only records the version. Its 
 in `REBUILDS`, builds the 10 tables again, empty and with the exact text of the old tables, and puts back
 each row that the migration kept. The stop is the same: bring that checkout past commit 804fa952.
 
-## Hold a migration behind a switch
+## Migrations ship with no switch
 
-A migration that changes stored data ships behind a config switch that is off by default, as
-`docs/release-lines.md` says, with one exception: the UTC migration named at the end of this
-section. `MigrationList::HELD` in
+A new migration ships clean, with no config switch: the owner ruled so on 24 November 2026, and
+`docs/release-lines.md` says so. The clean install and the update from the previous release that
+prove each beta and stable release run it, as that page says. Do not add a version to `HELD`.
+
+Three migrations from before that ruling still wait behind a switch. `MigrationList::HELD` in
 `lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
 `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
 behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`. The
@@ -239,10 +241,8 @@ cleanup `20261124150000` is not held: it removes a mistake only.
 - Once the switch is on, `plastic update` runs the held version as it runs any other. The runner
   takes the released versions from `Wiring::Settings#released`.
 
-To hold a new migration, add its version and its switch to `HELD`, and add the switch to
-`lib/plastic/config/defaults.rb`, off.
-
-Two migrations are exceptions to this rule. Migration `20261121090000`, which writes every stored
+Before the ruling of 24 November 2026, a migration that changed stored data waited behind a
+switch, with two exceptions. Migration `20261121090000`, which writes every stored
 time in UTC, has no switch: the owner ruled on 22 November 2026 that it changes the text of a time
 and not the time it names, and the code that reads times expects UTC. Migration `20261123100000`,
 which drops the node columns `judge` and `verdict`, has no switch either: Jev chose that on
