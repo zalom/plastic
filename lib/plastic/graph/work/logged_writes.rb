@@ -6,6 +6,7 @@ require_relative "logged_intents"
 require_relative "logged_nodes"
 require_relative "logged_records"
 require_relative "round_grant"
+require_relative "gap_handover"
 
 module Plastic
   module Graph
@@ -15,8 +16,6 @@ module Plastic
       # stores its owning rows and its one work_log row in one transaction, so both land or neither does.
       class LoggedWrites
         extend Forwardable
-
-        attr_reader :grants
 
         def_delegators :@intents, :write_intent, :close_intent, :abandon_intent, :approve_intent, :park_intent, :archive_intent,
           :unarchive_intent, :revise_intent
@@ -30,8 +29,12 @@ module Plastic
           @intents = LoggedIntents.new(writers, log)
           @records = LoggedRecords.new(writers, log)
           @nodes = LoggedNodes.new(writers, log)
-          @grants = RoundGrant.new(log)
+          @log = log
         end
+
+        def grants = RoundGrant.new(@log)
+
+        def handovers = GapHandover.new(@log)
       end
     end
   end

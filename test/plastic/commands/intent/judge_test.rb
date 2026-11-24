@@ -67,7 +67,7 @@ class IntentJudgeTest < Plastic::TestCase
     result = judge
 
     assert_equal 3, result.code
-    assert_includes result.err, "the judge's review round of intent 1 is used; the owner decides between abandoning the intent, a follow-up intent and one more round: plastic intent grant 1 REASON --owner"
+    assert_includes result.err, "the judge's review round of intent 1 is used; the owner decides between abandoning the intent with plastic intent abandon 1, a follow-up intent with plastic intent handover 1 FOLLOW_UP REASON --owner, and one more round with plastic intent grant 1 REASON --owner"
     assert_includes result.err, "abandoning the intent"
   end
 

@@ -126,7 +126,10 @@ module Plastic
       code_park_intent: "Code::Intent::Park",
 
       # Review rounds: the owner grants one extra round.
-      code_grant_round: "Code::Intent::Grant"
+      code_grant_round: "Code::Intent::Grant",
+
+      # The owner hands the last gap of an intent whose rounds are used to a follow-up intent.
+      code_hand_over_gap: "Code::Intent::Handover"
     }.freeze
   end
 end
