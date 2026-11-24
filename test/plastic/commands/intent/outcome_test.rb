@@ -43,7 +43,7 @@ class IntentOutcomeTest < Plastic::TestCase
 
     call("1", "--from", draft("Summary.\n"))
 
-    assert_equal "# Outcome\n\nSummary.\n\n## Notes\n\n- Report: first\n", body
+    assert_equal "# Outcome\n\nSummary.\n\n## Notes\n\n- Note: first\n", body
   end
 
   def test_the_outcome_is_printed_and_leaves_a_work_log_line
