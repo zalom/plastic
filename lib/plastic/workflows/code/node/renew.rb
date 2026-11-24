@@ -6,7 +6,7 @@ module Plastic
   module Workflows
     module Code
       module Node
-        # Renews the claim of this session on a claimed node. A node another session holds, or
+        # Renews the claim of this session on a claimed node, and no other claim. A node another session holds, or
         # one nobody holds, refuses and changes nothing.
         class Renew < CodeWorkflow
           clear_declarations
@@ -34,7 +34,7 @@ module Plastic
 
           step "renew the claim", done: ->(context) { context.renewed == true },
             changes: { work: "The claim of this session on the node is renewed to now" } do |context|
-            context.work.renew_claims(context.session)
+            context.work.renew_node(intent_id: context.intent_id, id: context.id, by: context.session)
             context[:renewed] = true
           end
 

@@ -46,14 +46,18 @@ module Plastic
         # is the owner's word. The write is guarded by the holder it read, so two sessions cannot both win.
         class Writer
           TAKE_SQL = <<~SQL
-            INSERT INTO drivers (intent_id, origin_id, session_id, claimed_at, seen_at, mode)
-            VALUES (:intent_id, :origin, :by, :now, :now, :mode)
-            ON CONFLICT (intent_id, origin_id) DO UPDATE SET session_id = :by, claimed_at = :now, seen_at = :now, mode = :mode
+            INSERT INTO drivers (intent_id, origin_id, session_id, claimed_at, seen_at, mode, agent)
+            VALUES (:intent_id, :origin, :by, :now, :now, :mode, :agent)
+            ON CONFLICT (intent_id, origin_id) DO UPDATE SET session_id = :by, claimed_at = :now, seen_at = :now, mode = :mode, agent = :agent
             WHERE session_id IS :holder
             RETURNING session_id
           SQL
 
-          RENEW_SQL = "UPDATE drivers SET seen_at = :now WHERE session_id = :session AND origin_id = :origin"
+          # A driver claim is renewed by the agent that took it; in guided work a call that names no agent renews it too.
+          RENEW_SQL = <<~SQL
+            UPDATE drivers SET seen_at = :now WHERE session_id = :session AND origin_id = :origin
+              AND (COALESCE(agent, '') = :agent OR (:agent = '' AND mode IS NOT 'auto'))
+          SQL
           RELEASE_SQL = "DELETE FROM drivers WHERE session_id = :session AND origin_id = :origin"
           RELEASE_INTENT_SQL = "DELETE FROM drivers WHERE intent_id = :intent_id AND origin_id = :origin"
           HOLDER_SQL = "SELECT session_id, claimed_at, seen_at FROM drivers WHERE intent_id = :intent_id AND origin_id = :origin"
@@ -70,17 +74,18 @@ module Plastic
           end
 
           # [:driving, holder, line], [:took_over, holder, line] or [:held, holder, nil]. The line is the work log text of a
-          # change of driver, nil when the same session drives again. The mode names the delivery: guided or auto.
-          def claim(intent_id:, by:, take_over: nil, mode: nil)
+          # change of driver, nil when the same session drives again. The mode names the delivery: guided or auto. The agent
+          # names the agent that takes the claim, nil for the session's own agent.
+          def claim(intent_id:, by:, take_over: nil, mode: nil, agent: nil)
             held = holder(intent_id)
             standing = held&.standing_for?(by)
             return [:held, held.session, nil] if standing && take_over.to_s.empty?
-            return [:held, current_session(intent_id), nil] unless write(intent_id, by, held&.session, mode)
+            return [:held, current_session(intent_id), nil] unless write(intent_id, by, held&.session, mode:, agent:)
 
             [standing ? :took_over : :driving, held&.session, Handover.new(by:, held:, take_over:).text]
           end
 
-          def renew(session) = write_for(RENEW_SQL, session)
+          def renew(session, agent: "") = write_for(RENEW_SQL, session, agent:)
 
           def release(session) = write_for(RELEASE_SQL, session)
 
@@ -100,14 +105,14 @@ module Plastic
 
           def current_session(intent_id) = holder(intent_id).session
 
-          def write(intent_id, by, holder, mode)
-            bind = { intent_id:, origin: @retrieval.origin_id, by:, holder:, mode:, now: Plastic.timestamp(@clock.now) }
+          def write(intent_id, by, holder, mode:, agent:)
+            bind = { intent_id:, origin: @retrieval.origin_id, by:, holder:, mode:, agent: agent.to_s.empty? ? nil : agent, now: Plastic.timestamp(@clock.now) }
             @databases.fetch(:store).transaction { |batch| batch.write(:drivers, TAKE_SQL, **bind) }.any?
           end
 
-          def write_for(sql, session)
+          def write_for(sql, session, **bind)
             @databases.fetch(:store).transaction do |batch|
-              batch.add(sql, session:, origin: @retrieval.origin_id, now: Plastic.timestamp(@clock.now))
+              batch.add(sql, session:, origin: @retrieval.origin_id, now: Plastic.timestamp(@clock.now), **bind)
             end
           end
 

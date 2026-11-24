@@ -181,9 +181,10 @@ class WorkNodeWriterRenewTest < Plastic::TestCase
     delivery("auto")
     work.add_node(intent_id: "1", title: "Test", criterion: "it works")
     work.claim_node(intent_id: "1", id: "n2", by: "s-1", agent: "tester")
+    @clock.now = START + 1200
     work.renew_node(intent_id: "1", id: "n1", by: "s-1")
 
-    assert_equal [RENEWED, "2026-11-24T09:10:00Z"], [seen_at, retrieval.node("1", "n2").seen_at]
+    assert_equal ["2026-11-24T09:20:00Z", RENEWED], [seen_at, retrieval.node("1", "n2").seen_at]
   end
 
   def test_a_renewal_of_one_node_held_by_another_session_changes_nothing
