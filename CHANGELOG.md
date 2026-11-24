@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.20
+
 - `bin/search-check FILE` scores a known-question file against a store: it prints a hit or miss with its rank for each question and a total, and opens the store databases read-only. CONTRIBUTING.md asks a change to search ranking to report the hits before and after.
 - `plastic update` runs on a store newer than the installed code. It leaves such a store as it is, names it, and installs the newer release; before, the migration step raised `Plastic::Graph::Ahead` and the advice in the refusal could not be followed. When no release is newer, it exits 1 and says the store came from unreleased code. Every other command still refuses with exit 3, and its refusal now names that case. `docs/contributing/TECHNICAL.md` says how to run from source on a scratch home.
 
