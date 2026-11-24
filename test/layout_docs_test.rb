@@ -28,4 +28,17 @@ class LayoutDocsTest < Minitest::Test
   def test_a_changed_page_fails_the_comparison
     refute_equal LayoutDocs.page, "#{LayoutDocs.page}edited"
   end
+
+  def test_a_page_without_the_section_gets_it_after_its_resources_paragraph
+    text = LayoutDocs.plastic_text("and whether the result is a finding or code.\nnext\n")
+
+    assert_includes text, LayoutDocs.section
+  end
+
+  def test_building_leaves_both_files_as_they_are
+    before = [File.read(LayoutDocs::PAGE), File.read(LayoutDocs::PLASTIC)]
+    LayoutDocs.build
+
+    assert_equal before, [File.read(LayoutDocs::PAGE), File.read(LayoutDocs::PLASTIC)]
+  end
 end
