@@ -77,6 +77,6 @@ class NodeClaimAgentTest < Plastic::TestCase
     plastic("node", "done", "1", "n1", "ok", env: { "CLAUDE_CODE_SESSION_ID" => "c-9" }, table: Plastic::CLI::TABLE)
     line = plastic("graph", "show", "1", table: Plastic::CLI::TABLE).out.lines.grep(/^run: /).first
 
-    assert_match(/\Arun: n1 #1 agent a, claude-code session c-9, done; no Claude Code transcript for session c-9/, line)
+    assert_match(/\Arun: n1 #1 agent a, claude-code session c-9, done; started \S+, ended \S+, length [^;]+; no Claude Code transcript for session c-9/, line)
   end
 end
