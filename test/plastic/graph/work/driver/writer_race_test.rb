@@ -29,12 +29,12 @@ class WorkDriverWriterRaceTest < Plastic::TestCase
 
   def writer(clock) = Plastic::Graph::Work::Driver::Writer.new(store_graphs.databases, store_graphs.retrieval, clock:)
 
-  def rival_takes_it = store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE drivers SET session_id = 's-3'") }
+  def rival_claims_it = store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE drivers SET session_id = 's-3'") }
 
   def test_a_claim_taken_by_another_session_after_the_read_is_held_not_taken
     writer(Struct.new(:now).new(START)).claim(intent_id: "1", by: "s-1", mode: "auto")
 
-    status, holder, = writer(RacingClock.new(START + (16 * 60)) { rival_takes_it }).claim(intent_id: "1", by: "s-2", mode: "auto")
+    status, holder, = writer(RacingClock.new(START + (16 * 60)) { rival_claims_it }).claim(intent_id: "1", by: "s-2", mode: "auto")
 
     assert_equal [:held, "s-3"], [status, holder]
   end
