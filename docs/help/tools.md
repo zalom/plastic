@@ -31,3 +31,9 @@ line, and the reminder before planning is not checked.
 Reach for RTK on every shell command's output and for Enola when a question is about how the code
 is put together. Neither is required: a plain macOS or Linux system with git and sqlite3 runs every
 Plastic command on its own.
+
+For a question about what the project decided or delivered, ask `plastic search` with three to five
+different keywords, not the whole question, and read one passage with `plastic document get REF
+--passage N`. For how the code changed, read its history with git, and for how it is put together,
+ask Enola. `plastic project load` prints a `history:` row that says so, and each `delivered:` row
+ends with the `Merged:` or `Committed:` line of its outcome.

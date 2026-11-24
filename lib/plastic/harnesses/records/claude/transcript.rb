@@ -20,23 +20,34 @@ module Plastic
           # The total of the last `cost-state` line among `entries`, nil when there is none.
           def self.total(entries) = entries.reverse.find { |entry| entry["type"] == "cost-state" }&.fetch("totalCostUSD", nil)
 
-          def initialize(entries, window)
+          def initialize(entries, window, no_cost: nil)
             @entries = entries
             @window = window
+            @no_cost = no_cost
+            @alone = nil
           end
 
           def usage(name)
             return TokenUsage.none("no turn inside the run in the Claude Code transcript of session #{name}", worker_session: name) if windowed.empty?
 
-            figures(name, cost)
+            figures(name, @no_cost ? nil : cost)
           end
+
+          # The cost of the run alone, nil when the transcript cannot tell it.
+          def run_cost = windowed.empty? ? nil : cost
 
           private
 
           def figures(name, cost)
             input, output, cache_read, cache_write = COUNTS.map { |key| sum(key) }
             TokenUsage.new(worker_session: name, model: turns.last.dig("message", "model"), input_tokens: input, output_tokens: output,
-              cache_read_tokens: cache_read, cache_write_tokens: cache_write, cost_usd: cost, note: cost ? "" : "cost not found: the Claude Code transcript holds no cost after the run")
+              cache_read_tokens: cache_read, cache_write_tokens: cache_write, cost_usd: cost, note: cost ? "" : missing)
+          end
+
+          def missing
+            return @no_cost if @no_cost
+
+            alone? ? "cost not found: the Claude Code transcript holds no cost after the run" : "cost not found: the session did other work before the run, so the run's share of the total cannot be told"
           end
 
           def sum(key) = turns.sum { |turn| turn.dig("message", "usage", key).to_i }
@@ -45,11 +56,24 @@ module Plastic
 
           def turns = @turns ||= windowed.reverse.uniq { |entry| entry.dig("message", "id") }.reverse
 
-          # The last `cost-state` between the last turn of the run and the first turn after it, less the last one before the run.
+          # The last `cost-state` between the last turn of the run and the first turn after it, less the last one before the run. The
+          # total is the session's running total, so the run's share is told only when the run is all the work since the last
+          # `cost-state` before it, or the whole session so far when none comes before.
           def cost
+            return unless alone?
+
             closing = Transcript.total(@entries[position(windowed.last)...(first_after || @entries.size)])
-            closing && (closing - (Transcript.total(@entries.first(position(windowed.first))) || 0.0))
+            closing && (closing - (Transcript.total(@entries.first(first_position)) || 0.0))
           end
+
+          def alone?
+            @alone = @entries[(last_state_before + 1)...first_position].none? { |entry| self.class.turn?(entry) } if @alone.nil?
+            @alone
+          end
+
+          def last_state_before = @entries.first(first_position).rindex { |entry| entry["type"] == "cost-state" } || -1
+
+          def first_position = @first_position ||= position(windowed.first)
 
           def position(entry) = @entries.index { |candidate| candidate.equal?(entry) }
 

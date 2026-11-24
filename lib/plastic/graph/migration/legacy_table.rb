@@ -63,6 +63,9 @@ module Plastic
         raise Changed, "a row of #{@table} changed after migration #{@version} kept it"
       end
 
+      # Whether the live table is there and holds a row.
+      def rows? = !definition(@home, @table).nil? && @connection.get_first_value(%(SELECT EXISTS (SELECT 1 FROM #{@home}."#{@table}"))) == 1
+
       def drop = @connection.execute(%(DROP TABLE IF EXISTS #{SCHEMA}."#{name}"))
 
       def count = @connection.get_first_value(%(SELECT count(*) FROM #{SCHEMA}."#{name}"))

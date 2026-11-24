@@ -2,12 +2,13 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/lines"
+require_relative "../../../lib/plastic/clock"
 
 class LinesTest < Minitest::Test
   Node = Struct.new(:id, :state, :title, :claimed_by, :deadline)
   Ruling = Struct.new(:id, :text, :supersedes)
   Run = Struct.new(:node_id, :number, :agent, :harness, :session_id, :result, :model, :input_tokens, :output_tokens, :cache_read_tokens,
-    :cache_write_tokens, :cost_usd, :worker_session, :usage_note) do
+    :cache_write_tokens, :cost_usd, :worker_session, :usage_note, :started_at, :ended_at) do
     def open? = result.nil?
   end
 
@@ -67,5 +68,16 @@ class LinesTest < Minitest::Test
     run = Run.new("n1", 1, nil, "", "s-1", nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
     assert_equal "run: n1 #1 agent none, session s-1, open", lines.run_line(run)
+  end
+
+  def timed(started, ended) = Run.new("n1", 1, "a", "", "s-1", ended ? "done" : nil, nil, nil, nil, nil, nil, nil, nil, nil, started, ended)
+
+  def test_a_finished_run_line_names_its_start_end_and_length
+    assert_equal "run: n1 #1 agent a, session s-1, done; started #{Plastic.local("2026-11-23T10:00:00Z")}, ended #{Plastic.local("2026-11-23T10:04:12Z")}, length 4m 12s",
+      lines.run_line(timed("2026-11-23T10:00:00Z", "2026-11-23T10:04:12Z"))
+  end
+
+  def test_a_run_with_no_end_yet_says_running
+    assert_equal "run: n1 #1 agent a, session s-1, open; started #{Plastic.local("2026-11-23T10:00:00Z")}, running", lines.run_line(timed("2026-11-23T10:00:00Z", nil))
   end
 end

@@ -81,6 +81,9 @@ module Plastic
           # Stores the usage of a harness record on the last run of the node.
           def record_run(**fields) = RunUsage.new(@databases, @retrieval).call(**fields)
 
+          # Stores the cost of a run that ended with none. A run that already holds a cost keeps it.
+          def record_cost(**fields) = RunUsage.new(@databases, @retrieval).cost(**fields)
+
           def renew_claims(session)
             now = Plastic.timestamp(@clock.now)
             @databases.fetch(:store).transaction do |batch|

@@ -16,8 +16,9 @@ module Plastic
           THEN = "Check the architecture map of each coding project with an architecture mapping tool such as Enola, and " \
             "start the MCP servers " \
             "and apps that each project's AGENTS.md names for its work; Plastic starts nothing. Keep these digests as the " \
-            "projects' context, look up the rest with plastic search, and run plastic project load again to refresh them. " \
-            "Wait for the owner's next prompt before picking any work."
+            "projects' context. To look up the rest, rewrite the owner's question into keywords, run three to five plastic search " \
+            "calls with different keywords, and read a single passage with plastic document get REF --passage N. Run plastic " \
+            "project load again to refresh the digests. Wait for the owner's next prompt before picking any work."
 
           clear_declarations
 
