@@ -36,7 +36,7 @@ module Plastic
             remove(plan)
             settle(plan)
             print_logs(amendments)
-            plan.report(moves.size + merges.size)
+            plan.report
           end
 
           private

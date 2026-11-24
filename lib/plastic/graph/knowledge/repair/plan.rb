@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "change"
+require_relative "folder_changes"
 require_relative "removal"
 require_relative "revisions"
+require_relative "totals"
 require_relative "../../knowledge/resources/sort_plan"
 require_relative "../../../errors"
 
@@ -14,27 +16,32 @@ module Plastic
         # renamed where the layout names, the links that follow them, the files it removes, the entries of each old
         # revisions.md, and the `amended` lines. It writes nothing. The scope names the folders of `dirs`, every folder when
         # it is nil, never the folders of `held`, and the ids of the done and abandoned intents in `closed`. A closed intent
-        # gets one amended line for each change; each revision entry is an amended line of any intent.
+        # gets one amended line for the structural changes of its folder and one for each link it changes; each revision
+        # entry is an amended line of any intent. An empty .gitkeep placeholder is removed, not moved. The links left as
+        # they are print only as a count unless `links_left` asks for each one.
         class Plan
           Scope = Data.define(:dirs, :closed, :held) do
             def initialize(dirs: nil, closed: Set.new, held: Set.new) = super
           end
 
+          PLACEHOLDER = ".gitkeep"
           UNREADABLE = "holds no revision entry the repair can read, or other text before its first one; " \
                        "fix the file by hand, then run plastic intent repair again"
 
-          def initialize(folder, reports: nil, zone: nil, **scope)
+          def initialize(folder, reports: nil, zone: nil, links_left: false, **scope)
             @folder = folder
             @reports = reports
             @zone = zone
+            @links_left = links_left
             @scope = Scope.new(**scope)
           end
 
-          def moves = sort.moves
+          def moves = (@moves ||= sort.moves.reject { |move| placeholder?(move) })
 
           def rewrites = sort.rewrites
 
-          def removals = (@removals ||= legacy_files("remove").map { |path| Removal.new(path) })
+          # The old files the layout removes, and each empty placeholder.
+          def removals = (@removals ||= [*legacy_files("remove"), *placeholders].sort.map { |path| Removal.new(path) })
 
           # The old revisions.md files, each removed once its entries are amended lines.
           def revision_files = (@revision_files ||= legacy_files("amend"))
@@ -42,20 +49,23 @@ module Plastic
           # One amended line for each entry of each revisions.md, with its own time; refused when a file cannot be read.
           def revisions = (@revisions ||= revision_files.flat_map { |path| revision_lines(path) })
 
-          def amendments = [*closed_changes, *revisions, *sort.amendments]
+          def amendments = [*folders.select { |folder| closed?(folder.dir) }.map(&:change), *noted]
 
           def empty? = moves.empty? && removals.empty? && revision_files.empty?
 
+          # One line for each intent folder it changes, each link it changes and each other amended line, then its totals.
           def preview
-            [*moves.map { |move| move_preview(move) }, *removals.map(&:preview), *revision_files.map { |path| "preview: remove #{path}" },
-              *sort.changed.map { |link| "preview: link would change #{link}" }, *amendments.map(&:preview),
-              *sort.unresolved.map { |link| "preview: link left as it is #{link}" }]
+            return [] if empty? && sort.unresolved.empty?
+
+            [*folders.map { |folder| folder_line(folder, "preview: would amend", "preview: would repair") },
+              *sort.changed.map { |link| "preview: link would change #{link}" }, *noted.map(&:preview),
+              *left.map { |link| "preview: link left as it is #{link}" }, "preview: #{totals}"]
           end
 
-          # The lines a repair that moved `count` files prints.
-          def report(count)
-            ["repaired: #{count} files moved, #{removals.size + revision_files.size} removed", *sort.unasked,
-              *sort.changed.map { |link| "link changed #{link}" }, *amendments.map(&:line), *sort.unresolved.map { |link| "link left as it is #{link}" }]
+          # The lines a repair prints: its totals, then the lines of the preview as done.
+          def report
+            ["repaired: #{totals}", *folders.map { |folder| folder_line(folder, "amended", "repaired") }, *sort.unasked,
+              *sort.changed.map { |link| "link changed #{link}" }, *noted.map(&:line), *left.map { |link| "link left as it is #{link}" }]
           end
 
           private
@@ -74,19 +84,29 @@ module Plastic
 
           def renamed?(move) = Layout.legacy_for(move.inside_from)&.repair == "rename"
 
-          def move_preview(move) = renamed?(move) ? "preview: rename #{move.from} -> #{move.to}" : sort.preview(move)
+          def placeholders = sort.moves.select { |move| placeholder?(move) }.map(&:from)
 
-          def closed_changes = [*moves.filter_map { |move| moved_change(move) }, *removals.filter_map { |removal| removed_change(removal) }]
+          def placeholder?(move) = File.basename(move.from) == PLACEHOLDER && @folder.read(move.from).empty?
 
-          def moved_change(move)
-            dir = move.from.delete_suffix("/#{move.inside_from}")
-            return unless closed?(dir)
+          # The amended lines of the revision entries and of the links that change.
+          def noted = [*revisions, *sort.amendments]
 
-            kind = renamed?(move) ? :rename : :move
-            Change.of(kind, dir, "#{kind}d #{move.inside_from} to #{move.inside_to}", move.inside_to)
+          def left = @links_left ? sort.unresolved : []
+
+          def totals = Totals.new(folders:, links_changed: sort.changed.size, amended: amendments.size, links_left: sort.unresolved.size, listed: @links_left)
+
+          def folder_line(folder, closed, open) = "#{closed?(folder.dir) ? closed : open} #{folder.dir}: #{folder.text}"
+
+          # The structural changes of each intent folder the repair changes.
+          def folders = (@folders ||= [*moves.map(&:dir), *gone.map(&:dir)].uniq.sort.map { |dir| folder(dir) })
+
+          def folder(dir)
+            renamed, moved = moves.select { |move| move.dir == dir }.partition { |move| renamed?(move) }
+            FolderChanges.new(dir, renamed:, moved:, removed: gone.select { |removal| removal.dir == dir }.map(&:inside))
           end
 
-          def removed_change(removal) = (Change.of(:remove, removal.dir, "removed #{removal.inside}", removal.inside) if closed?(removal.dir))
+          # Every file the repair removes: the old files, the placeholders and each revisions.md.
+          def gone = [*removals, *revision_files.map { |path| Removal.new(path) }]
 
           def revision_lines(path)
             parsed = Revisions.new(@folder.read(path).force_encoding(Encoding::UTF_8), zone: @zone)

@@ -70,13 +70,14 @@ class RepairRunScopeTest < Plastic::TestCase
     assert_equal before, files_without_databases
   end
 
-  def test_a_closed_intent_gets_an_amended_line_for_each_move_and_removal
+  def test_a_closed_intent_gets_one_amended_line_that_names_each_move_and_removal
     close
     repair
-    texts = amended.map(&:last)
+    folder = amended.map(&:last).grep(/\Amoved /)
 
-    assert_includes texts, "moved plan.md to resources/references/plan.md; #{Plastic::Layout.amendment_reason(:move)}"
-    assert_includes texts, "removed delivery.lock; #{Plastic::Layout.amendment_reason(:remove)}"
+    assert_equal 1, folder.size
+    assert_includes folder.first, "moved plan.md to resources/references/plan.md, "
+    assert_includes folder.first, "; removed delivery.lock (#{Plastic::Layout.amendment_reason(:remove)})"
   end
 
   def test_an_open_intent_gets_no_amended_line_for_its_moves

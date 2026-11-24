@@ -3,7 +3,8 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/graph/knowledge/repair/plan"
 
-class RepairPlanTest < Plastic::TestCase
+# The store folder of a closed or open intent in the old layout, with a neighbor that links to its plan.
+module RepairPlanFolder
   Plan = Plastic::Graph::Knowledge::Repair::Plan
 
   OLD = "store/7--old"
@@ -31,6 +32,16 @@ class RepairPlanTest < Plastic::TestCase
 
   def moves(found = plan) = found.moves.map { |move| [move.from.delete_prefix("#{OLD}/"), move.to.delete_prefix("#{OLD}/")] }.sort
 
+  def closed_texts = plan(closed: Set["7"]).amendments.map(&:text)
+
+  def reason(kind) = Plastic::Layout.amendment_reason(kind)
+
+  def structural(found = plan(closed: Set["7"])) = found.amendments.reject { |line| line.text.match?(/\A(revisions\.md |\S+: link )/) }
+end
+
+class RepairPlanTest < Plastic::TestCase
+  include RepairPlanFolder
+
   def test_the_old_intent_file_is_renamed_and_the_old_files_move_where_the_layout_names
     assert_equal [%w[7--old.md intent.md], %w[actions/a1.md resources/references/actions/a1.md], %w[checklist.md resources/references/checklist.md],
       %w[plan.md resources/references/plan.md], %w[review.rb resources/tmp/review.rb]], moves
@@ -52,12 +63,6 @@ class RepairPlanTest < Plastic::TestCase
     assert_equal [], plan.amendments.map(&:text) - plan.revisions.map(&:text)
   end
 
-  def closed_texts = plan(closed: Set["7"]).amendments.map(&:text)
-
-  def reason(kind) = Plastic::Layout.amendment_reason(kind)
-
-  def structural(found = plan(closed: Set["7"])) = found.amendments.reject { |line| line.text.match?(/\A(revisions\.md |\S+: link )/) }
-
   def test_a_closed_intent_gets_one_amended_line_for_its_structural_changes_and_one_for_each_link_and_revision
     assert_equal [1, 1 + 3 + 1], [structural.size, closed_texts.size]
   end
@@ -76,7 +81,7 @@ class RepairPlanTest < Plastic::TestCase
     @folder.write("#{OLD}/actions/a2.md", "# A2\n")
     @folder.write("#{OLD}/actions/deep/a3.md", "# A3\n")
 
-    assert_equal 1, structural.first.text.scan("actions/").size
+    assert_equal ["actions/ to"], structural.first.text.scan(%r{actions/\S* to})
   end
 
   def test_an_empty_gitkeep_is_removed_and_not_moved
@@ -97,7 +102,7 @@ class RepairPlanTest < Plastic::TestCase
     @folder.delete("#{OLD}/actions/a1.md")
     @folder.write("#{OLD}/actions/.gitkeep", "")
 
-    refute_includes structural.first.text, "moved actions/"
+    refute_match(/(\A|; )moved actions\//, structural.first.text)
   end
 
   def test_each_link_rewritten_in_a_core_file_of_a_closed_intent_gives_its_reason
@@ -128,7 +133,7 @@ class RepairPlanTest < Plastic::TestCase
 
   def test_a_repair_of_one_intent_lists_only_its_own_links_left_as_they_are
     @folder.write("#{OLD}/spec.md", "# Spec\n\n[gone](missing.md)\n")
-    left = ->(dirs) { plan(dirs:, links_left: true).preview.grep(/link left as it is/) }
+    left = ->(dirs) { plan(dirs:, links_left: true).preview.grep(/\Apreview: link left as it is/) }
 
     assert_equal [["preview: link left as it is #{OLD}/spec.md: missing.md"], []], [left.call([OLD]), left.call([OTHER])]
   end
@@ -139,6 +144,11 @@ class RepairPlanTest < Plastic::TestCase
 
     assert_includes error.message, "#{OLD}/revisions.md"
   end
+end
+
+# The preview and the report of a plan: one line for each intent folder, and the totals.
+class RepairPlanPreviewTest < Plastic::TestCase
+  include RepairPlanFolder
 
   def test_the_preview_prints_one_line_for_each_folder_it_changes
     lines = plan(closed: Set["7"]).preview

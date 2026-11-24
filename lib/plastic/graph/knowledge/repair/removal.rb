@@ -18,10 +18,6 @@ module Plastic
 
           # The fields the row drop of Resources::RowMoves reads: the file is both the source and the target.
           def row = [intent_id, inside, inside, path, path]
-
-          def preview = "preview: remove #{path}"
-
-          def line = "removed #{path}"
         end
       end
     end
