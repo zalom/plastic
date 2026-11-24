@@ -85,6 +85,23 @@ class RoutinePrintingTest < Plastic::TestCase
     assert_equal [[1, 1], [true, true]], [results.map(&:code), results.map { |result| result.err.include?(refusal("#{intent.dir}/outcome.md")) }]
   end
 
+  def test_an_outcome_written_by_hand_that_no_row_holds_refuses_a_note_and_stays_as_written
+    intent = specified(records: nil)
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nBy hand.\n")
+    before = row_state
+    result = cli("intent", "note", "1", "a line")
+
+    assert_refused(result, "#{intent.dir}/outcome.md")
+    assert_equal [before, "# Outcome\n\nBy hand.\n"], [row_state, File.read(store_path("#{intent.dir}/outcome.md"))]
+  end
+
+  def test_a_spec_written_by_hand_that_no_row_holds_refuses_a_rule
+    intent = open_intent
+    write("#{intent.dir}/spec.md", keyed_spec)
+
+    assert_refused(cli("intent", "rule", "1", "A ruling"), "#{intent.dir}/spec.md")
+  end
+
   def test_an_edited_kept_file_refuses_every_printing_command_of_the_intent
     name = "#{specified.dir}/resources/kept.txt"
     keep_file(name, "kept\n")
