@@ -35,6 +35,7 @@ module Plastic
         :remove_node, :add_edge, :remove_edge, :drive_intent, :driver_problem, :driven?, :renew_claims, :renew_node, :release_claims, :release_driver
       def_delegators "@writers.verdicts", :rounds_left?
       def_delegator "@logged.grants", :write, :grant_round
+      def_delegator "@logged.handovers", :write, :hand_over
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal

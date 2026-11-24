@@ -180,7 +180,8 @@ class IntentEndAfterHandoverTest < Plastic::TestCase
     handed_over
     result = cli("intent", "end", "1")
 
-    assert_equal [0, "in_progress", 0], [result.code, retrieval.intent("1").status, work_rows("completions").size]
+    assert_call result, code: 1, out: ["Record the delivery of intent 1"], err: ""
+    assert_equal ["in_progress", 0], [retrieval.intent("1").status, work_rows("completions").size]
   end
 
   def test_without_a_handover_the_end_of_a_used_round_is_refused
@@ -196,7 +197,8 @@ class IntentEndAfterHandoverTest < Plastic::TestCase
     cli("intent", "grant", "1", "One more look", "--owner")
     result = cli("intent", "end", "1")
 
-    assert_equal [0, "in_progress", 0], [result.code, retrieval.intent("1").status, work_rows("completions").size]
+    assert_call result, code: 1, out: ["No accepted review counts yet"], err: ""
+    assert_equal ["in_progress", 0], [retrieval.intent("1").status, work_rows("completions").size]
   end
 
   def test_after_a_later_grant_and_a_third_revise_the_old_handover_no_longer_counts
