@@ -312,3 +312,106 @@ class ProjectLoadRetrievalTest < Plastic::TestCase
     graphs.retrieval.repair
   end
 end
+
+# The guidance for searching with keywords, the pointer to code history, and the delivery line of each delivered intent.
+class ProjectLoadGuidanceTest < Plastic::TestCase
+  include ProjectLoadHelper
+
+  DAY = "2026-11-20T12:00:00Z"
+
+  def then_line(*args) = lines(load(*args)).find { |line| line.start_with?("then: ") }
+
+  def test_the_then_line_tells_the_agent_to_write_keywords_and_run_three_to_five_searches
+    register("blog")
+    work("blog")
+
+    assert_match(/rewrite .*question .*keywords.*three to five .*plastic search/, then_line("blog"))
+  end
+
+  def test_the_then_line_tells_the_agent_to_read_single_passages
+    register("blog")
+    work("blog")
+
+    assert_includes then_line("blog"), "plastic document get REF --passage N"
+  end
+
+  def test_a_project_with_a_repository_gets_a_history_row_naming_the_version_control_and_architecture_tools
+    register("blog")
+    work("blog")
+
+    history = values(load("blog"), "history:")
+
+    assert_equal 1, history.size
+    assert_match(/version control tool, such as Git.*architecture tool, such as Enola/, history.first)
+  end
+
+  def test_the_global_store_with_no_repository_gets_no_history_row
+    assert_empty values(load("global"), "history:")
+  end
+
+  def test_loading_starts_no_version_control_or_architecture_tool
+    register("blog")
+    work("blog")
+    bin = File.join(@home, "bin").tap { |dir| FileUtils.mkdir_p(dir) }
+    marker = File.join(@home, "started")
+    %w[git enola].each do |tool|
+      File.write(File.join(bin, tool), "#!/bin/sh\ntouch #{marker}\n")
+      FileUtils.chmod(0o755, File.join(bin, tool))
+    end
+
+    with_path("#{bin}:#{ENV.fetch("PATH")}") { load("blog") }
+
+    refute_path_exists marker
+  end
+
+  def test_a_delivered_row_shows_the_merged_line_of_its_outcome
+    register("blog")
+    intent = store_intent("blog", "Post", status: "done", closed_at: DAY)
+    outcome(intent, "- Merged: plastic/9--post into alpha at #12")
+
+    assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Post - Merged: plastic/9--post into alpha at #12"], values(load("blog"), "delivered:")
+  end
+
+  def test_a_delivered_row_shows_the_committed_line_of_its_outcome
+    register("blog")
+    intent = store_intent("blog", "Fix", status: "done", closed_at: DAY)
+    outcome(intent, "- Committed: alpha at abc1234")
+
+    assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Fix - Committed: alpha at abc1234"], values(load("blog"), "delivered:")
+  end
+
+  def test_a_delivered_row_shows_a_merged_line_that_the_outcome_wraps_over_two_lines
+    register("blog")
+    intent = store_intent("blog", "Post", status: "done", closed_at: DAY)
+    outcome(intent, "- Merged: plastic/9--post into alpha at pull request 190\n  (merge commit abc1234)\n- Tests: green")
+
+    assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Post - Merged: plastic/9--post into alpha at pull request 190 (merge commit abc1234)"], values(load("blog"), "delivered:")
+  end
+
+  def test_a_delivered_row_whose_outcome_has_no_delivery_line_shows_the_day_and_title
+    register("blog")
+    intent = store_intent("blog", "Note", status: "done", closed_at: DAY)
+    outcome(intent, "- Tests: green")
+
+    assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Note"], values(load("blog"), "delivered:")
+  end
+
+  private
+
+  # The command runs in this process, so a child it started would find the fake programs through this process's PATH.
+  def with_path(path)
+    saved = ENV.fetch("PATH")
+    ENV["PATH"] = path
+    yield
+  ensure
+    ENV["PATH"] = saved
+  end
+
+  def outcome(intent, line)
+    graphs = Plastic::Graph.create(home: @plastic_home, store: "blog")
+    origin = Plastic::Graph::Origin.new(@plastic_home).id
+    body = "# Outcome\n\n## Verification\n\n#{line}\n"
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:store), origin, clock: FixedClock::CLOCK).write(intent.intent_id, "outcome.md", body)
+    graphs.retrieval.repair
+  end
+end

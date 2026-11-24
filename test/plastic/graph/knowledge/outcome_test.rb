@@ -271,4 +271,17 @@ class KnowledgeOutcomeDeliveryTest < Plastic::TestCase
 
     assert_equal ["Committed: main at PR 57", true], [read.delivery_rejection, read.missing_records.first.include?("Committed: <branch> at <commit>")]
   end
+
+  def test_a_bullet_wrapped_over_indented_lines_reads_whole
+    read = outcome("## Verification\n- Merged: branch into alpha at pull request 190\n  (merge commit abc1)\n- Tests: green\n")
+
+    assert_equal ["branch into alpha at pull request 190 (merge commit abc1)"], read.values("Merged")
+  end
+
+  def test_an_indented_sub_bullet_is_not_joined_onto_the_bullet_above
+    read = outcome("## Verification\n- Tests: green\n  - Merged: branch into alpha at abc1\n")
+
+    assert_equal ["green"], read.values("Tests")
+    assert_empty read.values("Merged")
+  end
 end

@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "node_output"
+require_relative "ready_after_done"
 require_relative "../harnesses/run_record"
 
 module Plastic
@@ -12,6 +13,8 @@ module Plastic
     # moves, and a subclass calls `move` once with its key. A refused move
     # keeps its run open, so the next call moves again.
     class MoveNode < CodeWorkflow
+      extend ReadyAfterDone
+
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
                         offers: "plastic node claim %{intent_id} %{id} --agent NAME" },
@@ -45,7 +48,7 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :intent, :problem, :moved, :held_elsewhere
+        sets :intent, :problem, :moved, :held_elsewhere, :first_ready
         intent_steps
         output_steps if verb == :done_node
         move_steps(verb, shape)
@@ -99,6 +102,7 @@ module Plastic
       def self.result_steps(shape)
         state = shape.fetch(:state)
         read(shape.fetch(:say)) { |context| context.print("node: #{context.id} #{state}") }
+        ready_steps if state == "done"
         outcome :done, offers: shape.fetch(:offers), because: "node %{id} is #{state}"
       end
 
