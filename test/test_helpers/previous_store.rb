@@ -22,6 +22,9 @@ module PreviousStore
   INPUTS = "20261123170000"
   EMPTY_ROADMAPS = "20261124090000"
   LEFTOVERS = "20261124120000"
+  MISTAKES = "20261124150000"
+  OWNER_TIME = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('91', 'o', '91--a', 'A', 'open', '2026-10-05', '2026-10-05T10:00:00+02:00')"
+  OWNER_KEPT = "changed_values_#{UTC}"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
   NODE_COLUMNS = %w[judge verdict].freeze
   ROADMAP = "originals/roadmaps/plan.md"
@@ -41,7 +44,7 @@ module PreviousStore
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES])
     end
     older_work_layout(home)
   end
@@ -60,6 +63,9 @@ module PreviousStore
     database.execute("ALTER TABLE nodes ADD COLUMN input TEXT")
   end
 
+  # A store of the previous release whose intent holds a time with an offset. The time migration keeps its old text in legacy.db, the owner's data, so the migrated store has a legacy.db.
+  def previous_home_with_times = previous_home.tap { |home| SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute(OWNER_TIME) } }
+
   def migrated_previous_home = previous_home.tap { |home| migrate_store(home) }
 
   def migrate_store(home, now: MIGRATED_AT)
@@ -67,16 +73,19 @@ module PreviousStore
   end
 
   # Undoes the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, the eleven newest, so the next down undoes the drop.
-  def back_to_drop(home) = home.tap { 12.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  def back_to_drop(home) = home.tap { 13.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # Undoes the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, the seven newest, which remove their versions alone, so the next down undoes the one before them.
-  def without_usage(home) = home.tap { 8.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  def without_usage(home) = home.tap { 9.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # Undoes the eight newest migrations of a store that ran only some, which keep nothing in a store of the previous release, so the next down undoes the one before them.
-  def utc_down(home) = home.tap { 9.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  def utc_down(home) = home.tap { 10.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # A migrated store whose node inputs migration, deadline migration, driver migration, node columns migration, run usage migration, time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
-  def migrated_to_drop = back_to_drop(migrated_previous_home)
+  def migrated_previous_home_with_times = previous_home_with_times.tap { |home| migrate_store(home) }
+
+  # A migrated store of the owner's data, taken back to the UTC migration, so the next down puts back the rows it kept.
+  def migrated_to_owner = without_usage(migrated_previous_home_with_times)
 
   def forget(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
@@ -91,7 +100,8 @@ module PreviousStore
 
   def recorded(home) = alpha_rows(home, "knowledge_graph.db", "SELECT version FROM schema_migrations ORDER BY version").flatten
 
-  def legacy_tables(home) = alpha_rows(home, "legacy.db", "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten
+  # The tables of legacy.db, none when the store has no legacy.db.
+  def legacy_tables(home) = File.exist?(alpha_file(home, "legacy.db")) ? alpha_rows(home, "legacy.db", "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten : []
 
   def ledger_rows(home)
     SQLite3::Database.open(File.join(home, "plastic.db"), readonly: true) do |database|

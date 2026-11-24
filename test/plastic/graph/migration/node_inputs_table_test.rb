@@ -26,7 +26,7 @@ class GraphNodeInputsTableTest < Plastic::TestCase
 
   # The leftover work tables migration and the empty roadmap tables migration are the newest, so their downs come first.
   def down(home)
-    3.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
+    4.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
   end
 
   def fresh_columns(table = "nodes")

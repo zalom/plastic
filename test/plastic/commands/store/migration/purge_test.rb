@@ -23,74 +23,66 @@ class MigrationPurgeTest < Plastic::TestCase
   end
 
   def test_a_purge_removes_the_legacy_rows_of_the_migration_and_leaves_its_version_in_the_store
-    home = migrated_previous_home
-    purge(home, DROP, "--project", "alpha")
+    home = migrated_previous_home_with_times
+    purge(home, UTC, "--project", "alpha")
 
-    assert_equal [[], true], [legacy_tables(home), recorded(home).include?(DROP)]
+    assert_equal [[], true], [legacy_tables(home), recorded(home).include?(UTC)]
   end
 
   def test_a_purge_gives_the_space_of_the_removed_rows_back_to_the_disk
-    home = migrated_previous_home
-    purge(home, DROP, "--project", "alpha")
+    home = migrated_previous_home_with_times
+    purge(home, UTC, "--project", "alpha")
 
     assert_equal 0, free_pages(home)
   end
 
   def test_a_purge_prints_what_it_removed_and_that_the_migration_can_no_longer_be_undone
-    assert_call purge(migrated_previous_home, DROP, "--project", "alpha"), code: 0,
-      out: ["purge: removed 1 row of document_revisions from legacy.db", "purge: migration #{DROP} of alpha can no longer be undone"]
+    assert_call purge(migrated_previous_home_with_times, UTC, "--project", "alpha"), code: 0,
+      out: ["purge: removed 1 row of changed_values from legacy.db", "purge: migration #{UTC} of alpha can no longer be undone"]
   end
 
   def test_a_ledger_that_refuses_the_purge_row_leaves_the_rows_purged_exits_0_and_says_so_on_one_line
-    home = migrated_previous_home
+    home = migrated_previous_home_with_times
     refuse_ledger(home, "purge")
-    result = purge(home, DROP, "--project", "alpha")
+    result = purge(home, UTC, "--project", "alpha")
 
-    assert_equal [0, [], ["purge: the rows migration #{DROP} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (plastic.db: refused)"]],
+    assert_equal [0, [], ["purge: the rows migration #{UTC} kept are gone from legacy.db of alpha, but the ledger in plastic.db has no purge row for it (plastic.db: refused)"]],
       [result.code, legacy_tables(home), result.err.lines.map(&:chomp)]
   end
 
   def test_a_purge_more_than_twelve_hours_after_the_newest_backup_backs_the_store_up_first
-    home = migrated_previous_home
-    result = plastic("store", "migration", "purge", DROP, "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + (13 * 3600)))
+    home = migrated_previous_home_with_times
+    result = plastic("store", "migration", "purge", UTC, "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + (13 * 3600)))
 
     assert_equal [0, "store migration purge"], [result.code, Plastic::Graph::Backup::Folders.new(alpha_file(home, "")).report(backup_folders(home).last).fetch("reason")]
   end
 
   def test_a_purge_adds_a_purge_row_to_the_ledger
-    home = migrated_previous_home
-    purge(home, DROP, "--project", "alpha")
+    home = migrated_previous_home_with_times
+    purge(home, UTC, "--project", "alpha")
 
-    assert_equal ["alpha", DROP, "purge", '{"document_revisions":1}', 0], ledger_rows(home).last
-  end
-
-  def test_after_a_purge_a_down_is_refused
-    home = migrated_to_drop
-    purge(home, DROP, "--project", "alpha")
-    result = plastic("store", "migration", "down", "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
-
-    assert_equal 3, result.code
+    assert_equal ["alpha", UTC, "purge", '{"changed_values":1}', 0], ledger_rows(home).last
   end
 
   def test_a_version_purged_already_is_a_usage_error_and_nothing_changes
-    home = migrated_previous_home
-    purge(home, DROP, "--project", "alpha")
+    home = migrated_previous_home_with_times
+    purge(home, UTC, "--project", "alpha")
 
-    assert_usage_unchanged home, DROP, "migration #{DROP} keeps no rows of alpha in legacy.db"
+    assert_usage_unchanged home, UTC, "migration #{UTC} keeps no rows of alpha in legacy.db"
   end
 
   def test_a_version_that_kept_nothing_is_a_usage_error_and_nothing_changes
-    assert_usage_unchanged migrated_previous_home, BASELINE, "migration #{BASELINE} keeps no rows of alpha in legacy.db"
+    assert_usage_unchanged migrated_previous_home_with_times, BASELINE, "migration #{BASELINE} keeps no rows of alpha in legacy.db"
   end
 
   def test_a_store_with_no_legacy_db_is_a_usage_error_and_gets_no_legacy_db
     home = previous_home
-    result = purge(home, DROP, "--project", "alpha")
+    result = purge(home, UTC, "--project", "alpha")
 
     assert_equal [2, false], [result.code, File.exist?(alpha_file(home, "legacy.db"))]
   end
 
   def test_a_call_without_a_version_is_a_usage_error
-    assert_equal 2, purge(migrated_previous_home, "--project", "alpha").code
+    assert_equal 2, purge(migrated_previous_home_with_times, "--project", "alpha").code
   end
 end

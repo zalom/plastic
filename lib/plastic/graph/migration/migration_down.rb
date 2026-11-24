@@ -10,7 +10,6 @@ require_relative "legacy_store"
 require_relative "legacy_table"
 require_relative "migration_ledger"
 require_relative "migration_reason"
-require_relative "revision_rows"
 require_relative "node_deadline_column"
 require_relative "node_inputs_column"
 require_relative "node_judge_columns"
@@ -42,7 +41,7 @@ module Plastic
       Undone = Data.define(:version, :moved, :built, :removed, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
-      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
+      REBUILDS = { "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
                    "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables,
                    "20261124120000" => LeftoverWorkTables }.freeze
       # The versions whose down takes off the links the migration wrote, and answers how many.
