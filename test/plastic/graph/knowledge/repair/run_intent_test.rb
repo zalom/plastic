@@ -17,7 +17,7 @@ class RepairRunIntentTest < Plastic::TestCase
 
   def repair = Plastic::Graph::Knowledge::Repair::Run.new(folder, store_graphs).call
 
-  def amended = store_database.rows("SELECT path, text FROM work_log WHERE kind = 'amended'").map { |row| row.fetch("path") }
+  def amended = store_database.rows("SELECT path, text FROM work_log WHERE kind = 'amended' AND text LIKE '%: link %'").map { |row| row.fetch("path") }
 
   def setup
     super

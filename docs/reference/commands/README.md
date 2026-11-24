@@ -44,6 +44,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent link`](intent-link/README.md) | Write a typed link from an intent to a ref |
 | [`plastic intent unlink`](intent-unlink/README.md) | Remove a link |
 | [`plastic intent archive`](intent-archive/README.md) | Archive an intent directory |
+| [`plastic intent repair`](intent-repair/README.md) | Apply the folder layout to one intent folder, or to every one with --all |
 | [`plastic intent unarchive`](intent-unarchive/README.md) | Restore an archived intent's directory exactly as it was archived |
 
 ## project
@@ -83,12 +84,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic store migration purge`](store-migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
 | [`plastic store sync up`](store-sync-up/README.md) | Read the files changed by hand into rows |
 | [`plastic store sync down`](store-sync-down/README.md) | Write the rows that changed into files |
-
-## resources
-
-| Command | What it does |
-| --- | --- |
-| [`plastic resources sort`](resources-sort/README.md) | Move one store's files into the resources layout and rewrite their links |
 
 ## document
 

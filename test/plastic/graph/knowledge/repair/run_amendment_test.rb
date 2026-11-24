@@ -57,7 +57,7 @@ class RepairRunAmendmentTest < Plastic::TestCase
   def test_the_amended_line_holds_the_sha_of_the_new_text
     close("done")
     repair
-    sha = store_database.rows("SELECT sha256 FROM work_log WHERE kind = 'amended'").map { |row| row.fetch("sha256") }.uniq
+    sha = store_database.rows("SELECT sha256 FROM work_log WHERE kind = 'amended' AND text LIKE '%: link %'").map { |row| row.fetch("sha256") }.uniq
 
     assert_equal [Digest::SHA256.hexdigest(File.read(File.join(store_root, INTENT, "spec.md")))], sha
   end

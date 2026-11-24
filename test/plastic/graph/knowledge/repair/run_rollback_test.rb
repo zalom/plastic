@@ -15,8 +15,6 @@ class RepairRunRollbackTest < Plastic::TestCase
 
   def repair(**options) = Plastic::Graph::Knowledge::Repair::Run.new(folder, store_graphs, **options).call
 
-  def preview_lines = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).call
-
   def setup
     super
     write_old_layout
@@ -77,8 +75,9 @@ class RepairRunRollbackTest < Plastic::TestCase
     repair
     File.write(File.join(store_root, INTENT, "spec.md"), "# Spec changed by hand\n")
 
-    assert_empty repair
-    refute_equal "preview: paths that would change: 0", preview_lines.last
+    before = row_digest
+
+    assert_equal [[], before], [repair, row_digest]
   end
 
   def statements_of_a_move_of(count)

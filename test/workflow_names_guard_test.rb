@@ -59,6 +59,8 @@ module WorkflowNameTable
     code_write_note: "Code::Session::Note",
     code_archive_intent: "Code::Intent::Archive",
     code_unarchive_intent: "Code::Intent::Unarchive",
+    code_preview_repair_intent: "Code::Intent::Repair::Preview",
+    code_repair_intent: "Code::Intent::Repair",
     code_preview_backup: "Code::Backup::Preview",
     code_backup: "Code::Backup",
     code_backup_list: "Code::Backup::List",
@@ -102,8 +104,6 @@ module WorkflowNameTable
     code_ask_node: "Code::Node::Ask",
     code_impede_node: "Code::Node::Impede",
     code_resolve_node: "Code::Node::Resolve",
-    code_preview_sort_resources: "Code::Resources::Sort::Preview",
-    code_sort_resources: "Code::Resources::Sort",
     code_park_intent: "Code::Intent::Park",
     code_grant_round: "Code::Intent::Grant"
   }.freeze
@@ -114,7 +114,7 @@ module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
     Code::Intent::Abandon Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
-    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
+    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Intent::Repair
   ].freeze
 end
 

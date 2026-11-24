@@ -65,6 +65,9 @@ module Plastic
       # Archive: taking an intent off the checkout and printing it back.
       code_archive_intent: "Code::Intent::Archive",
       code_unarchive_intent: "Code::Intent::Unarchive",
+      # Repair: the folder layout applied to old intent folders.
+      code_preview_repair_intent: "Code::Intent::Repair::Preview",
+      code_repair_intent: "Code::Intent::Repair",
       # Backups: one folder per backup of one store, with purge and restore.
       code_preview_backup: "Code::Backup::Preview",
       code_backup: "Code::Backup",
@@ -114,10 +117,6 @@ module Plastic
       code_ask_node: "Code::Node::Ask",
       code_impede_node: "Code::Node::Impede",
       code_resolve_node: "Code::Node::Resolve",
-
-      # Resources: the sort of an intent folder into the resources layout.
-      code_preview_sort_resources: "Code::Resources::Sort::Preview",
-      code_sort_resources: "Code::Resources::Sort",
 
       # Statuses: parking started work with its reason.
       code_park_intent: "Code::Intent::Park",

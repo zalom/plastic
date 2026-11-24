@@ -23,7 +23,7 @@ class RetrievalWritesGuardTest < Minitest::Test
     "plastic/graph/knowledge/intent/reporter.rb" => %w[Intent::Report],
     "plastic/graph/knowledge/intent/reviser.rb" => %w[Intent::Revise],
     "plastic/graph/knowledge/intent/writer.rb" => %w[Intent::New],
-    "plastic/graph/knowledge/resources/sort.rb" => %w[Resources::Sort],
+    "plastic/graph/knowledge/repair/run.rb" => %w[Intent::Repair],
     "plastic/graph/knowledge/sync.rb" => %w[Store::Sync::Up Store::Sync::Down],
     "plastic/graph/migration/store_compaction.rb" => %w[Update Install],
     "plastic/graph/work/completion/writer.rb" => %w[Intent::End Intent::Abandon]

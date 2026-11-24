@@ -21,6 +21,9 @@ module Plastic
         # Why the session may not drive the intent, or nil when it may.
         def driver_problem(intent_id, session) = @drivers.problem(intent_id, session)
 
+        # Whether a live driver claim holds the intent, the calling session's own included.
+        def driven?(intent_id) = @drivers.held?(intent_id)
+
         # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
         def drive_intent(intent_id:, by:, take_over: nil)
           @log.recorded do
