@@ -48,11 +48,15 @@ class MigrationDataKindsGuardTest < Minitest::Test
     assert_empty mistakes & Keep::KEEPS
   end
 
-  def test_the_detector_catches_a_drop_and_a_delete_and_leaves_a_comment_alone
-    assert self.class.drops?("DROP TABLE IF EXISTS main.document_revisions;")
-    assert self.class.drops?(%(ALTER TABLE work."nodes" DROP COLUMN "input";))
-    assert self.class.drops?(%(DELETE FROM main.sqlar WHERE name = ?))
-    refute self.class.drops?("-- The tables go: DROP TABLE is only named here.\nSELECT 1;")
-    refute self.class.drops?("# DELETE FROM is named in this note\nCREATE TABLE a(b);")
+  def test_the_detector_catches_a_drop_and_a_delete
+    samples = ["DROP TABLE IF EXISTS main.document_revisions;", %(ALTER TABLE work."nodes" DROP COLUMN "input";), %(DELETE FROM main.sqlar WHERE name = ?)]
+
+    assert_equal [true] * 3, samples.map { |sql| self.class.drops?(sql) }
+  end
+
+  def test_the_detector_leaves_a_comment_alone
+    notes = ["-- The tables go: DROP TABLE is only named here.\nSELECT 1;", "# DELETE FROM is named in this note\nCREATE TABLE a(b);"]
+
+    assert_equal [false] * 2, notes.map { |sql| self.class.drops?(sql) }
   end
 end
