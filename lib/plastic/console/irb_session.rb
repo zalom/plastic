@@ -6,8 +6,8 @@ module Plastic
   module Console
     # IRB in Plastic's own process over the console databases. It reads no rc
     # file, no history file and starts no pager, so a session writes nothing.
-    # IRB loads here, when a session opens, so --eval and every other command
-    # work on an install that left it out.
+    # IRB is the one of the Ruby installation, loaded through RubyGems here,
+    # when a session opens, so --eval and every other command load neither.
     class IrbSession
       # Reads lines from the call's input and prints each prompt to its output.
       class LineInput
@@ -39,6 +39,8 @@ module Plastic
         def inspect = "Plastic console input"
       end
 
+      MISSING = "plastic console needs irb, which this Ruby installation does not have; add it with `gem install irb`"
+
       def initialize(databases, environment)
         @databases = databases
         @environment = environment
@@ -55,9 +57,10 @@ module Plastic
       private
 
       def load_irb
+        require "rubygems"
         require "irb"
       rescue LoadError
-        raise Failed, "plastic console needs irb, which this install left out"
+        raise Failed, MISSING
       end
 
       def printing_to(stream)
