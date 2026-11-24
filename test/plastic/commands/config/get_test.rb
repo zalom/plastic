@@ -56,15 +56,12 @@ class ConfigGetTest < Plastic::TestCase
   def test_a_harness_setting_without_a_harness_is_an_unknown_key
     assert_equal 2, get("agents.models.plastic-executor").code
   end
-end
 
-# The store lock ships off, with a wait of 60 seconds.
-class ConfigGetStoreLockTest < Plastic::TestCase
-  def test_the_store_lock_reads_false_before_anything_is_set
-    assert_case line("config get sync.lock"), code: 0, out: ["sync.lock false", "next: plastic config set sync.lock VALUE"]
+  def test_the_removed_setting_sync_lock_is_an_unknown_key
+    assert_case line("config get sync.lock"), code: 2, err: "plastic: no setting sync.lock; plastic config list names them\nplastic config get KEY [--harness NAME]\n"
   end
 
-  def test_the_store_lock_wait_reads_60_before_anything_is_set
-    assert_case line("config get sync.lock_wait"), code: 0, out: ["sync.lock_wait 60", "next: plastic config set sync.lock_wait VALUE"]
+  def test_the_removed_setting_sync_lock_wait_is_an_unknown_key
+    assert_case line("config get sync.lock_wait"), code: 2, err: "plastic: no setting sync.lock_wait; plastic config list names them\nplastic config get KEY [--harness NAME]\n"
   end
 end

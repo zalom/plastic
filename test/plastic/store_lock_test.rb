@@ -49,7 +49,7 @@ class StoreLockTest < Plastic::TestCase
     ran = false
     error = assert_raises(Plastic::StoreLock::Busy) { lock(wait: 1).hold { ran = true } }
 
-    assert_equal ["#{lock_path}: another call holds the store lock, and the wait of 1 seconds in sync.lock_wait ran out", false], [error.message, ran]
+    assert_equal ["#{lock_path}: another call holds the store lock, and the wait of 1 seconds ran out", false], [error.message, ran]
   end
 
   def test_a_wait_of_one_second_pauses_twenty_times_before_it_fails
