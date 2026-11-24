@@ -170,7 +170,8 @@ nowhere, and a store with none of the tables only records the version. Its down,
 `REBUILDS`, builds the five tables again, empty and with the text of the live tables (UNIQUE keys, and the
 batch and position of an item NOT NULL), and puts back each row that the migration kept. A store that never
 had the tables gets them empty from the down too. Opening a store with that old checkout again makes the
-tables again, and the next `plastic update` drops them.
+tables again, and no later migration drops them, because the version is recorded and never runs again. The stop is
+to bring that checkout past commit 804fa952.
 
 ## Hold a migration behind a switch
 
