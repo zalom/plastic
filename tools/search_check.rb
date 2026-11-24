@@ -30,12 +30,9 @@ module SearchCheck
     def rows(sql, **binds) = @connection.execute(sql, binds)
 
     # The one origin whose documents the store holds.
-    def origin_id
-      ids = rows("SELECT DISTINCT origin_id FROM document_heads").map { |row| row.fetch("origin_id") }
-      raise Usage, "the store holds #{ids.size} origins, not one" unless ids.one?
+    def origin_id = self.class.single(rows("SELECT DISTINCT origin_id FROM document_heads").map { |row| row.fetch("origin_id") })
 
-      ids.first
-    end
+    def self.single(ids) = ids.one? ? ids.first : raise(Usage, "the store holds #{ids.size} origins, not one")
   end
 
   # One known question: what to type and which intents hold the answer.
@@ -45,18 +42,33 @@ module SearchCheck
     def line(rank) = format("%-6s %-14s %s", id, rank ? "hit  rank #{rank}" : "miss", question)
   end
 
+  # Reads the options of a call into the hash it is given.
+  class Switches
+    def initialize(found)
+      @found = found
+    end
+
+    def parse(argv) = parser.parse(argv)
+
+    private
+
+    def parser
+      OptionParser.new.tap do |parser|
+        parser.on("--keywords") { @found[:field] = :keywords }
+        parser.on("--limit N", Integer) { |number| @found[:limit] = number }
+        parser.on("--store DIR") { |folder| @found[:store] = folder }
+      end
+    end
+  end
+
   # The call's arguments: the question file, the field to type, how many intents count and the store folder.
   Arguments = Data.define(:file, :field, :limit, :store) do
     def self.parse(argv, home)
       found = { field: :question, limit: 5, store: File.join(home, "stores", "plastic") }
-      parser = OptionParser.new
-      parser.on("--keywords") { found[:field] = :keywords }
-      parser.on("--limit N", Integer) { |number| found[:limit] = number }
-      parser.on("--store DIR") { |folder| found[:store] = folder }
-      files = parser.parse(argv)
+      files = Switches.new(found).parse(argv)
       raise Usage, "usage: search-check FILE [--keywords] [--limit N] [--store DIR]" unless files.one?
 
-      new(files.first, found[:field], found[:limit], found[:store])
+      new(files.first, **found)
     end
 
     def questions
@@ -87,6 +99,21 @@ module SearchCheck
     end
   end
 
+  # The report lines of a run: one for each question and a total.
+  class Check
+    def initialize(arguments, questions)
+      @questions = questions
+      @limit = arguments.limit
+      @terms = ->(question) { question.public_send(arguments.field) }
+      @ranker = Ranker.new(ReadOnlyStore.new(arguments.store), @limit)
+    end
+
+    def lines
+      ranks = @questions.map { |question| @ranker.call(question.answers, @terms.call(question)) }
+      [*@questions.zip(ranks).map { |question, rank| question.line(rank) }, "total #{ranks.compact.size}/#{ranks.size} in the first #{@limit}"]
+    end
+  end
+
   # Runs every question and prints one line each and a total. Exit 0 ran, 2 called wrongly.
   class CLI
     def initialize(argv, out:, err:, home:)
@@ -106,11 +133,6 @@ module SearchCheck
 
     private
 
-    def report(arguments, questions)
-      ranker = Ranker.new(ReadOnlyStore.new(arguments.store), arguments.limit)
-      ranks = questions.map { |question| ranker.call(question.answers, question.public_send(arguments.field)) }
-      @streams.first.puts(questions.zip(ranks).map { |question, rank| question.line(rank) })
-      @streams.first.puts "total #{ranks.compact.size}/#{ranks.size} in the first #{arguments.limit}"
-    end
+    def report(arguments, questions) = @streams.first.puts(Check.new(arguments, questions).lines)
   end
 end
