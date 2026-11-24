@@ -100,6 +100,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
 | `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
+| `Console::Databases`, `Console::IrbSession` | `lib/plastic/console/` | The read-only open beside `Graph::Database`: four `sqlite3` connections opened with `readonly: true`, under the names `work`, `knowledge`, `retrieval` and `plastic`, with no schema gate, no pragma and no attach, so an open writes nothing. `Console::IrbSession` runs IRB in the process of the call, with no rc file, no history and no pager. |
 | `Graph::GraphWriter` | `lib/plastic/graph/graph_writer.rb` | The write side of all three graphs: it writes the store databases, the printed store files and the machine's own database. Command runs, sessions, intents, nodes, runs and edges go through it. |
 | `Graph::RetrievalGraph` | `lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
 | `Graph::Printer` | `lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
@@ -407,7 +408,7 @@ A migration that removes data keeps it in `legacy.db` in the same transaction, a
 newest migration the store records from those rows. A migration that changes stored data waits
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
 migration that writes every stored time in UTC, the migration that drops the node columns
-`judge` and `verdict`, and the migration `20261123120000` that turns the roadmaps into needs links have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
+`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops ten leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
 23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 

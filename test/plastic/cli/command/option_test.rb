@@ -20,6 +20,12 @@ class CommandOptionTest < Plastic::TestCase
     assert_equal ["[--tag TAG]", "--tag TAG"], [option.usage, option(required: true).usage]
   end
 
+  def test_a_short_and_a_long_form_written_with_a_comma_set_the_same_value
+    spelled = Plastic::CLI::Command::Option.new(name: :tag, switch: "-t, --tag TAG", text: "a tag", default: nil, repeatable: false, required: false)
+
+    assert_equal %w[a b], [parse(spelled, %w[-t a]), parse(spelled, %w[--tag b])]
+  end
+
   def test_a_switch_given_twice_keeps_the_last_value
     assert_equal "b", parse(option, %w[--tag a --tag b])
   end

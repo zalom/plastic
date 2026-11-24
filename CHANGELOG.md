@@ -5,6 +5,11 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.21
+
+- `plastic console` opens IRB in Plastic's own process over the three databases of a store and `plastic.db`, each opened read-only under the names `work`, `knowledge`, `retrieval` and `plastic`; `plastic console --eval CODE` (`-e`) runs one piece of Ruby, prints its value and exits, and with `--json` prints the value as JSON data. The console is no sandbox: Ruby can still write files. It renews no claim and takes no daily backup. `irb` joins the runtime Gemfile in a `console` group; when its gems do not build on install, the installer retries without the group and says the console needs a C compiler. A command class can now declare `renews_no_claims` and `long_description`, and a switch written `-e, --eval CODE` takes both forms. The io-console 0.9.2 pin in the development `Gemfile.lock` is not a requirement: it only fits a machine with no C compiler, and the runtime lock keeps the precompiled io-console 0.9.5.
+- Store migration `20261124120000` drops 10 leftover tables (`savepoints`, `changes`, `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `printed`) from `work_graph.db`. The same checkout from before the schema gate (local `alpha` at fdb2b9d3) made them: its schema declared them for the work database, and the current schema declares none there. Only the `work` copies are dropped; the live tables of the same names in `knowledge_graph.db` and `plastic.db` keep every row. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. It has no switch. Its down builds the ten tables again, empty and with the text of the old tables.
+
 ## 3.0.0-beta.20
 
 - `bin/search-check FILE` scores a known-question file against a store: it prints a hit or miss with its rank for each question and a total, and opens the store databases read-only. CONTRIBUTING.md asks a change to search ranking to report the hits before and after.

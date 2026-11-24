@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "leftover_work_tables"
 require_relative "legacy_pages"
 require_relative "legacy_table"
 require_relative "legacy_values"
@@ -15,7 +16,7 @@ module Plastic
     class LegacyKeep
       FILE = "legacy.db"
       # The versions that keep what they remove, so a down can undo them.
-      KEEPS = %w[20261119000000 20261121090000 20261123120000 20261124090000].freeze
+      KEEPS = %w[20261119000000 20261121090000 20261123120000 20261124090000 20261124120000].freeze
       # The tables a version drops, kept whole before its SQL runs.
       WHOLE = { "20261119000000" => %w[document_revisions],
                 "20261123120000" => RoadmapTables::NAMES }.freeze
@@ -53,13 +54,15 @@ module Plastic
 
       # Whether a down can leave `version` with nothing in legacy.db: it keeps only when a value changed or a table was there.
       # (Migration 20261123120000 keeps its tables only when the store has them, and its down then takes its links off.)
-      def self.kept_when_present?(version) = VALUES.include?(version) || RoadmapTables::WHEN_PRESENT.include?(version)
+      def self.kept_when_present?(version) = VALUES.include?(version) || RoadmapTables::WHEN_PRESENT.include?(version) ||
+        LeftoverWorkTables::WHEN_PRESENT.include?(version)
 
       # Runs just before the SQL of `version`.
       def call(version)
         @kept[version] = Hash.new(0)
         WHOLE.fetch(version, []).each { |table| rows(version, table) }
         RoadmapTables.keep(self, @connection) if version == RoadmapTables::VERSION
+        LeftoverWorkTables.keep(self, @connection) if version == LeftoverWorkTables::VERSION
       end
 
       # Keeps the rows of `table` that the `where` text selects, or all of them, for the migration `version`.

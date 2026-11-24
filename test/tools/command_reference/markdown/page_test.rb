@@ -22,6 +22,12 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     readmes.each { |path, body| assert_empty OLD_HEADINGS.select { |old| body.include?(old) }, path }
   end
 
+  def test_the_page_of_a_command_with_a_long_description_prints_its_lines_after_the_summary
+    body = text("console")
+
+    assert_operator body.index("The console is no sandbox: Ruby can still write files."), :>, body.index("```sh")
+  end
+
   def test_a_page_with_several_workflows_shows_the_workflows_drawing_before_the_events_drawing
     body = text("intent end")
 

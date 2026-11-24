@@ -44,7 +44,7 @@ module CommandReference
 
     def identity
       { words: @words, klass: @klass, file:, line:, summary: @kit.table.dig(@words, 1),
-        usage: @klass.usage_line(@words), arguments: @klass.arguments, options: @klass.options, entry: chain&.entry }
+        usage: @klass.usage_line(@words), description: @klass.long_description, arguments: @klass.arguments, options: @klass.options, entry: chain&.entry }
     end
 
     def file = @kit.source.relative(Object.const_source_location(@klass.name).first)

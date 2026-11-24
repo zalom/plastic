@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../database"
+require_relative "leftover_work_tables"
 require_relative "legacy_values"
 
 module Plastic
@@ -15,7 +16,8 @@ module Plastic
       SCHEMA = "legacy"
       NAME = /\A(?<table>.+)_(?<version>\d{14})\z/
       HEAD = /\ACREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:\w+\.)?(?:"[^"]+"|\w+)/i
-      # The schema a table lives in when it is not `main`: the roadmap tables of the work graph.
+      # The schema a table lives in when it is not `main`: the roadmap tables of the work graph. The ten leftover tables of
+      # migration 20261124120000 live there too, but by version (see LeftoverWorkTables), as their names are live tables of main.
       HOMES = %w[roadmaps batches roadmap_items roadmap_edges roadmap_log].to_h { |table| [table, "work"] }.freeze
       DEFINITION = "SELECT sql FROM %<schema>s.sqlite_master WHERE type = 'table' AND name = ?"
 
@@ -37,7 +39,7 @@ module Plastic
         @connection = connection
         @table = table
         @version = version
-        @home = HOMES.fetch(table, "main")
+        @home = LeftoverWorkTables.home?(version, table) ? LeftoverWorkTables::SCHEMA : HOMES.fetch(table, "main")
       end
 
       def name = "#{@table}_#{@version}"

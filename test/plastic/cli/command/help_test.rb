@@ -21,4 +21,10 @@ class CommandHelpTest < Plastic::TestCase
 
     assert_equal ["        ID                           the intent", "        --dir DIR                    where"], help[1, 2]
   end
+
+  def test_a_long_description_prints_its_lines_after_the_usage_line
+    help = lines { long_description "Opens the databases.", "No sandbox." }
+
+    assert_equal ["plastic show ID", "        Opens the databases.", "        No sandbox."], help[0, 3]
+  end
 end

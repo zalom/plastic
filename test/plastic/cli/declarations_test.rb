@@ -32,6 +32,10 @@ class DeclarationsTest < Plastic::TestCase
     assert_equal "plastic show ID [--dir DIR]", declared.usage_line("show")
   end
 
+  def test_a_command_declares_that_it_renews_no_claims
+    assert_equal [false, true], [tool.renews_no_claims?, tool { renews_no_claims }.renews_no_claims?]
+  end
+
   def test_a_repeatable_option_starts_from_an_empty_list
     declared = tool { option :tag, switch: "--tag TAG", text: "a tag", repeatable: true }
 

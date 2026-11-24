@@ -21,7 +21,8 @@ module Plastic
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
-        "search" => ["Commands::Search", "Search indexed passages across selected stores for the words of a question, best match first"]
+        "search" => ["Commands::Search", "Search indexed passages across selected stores for the words of a question, best match first"],
+        "console" => ["Commands::Console", "Open IRB over the store databases read-only, or run one piece of Ruby with --eval and print its value"]
       },
       "intent" => {
         "intent abandon" => ["Commands::Intent::Abandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
