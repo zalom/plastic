@@ -13,7 +13,7 @@ plastic node add ID TITLE --criterion KEY [--kind KIND] [--found-in NODE] [--inp
 | `--criterion KEY` | the key of the spec done criterion this node serves |  |
 | `--kind KIND` | orchestrator, work or retrieval; work when left out |  |
 | `--found-in NODE` | the node of this intent where the new work was found; it orders nothing |  |
-| `--input PATH` | a file the node reads |  |
+| `--input PATH` | a file the node reads; repeat for more, kept in the order given | `[]` |
 | `--deadline MINUTES` | the minutes a claim on the node may run before plastic graph ready reports it as overdue |  |
 
 ## The events of one call, step by step

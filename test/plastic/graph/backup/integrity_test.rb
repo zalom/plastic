@@ -95,7 +95,7 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
   def test_a_backup_of_the_beta_2_layout_at_the_newest_version_is_rejected_for_the_tables_it_lacks
     error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: Plastic::Graph::MIGRATIONS.newest(:store).to_i).call }
 
-    assert_includes error.message, "lacks the tables work_log"
+    assert_includes error.message, "lacks the tables node_inputs, work_log"
   end
 
   def later_list
@@ -112,7 +112,7 @@ class GraphBackupIntegrityVersionTest < Plastic::TestCase
   def test_the_newest_version_checks_the_declared_tables
     error = assert_raises(Integrity::Rejected) { Integrity.new(work_file_without, "work_graph", version: 20_991_201_000_000, migrations: later_list).call }
 
-    assert_includes error.message, "lacks the tables work_log"
+    assert_includes error.message, "lacks the tables node_inputs, work_log"
   end
 
   def test_a_version_below_the_newest_that_this_code_does_not_know_is_rejected

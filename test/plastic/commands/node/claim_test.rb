@@ -144,6 +144,13 @@ class NodeClaimTest < Plastic::TestCase
     assert_includes call.out, "input: docs/a.md"
   end
 
+  def test_the_brief_names_each_input_file_on_its_own_line_in_order
+    open_intent
+    add_node("a", "--input", "docs/a.md", "--input", "docs/b.md")
+
+    assert_includes claim("n1").out, "input: docs/a.md\ninput: docs/b.md\n"
+  end
+
   def unapproved_claim
     open_intent
     store_graphs.work.activate_intent("1")

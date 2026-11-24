@@ -9,7 +9,7 @@ module Plastic
       # The rows of each table, by intent.
       class Contents
         READERS = {
-          documents: :itself, legacy_intents_data: :stored, work_log: :structure, nodes: :structure, runs: :structure, edges: :structure,
+          documents: :itself, legacy_intents_data: :stored, work_log: :structure, nodes: :structure, node_inputs: :structure, runs: :structure, edges: :structure,
           approvals: :structure, verdicts: :structure, completions: :structure, contexts: :structure, discoveries: :structure, kept_files: :archives
         }.freeze
         TABLES = READERS.keys.freeze
