@@ -20,6 +20,22 @@ class KnowledgeRulingWriterTest < Plastic::TestCase
     assert_equal [%w[D1 s-1], %w[D2 s-1]], [first, second].map { |ruling| [ruling.id, ruling.session_id] }
   end
 
+  def test_a_leading_copy_of_the_rulings_own_id_is_dropped
+    texts = ["D1 Ship it", "D2: Wait", "D3. Hold", "D4 - Go"].map { |text| writer.add_ruling(intent_id: "1", text:).text }
+
+    assert_equal %w[Ship\ it Wait Hold Go], texts
+  end
+
+  def test_another_id_at_the_start_and_an_id_inside_a_word_are_kept
+    texts = ["D7 is the one to read", "D20 runs later", "D3x stays"].map { |text| writer.add_ruling(intent_id: "1", text:).text }
+
+    assert_equal ["D7 is the one to read", "D20 runs later", "D3x stays"], texts
+  end
+
+  def test_a_text_that_is_only_the_id_is_kept
+    assert_equal "D1", writer.add_ruling(intent_id: "1", text: "D1").text
+  end
+
   def test_a_ruling_that_supersedes_another_writes_the_link
     writer.add_ruling(intent_id: "1", text: "Ship it")
     ruling = writer.add_ruling(intent_id: "1", text: "Wait", supersedes: "1/D1")

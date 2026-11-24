@@ -11,7 +11,7 @@ class AddRulingTest < Plastic::TestCase
 
     outcome, context = rule
 
-    assert_equal [:done, ["ruling: D1"]], [outcome, context.printed]
+    assert_equal [:done, ["ruling: D1 Keep it small"]], [outcome, context.printed]
     assert_equal ["Keep it small"], retrieval.rulings("1").map(&:text)
   end
 

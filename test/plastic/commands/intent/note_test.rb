@@ -3,10 +3,10 @@
 require_relative "../../../test_helper"
 
 class IntentNoteCaseTest < Plastic::TestCase
-  def test_a_note_prints_the_report_and_offers_next
+  def test_a_plain_note_prints_the_note_and_offers_next
     ran("intent new Alpha")
 
-    assert_case line('intent note 1 "all checks pass"'), code: 0, out: ["report: all checks pass", "next: plastic next"]
+    assert_case line('intent note 1 "all checks pass"'), code: 0, out: ["note: all checks pass", "next: plastic next"]
   end
 
   def test_a_note_of_the_commit_kind_prints_the_commit_and_offers_next
@@ -51,7 +51,15 @@ class IntentNoteTest < Plastic::TestCase
     result = call("1", "all checks pass")
 
     assert_equal 0, result.code, result.err
-    assert_equal "#{OUTCOME}\n## Notes\n\n- Report: all checks pass\n", body
+    assert_equal "#{OUTCOME}\n## Notes\n\n- Note: all checks pass\n", body
+  end
+
+  def test_a_note_of_the_report_kind_is_labeled_report
+    with_outcome
+
+    call("1", "the audit is in resources/output/reports/audit.md", "--kind", "report")
+
+    assert_equal "#{OUTCOME}\n## Notes\n\n- Report: the audit is in resources/output/reports/audit.md\n", body
   end
 
   def test_a_second_note_goes_under_the_same_heading
@@ -60,7 +68,7 @@ class IntentNoteTest < Plastic::TestCase
     call("1", "first")
     call("1", "second")
 
-    assert_equal "#{OUTCOME}\n## Notes\n\n- Report: first\n- Report: second\n", body
+    assert_equal "#{OUTCOME}\n## Notes\n\n- Note: first\n- Note: second\n", body
   end
 
   def test_a_note_goes_at_the_end_of_an_existing_notes_section
@@ -68,7 +76,7 @@ class IntentNoteTest < Plastic::TestCase
 
     call("1", "later")
 
-    assert_equal "# Outcome\n\n## Notes\n\n- Review: earlier\n- Report: later\n\n## Verification\n\n- Merged: yes\n", body
+    assert_equal "# Outcome\n\n## Notes\n\n- Review: earlier\n- Note: later\n\n## Verification\n\n- Merged: yes\n", body
   end
 
   def test_the_kind_is_kept
@@ -84,7 +92,7 @@ class IntentNoteTest < Plastic::TestCase
 
     result = call("1", "text", "--kind", "Typo")
 
-    assert_equal [2, OUTCOME, true], [result.code, body, result.err.include?("KIND takes Review, Commit, Report, Merged, Committed, Delivered, Pull request, Approved, Reverted, Abandoned")]
+    assert_equal [2, OUTCOME, true], [result.code, body, result.err.include?("KIND takes Note, Review, Commit, Report, Merged, Committed, Delivered, Pull request, Approved, Reverted, Abandoned")]
   end
 
   def test_an_outcome_file_edited_by_hand_fails_the_note_and_writes_nothing
@@ -110,7 +118,7 @@ class IntentNoteTest < Plastic::TestCase
     result = call("1", "first thought")
 
     assert_equal 0, result.code, result.err
-    assert_equal "# Outcome\n\n## Notes\n\n- Report: first thought\n", body
+    assert_equal "# Outcome\n\n## Notes\n\n- Note: first thought\n", body
   end
 
   def test_the_files_row_names_the_outcome_file
