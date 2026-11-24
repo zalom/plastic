@@ -23,7 +23,7 @@ class CommandTest < Plastic::TestCase
   class Idle < Plastic::CLI::Command
     def call
       graphs.databases.fetch(:store).define_singleton_method(:path) { "/missing/work_graph.db" }
-      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal made a database" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session, **| raise "a renewal made a database" }
     end
   end
 
@@ -31,7 +31,7 @@ class CommandTest < Plastic::TestCase
     argument :intent_id, label: "ID", text: "the intent"
 
     def call
-      graphs.work.define_singleton_method(:renew_claims) { |_session| raise SQLite3::BusyException, "the database is locked" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session, **| raise SQLite3::BusyException, "the database is locked" }
       output.row("title:", graphs.retrieval.intent(parsed[:intent_id]).title)
     end
   end
@@ -40,7 +40,7 @@ class CommandTest < Plastic::TestCase
     renews_no_claims
 
     def call
-      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal wrote to the work database" }
+      graphs.work.define_singleton_method(:renew_claims) { |_session, **| raise "a renewal wrote to the work database" }
       output.row("title:", "kept")
     end
   end
@@ -148,7 +148,7 @@ class CommandTest < Plastic::TestCase
     argument :intent_id, label: "ID", text: "the intent"
 
     def call
-      graphs.work.define_singleton_method(:renew_claims) { |_session| nil.renew }
+      graphs.work.define_singleton_method(:renew_claims) { |_session, **| nil.renew }
       output.row("title:", "x")
     end
   end

@@ -68,8 +68,8 @@ class GraphMistakenRowsTest < Plastic::TestCase
   def test_the_migration_goes_down_by_removing_its_version_alone
     home = kept_home
     migrate(home)
-    # The driver mode migration is newer, so its down comes first.
-    undone = 2.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }.last
+    # The driver mode and driver agent migrations are newer, so their downs come first.
+    undone = 3.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }.last
 
     assert_equal [CLEANUP, {}, false, [OWNER]], [undone.version, undone.moved, recorded(home).include?(CLEANUP), legacy_tables(home)]
   end

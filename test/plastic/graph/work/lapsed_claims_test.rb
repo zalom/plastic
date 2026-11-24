@@ -31,4 +31,11 @@ class WorkLapsedClaimsTest < Plastic::TestCase
 
     assert_equal ["n1", "Build", nil, "s-2", STAMP], [node.node, node.node_title, node.agent, node.session, node.last_renewed]
   end
+
+  def test_a_lapsed_driver_claim_names_the_agent_that_took_it
+    store_graphs.work.drive_intent(intent_id: "1", by: "s-1", mode: "auto", agent: "deliver")
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE drivers SET seen_at = :at", at: STAMP) }
+
+    assert_equal "deliver", lapsed(16).find(&:driver?).agent
+  end
 end

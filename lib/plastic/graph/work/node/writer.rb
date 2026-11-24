@@ -34,6 +34,19 @@ module Plastic
 
           CAP_MOVE = { to: "needs_info", from: %w[open] }.freeze
 
+          RENEW_SQL = <<~SQL
+            UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin
+              AND intent_id IN (SELECT intent_id FROM intents WHERE status = 'in_progress' AND origin_id = :origin)
+              AND ((:agent = '' AND intent_id NOT IN (SELECT intent_id FROM drivers WHERE origin_id = :origin AND mode = 'auto'))
+                OR :agent = (SELECT agent FROM runs WHERE runs.intent_id = nodes.intent_id AND runs.node_id = nodes.id
+                  AND runs.origin_id = :origin AND runs.ended_at IS NULL ORDER BY number DESC LIMIT 1))
+          SQL
+
+          RENEW_NODE_SQL = <<~SQL
+            UPDATE nodes SET seen_at = :now
+            WHERE intent_id = :intent_id AND id = :id AND claimed_by = :session AND state = 'claimed' AND origin_id = :origin
+          SQL
+
           CLOSE_RUN_SQL = <<~SQL
             UPDATE runs SET ended_at = :ended_at, result = :result
             WHERE intent_id = :intent_id AND node_id = :id AND origin_id = :origin AND ended_at IS NULL
@@ -84,17 +97,19 @@ module Plastic
           # Stores the cost of a run that ended with none. A run that already holds a cost keeps it.
           def record_cost(**fields) = RunUsage.new(@databases, @retrieval).cost(**fields)
 
-          def renew_claims(session)
-            now = Plastic.timestamp(@clock.now)
-            @databases.fetch(:store).transaction do |batch|
-              batch.add(<<~SQL, now:, session:, origin: @retrieval.origin_id)
-                UPDATE nodes SET seen_at = :now WHERE claimed_by = :session AND state = 'claimed' AND origin_id = :origin
-                  AND intent_id IN (SELECT intent_id FROM intents WHERE status = 'in_progress' AND origin_id = :origin)
-              SQL
-            end
-          end
+          # Renews the claims of one agent of the session in the intents in progress. In agent delivery a claim is the
+          # agent's whose name is on the node's open run; in guided work a call that names no agent renews every claim of
+          # its session, as one agent holds them all.
+          def renew_claims(session, agent: "") = renewed(RENEW_SQL, session:, agent:)
+
+          # Renews the claim of the session on one node, and no other claim.
+          def renew_node(intent_id:, id:, by:) = renewed(RENEW_NODE_SQL, intent_id:, id:, session: by)
 
           private
+
+          def renewed(sql, **bind)
+            @databases.fetch(:store).transaction { |batch| batch.add(sql, **bind, now: Plastic.timestamp(@clock.now), origin: @retrieval.origin_id) }
+          end
 
           def stamped(move, fields)
             stamp = move[:stamp]

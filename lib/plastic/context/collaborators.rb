@@ -14,6 +14,9 @@ module Plastic
 
       def running_harness = harness.name.to_s
 
+      # The agent PLASTIC_AGENT names, or an empty text for the session's own agent.
+      def running_agent = harness.agent.to_s
+
       def user_home = harness.user_home
 
       def scope = harness.scope
