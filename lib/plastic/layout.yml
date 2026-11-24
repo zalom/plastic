@@ -38,7 +38,7 @@ files:
     name: spec.md
     purpose: The goal, the done criteria, the open decisions and the constraints.
     required: [open, done]
-    writer: agent
+    writer: plastic intent spec
     headings:
       - name: Goal
         aliases: [Goals]

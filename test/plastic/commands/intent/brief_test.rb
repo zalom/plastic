@@ -28,7 +28,7 @@ class IntentBriefCaseTest < Plastic::TestCase
     ran("intent new Alpha", "intent start 1")
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
-      'spec: none yet; the agent writes store/1--alpha/spec.md, and the done criteria are the bullets under its "## Done criteria" heading, ' \
+      'spec: none yet; the agent writes it with plastic intent spec 1 --from FILE, and the done criteria are the bullets under its "## Done criteria" heading, ' \
       "each written - [c1] text", *MAIN_SESSION, PLAN_STEP, "plastic node fail ID NODE TEXT is for work that was tried and failed."]
   end
 

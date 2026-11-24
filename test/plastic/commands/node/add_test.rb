@@ -79,13 +79,13 @@ class NodeAddTest < Plastic::TestCase
     assert_equal [1, []], [call("1", "do the thing", "--criterion", CRITERION).code, nodes]
   end
 
-  def test_no_synced_spec_exits_1_saying_to_write_the_done_criteria_and_sync_up
+  def test_no_spec_exits_1_saying_to_write_the_done_criteria_with_the_spec_command
     open_intent
 
     result = call("1", "do the thing", "--criterion", KEY)
 
-    assert_equal [1, true], [result.code, result.err.include?("done criteria") && result.err.include?("store sync up")]
-    assert_includes result.err, "intent 1 has no synced spec.md; write its done criteria, then run plastic store sync up"
+    assert_equal 1, result.code
+    assert_includes result.err, "intent 1 has no spec.md; write its done criteria with plastic intent spec 1 --from FILE"
     assert_empty nodes
   end
 

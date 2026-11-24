@@ -36,7 +36,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
 | [`plastic intent grant`](intent-grant/README.md) | Grant one extra review round, on the owner's word, to an intent whose rounds are used |
-| [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |
+| [`plastic intent spec`](intent-spec/README.md) | Write spec.md from a file with --from, then print the grilling method, how done criteria are written, and the open decisions of spec.md |
 | [`plastic intent discover`](intent-discover/README.md) | Record deterministic retrieval candidates for an intent |
 | [`plastic intent context`](intent-context/README.md) | Read or submit selected retrieval context for an intent |
 | [`plastic intent show`](intent-show/README.md) | Print one intent's status, criteria, decisions, rulings and nodes |

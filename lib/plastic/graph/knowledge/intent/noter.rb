@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "notes"
-require_relative "../../evidence/writer"
+require_relative "document_writer"
 require_relative "../../../layout"
 
 module Plastic
@@ -22,8 +22,7 @@ module Plastic
           def write(intent, kind, text)
             id = intent.intent_id
             body = Notes.for(@retrieval.fetch(id, FILE)&.body).add(kind, text)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id, clock: @retrieval.clock).write(id, FILE, body)
-            @retrieval.reference(id, FILE).fetch(:uri)
+            DocumentWriter.new(@databases, @retrieval).write(id, FILE, body)
           end
         end
       end

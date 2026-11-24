@@ -20,6 +20,7 @@ module Plastic
       code_note_intent: "Code::Intent::Note",
       code_report_intent: "Code::Intent::Report",
       code_show_spec: "Code::Intent::Spec",
+      code_write_spec: "Code::Intent::Spec::Write",
       code_approve_intent: "Code::Intent::Approve",
       code_prepare_judge: "Code::Intent::Judge",
       code_prepare_verdict: "Code::Intent::Verdict::Prepare",

@@ -74,7 +74,7 @@ class IntentSpecTest < Plastic::TestCase
 
     assert_equal [0, "# The grilling", ""], [result.code, result.out.lines.first.chomp, result.err]
     refute_includes result.out, "open:"
-    assert_includes result.out, "next: plastic store sync up"
+    assert_includes result.out, "next: plastic intent spec #{intent.intent_id} --from FILE"
   end
 end
 
@@ -159,5 +159,18 @@ class IntentSpecFromTest < Plastic::TestCase
 
     assert_equal [0, nil], [result.code, body]
     refute_includes result.out, "spec: written"
+  end
+end
+
+class IntentSpecFromEncodingTest < Plastic::TestCase
+  def test_a_spec_file_that_is_not_utf_8_fails_and_writes_nothing
+    open_intent
+    path = File.join(@home, "draft.md")
+    File.binwrite(path, "# Spec\n\xFF\n")
+
+    result = plastic("intent", "spec", "1", "--from", path, table: Plastic::CLI::TABLE)
+
+    assert_equal [1, nil], [result.code, retrieval.fetch("1", "spec.md")]
+    assert_includes result.err, "the spec file #{path} is not UTF-8 text"
   end
 end

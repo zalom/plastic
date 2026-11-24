@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../knowledge/intent/reporter"
+require_relative "../knowledge/intent/document_writer"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -8,6 +10,8 @@ module Plastic
       # The writes of what an intent keeps beside its goal (rulings, verdicts, notes, reports, amendments), each leaving
       # its work log line.
       class LoggedRecords
+        DOCUMENT_KINDS = { Layout.name(:spec) => "specified", Layout.name(:outcome) => "summarized" }.freeze
+
         def initialize(writers, log)
           @writers = writers
           @log = log
@@ -33,6 +37,15 @@ module Plastic
             noter.write(intent, kind, text).tap do
               @log.line(intent_id, "noted", "#{kind}: #{text}", path: Knowledge::Intent::Noter::FILE,
                 body: @writers.retrieval.fetch(intent_id, Knowledge::Intent::Noter::FILE).body)
+            end
+          end
+        end
+
+        # Writes the whole text of one core file of an intent, spec.md or the summary of outcome.md, as its new revision.
+        def write_document(intent_id, file, body)
+          @log.recorded do
+            Knowledge::Intent::DocumentWriter.new(@writers.databases, @writers.retrieval).write(intent_id, file, body).tap do
+              @log.line(intent_id, DOCUMENT_KINDS.fetch(file), "wrote #{file}", path: file, body:)
             end
           end
         end

@@ -12,7 +12,7 @@ An intent is in one of these states: open, done, abandoned. An intent that is fu
 | File | Purpose | Required in | Writer |
 | --- | --- | --- | --- |
 | `intent.md` | The intent's own file, with its identity and the sections a person fills. | open, done, abandoned | plastic intent new |
-| `spec.md` | The goal, the done criteria, the open decisions and the constraints. | open, done | agent |
+| `spec.md` | The goal, the done criteria, the open decisions and the constraints. | open, done | plastic intent spec |
 | `outcome.md` | What was delivered, with one delivery line under Verification, and the notes and reports of the intent. | done | agent |
 | `graph.json` | The work graph, with its nodes, edges, runs and verdicts. | open, done, abandoned | rows |
 | `work.log` | The work log, one line for each event of the intent. | open, done, abandoned | rows |

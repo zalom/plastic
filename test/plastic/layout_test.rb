@@ -17,7 +17,7 @@ class LayoutTest < Plastic::TestCase
   def test_a_file_names_its_purpose_its_writer_and_the_states_that_require_it
     spec = Plastic::Layout.file(:spec)
 
-    assert_equal [%w[open done], "agent"], [spec.required, spec.writer]
+    assert_equal [%w[open done], "plastic intent spec"], [spec.required, spec.writer]
     refute_empty spec.purpose
   end
 
