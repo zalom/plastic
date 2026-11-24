@@ -15,7 +15,7 @@ module Plastic
     class Distribution
       LAUNCHER_FOLDERS = %w[hooks bin exe].freeze
 
-      def initialize(package, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
+      def initialize(package, tmp_dirs: RetiredSessionState.folders(nil))
         @package = package
         @home = package.home
         @tmp_dirs = tmp_dirs

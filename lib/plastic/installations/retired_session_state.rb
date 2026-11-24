@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "tmpdir"
 require_relative "../store_layout"
 
 module Plastic
@@ -19,6 +20,10 @@ module Plastic
       end
 
       def call = candidates.uniq.count { |path| RetiredSessionState.regular?(path) && delete(path) }
+
+      # The temp folders the retired files were written in: PLASTIC_TMP when it
+      # is set, else the temp folder of the system and /tmp, as Plastic 1 and 2 wrote them.
+      def self.folders(plastic_tmp) = plastic_tmp.to_s.empty? ? [Dir.tmpdir, "/tmp"].uniq : [plastic_tmp]
 
       def self.current_files(root)
         tmp = File.join(root, ".tmp")

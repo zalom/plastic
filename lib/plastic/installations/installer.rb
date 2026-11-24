@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require "tmpdir"
 require_relative "../config/upgrade"
 require_relative "home_ignore"
 require_relative "../installations"
