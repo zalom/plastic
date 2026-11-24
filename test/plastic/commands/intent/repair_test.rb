@@ -12,6 +12,7 @@ class IntentRepairCommandTest < Plastic::TestCase
   fixtures :alpha_synced
 
   OTHER = "store/2--beta"
+  BETA_MOVE = "moved plan.md to resources/references/plan.md (#{Plastic::Layout.amendment_reason(:move)})".freeze
 
   def setup
     super
@@ -42,15 +43,15 @@ class IntentRepairCommandTest < Plastic::TestCase
   def test_the_dry_run_names_the_moves_the_removals_and_the_store_leftovers
     out = repair("--all", "--dry-run").out
 
-    assert_includes out, "preview: remove #{INTENT}/delivery.lock"
-    assert_includes out, "preview: move #{OTHER}/plan.md -> #{OTHER}/resources/references/plan.md"
+    assert_match(/^preview: would repair #{INTENT}: .*removed delivery\.lock /, out)
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
     assert_includes out, "preview: remove store/.sessions/"
   end
 
   def test_the_dry_run_of_one_intent_names_its_changes_and_no_store_leftover
     out = repair("2", "--dry-run").out
 
-    assert_includes out, "preview: move #{OTHER}/plan.md -> #{OTHER}/resources/references/plan.md"
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
     refute_includes out, "store/.sessions/"
   end
 
@@ -117,5 +118,26 @@ class IntentRepairCommandTest < Plastic::TestCase
     command = Plastic::Commands::Intent::Repair
 
     assert_equal [true, true], [command.backs_up_first?, command.changes.fetch(:work).include?("amended")]
+  end
+
+  def test_the_dry_run_counts_the_folders_and_the_changes_and_not_each_link_left
+    out = repair("--all", "--dry-run").out
+
+    assert_match(/^preview: 2 intent folders, \d+ changes \(/, out)
+    refute_includes out, "preview: link left as it is"
+  end
+
+  def test_links_left_lists_each_link_left_as_it_is
+    result = repair("--all", "--dry-run", "--links-left")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "preview: link left as it is #{INTENT}/resources/notes.md: missing.md"
+  end
+
+  def test_the_repair_prints_the_count_of_the_links_it_left_and_not_each_one
+    out = repair("--all").out
+
+    assert_match(/^repaired: 2 intent folders, .*1 link left as it is, which --links-left lists/, out)
+    refute_includes out, "link left as it is #{INTENT}"
   end
 end
