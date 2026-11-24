@@ -19,7 +19,7 @@ class DoctorUnsortedStoresTest < Plastic::TestCase
   def test_names_an_unsorted_store_and_the_command
     put(OLD_FILES)
 
-    assert_equal [["resources global:", "#{MOVES.size} files are outside the resources layout", "plastic resources sort --store global"]], checks.map(&:to_a)
+    assert_equal [["resources global:", "#{MOVES.size} files are outside the resources layout", "plastic resources sort --project global"]], checks.map(&:to_a)
   end
 
   def test_a_sorted_store_is_no_finding
@@ -33,12 +33,12 @@ class DoctorUnsortedStoresTest < Plastic::TestCase
     found = checks.first
 
     assert_includes found.value, "resources/tmp/reviews/r1.md"
-    assert_equal "plastic resources sort --store global", found.repair
+    assert_equal "plastic resources sort --project global", found.repair
   end
 
   def test_a_file_directly_under_output_is_unsorted
     put("spec.md" => "# Spec\n", "resources/output/loose.md" => "x\n")
 
-    assert_equal [["resources global:", "1 files are outside the resources layout", "plastic resources sort --store global"]], checks.map(&:to_a)
+    assert_equal [["resources global:", "1 files are outside the resources layout", "plastic resources sort --project global"]], checks.map(&:to_a)
   end
 end

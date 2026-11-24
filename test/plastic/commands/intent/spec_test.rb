@@ -14,7 +14,7 @@ class IntentSpecTest < Plastic::TestCase
 
   def write_spec(intent, text)
     write("#{intent.dir}/spec.md", text)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
   end
 
   def test_the_grilling_method_always_prints
@@ -74,6 +74,6 @@ class IntentSpecTest < Plastic::TestCase
 
     assert_equal [0, "# The grilling", ""], [result.code, result.out.lines.first.chomp, result.err]
     refute_includes result.out, "open:"
-    assert_includes result.out, "next: plastic sync up"
+    assert_includes result.out, "next: plastic store sync up"
   end
 end

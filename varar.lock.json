@@ -2,7 +2,7 @@
   "version": 2,
   "oaths": {
     "varar/backup-list.md": {
-      "sourceHash": "fnv1a:15b9c636",
+      "sourceHash": "fnv1a:2c11a16d",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -11,7 +11,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:6f2224bd",
+      "sourceHash": "fnv1a:b9713cd9",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -20,7 +20,7 @@
       ]
     },
     "varar/backup.md": {
-      "sourceHash": "fnv1a:41278b79",
+      "sourceHash": "fnv1a:c889318b",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -29,7 +29,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:ae41fbe6",
+      "sourceHash": "fnv1a:4889c7a8",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -38,7 +38,7 @@
       ]
     },
     "varar/status.md": {
-      "sourceHash": "fnv1a:c0cf0d49",
+      "sourceHash": "fnv1a:89fc5c74",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -47,7 +47,7 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:38d99786",
+      "sourceHash": "fnv1a:327a780b",
       "examples": [
         {
           "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
@@ -56,7 +56,7 @@
       ]
     },
     "varar/sync-import.md": {
-      "sourceHash": "fnv1a:b1e4854e",
+      "sourceHash": "fnv1a:0c8098fc",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -65,7 +65,7 @@
       ]
     },
     "varar/sync-second-home.md": {
-      "sourceHash": "fnv1a:08ed4c52",
+      "sourceHash": "fnv1a:e17cea3d",
       "examples": [
         {
           "name": "Each row gives the state and the comparison of the two homes:",
@@ -74,7 +74,7 @@
       ]
     },
     "varar/sync-up.md": {
-      "sourceHash": "fnv1a:9794ad30",
+      "sourceHash": "fnv1a:12c0df71",
       "examples": [
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",

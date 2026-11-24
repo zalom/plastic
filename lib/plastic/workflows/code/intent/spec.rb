@@ -40,7 +40,7 @@ module Plastic
 
           outcome :open, if: ->(context) { context.decisions.any? }, offers: "plastic intent rule %{intent_id} TEXT",
             because: "an open decision is still unrecorded"
-          outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
+          outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic store sync up",
             because: "the spec names no done criterion; write them in spec.md first"
           outcome :approved, if: ->(context) { context.retrieval.structure.approval(context.intent_id) },
             offers: "plastic intent brief %{intent_id}", because: "the spec is settled and has its go-ahead"

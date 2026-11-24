@@ -59,20 +59,20 @@ class DryRunNextTest < Plastic::TestCase
 
   def assert_next_is_the_call(argv, result, env: {})
     assert_equal 0, result.code, result.err
-    assert_equal ["plastic", *(argv - ["--dry-run"])].sort, printed_words(result).sort
+    assert_equal ["plastic", *(argv - ["--dry-run", "--project"])].sort, printed_words(result).sort
     refute_includes printed_words(result), "--dry-run", env.to_s
   end
 
   def test_backup_keeps_its_databases_option
     home = fresh_home
-    argv = ["backup", "--store", "alpha", "--databases", "work_graph", "--dry-run"]
+    argv = ["store", "backup", "--project", "alpha", "--databases", "work_graph", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv, env: env_for(home))
   end
 
   def test_backup_purge_keeps_its_filter
     home = fresh_home
-    argv = ["backup", "purge", "--store", "alpha", "--older-than", "2026-01-01", "--dry-run"]
+    argv = ["store", "backup", "purge", "--project", "alpha", "--older-than", "2026-01-01", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv, env: env_for(home))
   end
@@ -80,7 +80,7 @@ class DryRunNextTest < Plastic::TestCase
   def test_backup_restore_keeps_its_timestamp
     home = fresh_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    argv = ["backup", "restore", "--store", "alpha", "--timestamp", "20260101100000", "--dry-run"]
+    argv = ["store", "backup", "restore", "--project", "alpha", "--timestamp", "20260101100000", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv, env: env_for(home))
   end
@@ -114,13 +114,13 @@ class DryRunNextTest < Plastic::TestCase
   end
 
   def test_sync_up_keeps_the_call
-    argv = ["sync", "up", "--dry-run"]
+    argv = ["store", "sync", "up", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv)
   end
 
   def test_sync_down_keeps_the_call
-    argv = ["sync", "down", "--dry-run"]
+    argv = ["store", "sync", "down", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv)
   end
@@ -186,7 +186,7 @@ class FilesRowTest < Plastic::TestCase
     intent = open_keyed_intent
     File.delete(store_path("#{intent.dir}/graph.json"))
 
-    result = run_cli("sync", "down")
+    result = run_cli("store", "sync", "down")
 
     assert_empty(result.out.lines.grep(/^printed /))
     assert_match(%r{^files:\s+#{Regexp.escape(intent.dir)}/graph\.json$}, result.out)
@@ -194,8 +194,8 @@ class FilesRowTest < Plastic::TestCase
 
   def test_a_json_answer_with_no_graph_write_still_carries_files
     open_keyed_intent
-    run_cli("sync", "down")
+    run_cli("store", "sync", "down")
 
-    assert_equal [], files_of(run_cli("sync", "down", "--json"))
+    assert_equal [], files_of(run_cli("store", "sync", "down", "--json"))
   end
 end

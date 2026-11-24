@@ -103,7 +103,7 @@ module Plastic
       def seed_nodes(home, *titles)
         folder = Dir.glob(File.join(home, "stores", "global", "store", "1--*")).first
         File.write(File.join(folder, "spec.md"), "# Spec\n\n## Done criteria\n- [ ] [done] it is done\n")
-        call_in(home, "sync", "up")
+        call_in(home, "store", "sync", "up")
         titles.each { |title| call_in(home, "node", "add", "1", title, "--criterion", "done") }
       end
 

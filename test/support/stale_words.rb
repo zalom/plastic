@@ -24,7 +24,7 @@ module StaleWords
     lib/plastic/graph/migration/leftover_work_tables.rb
     lib/plastic/workflows/sync_steps.rb
     tools/store_proof.rb
-    docs/reference/commands/sync-down/README.md
+    docs/reference/commands/store-sync-down/README.md
     docs/contributing/MIGRATIONS.md
   ].freeze
   STORAGE_WORDS = Regexp.union(OLD_LAYOUT, REMOVED_STORAGE)

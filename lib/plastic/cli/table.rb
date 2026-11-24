@@ -55,10 +55,6 @@ module Plastic
         "project new" => ["Commands::Project::New", "Register a project and leave its store ready for intent new"],
         "project links" => ["Commands::Project::Links", "List the links that name an intent or a ruling this store lacks"]
       },
-      "sync" => {
-        "sync up" => ["Commands::Sync::Up", "Read the files changed by hand into rows"],
-        "sync down" => ["Commands::Sync::Down", "Write the rows that changed into files"]
-      },
       "session" => {
         "session note" => ["Commands::Session::Note", "Write the one prose line of this session"]
       },
@@ -68,16 +64,16 @@ module Plastic
         "config get" => ["Commands::Config::Get", "Print the value of one setting"],
         "config set" => ["Commands::Config::Set", "Write one setting to the settings rows, globally or for one harness"]
       },
-      "backup" => {
-        "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
-        "backup list" => ["Commands::Backup::List", "List one store's backups with status and goal, flagging a missing or changed file"],
-        "backup purge" => ["Commands::Backup::Purge", "Delete one store's backups; give one of --all, --failed, --interrupted or --older-than"],
-        "backup restore" => ["Commands::Backup::Restore", "Replace one store's databases with those of a done backup"]
-      },
-      "migration" => {
-        "migration list" => ["Commands::Migration::List", "Print the ledger rows of one store and what a down would undo now"],
-        "migration down" => ["Commands::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"],
-        "migration purge" => ["Commands::Migration::Purge", "Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it"]
+      "store" => {
+        "store backup" => ["Commands::Store::Backup", "Copy one store's databases into a new backup folder"],
+        "store backup list" => ["Commands::Store::Backup::List", "List one store's backups with status and goal, flagging a missing or changed file"],
+        "store backup purge" => ["Commands::Store::Backup::Purge", "Delete one store's backups; give one of --all, --failed, --interrupted or --older-than"],
+        "store backup restore" => ["Commands::Store::Backup::Restore", "Replace one store's databases with those of a done backup"],
+        "store migration list" => ["Commands::Store::Migration::List", "Print the ledger rows of one store and what a down would undo now"],
+        "store migration down" => ["Commands::Store::Migration::Down", "Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup"],
+        "store migration purge" => ["Commands::Store::Migration::Purge", "Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it"],
+        "store sync up" => ["Commands::Store::Sync::Up", "Read the files changed by hand into rows"],
+        "store sync down" => ["Commands::Store::Sync::Down", "Write the rows that changed into files"]
       },
       "resources" => {
         "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]

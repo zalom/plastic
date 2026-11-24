@@ -79,22 +79,22 @@ plastic architecture refresh --project blog                      # Tell the agen
 
 ## Stores and databases
 ```bash
-plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
+plastic store sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
 plastic project list                  # The registered projects with their paths
 plastic project load blog shop        # A short digest of each project: paths, files to read, work in play with its passages, last deliveries
 plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
 plastic project links                 # List the links that name an intent or a ruling this store lacks
-plastic sync up --dry-run             # Show what would change
-plastic sync down                     # Write the store files from the databases
-plastic backup --store blog          # Copy the databases of one store (or --store global) into a UTC-named folder
-plastic backup --store blog --live   # The same, printing each line of backup.log as it is written
-plastic backup list --store blog     # Folder, start time, status and goal of each backup
-plastic backup purge --store blog --older-than 2026-09-01   # Delete older backups
-plastic backup purge --store blog --failed   # Delete the backups that failed
-plastic backup restore --store blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
-plastic migration list --store blog  # The store's version, its kept rows, its ledger, and what a down would undo
-plastic migration down --store blog  # Put back the rows the newest migration kept in legacy.db, after a backup
-plastic migration purge 20261119000000 --store blog   # Remove the rows one migration kept, so it can no longer be undone
+plastic store sync up --dry-run             # Show what would change
+plastic store sync down                     # Write the store files from the databases
+plastic store backup --project blog          # Copy the databases of one store (or --project global) into a UTC-named folder
+plastic store backup --project blog --live   # The same, printing each line of backup.log as it is written
+plastic store backup list --project blog     # Folder, start time, status and goal of each backup
+plastic store backup purge --project blog --older-than 2026-09-01   # Delete older backups
+plastic store backup purge --project blog --failed   # Delete the backups that failed
+plastic store backup restore --project blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
+plastic store migration list --project blog  # The store's version, its kept rows, its ledger, and what a down would undo
+plastic store migration down --project blog  # Put back the rows the newest migration kept in legacy.db, after a backup
+plastic store migration purge 20261119000000 --project blog   # Remove the rows one migration kept, so it can no longer be undone
 ```
 
 ## Product

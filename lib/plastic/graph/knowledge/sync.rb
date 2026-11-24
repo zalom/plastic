@@ -56,11 +56,13 @@ module Plastic
         def read_up(plan)
           write_folders
           paths = plan.entries_for(:read).map(&:path) | plan.second_home.paths
-          lines = read(paths) + remove_unread(plan) + plan.strays.lines
+          lines = up_lines(paths, plan)
           printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
           reindex(paths)
           lines
         end
+
+        def up_lines(paths, plan) = read(paths) + remove_unread(plan) + plan.strays.lines
 
         def write_folders = [IntentFolders, ArchivedIntents].each { |rows| rows.new(@folder, @retrieval).write_to(@databases) }
 

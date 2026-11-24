@@ -29,7 +29,7 @@ module Plastic
             context.print("link: #{context.intent_id} #{context.kind} #{context.target} removed")
           end
 
-          outcome :done, offers: "plastic sync down", because: "the link is gone"
+          outcome :done, offers: "plastic store sync down", because: "the link is gone"
         end
       end
     end

@@ -53,6 +53,6 @@ class GraphCheckOutputTest < Plastic::TestCase
   def test_the_finding_names_its_own_hand_edit_with_a_sync_up
     hold_output("not json")
 
-    assert_includes check.out, "hand edit: edit the output of node n1 in graph.json to hold JSON, then run plastic sync up and plastic graph check 1 again\n"
+    assert_includes check.out, "hand edit: edit the output of node n1 in graph.json to hold JSON, then run plastic store sync up and plastic graph check 1 again\n"
   end
 end

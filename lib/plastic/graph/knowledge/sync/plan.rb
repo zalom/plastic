@@ -36,7 +36,7 @@ module Plastic
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
 
-          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
+          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic store sync up to import it first"
 
           def direction = resolution.direction
 

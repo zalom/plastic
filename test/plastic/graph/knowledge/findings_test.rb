@@ -50,7 +50,7 @@ class KnowledgeFindingsTest < Plastic::TestCase
     finish("n1", findings: " ")
     finding = Findings.new(retrieval, "1").with_repairs.first
 
-    assert_equal [nil, "edit the findings of node n1 in graph.json, then run plastic sync up and plastic graph check 1 again"], [finding.repair, finding.hand]
+    assert_equal [nil, "edit the findings of node n1 in graph.json, then run plastic store sync up and plastic graph check 1 again"], [finding.repair, finding.hand]
   end
 
   def test_a_node_with_no_edge_among_several_is_named

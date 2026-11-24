@@ -114,7 +114,7 @@ class NodeClaimReviewTest < Plastic::TestCase
     as("s-1", "node", "renew", "1", "n1")
     File.write(File.join(store_root, "store/1--alpha/graph.json"), File.read(File.join(store_root, "store/1--alpha/graph.json")).sub('"findings": null', '"findings": "edited"'))
 
-    as("s-1", "sync", "up")
+    as("s-1", "store", "sync", "up")
 
     assert_equal "2026-11-17T08:10:00Z", node.seen_at
   end

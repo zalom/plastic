@@ -27,7 +27,7 @@ module Plastic
 
       def say_failure(result) = environment.err.puts("backup: #{backup_slug} was not backed up (#{result.reason}); the call goes on")
 
-      def backup_slug = parsed[:store] || scope.slug
+      def backup_slug = scope.slug
     end
   end
 end

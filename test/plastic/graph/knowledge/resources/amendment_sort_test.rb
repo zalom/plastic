@@ -86,7 +86,7 @@ class ResourcesAmendmentSortTest < Plastic::TestCase
     sort
     pending = preview_lines.last
     File.write(work_log, "#{File.read(work_log)}- 2026-11-20T09:00:00+01:00 - - - noted - - a hand line\n")
-    up = plastic("sync", "up", table: Plastic::CLI::TABLE)
+    up = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
     assert_equal ["preview: paths that would change: 0", 0], [pending, up.code]
   end

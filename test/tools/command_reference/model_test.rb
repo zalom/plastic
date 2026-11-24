@@ -28,9 +28,9 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_a_command_from_an_included_module_shows_the_module_call
-    own = page("backup list").own_call
+    own = page("store backup list").own_call
 
-    assert_equal "lib/plastic/cli/backup_store.rb", own.file
+    assert_equal "lib/plastic/cli/one_store.rb", own.file
     assert_includes own.code.first, "def call"
   end
 
@@ -81,11 +81,11 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_shared_and_class_method_steps_link_the_file_that_holds_them
-    assert_equal ["lib/plastic/workflows/code/sync/up/preview.rb", "lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq.sort
+    assert_equal ["lib/plastic/workflows/code/sync/up/preview.rb", "lib/plastic/workflows/sync_steps.rb"], gate_rows("store sync up").map(&:file).uniq.sort
   end
 
-  def test_every_row_of_node_claim_and_sync_up_has_a_file_and_a_line_that_match
-    %w[node\ claim sync\ up].each do |words|
+  def test_every_row_of_node_claim_and_store_sync_up_has_a_file_and_a_line_that_match
+    ["node claim", "store sync up"].each do |words|
       rows_of(page(words)).each do |row|
         refute_nil row.file, "#{words}: #{row.name}"
         assert_match STEP_LINE, source_line(row.file, row.line), "#{words}: #{row.name}"

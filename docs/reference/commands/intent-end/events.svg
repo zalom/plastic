@@ -142,7 +142,7 @@
 <text x="492" y="534" class="t" text-anchor="start">add the line &#39;Approved: &lt;person&gt; on</text>
 <text x="492" y="550" class="t" text-anchor="start">&lt;YYYY-MM-DD&gt;&#39; to the Verification section of</text>
 <text x="492" y="566" class="t" text-anchor="start">outcome.md once they approve, then run plastic</text>
-<text x="492" y="582" class="t" text-anchor="start">sync up.</text>
+<text x="492" y="582" class="t" text-anchor="start">store sync up.</text>
 <text x="24" y="626" class="way" text-anchor="start">When the intent still needs records or a verdict before it can end:</text>
 <rect x="24" y="638" width="400" height="51" rx="6" class="lane-agent"/>
 <circle cx="44" cy="657" r="8" class="badge"/>

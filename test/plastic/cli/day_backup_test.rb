@@ -48,7 +48,7 @@ class CLIDayBackupTest < Plastic::TestCase
 
   def test_a_dry_run_takes_no_daily_backup
     home = daily_home
-    call(home, "backup", "--store", "alpha", "--dry-run")
+    call(home, "store", "backup", "--project", "alpha", "--dry-run")
 
     assert_equal [[], []], reasons(home)
   end
@@ -114,15 +114,15 @@ class CLIDayBackupTest < Plastic::TestCase
 
   def test_a_restore_after_a_weekend_finds_the_backup_it_names
     home = weekend_home
-    result = monday(home, "backup", "restore", "--store", "alpha", "--timestamp", stamp(FRIDAY_AFTERNOON))
+    result = monday(home, "store", "backup", "restore", "--project", "alpha", "--timestamp", stamp(FRIDAY_AFTERNOON))
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_equal [nil, nil, "backup restore"], backup_reasons(home)
+    assert_equal [nil, nil, "store backup restore"], backup_reasons(home)
   end
 
   def test_a_backup_list_takes_no_daily_backup_and_purges_nothing
     home = weekend_home
-    monday(home, "backup", "list", "--store", "alpha")
+    monday(home, "store", "backup", "list", "--project", "alpha")
 
     assert_equal [stamp(FRIDAY_AFTERNOON), stamp(FRIDAY_EVENING)], folder_names(home)
   end

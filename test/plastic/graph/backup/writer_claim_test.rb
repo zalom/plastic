@@ -10,7 +10,7 @@ class GraphBackupWriterClaimTest < Plastic::TestCase
 
   def root(home) = File.join(home, "stores", "alpha")
 
-  def automatic(home, now) = Writer.new(root(home), "alpha", now:, automatic: true, reason: "sync up").call
+  def automatic(home, now) = Writer.new(root(home), "alpha", now:, automatic: true, reason: "store sync up").call
 
   def claim(home, name)
     FileUtils.mkdir_p(backups_dir(home))

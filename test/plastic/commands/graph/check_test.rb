@@ -32,7 +32,7 @@ module GraphCheckSupport
 
   def write_spec(intent, text)
     write("#{intent.dir}/spec.md", text)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
   end
 end
 

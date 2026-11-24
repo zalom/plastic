@@ -25,6 +25,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The files kept for the intent are restored | the knowledge graph database, in the store folder | goes with the store |
 | The index of the store is rewritten | the store folder | goes with the store |
 
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
 The command is `Plastic::Commands::Intent::Unarchive`, in [`commands/intent/unarchive.rb`](../../../../lib/plastic/commands/intent/unarchive.rb).

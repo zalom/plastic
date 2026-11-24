@@ -22,16 +22,16 @@ class GraphBackupDueTest < Plastic::TestCase
     home = stale_home
     add_intent(home)
 
-    due(home, THIRTEEN_HOURS_LATER).call("sync up")
+    due(home, THIRTEEN_HOURS_LATER).call("store sync up")
 
-    assert_equal [nil, "sync up"], backup_reasons(home)
+    assert_equal [nil, "store sync up"], backup_reasons(home)
   end
 
   def test_a_store_whose_newest_backup_is_twelve_hours_old_or_less_takes_none
     home = stale_home
     add_intent(home)
 
-    due(home, ELEVEN_HOURS_LATER).call("sync up")
+    due(home, ELEVEN_HOURS_LATER).call("store sync up")
 
     assert_equal [nil], backup_reasons(home)
   end
@@ -39,7 +39,7 @@ class GraphBackupDueTest < Plastic::TestCase
   def test_a_store_that_did_not_change_takes_none_however_old_its_newest_backup
     home = stale_home
 
-    due(home, THIRTEEN_HOURS_LATER).call("sync up")
+    due(home, THIRTEEN_HOURS_LATER).call("store sync up")
 
     assert_equal [nil], backup_reasons(home)
   end
@@ -49,7 +49,7 @@ class GraphBackupDueTest < Plastic::TestCase
     Plastic::Graph::Database::ConnectionPool.release(home)
     File.write(store_file(home, "work_graph"), "not a database")
 
-    result = due(home, THIRTEEN_HOURS_LATER).call("sync up")
+    result = due(home, THIRTEEN_HOURS_LATER).call("store sync up")
 
     assert_equal [:failed, [nil]], [result.status, backup_reasons(home)]
   end
@@ -58,7 +58,7 @@ class GraphBackupDueTest < Plastic::TestCase
     home = fresh_home
     FileUtils.mkdir_p(File.join(home, "stores", "empty"))
 
-    result = due(home, SEEDED, slug: "empty").call("sync down")
+    result = due(home, SEEDED, slug: "empty").call("store sync down")
 
     assert_equal [:missing, false], [result.status, File.directory?(File.join(home, "stores", "empty", "backups"))]
   end
@@ -85,7 +85,7 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
 
   def back_up_after_four_days(home)
     add_intent(home)
-    Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("sync up")
+    Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("store sync up")
   end
 
   def test_a_backup_taken_removes_the_folders_older_than_three_days_with_their_rows
@@ -105,7 +105,7 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
 
   def test_a_store_that_took_no_backup_purges_nothing
     home = stale_home
-    result = Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("sync up")
+    result = Due.new(home:, slug: "alpha", now: FOUR_DAYS_LATER).call("store sync up")
 
     assert_equal [:unchanged, [stamp(SEEDED)]], [result.status, folder_names(home)]
   end
@@ -114,7 +114,7 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
     home = stale_home
     add_intent(home)
     later = SEEDED + (25 * 3600)
-    Due.new(home:, slug: "alpha", now: later, retention: Plastic::Graph::Backup::Purger::DAILY_RETENTION).call("sync up")
+    Due.new(home:, slug: "alpha", now: later, retention: Plastic::Graph::Backup::Purger::DAILY_RETENTION).call("store sync up")
 
     assert_equal [stamp(later)], folder_names(home)
   end
@@ -124,8 +124,8 @@ class GraphBackupDuePurgeTest < Plastic::TestCase
     add_intent(home)
     Dir.mkdir(File.join(backups_dir(home), "20261399000000"))
 
-    result = Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    result = Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("store sync up")
 
-    assert_equal [:taken, [nil, "sync up"]], [result.status, backup_reasons(home).first(2)]
+    assert_equal [:taken, [nil, "store sync up"]], [result.status, backup_reasons(home).first(2)]
   end
 end

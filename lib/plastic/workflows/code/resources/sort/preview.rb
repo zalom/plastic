@@ -30,7 +30,7 @@ module Plastic
 
             outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
               because: "the preview moved no file"
-            outcome :continue, offers: "plastic resources sort --store %{store}", because: "apply the requested sort"
+            outcome :continue, offers: "plastic resources sort --project %{project}", because: "apply the requested sort"
           end
         end
       end

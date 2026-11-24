@@ -192,7 +192,7 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
     message = outcome("## Verification\n- Tests pass\n").missing_records.first
 
     ["Merged: <branch> into <base> at <commit or pull request>", "Committed: <branch> at <commit>",
-      "Delivered: resources/output/<path> because <reason>", "plastic sync up"].each { |part| assert_includes message, part }
+      "Delivered: resources/output/<path> because <reason>", "plastic store sync up"].each { |part| assert_includes message, part }
   end
 
   def test_missing_pull_request_approval_and_revert_bullets_read_false

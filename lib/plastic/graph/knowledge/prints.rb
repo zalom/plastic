@@ -33,7 +33,7 @@ module Plastic
 
       def parts(retrieval) = Parts.call(retrieval)
 
-      def hand_edit_line(path) = "#{path} changed since its last print on this home, by hand or in a copy from another home; run plastic sync up first to read it into rows"
+      def hand_edit_line(path) = "#{path} changed since its last print on this home, by hand or in a copy from another home; run plastic store sync up first to read it into rows"
 
       def unreadable_line(path, reason) = "#{path} changed by hand and cannot be read into rows: #{reason}"
 

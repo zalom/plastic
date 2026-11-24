@@ -49,7 +49,7 @@ steps do
       kernel = KernelCommand.alpha(home)
       change, database, query = SyncUpAcceptance::CHANGES.fetch(row["change"])
       change.call(kernel)
-      call = kernel.command("sync", "up")
+      call = kernel.command("store", "sync", "up")
       rows = kernel.rows(database, query).flatten.map { |value| value.to_s.chomp }
       # The parser's own words after "does not parse" differ between JSON versions.
       row.merge("exit" => call.code.to_s, "result" => call.result.sub(/(does not parse):.*/, '\1'), "rows" => rows.join(", "))
