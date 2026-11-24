@@ -281,11 +281,17 @@ entry of an old `revisions.md` into an `amended` line with the date of the entry
 file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
 and `.tmp/`, and names each entry that holds data and leaves it.
 
-A done or abandoned intent changes in its structure only, never in its work: each change writes one
-`amended` line on that intent's work log with the reason for its kind. An intent that a driver
-claim or a live node claim holds is refused with exit 3, and `--all` repairs the other intents
-first. Both the run and `--dry-run` list the links that change and the links left as they are in the folders it repairs;
-`--dry-run` also lists every change and every `amended` line, and writes nothing. A target that
+A done or abandoned intent changes in its structure only, never in its work. Its folder gets one
+`amended` line on the intent's work log that lists every rename, move and removal, each kind with
+its reason. The files of an old `actions/` folder move as one change, and an empty `.gitkeep`
+placeholder is removed, not moved. Each link the repair rewrites gets an `amended` line of its own,
+whose row keeps the exact old and new link in the fields `old_text` and `new_text`. An intent that
+a driver claim or a live node claim holds is refused with exit 3, and `--all` repairs the other
+intents first. Both the run and `--dry-run` print one line for each intent folder, the links that
+change and the other `amended` lines, then the totals: the intent folders and their changes by
+kind, counted apart, the links that change, the `amended` lines and the links left as they are.
+The links left as they are print only as a count unless `--links-left` lists each one. `--dry-run`
+writes nothing. A target that
 holds other bytes than the file that would move onto it stops the call with exit 3 and names the
 target. A second run finds nothing to change and says `repaired: nothing to change`.
 
