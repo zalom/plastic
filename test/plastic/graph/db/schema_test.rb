@@ -12,13 +12,13 @@ class DbSchemaTest < Plastic::TestCase
   SCHEMA_PATH = File.join(KERNEL, "plastic/graph/db/schema.rb")
   BUILDER_PATH = File.join(KERNEL, "plastic/graph/db/schema_file.rb")
 
-  # The DDL of every table that existed before the schema file, pinned from origin/alpha; the nodes hash is the DDL after migration 20261123100000 dropped judge and verdict.
+  # The DDL of every table that existed before the schema file, pinned from origin/alpha; the nodes hash is the DDL after migration 20261123170000 dropped input.
   OLD_DDL = {
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
     completions: "8c67722a7c53438b6a895b11684d87377fe8e8593215cc551bece619b3bdc60b",
     clusters: "4cf2401a09f74db26015897dd666449a6a172bba742884f39a2dd79447ad5987",
-    nodes: "fc11a34ce94a50105476b9e57869a3ff696e213017efd344f4cf10f6dd444986",
+    nodes: "1ee3f595b74480e529ef1916c165caf9f6a3a16105b82f5c7aa08fe6a8e5d65d",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
     rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
@@ -41,7 +41,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_each_database_keeps_its_file_and_table_order
     assert_equal({
       local: ["plastic.db", %i[command_runs sessions settings printed chat_messages store_migrations]],
-      work: ["work_graph.db", %i[nodes edges work_log runs drivers]],
+      work: ["work_graph.db", %i[nodes node_inputs edges work_log runs drivers]],
       knowledge: ["knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents legacy_intents_data
         document_heads retrieval_contexts retrieval_discoveries
         rulings links printed sqlar]],
@@ -68,7 +68,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261123154000", ""], [status.success?, out, err]
+    assert_equal [true, "20261123170000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

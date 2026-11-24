@@ -36,7 +36,7 @@ module Plastic
           step "add the node", done: ->(context) { !context.id.nil? },
             changes: { work: "The node is added to the work graph of the intent" } do |context|
             node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
-              input: context.input, kind: context.kind || "work", found_in: context.found_in, deadline: context.deadline&.to_i)
+              inputs: context.inputs, kind: context.kind || "work", found_in: context.found_in, deadline: context.deadline&.to_i)
             context[:id] = node.id
           end
 

@@ -19,8 +19,8 @@ node change, and one delivery line under `## Verification` in outcome.md, as
 [Store the delivered work](#store-the-delivered-work) describes. With `review.pull_request` set to `required`, it also needs a
 `Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
 (exit 3), and a live node claim of another session is a refusal (exit 3). Anything else that is
-missing comes back as a handoff with exit 1, and nothing closes. The close does not reindex
-QMD, and Plastic never merges or runs version control.
+missing comes back as a handoff with exit 1, and nothing closes.
+Plastic never merges or runs version control.
 
 The completion row holds the judge `verdict` and the evidence built from the rows: each
 criterion key with its done nodes and their findings. The close,

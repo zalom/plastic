@@ -15,9 +15,11 @@ module Plastic
           read("forget the close of an earlier call") { |context| context[:ended] = false }
 
           step "close the intent", done: ->(context) { context.ended == true },
-            changes: { work: "The intent is marked done and its completion is saved" } do |context|
+            changes: { work: "The intent is marked done, its completion is saved and its driver claim is released" } do |context|
             context.work.close_intent(context.intent_id)
             context.print("intent: #{context.intent_id} done")
+            held = context.work.release_driver(context.intent_id)
+            context.print("driver claim: released, held by session #{held}") if held
             context[:ended] = true
           end
 

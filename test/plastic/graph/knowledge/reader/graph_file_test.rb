@@ -8,6 +8,16 @@ class KnowledgeReaderGraphFileTest < Plastic::TestCase
 
   def problems(data) = GraphFile.new(data.is_a?(String) ? data : JSON.generate({ "intent" => "1" }.merge(data)), "1", nil, PATH).problems
 
+  def test_an_older_node_with_an_input_path_is_no_problem
+    assert_empty problems("nodes" => [{ "id" => "n1", "state" => "done", "input" => "docs/old.md" }])
+  end
+
+  def test_the_node_inputs_of_a_file_are_no_unknown_field
+    rows = [{ "intent_id" => "1", "node_id" => "n1", "position" => 1, "path" => "a.md" }]
+
+    assert_empty problems("nodes" => [{ "id" => "n1", "state" => "done" }], "node_inputs" => rows)
+  end
+
   def test_a_file_that_is_no_json_names_the_parse_error
     assert_equal 1, problems("{not json").size
     assert_includes problems("{not json").first, "#{PATH} is not valid JSON: "
@@ -149,15 +159,17 @@ module GraphFileHelpers
 
   def node_hash(id, **fields)
     { "intent_id" => "1", "id" => id, "kind" => "work", "title" => "Node #{id}", "criterion" => nil, "state" => "done",
-      "by" => "agent-7", "input" => nil, "output" => nil, "question" => nil, "answer" => nil, "reason" => nil,
+      "by" => "agent-7", "output" => nil, "question" => nil, "answer" => nil, "reason" => nil,
       "findings" => "checked", "retries" => 2, "updated_at" => "2026-10-20T08:00:00Z" }
       .merge(fields.transform_keys(&:to_s))
   end
 
+  def input_hash(node, position, path) = { "intent_id" => "1", "node_id" => node, "position" => position, "path" => path }
+
   def edge_hash(from, to) = { "intent_id" => "1", "from" => from, "to" => to, "kind" => "needs" }
 
-  def graph_text(nodes: [], edges: [], approval: nil, verdicts: [])
-    "#{JSON.pretty_generate({ "intent" => "1", "approval" => approval, "verdicts" => verdicts, "nodes" => nodes, "edges" => edges })}\n"
+  def graph_text(nodes: [], edges: [], approval: nil, verdicts: [], node_inputs: [])
+    "#{JSON.pretty_generate({ "intent" => "1", "approval" => approval, "verdicts" => verdicts, "nodes" => nodes, "node_inputs" => node_inputs, "edges" => edges })}\n"
   end
 
   def sync = (@sync ||= Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases))
@@ -192,6 +204,39 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
 
     assert_equal [["2026-10-20T08:00:00Z"], [["2026-10-20T08:00:00Z", "2026-10-20T08:00:00Z"]]],
       [node_rows.map { |row| row[:updated_at] }, structure.runs("1").map { |run| [run.started_at, run.ended_at] }]
+  end
+
+  def input_rows = store_graphs.databases.fetch(:store).rows("SELECT node_id, position, path FROM node_inputs ORDER BY node_id, position").map(&:values)
+
+  def test_sync_up_reads_the_node_inputs_of_a_hand_edited_graph_json_in_order
+    write(GRAPH, graph_text(nodes: [node_hash("n1")], node_inputs: [input_hash("n1", 1, "a.md"), input_hash("n1", 2, "b.md")]))
+    sync.apply(sync_up_plan)
+
+    assert_equal [["n1", 1, "a.md"], ["n1", 2, "b.md"]], input_rows
+  end
+
+  def test_sync_up_reads_the_input_of_a_node_of_an_older_graph_json_as_the_first_row
+    write(GRAPH, graph_text(nodes: [node_hash("n1", input: "docs/old.md"), node_hash("n2", input: nil)]))
+    sync.apply(sync_up_plan)
+
+    assert_equal [["n1", 1, "docs/old.md"]], input_rows
+    refute_includes node_rows.first.keys, :input
+  end
+
+  def printed_with_inputs
+    store_graphs.work.add_node(intent_id: "1", title: "With inputs", criterion: "Done", inputs: ["a.md", "b.md"])
+    store_graphs.work.print_intent("1")
+    JSON.parse(folder.read(GRAPH))
+  end
+
+  def test_the_printed_graph_json_holds_each_input_path_as_a_row_in_order
+    rows = printed_with_inputs.fetch("node_inputs")
+
+    assert_equal [[1, "a.md"], [2, "b.md"]], rows.map { |row| row.values_at("position", "path") }
+  end
+
+  def test_the_printed_graph_json_holds_no_input_on_a_node
+    refute_includes printed_with_inputs.fetch("nodes").first.keys, "input"
   end
 
   def test_sync_up_reads_the_runs_of_a_hand_edited_graph_json

@@ -8,7 +8,7 @@ module Plastic
         "retrieval_contexts" => ["retrieval context", "retrieval contexts"],
         "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
         "command_runs" => ["command run", "command runs"], "intents" => %w[intent intents],
-        "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "runs" => %w[run runs], "edges" => %w[edge edges], "drivers" => %w[driver drivers],
+        "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "runs" => %w[run runs], "edges" => %w[edge edges], "drivers" => %w[driver drivers], "node_inputs" => ["node input", "node inputs"],
         "work_log" => ["work log line", "work log lines"],
         "documents" => %w[document documents],
         "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],

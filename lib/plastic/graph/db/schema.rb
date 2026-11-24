@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_23_154000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_23_170000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -57,11 +57,18 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
 
   create_table :nodes, key: %i[intent_id id origin_id] do |t|
     t.kept :intent_id, :id
-    t.text :kind, :title, :criterion, :state, :input, :output, :question, :answer, :reason, :findings
+    t.text :kind, :title, :criterion, :state, :output, :question, :answer, :reason, :findings
     t.text :updated_at
     t.kept :origin_id
     t.text :claimed_by, :claimed_at, :seen_at, :answered_at
     t.integer :deadline
+  end
+
+  # The input paths of a node, one row each: `position` counts them from 1, in the order given.
+  create_table :node_inputs, key: %i[intent_id node_id position origin_id] do |t|
+    t.kept :intent_id, :node_id
+    t.number :position
+    t.kept :path, :origin_id
   end
 
   create_table :runs, key: %i[intent_id node_id number origin_id] do |t|
@@ -187,7 +194,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
   end
 
   database :local, "plastic.db", %i[command_runs sessions settings printed chat_messages store_migrations]
-  database :work, "work_graph.db", %i[nodes edges work_log runs drivers]
+  database :work, "work_graph.db", %i[nodes node_inputs edges work_log runs drivers]
   database :knowledge, "knowledge_graph.db", %i[intents clusters completions approvals verdicts archives archive_entries documents
     legacy_intents_data document_heads retrieval_contexts retrieval_discoveries rulings links printed sqlar]
   database :retrieval, "retrieval_graph.db", %i[document_passages document_fts]

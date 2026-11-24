@@ -26,7 +26,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The intent is marked done and its completion is saved | the work graph database, in the store folder | goes with the store |
+| The intent is marked done, its completion is saved and its driver claim is released | the work graph database, in the store folder | goes with the store |
 | The cost of a run of the intent that has none is filled from the harness record when it holds one | the work graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 

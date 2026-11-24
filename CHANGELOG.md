@@ -7,6 +7,13 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - A run's cost is filled after the run ended. The session end hook and `plastic intent end` read the main Claude Code transcript again, once per session, for runs that have no cost and store the cost it holds by then, because Claude Code writes the cost when the session stops, after the done command read the record. Only runs of a main session get a cost: the session's own runs and headless workers started with `claude -p`. A run a subagent worked keeps none, because Claude Code writes no cost for a subagent, and a run after other work with no cost total before it keeps none, because its share cannot be told. A Codex run keeps none, as its log holds none.
 
+## 3.0.0-beta.18
+
+- The driver docs have a worked section for running a worker on a local Ollama model, through `claude -p` and through `codex exec --oss`, and say how to set the model of a role with `plastic config set agents.models.ROLE MODEL`. No code changed: the setting and a literal model id already worked, and tests now prove it.
+- `plastic intent end` releases the driver claim of the intent in the same step that closes it, and prints `driver claim: released, held by session S`. Before, the claim stayed until its session ended or it lapsed, so it showed as live.
+- QMD is gone from Plastic's instructions, help and contributor docs. `plastic help tools` no longer has a QMD section, and a guard test fails when a shipped file names QMD outside the changelog and the two installer lists that remove an old `qmd-search` hook.
+- A node reads several input paths. `plastic node add` takes `--input` more than once and keeps the order, an empty path is refused, the claim packet carries `inputs` in place of `input` with one `input:` line for each path, and `plastic graph show` and graph.json list every path. A migration moves each stored input into the new table `node_inputs`.
+
 ## 3.0.0-beta.17
 
 - A run counts the worker turn that falls inside the second the run ended. The run's end is stored in whole seconds and the turn that runs the done command can be stamped a fraction of a second later, so its tokens were left out of the run.

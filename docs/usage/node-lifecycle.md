@@ -27,6 +27,11 @@ minutes a claim on it may run. The value is a whole number above 0; any other va
 no node. `plastic graph show` prints it on the node line as `deadline 30 minutes`. A node without one
 has none.
 
+A node can read files: `plastic node add ID TITLE --criterion KEY --input PATH` names one, and repeating `--input` names
+several. The paths keep the order given, and a repeated path is stored as given. An empty path exits 2 and adds no node.
+`plastic graph show` prints each path on its own `input: PATH` line under the node. The claim packet carries them as `inputs`,
+a list that is empty for a node with no path, and the text claim prints one `input:` line for each.
+
 Work found while doing a node is added with `plastic node add ID TITLE --criterion KEY --found-in NODE`. The node must be in the same intent: a missing node exits 1 and a removed node exits 3, each naming it. The link is a `found_in` edge from the new node to the node it was found in: `plastic graph show` prints it as `found in NODE` on the new node, and it adds no need and changes no readiness.
 
 ## Claimed
