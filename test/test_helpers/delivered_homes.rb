@@ -21,21 +21,21 @@ module DeliveredHomes
     kernel.command!("intent", "verdict", "1", "accept", "Both nodes hold")
     kernel.write("#{DIR}/outcome.md", OUTCOME)
     seed_config(kernel.plastic_home, "review:\n  pull_request: off\n")
-    kernel.command!("sync", "up")
+    kernel.command!("store", "sync", "up")
     kernel.command!("intent", "end", "1", env: SESSION)
-    kernel.command!("sync", "down")
+    kernel.command!("store", "sync", "down")
   end
 
   def abandon(kernel, number)
     kernel.write("store/#{number}--dropped/outcome.md", DROPPED)
-    kernel.command!("sync", "up")
+    kernel.command!("store", "sync", "up")
     kernel.command!("intent", "abandon", number, env: SESSION)
   end
 
   def moved(first, second, before_move)
     first_home(first)
     before_move.call(first)
-    first.command!("sync", "down")
+    first.command!("store", "sync", "down")
     move_files(first, second)
   end
 

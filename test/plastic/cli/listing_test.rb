@@ -56,6 +56,6 @@ class CLIListingTest < Plastic::TestCase
   end
 
   def test_help_with_a_command_of_two_words_still_prints_its_usage
-    assert_equal "plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]", help("sync", "down").out.lines.first.chomp
+    assert_equal "plastic store sync down [--overwrite [PATH]] [--merge] [--dry-run]", help("store", "sync", "down").out.lines.first.chomp
   end
 end

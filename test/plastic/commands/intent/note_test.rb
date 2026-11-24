@@ -86,7 +86,7 @@ class IntentNoteTest < Plastic::TestCase
     before = outcome_rows
     result = call("1", "all checks pass")
 
-    assert_equal [1, before, true], [result.code, outcome_rows, result.err.include?("run plastic sync up first")]
+    assert_equal [1, before, true], [result.code, outcome_rows, result.err.include?("run plastic store sync up first")]
   end
 
   def test_the_outcome_file_is_printed_from_the_rows

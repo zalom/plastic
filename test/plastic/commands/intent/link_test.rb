@@ -7,7 +7,7 @@ class IntentLinkCaseTest < Plastic::TestCase
   def test_linking_two_intents_prints_the_link_and_offers_sync_down
     ran("intent new Alpha", "intent new Beta")
 
-    assert_case line("intent link 1 cites 2"), code: 0, out: ["link: 1 cites 2", "next: plastic sync down"]
+    assert_case line("intent link 1 cites 2"), code: 0, out: ["link: 1 cites 2", "next: plastic store sync down"]
   end
 
   def test_linking_to_a_missing_intent_exits_1_and_names_it

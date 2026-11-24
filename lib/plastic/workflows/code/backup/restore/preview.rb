@@ -17,13 +17,13 @@ module Plastic
               next unless context.dry_run
 
               folder = Code::Backup::Restore.choose(context)
-              Code::Backup::Restore.held(context, folder).each { |name| context.print("preview: restore #{name} from #{context.store}/#{folder}") }
+              Code::Backup::Restore.held(context, folder).each { |name| context.print("preview: restore #{name} from #{context.project}/#{folder}") }
               context.print("preview: the current databases would be backed up first; the original store was not changed")
             end
 
             outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
               because: "the preview replaced nothing"
-            outcome :continue, offers: "plastic backup restore --store %{store}", because: "apply the requested restore"
+            outcome :continue, offers: "plastic store backup restore --project %{project}", because: "apply the requested restore"
           end
         end
       end

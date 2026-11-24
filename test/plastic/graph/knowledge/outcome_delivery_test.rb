@@ -37,7 +37,7 @@ class KnowledgeOutcomeDeliveryLinesTest < Plastic::TestCase
     message = delivery({ "Merged" => ["no"] }).message
 
     assert_equal "outcome.md says 'Merged: no', which is not a delivery line in the form 'Merged: <branch> into <base> at <commit or pull request>'. " \
-      "Fix that line or put the delivered files in place, then run plastic sync up.", message
+      "Fix that line or put the delivered files in place, then run plastic store sync up.", message
   end
 
   def test_a_delivered_path_that_is_not_there_is_named

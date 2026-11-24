@@ -17,7 +17,7 @@ module Plastic
               "Plastic runs no version control command; it records what you write."
           step "record the revert", done: ->(context) { context.reverted },
             say: "Write in %{intent_folder}/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. " \
-              "Run plastic sync up and then plastic intent abandon %{intent_id} again."
+              "Run plastic store sync up and then plastic intent abandon %{intent_id} again."
 
           outcome :handoff, offers: nil, because: "the agent reverts the intent's changes and records it in outcome.md"
           outcome :done, offers: nil, because: "the revert is recorded"

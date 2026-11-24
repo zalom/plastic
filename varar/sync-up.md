@@ -1,11 +1,11 @@
-# plastic sync up
+# plastic store sync up
 
-`plastic sync up` reads the files of a store that changed by hand into rows. A file that did not
+`plastic store sync up` reads the files of a store that changed by hand into rows. A file that did not
 change is left alone. A graph.json is read into rows when the rows hold no graph for its intent; a
 graph.json that does not check is refused with its problems, and a later difference between the file and
 the rows follows the conflict rule. An index.json whose content differs from the rows is read into rows; one that differs only in its layout is left alone. A call that cannot read stops before any row changes. Each row starts
 from intent 1, Alpha, whose `spec.md` the rows already hold, makes one change by hand, then
-calls `plastic sync up` through the storage kernel's command line.
+calls `plastic store sync up` through the storage kernel's command line.
 
 Each row gives the change, the exit code, the result and the rows:
 

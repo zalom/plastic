@@ -66,15 +66,15 @@ class IntentNewCaseTest < Plastic::TestCase
     FileUtils.cp_r(File.join(File.expand_path("../../../fixtures/legacy_store", __dir__), "."), store_root)
 
     assert_case line("intent new Too soon"), code: 1, out: "",
-      err: ["this store still has INDEX.md; run plastic sync up to import it first"]
+      err: ["this store still has INDEX.md; run plastic store sync up to import it first"]
   end
 
   def test_an_index_edited_by_hand_exits_1_and_says_to_sync_up_first
     ran("intent new First")
     write("store/index.json", "{}\n")
 
-    assert_case line("intent new Second"), code: 1, out: ["next: plastic sync up"], err: ["store/index.json changed since its last print on this home, " \
-      "by hand or in a copy from another home; run plastic sync up first to read it into rows"]
+    assert_case line("intent new Second"), code: 1, out: ["next: plastic store sync up"], err: ["store/index.json changed since its last print on this home, " \
+      "by hand or in a copy from another home; run plastic store sync up first to read it into rows"]
   end
 end
 

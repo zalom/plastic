@@ -26,7 +26,7 @@ module TwoHomesClusterHelper
   # A change of the clusters on a home through its rows, printed to the file by sync down.
   def change_clusters(home, name, intent_id)
     put_cluster(home, name, intent_id)
-    call_in(home, "sync", "down")
+    call_in(home, "store", "sync", "down")
   end
 
   def clusters(home, origin: origin_of(home))

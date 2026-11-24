@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/previous_store"
 require_relative "../../../../lib/plastic/graph/migration/migration_down"
-require_relative "../../../../lib/plastic/commands/migration/down"
+require_relative "../../../../lib/plastic/commands/store/migration/down"
 
 # The previous release's store, with the roadmap tables filled, for the tests of the migration and its down.
 module RoadmapStoreHelpers
@@ -135,7 +135,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
   # The empty roadmap tables, node inputs, deadline and driver migrations are the newest, so their downs come first and the next down undoes the roadmap migration.
   def undo_drivers(home) = 5.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
-  def down_result(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
+  def down_result(home) = plastic("store", "migration", "down", "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
 
   def test_a_down_puts_the_roadmap_rows_back_and_removes_the_needs_links
     home = roadmap_home

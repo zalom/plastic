@@ -83,7 +83,7 @@ to `resources/references`.
 
 A line counts only when it is filled in: one that starts with a denying word such as `no`,
 `pending` or `n/a`, or still holds a placeholder such as `<commit>`, is refused, and the handoff
-names it. Run `plastic sync up` after editing outcome.md, then `plastic intent end ID` again.
+names it. Run `plastic store sync up` after editing outcome.md, then `plastic intent end ID` again.
 
 ## The pull request description
 

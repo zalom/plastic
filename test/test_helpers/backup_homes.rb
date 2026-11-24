@@ -56,13 +56,13 @@ module BackupHomes
 
   def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "plastic.db")).execute("SELECT tool FROM command_runs").flatten
 
-  def backup_call(home, *argv) = plastic("backup", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
+  def backup_call(home, *argv) = plastic("store", "backup", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 
-  def list_call(home, *argv) = plastic("backup", "list", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
+  def list_call(home, *argv) = plastic("store", "backup", "list", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 
-  def purge_call(home, *argv, clock: Time) = plastic("backup", "purge", *argv, env: env_for(home), table: Plastic::CLI::TABLE, clock:)
+  def purge_call(home, *argv, clock: Time) = plastic("store", "backup", "purge", *argv, env: env_for(home), table: Plastic::CLI::TABLE, clock:)
 
-  def restore_call(home, *argv) = plastic("backup", "restore", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
+  def restore_call(home, *argv) = plastic("store", "backup", "restore", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 
   def assert_refused_with_usage(result, mention)
     assert_equal 2, result.code

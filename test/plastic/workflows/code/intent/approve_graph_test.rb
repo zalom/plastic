@@ -28,7 +28,7 @@ class ApproveGraphTest < Plastic::TestCase
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
     @work.done_node(intent_id: "1", id: "n1", findings: " ")
 
-    assert_includes approve.last.printed, "hand edit: edit the findings of node n1 in graph.json, then run plastic sync up and plastic graph check 1 again"
+    assert_includes approve.last.printed, "hand edit: edit the findings of node n1 in graph.json, then run plastic store sync up and plastic graph check 1 again"
   end
 
   def test_approving_an_intent_with_no_node_prints_no_finding

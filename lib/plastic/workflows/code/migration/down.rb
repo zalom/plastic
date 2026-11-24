@@ -20,7 +20,7 @@ module Plastic
           STOPS = { Plastic::Graph::MigrationDown::BackupFailed => Failed, Plastic::Graph::MigrationDown::Refused => Refused,
                     Plastic::Graph::LegacyTable::Changed => Refused }.freeze
 
-          def self.down(context) = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
+          def self.down(context) = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.project, context.now)
 
           def self.undo(context)
             down(context).call.to_h.each { |name, value| context[name] = value }
@@ -43,14 +43,14 @@ module Plastic
 
           read "say what was put back" do |context|
             context.print("down: put back #{Migration.counted(context.moved)} from legacy.db")
-            context.print("down: #{context.store} no longer records migration #{context.version}")
+            context.print("down: #{context.project} no longer records migration #{context.version}")
             context.print("down: built #{Migration.counted(context.built)} from the current documents")
             context.print("down: removed #{context.removed} needs #{(context.removed == 1) ? "link" : "links"} that the migration wrote") if context.removed
-            context.warn("down: #{context.store} no longer records migration #{context.version}, but the ledger in plastic.db has no down row for it (#{context.ledger_gap})") if context.ledger_gap
+            context.warn("down: #{context.project} no longer records migration #{context.version}, but the ledger in plastic.db has no down row for it (#{context.ledger_gap})") if context.ledger_gap
           end
 
-          outcome :done, offers: "plastic migration list --store %{store}",
-            because: "%{store} no longer records migration %{version}, and plastic update migrates it up again; a down undoes one store, so an older release still refuses plastic.db and the other stores"
+          outcome :done, offers: "plastic store migration list --project %{project}",
+            because: "%{project} no longer records migration %{version}, and plastic update migrates it up again; a down undoes one store, so an older release still refuses plastic.db and the other stores"
         end
       end
     end

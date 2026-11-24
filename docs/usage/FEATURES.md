@@ -99,7 +99,7 @@ could not hold it safely.
 | `plastic intent archive (ID \| --older-than DATE) --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
 
-`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic sync down` or `plastic sync up`, and it offers no command.
+`plastic store sync up`, `plastic store sync down`, `plastic intent revise` and `plastic store backup` keep their own previews. `plastic store backup --live` prints each line of the backup's `backup.log` as it is written. `plastic store backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic store backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic store sync down` or `plastic store sync up`, and it offers no command.
 `plastic uninstall --dry-run` lists every path the uninstall would remove or change.
 
 ## Install into a harness
@@ -162,7 +162,7 @@ packets, plans and notes go to `resources/tmp`, and copies of outside material g
 With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
 Plastic command or hook of the day copies the databases of every store as the start-of-day backup,
 and each session end after it replaces the day's end-of-day backup. A store always keeps its
-newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so they
+newest backup, and `plastic store backup list` and `plastic store backup restore` take no daily backup, so they
 find the backups as they are. Plastic runs no background process for this, and `backup.daily` is
 off by default.
 
@@ -219,11 +219,11 @@ The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
 except for one repair: it rebuilds the search rows of a store that are out of step with the
 passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
-the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
+the `plastic store backup list --project NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
 
 The doctor also names each store with files outside the resources layout, as `resources NAME: N files
-are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
+are outside the resources layout`, with the repair `plastic resources sort --project NAME`.
 
 ## Undo a migration
 
@@ -235,9 +235,9 @@ default.
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
-| `plastic migration down --store SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic migration list --store SLUG`. |
-| `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
+| `plastic store migration list --project SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
+| `plastic store migration down --project SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic store migration list --project SLUG`. |
+| `plastic store migration purge VERSION --project SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
 
 A down exits 3 and changes nothing when the store is not at the newest version, when the newest
 migration the store records kept nothing or its rows were purged, or when a row it would put back changed after
@@ -259,7 +259,7 @@ path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
 
-`plastic resources sort --store SLUG` moves the files of a store from the old places into this
+`plastic resources sort --project SLUG` moves the files of a store from the old places into this
 layout. It moves the rows with the files, rewrites the relative links that point at a moved
 file, and runs a sync up. A link that named no file before the move is left as it is. Both the
 run and `--dry-run` list the links that change and the links left as they are; `--dry-run`

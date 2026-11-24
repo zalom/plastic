@@ -89,7 +89,7 @@ class NodeDoneOutputTest < Plastic::TestCase
   def test_the_graph_file_prints_the_output_and_a_sync_up_keeps_its_bytes
     cli("node", "done", "1", "n1", "built", "--output", output_file)
     printed = File.binread(graph_path)
-    cli("sync", "up")
+    cli("store", "sync", "up")
 
     assert_equal [JSON_TEXT.b, printed], [node.output.b, File.binread(graph_path)]
   end
@@ -97,8 +97,8 @@ class NodeDoneOutputTest < Plastic::TestCase
   def test_a_sync_down_after_a_sync_up_keeps_the_output_bytes_and_the_file
     cli("node", "done", "1", "n1", "built", "--output", output_file)
     printed = File.binread(graph_path)
-    cli("sync", "up")
-    cli("sync", "down")
+    cli("store", "sync", "up")
+    cli("store", "sync", "down")
 
     assert_equal [JSON_TEXT.b, printed], [node.output.b, File.binread(graph_path)]
   end
@@ -115,7 +115,7 @@ class NodeDoneOutputSecondHomeTest < Minitest::Test
       first.command!("node", "claim", "1", "n2", "--agent", "tester")
       first.command!("node", "done", "1", "n2", "built", "--output", path)
       move_files(first, second)
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal [[NodeDoneOutputTest::JSON_TEXT]], query(second, "SELECT output FROM nodes WHERE id = 'n2'")
     end

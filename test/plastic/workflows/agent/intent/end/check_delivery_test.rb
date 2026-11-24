@@ -26,7 +26,7 @@ class CheckDeliveryTest < Plastic::TestCase
     text = check.steps.join("\n")
 
     refute_includes text, "Architecture map"
-    ["- Merged: ", "- Committed: ", "- Delivered: ", "Verification", "store/1--alpha/outcome.md", "plastic sync up",
+    ["- Merged: ", "- Committed: ", "- Delivered: ", "Verification", "store/1--alpha/outcome.md", "plastic store sync up",
       "plastic intent end 1"].each do |part|
       assert_includes text, part
     end

@@ -164,7 +164,7 @@ class ReadKeepsNoRunTest < Plastic::TestCase
   def test_backup_list_keeps_no_command_run_row
     home = fresh_home
     before = runs(home, "alpha")
-    list_call(home, "--store", "alpha")
+    list_call(home, "--project", "alpha")
 
     assert_equal before, runs(home, "alpha")
   end
@@ -172,7 +172,7 @@ class ReadKeepsNoRunTest < Plastic::TestCase
   def test_a_real_backup_keeps_one_command_run_row
     home = fresh_home
     before = runs(home, "alpha")
-    result = backup_call(home, "--store", "alpha")
+    result = backup_call(home, "--project", "alpha")
 
     assert_equal 0, result.code, result.err
     assert_equal before + 1, runs(home, "alpha")
@@ -181,7 +181,7 @@ class ReadKeepsNoRunTest < Plastic::TestCase
   def test_a_dry_run_backup_keeps_no_command_run_row
     home = fresh_home
     before = runs(home, "alpha")
-    backup_call(home, "--store", "alpha", "--dry-run")
+    backup_call(home, "--project", "alpha", "--dry-run")
 
     assert_equal before, runs(home, "alpha")
   end

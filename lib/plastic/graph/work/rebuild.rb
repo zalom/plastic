@@ -6,7 +6,7 @@ module Plastic
       class StoreResume
         # The files of a store hold intents its rows lost.
         class Rebuild
-          COMMAND = "plastic sync up --project %s"
+          COMMAND = "plastic store sync up --project %s"
           WHY = "the files hold intents the rows lost, and sync up reads every intent folder"
 
           def initialize(slug, folder)

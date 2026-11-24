@@ -28,7 +28,7 @@ class DoctorStoreBackupsTest < Plastic::TestCase
     folders.write_report(folders.latest, status: "failed", goal: "all")
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic backup --store alpha"], found.to_a
+    assert_equal ["backups alpha:", "newest backup 20260101100000 is failed; its integrity check did not pass", "plastic store backup --project alpha"], found.to_a
   end
 
   def fill(path)
@@ -48,17 +48,17 @@ class DoctorStoreBackupsTest < Plastic::TestCase
   def test_a_failed_live_check_is_a_finding_that_names_the_file_and_the_backup_command
     home = stale_home
     damage_leaf(home)
-    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("store sync up")
     found = check(home, THIRTEEN_HOURS_LATER)
 
-    assert_equal ["backups alpha:", "plastic backup --store alpha"], [found.label, found.repair]
+    assert_equal ["backups alpha:", "plastic store backup --project alpha"], [found.label, found.repair]
     assert_match(/knowledge_graph\.db fails the quick check/, found.value)
   end
 
   def test_a_passed_live_check_is_printed_beside_the_age
     home = stale_home
     add_intent(home)
-    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("sync up")
+    Plastic::Graph::Backup::Due.new(home:, slug: "alpha", now: THIRTEEN_HOURS_LATER).call("store sync up")
     found = check(home, THIRTEEN_HOURS_LATER)
 
     assert_equal "ok, newest #{shown("2026-01-01T23:00:00Z")}, 0 hours old, integrity passed, live check #{shown("2026-01-01T23:00:00Z")} passed", found.to_a[1]
