@@ -68,7 +68,7 @@ module SearchCheck
       files = Switches.new(found).parse(argv)
       raise Usage, "usage: search-check FILE [--keywords] [--limit N] [--store DIR]" unless files.one?
 
-      new(files.first, **found)
+      new(file: files.first, **found)
     end
 
     def questions
