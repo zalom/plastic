@@ -13,7 +13,7 @@ class ForegroundChecksRoleTest < Plastic::TestCase
   ROOT = PackageFixture::REAL_PACKAGE
   ROLES = %w[plastic-executor plastic-driver].freeze
   RULES = ["never ends its turn to wait on a background job", "runs each check in the foreground and reads the result itself",
-           "splits a long suite into its layers"].freeze
+    "splits a long suite into its layers"].freeze
 
   def flat(text) = text.gsub(/\s+/, " ")
 
