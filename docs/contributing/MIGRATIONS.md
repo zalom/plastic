@@ -86,7 +86,7 @@ statement of each.
   text of a document they wrote. The migration keeps it in `legacy.db` and offers an undo.
 - A mistake is data that an agent created by error, such as a table a migration made that no
   command should have made. The migration deletes it. No copy stays in `legacy.db`, no file or
-  free page holds its text, and `plastic migration list` offers no undo for it.
+  free page holds its text, and `plastic store migration list` offers no undo for it.
 - Rebuilt data is data that the code builds again from the owner's data, such as a report row
   that the next sync up reads back from the files. The migration drops it, keeps nothing, and its
   down removes the version alone.
