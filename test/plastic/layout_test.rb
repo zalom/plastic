@@ -100,4 +100,7 @@ class LayoutTest < Plastic::TestCase
 
     assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
   end
+  def test_a_file_that_moves_to_a_folder_keeps_its_name
+    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
+  end
 end
