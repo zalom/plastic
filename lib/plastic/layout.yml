@@ -95,7 +95,7 @@ resources:
 
 legacy:
   - name: "{id}--{slug}.md"
-    match: ["*--*.md"]
+    match: ["[0-9]*--*.md"]
     sync: document
     repair: rename
     to: intent.md
