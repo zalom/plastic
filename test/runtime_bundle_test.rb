@@ -94,6 +94,19 @@ class RuntimeBundleTest < Minitest::Test
     assert_equal platforms, lock.scan(/^    sqlite3 \(2\.9\.6-([^)]+)\)/).flatten
   end
 
+  def test_console_eval_loads_no_irb
+    Dir.mktmpdir("plastic-eval") do |home|
+      env = { "HOME" => home, "PLASTIC_HOME" => File.join(home, ".plastic") }
+      exe = File.join(REPO, "exe", "plastic")
+      ChildProcess.capture3(env, RbConfig.ruby, "--disable-gems", exe, "install")
+      code = 'at_exit { $stderr.print [defined?(IRB).inspect, $LOADED_FEATURES.grep(%r{/irb(\.rb|/)}).size].join(" ") }; ' \
+             "ARGV.replace(%w[console --eval 1+1]); load #{exe.inspect}"
+      out, err, status = ChildProcess.capture3(env, RbConfig.ruby, "--disable-gems", "-e", code)
+
+      assert_equal [0, "2\n", "nil 0"], [status.exitstatus, out, err]
+    end
+  end
+
   def test_the_development_gemfile_keeps_irb_for_the_tests
     assert_match(/^gem "irb", "~> 1\.19"$/, File.read(File.join(REPO, "Gemfile")))
   end

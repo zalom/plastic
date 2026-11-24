@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../support/child_process"
 require_relative "../../../lib/plastic/commands/console"
 
 # plastic console opens the databases of one store, and the machine-wide plastic.db, read-only.
@@ -65,14 +64,7 @@ class ConsoleCommandTest < Plastic::TestCase
 
     assert_equal NAMES, NAMES.select { |name| out.include?(name) }
     assert_includes out, "The console is no sandbox: Ruby can still write files."
-  end
-
-  def test_eval_loads_no_irb
-    code = 'at_exit { $stderr.print [defined?(IRB).inspect, $LOADED_FEATURES.grep(%r{/irb(\.rb|/)}).size].join(" ") }; ' \
-           'ARGV.replace(%w[console --eval 1+1]); load ARGV_EXE'.sub("ARGV_EXE", File.expand_path("../../../exe/plastic", __dir__).inspect)
-    out, err, status = ChildProcess.capture3({ "HOME" => @home, "PLASTIC_HOME" => @plastic_home }, RbConfig.ruby, "--disable-gems", "-e", code)
-
-    assert_equal [0, "2\n", "nil 0"], [status.exitstatus, out, err]
+    assert_includes out, "IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`."
   end
 
   def test_the_interactive_console_exits_one_when_irb_cannot_be_loaded
@@ -85,9 +77,6 @@ class ConsoleCommandTest < Plastic::TestCase
     Plastic::Console::IrbSession.send(:define_method, :load_irb, saved)
   end
 
-  def test_help_says_where_irb_comes_from
-    assert_includes console("--help").out, "IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`."
-  end
   def test_the_interactive_console_reads_its_input_and_prints_the_class_of_a_name
     result = console(input: "work.class\nexit\n")
 
