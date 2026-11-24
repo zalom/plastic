@@ -24,8 +24,11 @@ module Plastic
 
         Wiring.store_lock(scope.plastic_home, scope.slug).hold(&)
       rescue StoreLock::Busy => error
-        raise Failed.new(error.message, next_command: Shellwords.join(["plastic", *words.to_s.split, *argv]), because: "another call holds the store lock")
+        raise Failed.new(error.message, next_command: same_call, because: "another call holds the store lock")
       end
+
+      # The command line of this call, to run again once the lock is free.
+      def same_call = Shellwords.join(["plastic", *words.to_s.split, *argv])
 
       def store_lock? = self.class.holds_store_lock? && !parsed[:dry_run]
     end
