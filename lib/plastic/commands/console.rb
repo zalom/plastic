@@ -43,7 +43,7 @@ module Plastic
 
       def irb(databases)
         require_relative "../console/irb_session"
-        Plastic::Console::IrbSession.new(databases, environment).run
+        Plastic::Console::IrbSession.new(databases, environment).start
       end
     end
   end

@@ -44,7 +44,7 @@ module Plastic
         @environment = environment
       end
 
-      def run
+      def start
         load_irb
         IRB.setup(nil, argv: ["-f"])
         IRB.conf[:SAVE_HISTORY] = nil
