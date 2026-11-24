@@ -10,6 +10,7 @@ require_relative "context_file"
 require_relative "log_file"
 require_relative "text_file"
 require_relative "../../sql"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -21,7 +22,7 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => :graph, "context.json" => :context, "work.log" => :work_log, "savepoint.md" => :savepoint }.freeze
+          KINDS = { Layout.name(:graph) => :graph, Layout.name(:context) => :context, Layout.name(:log) => :work_log }.freeze
 
           def initialize(file, intent_id, origin_id:, retrieval: nil)
             @file = file
@@ -46,6 +47,7 @@ module Plastic
 
           def text_kind
             return :kept unless document?
+            return :savepoint if Layout.legacy_sync(@file.rel) == "lines"
 
             LegacyPath.legacy?(@file.rel) ? :legacy : :document
           end

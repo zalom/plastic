@@ -33,7 +33,7 @@ Everything it keeps lives under the Plastic home.
 | `stores/SLUG/` | One store for each project, plus the global store. |
 | `stores/SLUG/backups/` | Copies of the work and knowledge databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
-| `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
+| `store/ID--slug/` | An intent folder, as `lib/plastic/layout.yml` lists it: `intent.md`, `spec.md`, `outcome.md`, `graph.json`, `work.log`, `context.json` and `resources/`. The page `docs/help/intent-folder.md` has the rest. |
 
 A store keeps its rows in three SQLite databases: work, knowledge and retrieval. A fourth, `legacy.db`, keeps what a migration removed. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
@@ -339,6 +339,19 @@ write, never a copy of the row.
 from its intent file. A folder that cannot give a row is named with its reason, and the call
 exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
 whole chain against a temporary copy of the store and prints what the call would change.
+
+### The layout of an intent folder
+
+`lib/plastic/layout.yml` is the one place that names the files and folders of an intent folder, and
+`Plastic::Layout` (`lib/plastic/layout.rb`) serves it. Each core file has a purpose, the states that
+require it (open, done, abandoned) and a writer, and `intent.md`, `spec.md` and `outcome.md` have
+front matter and headings. The `legacy` entries name each file of an older layout, what a sync does
+with it and what a repair does. The `store_root` entries list what a store folder may hold. The sync,
+the resource sort, the readers, the completion check and the new-intent file take their names from it,
+and `test/layout_names_guard_test.rb` fails when code outside the layout names a core file or a
+resources folder. `Strays` in `lib/plastic/graph/knowledge/sync/strays.rb` names every file that the layout does not allow. `ruby bin/layout-docs`
+builds the intent folder section of `PLASTIC.md` and `docs/help/intent-folder.md` from the layout file,
+and `test/layout_docs_test.rb` fails when either differs.
 
 ## Links, archive and backup
 

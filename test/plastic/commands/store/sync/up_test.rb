@@ -442,10 +442,10 @@ class SyncUpSearchTest < Plastic::TestCase
 
   def test_a_search_finds_a_new_file_right_after_the_sync_up
     sync
-    write("store/2--beta/findings.md", "# Findings\n\nThe zanzibar route is the fastest.\n")
+    write("store/2--beta/resources/output/files/findings.md", "# Findings\n\nThe zanzibar route is the fastest.\n")
     sync
 
-    assert_equal ["findings.md"], found("zanzibar")
+    assert_equal ["resources%2Foutput%2Ffiles%2Ffindings.md"], found("zanzibar")
   end
 
   def test_a_search_finds_the_new_words_of_a_changed_file_and_not_the_old_ones
@@ -831,5 +831,31 @@ class SyncLegacyMetadataTest < Plastic::TestCase
       assert_raises(RuntimeError) { rollback.call { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
       assert_equal ["INDEX.md"], Dir.children(root)
     end
+  end
+end
+
+# A sync up reads only the files the layout allows, and names every other file it finds.
+class SyncUpStraysTest < Plastic::TestCase
+  include BetaFolder
+
+  def test_a_markdown_file_at_the_top_of_a_folder_is_named_and_not_read_as_a_note
+    write("store/2--beta/notes.md", "# Notes\n\nThe zanzibar route.\n")
+    result = sync
+
+    assert_includes result.out, "store/2--beta/notes.md is not in the intent folder layout; plastic help intent-folder lists the files it allows"
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE path = 'notes.md'")
+  end
+
+  def test_a_file_of_an_older_layout_names_its_repair
+    write("store/2--beta/revisions.md", "# Revisions\n")
+
+    assert_includes sync.out, "store/2--beta/revisions.md is a file of an older layout: amend; plastic help intent-folder says why"
+  end
+
+  def test_the_files_the_layout_allows_are_not_named
+    write("store/2--beta/resources/tmp/scratch.md", "# Scratch\n")
+    write("store/2--beta/resources/output/files/shot.png", "png")
+
+    refute_includes sync.out, "is not in the intent folder layout"
   end
 end

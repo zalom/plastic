@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
+require_relative "../../layout"
+
 module Plastic
   module Graph
     module Work
       # The schemas of one intent's nodes: the file resources/tmp/schemas/NODE.json of the intent folder, found by the
       # node's id. Plastic names the file and finds a stray one; the worker's harness checks the output against it.
       class Schemas
-        FOLDER = "resources/tmp/schemas"
+        FOLDER = "#{Layout.resource(:tmp)}schemas"
 
         # `folder` is the store folder and `dir` the intent folder in it.
         def initialize(folder, dir)

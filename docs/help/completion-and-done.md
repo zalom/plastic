@@ -9,9 +9,9 @@ disposition `delivered`, and `plastic intent abandon` sets it to `abandoned` wit
 disposition `cancelled`, or `superseded` when another intent supersedes it. `store/index.json`
 prints every intent's status and disposition from those rows.
 
-`outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. The
-delivered path writes it with the result and its Verification lines; the abandoned path writes
-why the intent is dropped and, for an intent that started, a `Reverted:` line.
+`outcome.md` is required when an intent is done, and the layout file says so. The delivered path
+writes it with the result and its Verification lines. An intent that started and is abandoned writes
+why it is dropped, with a `Reverted:` line. An intent with no node may abandon with no `outcome.md`.
 
 `plastic intent end ID` takes no options. It closes the intent when the rows allow it:
 every live node done, every criterion covered, an accepted verdict at or after the newest live

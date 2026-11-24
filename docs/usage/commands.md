@@ -19,7 +19,7 @@ plastic intent park 12 "TEXT"         # Park started work with the reason it wai
 plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
-plastic intent rule 12 "TEXT"         # Record a ruling in Insights
+plastic intent rule 12 "TEXT"         # Record a ruling, as a row and a work log line
 plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
 plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
 plastic session note "TEXT"           # Write the one prose line of this session
