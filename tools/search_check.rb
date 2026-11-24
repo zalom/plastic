@@ -42,7 +42,28 @@ module SearchCheck
   Question = Data.define(:id, :question, :keywords, :answers) do
     def self.from(row) = new(row.fetch("id"), row.fetch("question"), row.fetch("keywords", ""), row.fetch("answers"))
 
-    def terms(by_keywords) = by_keywords ? keywords : question
+    def line(rank) = format("%-6s %-14s %s", id, rank ? "hit  rank #{rank}" : "miss", question)
+  end
+
+  # The call's arguments: the question file, the field to type, how many intents count and the store folder.
+  Arguments = Data.define(:file, :field, :limit, :store) do
+    def self.parse(argv, home)
+      found = { field: :question, limit: 5, store: File.join(home, "stores", "plastic") }
+      parser = OptionParser.new
+      parser.on("--keywords") { found[:field] = :keywords }
+      parser.on("--limit N", Integer) { |number| found[:limit] = number }
+      parser.on("--store DIR") { |folder| found[:store] = folder }
+      files = parser.parse(argv)
+      raise Usage, "usage: search-check FILE [--keywords] [--limit N] [--store DIR]" unless files.one?
+
+      new(files.first, found[:field], found[:limit], found[:store])
+    end
+
+    def questions
+      raise Usage, "no question file at #{file}" unless File.file?(file)
+
+      JSON.parse(File.read(file)).map { |row| Question.from(row) }
+    end
   end
 
   # The rank of the first known answer among the first `limit` intents a search returns, or nil.
@@ -52,10 +73,7 @@ module SearchCheck
       @limit = limit
     end
 
-    def call(question, terms)
-      first = intents(terms)
-      first.index { |id| question.answers.include?(id) }&.+(1)
-    end
+    def call(answers, terms) = intents(terms).index { |id| answers.include?(id) }&.+(1)
 
     private
 
@@ -69,58 +87,30 @@ module SearchCheck
     end
   end
 
-  # Reads the arguments, runs every question and prints one line each and a total. Exit 0 ran, 2 called wrongly.
+  # Runs every question and prints one line each and a total. Exit 0 ran, 2 called wrongly.
   class CLI
     def initialize(argv, out:, err:, home:)
-      @argv = argv.dup
-      @out = out
-      @err = err
+      @argv = argv
       @home = home
-      @options = { keywords: false, limit: 5, store: File.join(home, "stores", "plastic") }
+      @streams = [out, err]
     end
 
     def call
-      file = parse
-      report(questions(file))
+      arguments = Arguments.parse(@argv, @home)
+      report(arguments, arguments.questions)
       0
     rescue Usage, OptionParser::ParseError => error
-      @err.puts "search-check: #{error.message}"
+      @streams.last.puts "search-check: #{error.message}"
       2
     end
 
     private
 
-    def parse
-      parser.parse!(@argv)
-      raise Usage, "usage: search-check FILE [--keywords] [--limit N] [--store DIR]" unless @argv.one?
-
-      @argv.first
-    end
-
-    def parser
-      OptionParser.new do |opts|
-        opts.on("--keywords") { @options[:keywords] = true }
-        opts.on("--limit N", Integer) { |number| @options[:limit] = number }
-        opts.on("--store DIR") { |folder| @options[:store] = folder }
-      end
-    end
-
-    def questions(file)
-      raise Usage, "no question file at #{file}" unless File.file?(file)
-
-      JSON.parse(File.read(file)).map { |row| Question.from(row) }
-    end
-
-    def report(questions)
-      ranker = Ranker.new(ReadOnlyStore.new(@options[:store]), @options[:limit])
-      ranks = questions.map { |question| [question, ranker.call(question, question.terms(@options[:keywords]))] }
-      ranks.each { |question, rank| @out.puts line(question, rank) }
-      @out.puts "total #{ranks.count { |_, rank| rank }}/#{ranks.size} in the first #{@options[:limit]}"
-    end
-
-    def line(question, rank)
-      status = rank ? "hit  rank #{rank}" : "miss"
-      format("%-6s %-14s %s", question.id, status, question.question)
+    def report(arguments, questions)
+      ranker = Ranker.new(ReadOnlyStore.new(arguments.store), arguments.limit)
+      ranks = questions.map { |question| ranker.call(question.answers, question.public_send(arguments.field)) }
+      @streams.first.puts(questions.zip(ranks).map { |question, rank| question.line(rank) })
+      @streams.first.puts "total #{ranks.compact.size}/#{ranks.size} in the first #{arguments.limit}"
     end
   end
 end
