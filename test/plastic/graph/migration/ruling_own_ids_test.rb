@@ -6,7 +6,7 @@ require_relative "../../../../lib/plastic/graph/knowledge/ruling/writer"
 
 # Migration 20261124233000 strips from each stored ruling the leading copy of its own id that an agent typed into the
 # text, the way plastic intent rule does, and from the ruled line of the work log that carries it. The label was an
-# agent's mistake, so it keeps no copy, and a down refuses it.
+# agent's mistake, so it keeps no copy, and its down removes the version alone.
 class GraphRulingOwnIdsTest < Plastic::TestCase
   include PreviousStore
 
@@ -77,11 +77,11 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
     refute_path_exists alpha_file(home, "legacy.db")
   end
 
-  def test_a_down_refuses_the_migration
+  def test_a_down_removes_the_version_alone_and_the_text_stays_stripped
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
+    undone = Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
 
-    assert_equal "migration #{VERSION} kept nothing in legacy.db, so a down cannot undo it; restore a backup to go back",
-      Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).refusal
+    assert_equal [VERSION, {}, false, 0], [undone.version, undone.moved, recorded(home).include?(VERSION), own_id_left(home)]
   end
 
   def test_the_migration_has_no_switch

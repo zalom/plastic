@@ -79,14 +79,14 @@ module PreviousStore
     Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
   end
 
-  # Undoes the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
-  def back_to_drop(home) = home.tap { 16.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  # Undoes the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
+  def back_to_drop(home) = home.tap { 17.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # Undoes the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
-  def without_usage(home) = home.tap { 12.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  # Undoes the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
+  def without_usage(home) = home.tap { 13.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # Undoes the newest migrations of a store that ran only some, which keep nothing in a store of the previous release, so the next down undoes the one before them.
-  def utc_down(home) = home.tap { 13.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  def utc_down(home) = home.tap { 14.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # A migrated store whose node inputs migration, deadline migration, driver migration, node columns migration, run usage migration, time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
   def migrated_previous_home_with_times = previous_home_with_times.tap { |home| migrate_store(home) }

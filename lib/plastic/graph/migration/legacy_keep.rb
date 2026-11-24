@@ -24,7 +24,7 @@ module Plastic
       TRIMS = %w[20261119190000].freeze
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
       # row they drop that the rules still read, or a down of the earlier version rebuilds it.
-      ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000 20261123130000 20261123154000 20261123170000 20261124150000 20261124173000 20261124200000 20261124210000].freeze
+      ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000 20261123130000 20261123154000 20261123170000 20261124150000 20261124173000 20261124200000 20261124210000 20261124233000].freeze
       # What each version that drops data says the data is. `owner`: the owner's own data, kept in legacy.db with an undo.
       # `mistake`: data an agent created by mistake, deleted with no copy and no undo, since legacy.db keeps only the
       # owner's data. `rebuilt`: nothing of the owner's is lost, since the data moved into a new table or column, a sync

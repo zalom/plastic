@@ -12,8 +12,8 @@ module Plastic
         # when the call names an older ruling. A text that begins with a copy of
         # its own id, such as "D3: Ship it", is stored without it.
         class Writer
-          # The text without a leading copy of `id` and the space, colon, period or dash after it.
-          def self.own_text(text, id) = text.sub(/\A#{id}\b[\s:.-]+(?=\S)/, "")
+          # The text without the leading copies of `id`, each with the space, colon, period or dash after it.
+          def self.own_text(text, id) = text.sub(/\A(?:#{Regexp.escape(id)}\b[\s:.-]+(?=\S))+/, "")
 
           def initialize(databases, retrieval, clock:, session: nil)
             @databases = databases
