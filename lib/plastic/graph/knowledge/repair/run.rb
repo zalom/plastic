@@ -30,21 +30,19 @@ module Plastic
             plan = repair_plan
             return plan.missing.lines if plan.empty?
 
-            count = change(plan)
+            change(plan)
             remove(plan)
             settle(plan)
             print_logs(plan.amendments)
-            plan.report(count)
+            plan.report
           end
 
           private
 
-          # Moves the files, merges those already at their target, rewrites the links and writes the amended lines; the count
-          # of the files moved.
+          # Moves the files, merges those already at their target, rewrites the links and writes the amended lines.
           def change(plan)
             merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
             apply(moves, merges, plan.rewrites, plan.amendments)
-            moves.size + merges.size
           end
 
           def rows = Resources::RowMoves.new(@graphs.databases.fetch(:store))

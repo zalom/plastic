@@ -19,6 +19,9 @@ module Plastic
 
           def inside_to = Move.inside(to)
 
+          # The folder of the intent the file moves in, store/{id}--{slug}.
+          def dir = from.delete_suffix("/#{inside_from}")
+
           def row = [intent_id, inside_from, inside_to, from, to]
 
           def onto_same_bytes?(folder) = folder.exist?(to) && folder.digest(to) == folder.digest(from)

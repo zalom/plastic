@@ -5,6 +5,7 @@ require_relative "../backup/writer"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
 require_relative "driver_agent_column"
+require_relative "work_log_text_columns"
 require_relative "driver_mode_column"
 require_relative "leftover_work_tables"
 require_relative "legacy_keep"
@@ -46,7 +47,7 @@ module Plastic
       REBUILDS = { "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
                    "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables,
                    "20261124120000" => LeftoverWorkTables, "20261124173000" => DriverModeColumn,
-                   "20261124200000" => DriverAgentColumn }.freeze
+                   "20261124200000" => DriverAgentColumn, "20261124210000" => WorkLogTextColumns }.freeze
       # The versions whose down takes off the links the migration wrote, and answers how many.
       REMOVALS = { "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }

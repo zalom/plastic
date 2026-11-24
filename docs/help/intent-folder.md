@@ -48,7 +48,7 @@ Everything else the work makes or reads. The agent writes here and no core file.
 | `graph.md` | report | remove | graph.json holds the steps of the intent, and the removal is recorded as an amendment. |
 | `plan.md` | legacy rows | move to `resources/references/` | The plan of an older release; graph.json holds the plan now. |
 | `checklist.md` | legacy rows | move to `resources/references/` | The checklist of an older release; the nodes of graph.json hold it now. |
-| `actions/` | legacy rows | move to `resources/references/actions/` | The action files of an older release. |
+| `actions/` | legacy rows | move to `resources/references/actions/` | The action files of an older release. The folder moves as one change, and an empty .gitkeep in it is removed. |
 | `savepoint.md` | lines | remove | work.log holds its lines, and a sync down removes the file when it still holds the printed bytes. |
 | `handoff.md` | report | move to `resources/tmp/` | A note between two sessions, never a record. |
 | `*.lock` | skip | remove | Machine state of an older release's locks; claims are rows now. |
@@ -89,7 +89,7 @@ What the folder store/ of a store folder may hold beside its intent folders. `pl
 
 ## Amendments
 
-`plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Each change writes one `amended` line in the intent's work.log with the reason for its kind.
+`plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Its renames, moves and removals share one `amended` line for each intent folder, each kind with its reason, and each link it rewrites gets one line of its own, whose row keeps the old and the new link.
 
 | Change | Reason |
 | --- | --- |

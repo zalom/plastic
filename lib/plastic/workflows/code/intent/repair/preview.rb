@@ -23,7 +23,8 @@ module Plastic
               retrieval = context.retrieval
               closed = Knowledge::Resources::SortPlan.closed(retrieval)
               states = Knowledge::Repair::MissingFiles.states(retrieval.intents)
-              Knowledge::Repair::Plan.new(Repair.folder(context), reports:, closed:, states:, dirs: Repair.dirs(context), held: context.held.to_set)
+              Knowledge::Repair::Plan.new(Repair.folder(context), reports:, closed:, states:, dirs: Repair.dirs(context), held: context.held.to_set,
+                links_left: context.links_left)
             end
 
             def self.lines(context)
