@@ -155,6 +155,24 @@ has no switch. Its down, `RoadmapNeedsLinks`, removes every `needs` link and put
 back from `legacy.db`. A store that never had the tables keeps nothing, and its down removes the
 version alone.
 
+Migration `20261124090000` drops the five roadmap tables of `work_graph.db` again. Migration
+`20261123120000` had dropped them, but on the `plastic` store of one machine they came back, all empty.
+Since commit 804fa952 (16 November 2026) every open of a store is gated: `SchemaGate` refuses a store whose
+ledger holds a version the code does not know. Every release from 3.0.0-beta.1 and every checkout from
+that commit on therefore cannot open the migrated store and make a table. The tables came from a checkout
+from before the gate, local `alpha` at fdb2b9d3 of 13 November 2026, which opened the store with no gate
+and made each table that its `schema.rb` declared and the store lacked. No release and no gated code
+declares or makes them: only the down of migration `20261123120000` makes them, from `legacy.db`. A
+migration that is already recorded never runs again, so the drop needs a new version. It has no switch. It is
+in `KEEPS`, and `RoadmapTables::VERSION` marks it as keeping a table only when it holds a row: a table that
+holds a row is kept whole in `legacy.db` as `<table>_20261124090000` before the drop, an empty table is kept
+nowhere, and a store with none of the tables only records the version. Its down, `RoadmapTables` in
+`REBUILDS`, builds the five tables again, empty and with the text of the live tables (UNIQUE keys, and the
+batch and position of an item NOT NULL), and puts back each row that the migration kept. A store that never
+had the tables gets them empty from the down too. Opening a store with that old checkout again makes the
+tables again, and no later migration drops them, because the version is recorded and never runs again. The stop is
+to bring that checkout past commit 804fa952.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as

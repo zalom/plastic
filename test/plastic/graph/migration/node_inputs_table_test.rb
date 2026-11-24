@@ -24,7 +24,11 @@ class GraphNodeInputsTableTest < Plastic::TestCase
     previous_home.tap { |home| SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| ROWS.each { |row| database.execute(row) } } }
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  # The empty roadmap tables migration is the newest and removes its version alone, so its down comes first.
+  def down(home)
+    Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+    Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  end
 
   def fresh_columns(table = "nodes")
     home = fresh_home

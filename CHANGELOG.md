@@ -5,7 +5,11 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+<<<<<<< HEAD
 - `plastic update` runs on a store newer than the installed code. It leaves such a store as it is, names it, and installs the newer release; before, the migration step raised `Plastic::Graph::Ahead` and the advice in the refusal could not be followed. When no release is newer, it exits 1 and says the store came from unreleased code. Every other command still refuses with exit 3, and its refusal now names that case. `docs/contributing/TECHNICAL.md` says how to run from source on a scratch home.
+=======
+- Store migration `20261124090000` drops the five roadmap tables (`roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`) from `work_graph.db`. Migration `20261123120000` had dropped them, but a checkout from before the schema gate (before commit 804fa952, 16 November 2026) opened the migrated store with no gate and made them again, all empty; no release and no gated code makes them. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. Its down builds the five tables again, empty and with the text of the old tables.
+>>>>>>> origin/alpha
 
 ## 3.0.0-beta.18
 
