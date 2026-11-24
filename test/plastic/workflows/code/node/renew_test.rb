@@ -38,11 +38,11 @@ class WorkflowRenewNodeTest < Plastic::TestCase
     assert_equal "node n1 is held by session s-2", refusal.message
   end
 
-  def driven_by_agents
+  def driven_by_agents(agent = "tester")
     work = store_graphs.work
     work.activate_intent("1")
     work.drive_intent(intent_id: "1", by: "s-1", mode: "auto")
-    work.claim_node(intent_id: "1", id: "n1", by: "s-1", agent: "tester")
+    work.claim_node(intent_id: "1", id: "n1", by: "s-1", agent:)
   end
 
   def test_in_agent_delivery_the_agent_that_holds_the_claim_renews_it
@@ -61,6 +61,12 @@ class WorkflowRenewNodeTest < Plastic::TestCase
     driven_by_agents
 
     assert_equal "node n1 is held by agent tester of session s-1", refusal.message
+  end
+
+  def test_in_agent_delivery_a_named_agent_leaves_the_claim_the_session_took_with_no_agent_name
+    driven_by_agents("")
+
+    assert_equal "node n1 is held by session s-1 with no agent name", refusal(agent: "other").message
   end
 
   OLD = "2026-01-01T00:00:00Z"

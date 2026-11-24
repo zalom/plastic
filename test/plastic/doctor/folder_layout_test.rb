@@ -79,9 +79,10 @@ class DoctorFolderLayoutTest < Plastic::TestCase
   def test_an_entry_of_the_store_root_the_layout_does_not_name_is_left_to_a_person
     put("spec.md" => "# Spec\n")
     root("REVIEWS.md" => "# Reviews\n")
+    FileUtils.mkdir_p(File.join(folder.root, "archive"))
 
-    assert_equal [["layout global REVIEWS.md:", "the layout does not name it", "move REVIEWS.md out of the store by hand, then run plastic doctor again"]],
-      checks.map(&:to_a)
+    assert_equal [["layout global REVIEWS.md:", "the layout does not name it", "move REVIEWS.md out of the store by hand, then run plastic doctor again"],
+      ["layout global archive/:", "the layout does not name it", "move archive/ out of the store by hand, then run plastic doctor again"]], checks.map(&:to_a)
   end
 
   def test_the_entries_the_layout_allows_or_names_at_the_store_root_are_no_finding

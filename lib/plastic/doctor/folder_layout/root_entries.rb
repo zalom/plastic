@@ -7,7 +7,7 @@ module Plastic
     class FolderLayout
       # The entries at the root of a store folder that the layout neither allows there nor names as a leftover of an
       # older release, each with a closing slash when it is a folder. A database name such as *.db names its journal
-      # files too. Machine state, such as .DS_Store, is no entry. It reads the folder and writes nothing.
+      # files too. Machine state, such as .DS_Store, is no entry. The folder exists; it is read and nothing is written.
       class RootEntries
         JOURNAL = /-(?:wal|shm|journal)\z/
 
@@ -16,11 +16,7 @@ module Plastic
           @names = [*Layout.store_root_allowed, *Layout.store_root_legacy].map(&:name)
         end
 
-        def to_a
-          return [] unless File.directory?(@root)
-
-          Dir.children(@root).sort.reject { |name| name.match?(Layout.skipped) || named?(name) }.map { |name| shown(name) }
-        end
+        def to_a = Dir.children(@root).sort.reject { |name| name.match?(Layout.skipped) || named?(name) }.map { |name| shown(name) }
 
         private
 

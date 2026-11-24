@@ -40,8 +40,7 @@ module Plastic
 
           # The agent of the session whose name is on the open run of the node.
           def self.holder(context)
-            run = context.retrieval.structure.runs(context.intent_id).reverse.find { |candidate| candidate.node_id == context.id && candidate.open? }
-            agent = run&.agent.to_s
+            agent = context.retrieval.structure.runs(context.intent_id).select { |run| run.node_id == context.id && run.open? }.map(&:agent).last.to_s
             agent.empty? ? "session #{context.session} with no agent name" : "agent #{agent} of session #{context.session}"
           end
 
