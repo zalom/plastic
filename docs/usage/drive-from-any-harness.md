@@ -121,7 +121,8 @@ under each finding that no command repairs, a `repair:` line under each finding 
   `PLASTIC_SESSION` is not set, Plastic uses the session of the harness, and then `terminal-` and the login
   at a terminal. Two drivers that share a name share a claim.
 - A claim lapses after 900 seconds without a renewal. When a driver hands out nodes, each worker
-  renews its own claim with `plastic node renew ID NODE`, for example every five minutes, while it runs.
+  sets `PLASTIC_AGENT` to its `--agent` name, so its commands renew its own claim and no other.
+  A worker on long work also renews with `plastic node renew ID NODE`, for example every five minutes.
 - A node added with `--deadline MINUTES` is overdue once its claim has run longer than that. `plastic graph
   ready ID --json` lists it under `result.overdue` with `id`, `title`, `claimed_by`, `claimed_minutes` and
   `deadline`. Plastic moves no node for it: the driver checks on the worker, and the owner decides

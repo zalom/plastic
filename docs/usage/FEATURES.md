@@ -60,7 +60,9 @@ the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic
 otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
 the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim ID NODE --agent NAME`, names the session that works a node and the agent that runs it; a claim without `--agent` exits 2. It
 refuses, with exit 3, an intent that is not in progress or without the go-ahead, and a node that
-is blocked, held or capped; it offers `plastic next` for a done or abandoned intent.
+is blocked, held or capped; it offers `plastic next` for a done or abandoned intent. A claim whose
+`--agent` differs from the environment variable `PLASTIC_AGENT` fails with exit 1, and each command
+renews only the claims of the agent `PLASTIC_AGENT` names.
 
 ## Drive a graph from any harness
 

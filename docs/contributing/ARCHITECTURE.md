@@ -189,11 +189,12 @@ text that Plastic prints in the planning hand-off.
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
-They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it. The row keeps the `mode` of the delivery: `guided` from `plastic intent start`, `auto` from `plastic intent auto`. `plastic graph lapsed` reads the rows of mode `auto` and lists each lapsed driver claim and each lapsed node claim of those intents, with the command that restarts the first. It renews no claim, so the session that runs it on a timer cannot hide a lapse.
+They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of its agent renew it. The row keeps the `agent` that took it, from the environment variable `PLASTIC_AGENT`, or none for the session's own agent. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it. The row keeps the `mode` of the delivery: `guided` from `plastic intent start`, `auto` from `plastic intent auto`. `plastic graph lapsed` reads the rows of mode `auto` and lists each lapsed driver claim and each lapsed node claim of those intents, with the command that restarts the first. It renews no claim, so the session that runs it on a timer cannot hide a lapse.
 `plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
-holds the node and lapses after 900 seconds without a renewal; each command of the session and
-`hook stop` renew it. Plastic computes the path
+holds the node and lapses after 900 seconds without a renewal; each command and `hook stop` of the
+agent on its open run renew it. Helpers of one session share its id and tell themselves apart with
+`PLASTIC_AGENT`; with none set, a command renews the session's own claims in guided work. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
@@ -286,7 +287,7 @@ order, and later hooks read it from the session row.
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
-| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node and driver claims, and runs the stop gate with the settings of the harness the session row names. |
+| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews the node and driver claims of the agent `PLASTIC_AGENT` names, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason, and releases the node claims and the driver claims of the session. |
 | Every other event | Nothing | No hook runs. |
 | Message display (Claude Code) | The screens launcher | Paints the screens when the setting `screens` (set with `plastic config set KEY VALUE`) turns them on. |
