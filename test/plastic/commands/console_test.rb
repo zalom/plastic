@@ -64,6 +64,17 @@ class ConsoleCommandTest < Plastic::TestCase
 
     assert_equal NAMES, NAMES.select { |name| out.include?(name) }
     assert_includes out, "The console is no sandbox: Ruby can still write files."
+    assert_includes out, "IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`."
+  end
+
+  def test_the_interactive_console_exits_one_when_irb_cannot_be_loaded
+    saved = Plastic::Console::IrbSession.instance_method(:load_irb)
+    Plastic::Console::IrbSession.send(:define_method, :load_irb) { raise Plastic::Failed, Plastic::Console::IrbSession::MISSING }
+    result = console(input: "exit\n")
+
+    assert_equal [1, "plastic: #{Plastic::Console::IrbSession::MISSING}\n"], [result.code, result.err]
+  ensure
+    Plastic::Console::IrbSession.send(:define_method, :load_irb, saved)
   end
 
   def test_the_interactive_console_reads_its_input_and_prints_the_class_of_a_name

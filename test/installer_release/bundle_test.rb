@@ -54,31 +54,15 @@ class InstallerReleaseBundleTest < Minitest::Test
     assert_match(/false/, error.message)
   end
 
-  def test_retries_without_the_console_group_when_the_first_install_fails_and_says_what_is_left_out
+  def test_a_failed_install_raises_after_one_run_and_never_leaves_a_group_out
     calls = []
-    said = []
-    attempts = 0
     run = lambda do |env, command|
       calls << [env, command]
-      raise "bundle install failed" if (attempts += 1) == 1
+      raise "bundle install failed"
     end
-    InstallerRelease::Bundle.new(run:, say: said.method(:push)).call(release_with_gemfile, RUBY)
 
-    assert_equal [nil, "console"], calls.map { |env, _command| env["BUNDLE_WITHOUT"] }
-    assert_match(/plastic console needs a C compiler/, said.join)
-  end
-
-  def test_a_failure_of_the_retry_raises
-    run = ->(_env, _command) { raise "bundle install failed" }
-
-    assert_raises(RuntimeError) { InstallerRelease::Bundle.new(run:, say: ->(_text) {}).call(release_with_gemfile, RUBY) }
-  end
-
-  def test_a_first_install_that_works_leaves_nothing_out
-    said = []
-    InstallerRelease::Bundle.new(run: ->(_env, _command) {}, say: said.method(:push)).call(release_with_gemfile, RUBY)
-
-    assert_empty said
+    assert_raises(RuntimeError) { InstallerRelease::Bundle.new(run:).call(release_with_gemfile, RUBY) }
+    assert_equal [false], calls.map { |env, _command| env.key?("BUNDLE_WITHOUT") }
   end
 
   private

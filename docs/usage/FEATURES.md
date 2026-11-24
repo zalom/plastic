@@ -194,9 +194,9 @@ with `attempt to write a readonly database`. The console is no sandbox: Ruby can
 files. `plastic console --eval CODE`, short `-e`, runs one piece of Ruby for an agent, prints its
 value and exits 0. Code that raises prints the error and exits 1. With `--json` the value prints
 as JSON data, and `--json` without `--eval` exits 2. The console renews no claim and takes no
-daily backup, so a call writes nothing in a store. IRB belongs to an optional gem group of the
-installed bundle: when its gems do not build, the installer leaves the group out, says that the
-console needs a C compiler, and every other command works. See the
+daily backup, so a call writes nothing in a store. IRB is the one of the Ruby
+installation, not of the install: when the Ruby has none, the console says so and exits 1
+(`gem install irb` adds it), and every other command works, `--eval` included. See the
 [page of `console`](../reference/commands/console/README.md).
 
 ## Check the installation

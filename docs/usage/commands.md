@@ -62,7 +62,8 @@ plastic console -e 'work.execute("SELECT count(*) AS n FROM nodes")' --json  # T
 ```
 
 The names are `work`, `knowledge`, `retrieval` and `plastic`: the three files of the store and
-`plastic.db`. The console is no sandbox: Ruby can still write files. See the
+`plastic.db`. The console is no sandbox: Ruby can still write files. IRB is the one of the Ruby
+installation; when the Ruby has none, add it with `gem install irb`. See the
 [page of `console`](../reference/commands/console/README.md).
 
 ## Search
