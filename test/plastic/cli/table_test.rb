@@ -5,7 +5,7 @@ require "plastic/cli"
 
 class CLITableTest < Minitest::Test
   FAMILY_ORDER = %w[core intent project sync session config backup migration resources document architecture node edge graph chat hook].freeze
-  CORE = %w[version doctor init install update rollback uninstall status next search].freeze
+  CORE = %w[version doctor init install update rollback uninstall status next search console].freeze
 
   def test_the_families_come_in_the_order_the_help_lists_them
     assert_equal FAMILY_ORDER, Plastic::CLI::FAMILIES.keys

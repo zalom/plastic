@@ -2,3 +2,7 @@ source "https://rubygems.org"
 
 gem "sqlite3", "~> 2.9"
 gem "tty-prompt", "~> 0.23.1"
+
+group :console do
+  gem "irb", "~> 1.19"
+end

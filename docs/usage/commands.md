@@ -54,6 +54,17 @@ plastic intent auto 12                 # Set the intent in progress for agent de
 plastic intent brief 12                # Print the brief an agent starts from
 ```
 
+## Console
+```bash
+plastic console                              # IRB over the store databases, opened read-only
+plastic console --project NAME -e 'knowledge.execute("SELECT title FROM intents")'  # One piece of Ruby: print its value and exit
+plastic console -e 'work.execute("SELECT count(*) AS n FROM nodes")' --json  # The value as JSON data
+```
+
+The names are `work`, `knowledge`, `retrieval` and `plastic`: the three files of the store and
+`plastic.db`. The console is no sandbox: Ruby can still write files. See the
+[page of `console`](../reference/commands/console/README.md).
+
 ## Search
 ```bash
 plastic search recovery flow --source-project blog --limit 20  # Ranked passages for the words of a question; quote a phrase to keep it whole

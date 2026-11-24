@@ -85,7 +85,8 @@ plastic init
 
 `install.sh` needs Ruby 4.0 or later and git, and stops with the steps to install what is missing.
 It downloads the newest stable release, checks it against its published checksum, and links
-`~/.local/bin/plastic`.
+`~/.local/bin/plastic`. `plastic console` needs a C compiler to build the gems of IRB; when none is
+there, the install says so, leaves the console out and keeps every other command.
 `plastic init` lists the agent harnesses it finds, Claude Code, Codex CLI and Hermes, each one picked,
 and installs Plastic into the ones you pick. [Enola](INSTALL.md#enola) is an optional tool that
 maps code architecture.

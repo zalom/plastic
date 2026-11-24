@@ -80,6 +80,16 @@ module Plastic
 
       def skips_daily_backup? = @skips_daily_backup == true
 
+      # `renews_no_claims` keeps the renewal of the session's claims out of the
+      # call, for a command that must not write to the work database.
+      def renews_no_claims = (@renews_no_claims = true)
+
+      def renews_no_claims? = @renews_no_claims == true
+
+      # `long_description` names the lines Help prints after the usage line:
+      # what the command opens and what it warns of. Called with no line, it gives the lines.
+      def long_description(*lines) = lines.empty? ? (@long_description || []) : (@long_description = lines)
+
       def arguments = (@arguments ||= [])
 
       def options = (@options ||= [])
