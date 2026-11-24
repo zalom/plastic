@@ -37,10 +37,12 @@ module Plastic
           end
 
           def self.line(claim)
-            held = claim.driver? ? "driver" : "node #{claim.node} #{claim.node_title}, agent #{claim.agent || "not recorded"}"
+            held = claim.driver? ? driver_words(claim) : "node #{claim.node} #{claim.node_title}, agent #{claim.agent || "not recorded"}"
             "lapsed: store #{claim.store}, intent #{claim.intent_id} #{claim.title}, #{held}, session #{claim.session}, " \
               "last renewed #{Plastic.local(claim.last_renewed)}"
           end
+
+          def self.driver_words(claim) = ["driver", *claim.agent&.then { |agent| "agent #{agent}" }].join(", ")
 
           def self.offer_restart(context, claim)
             return unless claim

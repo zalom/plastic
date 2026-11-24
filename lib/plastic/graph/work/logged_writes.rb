@@ -22,7 +22,7 @@ module Plastic
           :unarchive_intent, :revise_intent
         def_delegators :@records, :add_ruling, :add_verdict, :note_intent, :write_document, :amend_intents, :report_intent, :reporter
         def_delegators :@nodes, :add_node, :claim_node, :record_run, :record_cost, :add_edge, :remove_edge, :drive_intent, :driver_problem, :driven?, :renew_claims,
-          :release_claims, :release_driver, *LoggedNodes::NODE_KINDS.keys
+          :renew_node, :release_claims, :release_driver, *LoggedNodes::NODE_KINDS.keys
 
         def initialize(writers)
           log = LogWriter.new(writers)

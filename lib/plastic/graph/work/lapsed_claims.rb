@@ -6,7 +6,8 @@ module Plastic
   module Graph
     module Work
       # One lapsed claim of an intent in agent delivery: its driver claim, or the claim of one of its nodes. `claim` is
-      # "driver" or "node"; `agent` is the agent of the node's open run, nil for a driver claim or a run with none.
+      # "driver" or "node"; `agent` is the agent that took the driver claim or the agent of the node's open run, nil when
+      # none is recorded.
       # `last_renewed` is the stored UTC time of the last renewal.
       LapsedClaim = Data.define(:store, :intent_id, :title, :claim, :node, :node_title, :agent, :session, :last_renewed) do
         def driver? = claim == "driver"
@@ -15,7 +16,7 @@ module Plastic
       # The lapsed claims of one store's intents in agent delivery, at `now`: for each intent that plastic intent auto
       # drives, its driver claim when it lapsed, then each claimed node whose claim lapsed. It reads and changes nothing.
       class LapsedClaims
-        NO_NODE = { node: nil, node_title: nil, agent: nil }.freeze
+        NO_NODE = { node: nil, node_title: nil }.freeze
 
         def initialize(retrieval, store:, now:)
           @retrieval = retrieval
@@ -33,7 +34,7 @@ module Plastic
         def driver(row)
           return unless Driver::Held.from(row, now: @now, ended: false).lapsed
 
-          claim(row, "driver", session: row["session_id"], last_renewed: stamp(row["seen_at"], row["claimed_at"]), **NO_NODE)
+          claim(row, "driver", agent: row["agent"], session: row["session_id"], last_renewed: stamp(row["seen_at"], row["claimed_at"]), **NO_NODE)
         end
 
         def node_claim(row, node)

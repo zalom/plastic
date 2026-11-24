@@ -20,13 +20,13 @@ module Plastic
     extend Forwardable
 
     # The session, the store scope and the settings that made the call, the name of the harness that holds the session, and the home
-    # whose harness records a run is read from. A call that has no harness has an empty name and no home.
-    Harness = Struct.new(:session, :scope, :settings, :name, :user_home) do
+    # whose harness records a run is read from, and the agent that runs the call. A call that has no harness has an empty name and no home.
+    Harness = Struct.new(:session, :scope, :settings, :name, :user_home, :agent) do
       # The harness of a call made in `environment`.
-      def self.of(environment, scope, settings) = new(environment.session, scope, settings, *environment.harness_record)
+      def self.of(environment, scope, settings) = new(environment.session, scope, settings, *environment.harness_record, environment.agent)
     end
 
-    def_delegators :@collaborators, :session, :running_harness, :user_home, :scope, :settings, :clock, :work, :retrieval, :database
+    def_delegators :@collaborators, :session, :running_harness, :running_agent, :user_home, :scope, :settings, :clock, :work, :retrieval, :database
     def_delegators :@printed, :print_to
     def_delegator :@printed, :lines, :printed
 

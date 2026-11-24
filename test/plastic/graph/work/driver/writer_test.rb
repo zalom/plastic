@@ -145,3 +145,91 @@ class WorkDriverWriterTest < Plastic::TestCase
     assert_equal [nil, "guided", "auto"], modes
   end
 end
+
+# The driver row records the agent that took the claim, and in agent delivery only that agent renews it.
+class WorkDriverWriterAgentTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
+  def setup
+    super
+    @clock = Clock.new(START)
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1", clock: @clock).work
+
+  def at(minutes) = @clock.now = START + (minutes * 60)
+
+  def drive(**fields) = work.drive_intent(intent_id: "1", by: "s-1", **fields)
+
+  def driver_row = store_graphs.databases.fetch(:store).row("SELECT * FROM drivers WHERE intent_id = '1'")
+
+  def test_the_driver_row_records_the_agent_that_took_the_claim
+    drive(agent: "deliver")
+
+    assert_equal "deliver", driver_row["agent"]
+  end
+
+  def test_a_driver_claim_taken_with_no_agent_records_none
+    drive
+
+    assert_nil driver_row["agent"]
+  end
+
+  def test_in_agent_delivery_the_agent_that_took_the_driver_claim_renews_it
+    drive(mode: "auto", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1", agent: "deliver")
+
+    assert_equal "2026-11-23T08:10:00Z", driver_row["seen_at"]
+  end
+
+  def test_in_agent_delivery_another_agent_of_the_session_leaves_the_driver_claim
+    drive(mode: "auto", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1")
+    work.renew_claims("s-1", agent: "other")
+
+    assert_equal "2026-11-23T08:00:00Z", driver_row["seen_at"]
+  end
+
+  def test_in_guided_work_a_call_that_names_no_agent_renews_the_driver_claim
+    drive(mode: "guided", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1")
+
+    assert_equal "2026-11-23T08:10:00Z", driver_row["seen_at"]
+  end
+end
+
+# Two sessions take a driver claim at once: the write is guarded by the holder each read, so the one that read a
+# holder that is gone by its write loses and is told who holds the claim.
+class WorkDriverWriterRaceTest < Plastic::TestCase
+  # A writer whose first read of the holder came before another session took the claim.
+  class StaleRead < Plastic::Graph::Work::Driver::Writer
+    private
+
+    def holder(intent_id)
+      return super if @read
+
+      @read = true
+      nil
+    end
+  end
+
+  def setup
+    super
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def test_a_claim_that_loses_the_race_is_held_by_the_session_that_won
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2").work.drive_intent(intent_id: "1", by: "s-2", mode: "auto")
+    writer = StaleRead.new(store_graphs.databases, store_graphs.retrieval)
+
+    assert_equal [:held, "s-2", nil], writer.claim(intent_id: "1", by: "s-1", mode: "auto", agent: "deliver")
+  end
+end

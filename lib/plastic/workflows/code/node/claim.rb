@@ -13,14 +13,15 @@ module Plastic
         # Claims an open node whose needed nodes are done, once the intent is in progress and the owner gave the
         # go-ahead. A done or abandoned intent fails and offers plastic next. The fourth run of a node moves it
         # to needs_info instead, with the owner's question, and refuses. A node another session holds, its claim
-        # renewed within 15 minutes, refuses and names the holder. A refused claim keeps its command run open,
+        # renewed within 15 minutes, refuses and names the holder. A claim whose agent is not the one PLASTIC_AGENT
+        # names fails, as that agent would never renew it. A refused claim keeps its command run open,
         # so the next call claims again.
         class Claim < CodeWorkflow
           clear_declarations
 
           STOPPED = %w[refused capped blocked held].freeze
 
-          sets :intent, :status, :result, :node, :problem, :approval_problem, :output_problem, :start_check, :graph_problem
+          sets :intent, :status, :result, :node, :problem, :agent_problem, :approval_problem, :output_problem, :start_check, :graph_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -29,6 +30,21 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
           gate "node claim names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
+
+          read "check the agent against PLASTIC_AGENT" do |context|
+            context[:agent_problem] = agent_problem(context.agent.to_s, context.running_agent)
+          end
+
+          # A helper that sets PLASTIC_AGENT renews only the claims of that name, so a claim under another name would lapse.
+          def self.agent_problem(agent, running)
+            return nil if running.empty? || running == agent
+
+            "node claim names agent #{agent}, but PLASTIC_AGENT names #{running}; give one name to both"
+          end
+
+          gate "%{agent_problem}", stops: :failure,
+            words: "the claim names another agent than PLASTIC_AGENT",
+            pass: ->(context) { context.agent_problem.nil? }
           gate "intent %{intent_id} is %{status}", stops: :refusal, offers: "plastic next",
             because: "a node of a closed intent is never claimed; pick other work",
             pass: ->(context) { !context.intent.closed? }

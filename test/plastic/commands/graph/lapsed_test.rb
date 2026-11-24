@@ -16,8 +16,9 @@ class GraphLapsedTest < Plastic::TestCase
   STAMP = "2026-11-24T09:00:00Z"
   Clock = Struct.new(:now)
 
-  def run_at(minutes, *argv, session: "s-orchestrator")
-    plastic(*argv, env: { "PLASTIC_SESSION" => session }, table: Plastic::CLI::TABLE, clock: Clock.new(START + (minutes * 60)))
+  def run_at(minutes, *argv, session: "s-orchestrator", agent: nil)
+    env = { "PLASTIC_SESSION" => session, "PLASTIC_AGENT" => agent }.compact
+    plastic(*argv, env:, table: Plastic::CLI::TABLE, clock: Clock.new(START + (minutes * 60)))
   end
 
   def lapsed(minutes, *flags, session: "s-orchestrator") = run_at(minutes, "graph", "lapsed", *flags, session:)
@@ -121,5 +122,38 @@ class GraphLapsedTest < Plastic::TestCase
     result = lapsed(0, "--stores", "global", "--project", "blog")
 
     assert_call result, code: 2, out: "", err: /--stores names the stores; --project does not apply/
+  end
+
+  def test_a_helper_that_runs_no_command_lapses_while_the_orchestrator_of_its_session_keeps_working
+    open_keyed_intent
+    run_at(0, "intent", "auto", "1")
+    run_at(0, "node", "add", "1", "Build", "--criterion", "done")
+    run_at(0, "node", "claim", "1", "n1", "--agent", "tester", agent: "tester")
+    [5, 10, 15, 20].each { |minutes| run_at(minutes, "graph", "ready", "1") }
+
+    assert_call lapsed(20), code: 0, err: "",
+      out: ["lapsed: store global, intent 1 Alpha, node n1 Build, agent tester, session s-orchestrator, last renewed #{Plastic.local(STAMP)}",
+        "next: plastic node claim 1 n1 --agent tester", "because: the claim of node n1 of intent 1 lapsed; plastic node claim takes it for a new helper"]
+  end
+
+  def test_a_helper_that_keeps_running_commands_keeps_its_claim_live
+    open_keyed_intent
+    run_at(0, "intent", "auto", "1")
+    run_at(0, "node", "add", "1", "Build", "--criterion", "done")
+    run_at(0, "node", "claim", "1", "n1", "--agent", "tester", agent: "tester")
+    run_at(10, "graph", "ready", "1", agent: "tester")
+    run_at(20, "graph", "ready", "1")
+
+    assert_call lapsed(20), code: 0, err: "", out: "because: no agent delivery has a lapsed claim\n"
+  end
+
+  def test_a_driver_claim_a_helper_took_lapses_while_the_orchestrator_of_its_session_keeps_working
+    open_keyed_intent
+    run_at(0, "intent", "auto", "1", agent: "deliver")
+    [5, 10, 15].each { |minutes| run_at(minutes, "graph", "ready", "1") }
+
+    assert_call lapsed(16), code: 0, err: "",
+      out: ["lapsed: store global, intent 1 Alpha, driver, agent deliver, session s-orchestrator, last renewed #{Plastic.local(STAMP)}",
+        "next: plastic intent auto 1", "because: the driver claim of intent 1 lapsed; plastic intent auto 1 takes it"]
   end
 end
