@@ -4,6 +4,7 @@ require_relative "../update"
 require_relative "../../../code_workflow"
 require_relative "../../installation"
 require_relative "../../release_update"
+require_relative "../../../graph/migration/records_newer"
 
 module Plastic
   module Workflows
@@ -18,16 +19,20 @@ module Plastic
           clear_declarations
           summary "Shows what an update would do before anything is changed."
 
-          sets :from, :to
+          sets :from, :to, :unreleased
 
           read "compare the installed version with the one a real run would install" do |context|
             installation = Installation.of(context)
             context[:from] = installation.installed_version || ReleaseUpdate.of(context).active_version
             context[:to] = context.dry_run ? target(context, installation) : installation.version
+            context[:unreleased] = Graph::RecordsNewer.describe(Graph::RecordsNewer.in_home(context.scope.plastic_home, released: context.settings.released)) if context.dry_run
           end
 
           gate "Plastic is not installed under this home; run plastic install first", stops: :refusal,
             pass: ->(context) { !context.from.nil? }
+
+          gate "no release is newer than %{from}, and a store came from unreleased code (%{unreleased}); update again once a release holds that migration",
+            stops: :failure, pass: ->(context) { !context.dry_run || context.unreleased.to_s.empty? || context.to != context.from || ReleaseUpdate.of(context).active_version.nil? }
 
           read "say what the update would do" do |context|
             if context.dry_run

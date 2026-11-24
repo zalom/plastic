@@ -51,7 +51,9 @@ module Plastic
       attr_reader :notes, :ledger
 
       def call
+        newer = RecordsNewer.read(knowledge_file, :store, released: @released)
         return newer if newer
+
         return compacted(:current) unless behind?
 
         StoreAge.call(root) if pending?(MIGRATIONS.baseline(:store))
@@ -64,16 +66,6 @@ module Plastic
       private
 
       def root = File.join(@home, "stores", @slug)
-
-      # A store written by newer code is left as it is: nothing here may open it, since the gate refuses it.
-      def newer = (@newer ||= newer_reading)
-
-      def newer_reading
-        return unless File.file?(knowledge_file)
-
-        reading = SchemaState.of_file(knowledge_file, :store, released: @released)
-        RecordsNewer.new(reading.unknown) if reading.ahead?
-      end
 
       def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
 

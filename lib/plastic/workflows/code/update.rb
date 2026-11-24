@@ -38,7 +38,7 @@ module Plastic
           changes: { databases: "Every database behind its sequence is migrated after a backup of its store", backups: "A migration backup is written for each store that moves" } do |context|
           report = SchemaMigration.bring_current(context)
           context[:migrated] = report.migrated
-          context[:unreleased] = report.newer.map { |store, versions| "#{store} records #{versions.join(", ")}" }.join("; ")
+          context[:unreleased] = Graph::RecordsNewer.describe(report.newer)
         end
 
         read "find a newer release on the chosen channel" do |context|

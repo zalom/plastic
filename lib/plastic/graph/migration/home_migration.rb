@@ -27,7 +27,7 @@ module Plastic
 
       def call
         path = [current, former].find { |file| File.exist?(file) }
-        path ? settle(path) : :current
+        path ? (RecordsNewer.read(path, :home) || migrate(path)) : :current
       rescue SQLite3::Exception, Database::Error, SystemCallError, HomeRename::Taken => error
         "it could not be migrated (#{MigrationReason.of(error)})"
       end
@@ -37,11 +37,6 @@ module Plastic
       def former = File.join(@home, "local.db")
 
       def current = File.join(@home, "plastic.db")
-
-      def settle(path)
-        reading = SchemaState.of_file(path, :home)
-        reading.ahead? ? RecordsNewer.new(reading.unknown) : migrate(path)
-      end
 
       def migrate(path) = preparation_failure(path) || advance
 

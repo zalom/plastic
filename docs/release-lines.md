@@ -59,8 +59,8 @@ channel.
 A store that a run of unreleased code has moved past every release is newer than the installed
 code, and every command but `plastic update` refuses it with exit 3. `plastic update` and
 `plastic update --dry-run` still run: they leave the store as it is, and an update installs the
-newest release of the channel. When no release is newer, `plastic update` exits 1 and says the
-store came from unreleased code; wait for a release that holds its migration.
+newest release of the channel. When no release is newer, `plastic update` and its dry run exit 1
+and say the store came from unreleased code; wait for a release that holds its migration.
 
 ## Stable-line guarantees
 
