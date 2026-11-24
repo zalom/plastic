@@ -10,7 +10,7 @@ plastic intent note ID TEXT [--kind KIND]
 | --- | --- | --- |
 | `ID` | the intent | |
 | `TEXT` | the note, one line | |
-| `--kind KIND` | the kind of line, in any case: Review, Commit or Report under Notes; Merged, Committed, Delivered, Pull request, Approved, Reverted or Abandoned under Verification, each in its form | `"Report"` |
+| `--kind KIND` | the kind of line, in any case: Note, Review, Commit or Report under Notes; Merged, Committed, Delivered, Pull request, Approved, Reverted or Abandoned under Verification, each in its form | `"Note"` |
 
 ## The events of one call, step by step
 

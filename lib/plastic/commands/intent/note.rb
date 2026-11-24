@@ -11,8 +11,8 @@ module Plastic
       class Note < Routine
         intent_subject
         argument :text, label: "TEXT", text: "the note, one line"
-        option :kind, switch: "--kind KIND", default: "Report",
-          text: "the kind of line, in any case: Review, Commit or Report under Notes; Merged, Committed, Delivered, " \
+        option :kind, switch: "--kind KIND", default: "Note",
+          text: "the kind of line, in any case: Note, Review, Commit or Report under Notes; Merged, Committed, Delivered, " \
                 "Pull request, Approved, Reverted or Abandoned under Verification, each in its form"
         reads :work
         writes :knowledge, :retrieval
