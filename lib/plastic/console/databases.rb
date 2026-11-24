@@ -22,11 +22,22 @@ module Plastic
       def self.open(scope)
         raise Graph::MissingStore, scope.slug unless File.directory?(scope.root)
 
-        paths = KEYS.transform_values { |key| File.join(key == :local ? scope.plastic_home : scope.root, Graph::Schema.file(key)) }
-        missing = paths.values.reject { |path| File.file?(path) }
-        raise Failed, "the console needs #{missing.map { |path| File.basename(path) }.join(", ")}, which #{scope.root} does not hold" unless missing.empty?
+        paths = paths_of(scope)
+        new(require_files(scope, paths).transform_values { |path| connect(path) })
+      end
 
-        new(paths.transform_values { |path| connect(path) })
+      def self.require_files(scope, paths)
+        missing = paths.values.reject { |path| File.file?(path) }
+        return paths if missing.empty?
+
+        raise Failed, "the console needs #{missing.map { |path| File.basename(path) }.join(", ")}, which #{scope.root} does not hold"
+      end
+
+      def self.paths_of(scope)
+        KEYS.transform_values do |key|
+          folder = (key == :local) ? scope.plastic_home : scope.root
+          File.join(folder, Graph::Schema.file(key))
+        end
       end
 
       def self.connect(path)

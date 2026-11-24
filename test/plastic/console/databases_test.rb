@@ -37,4 +37,10 @@ class ConsoleDatabasesTest < Plastic::TestCase
   ensure
     databases&.close
   end
+
+  def test_a_store_folder_that_does_not_exist_is_refused
+    missing = Struct.new(:slug, :root).new("gone", File.join(@home, "gone"))
+
+    assert_raises(Plastic::Graph::MissingStore) { Plastic::Console::Databases.open(missing) }
+  end
 end

@@ -16,7 +16,7 @@ module InstallerRelease
   # bundle program and the gems come from the Ruby the release runs on.
   class Bundle
     RUN = ->(env, command) { system(env, *command, exception: true) }
-    SAY = ->(text) { $stderr.puts(text) }
+    SAY = ->(text) { warn(text) }
     LEFT_OUT = "plastic console needs a C compiler (Xcode command line tools with the licence accepted, or build-essential). " \
       "The install left it out; every other command works. Install a compiler and run the installer again to add it."
 

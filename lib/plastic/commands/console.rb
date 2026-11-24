@@ -2,6 +2,7 @@
 
 require_relative "../cli/command"
 require_relative "../console/databases"
+require_relative "../console/json_value"
 
 module Plastic
   module Commands
@@ -35,7 +36,7 @@ module Plastic
 
       def evaluate(databases)
         value = databases.evaluate(code)
-        json? ? output.data("value", self.class.json_data(value)) : output.raw(value.inspect)
+        json? ? output.data("value", Plastic::Console::JsonValue.of(value)) : output.raw(value.inspect)
       rescue StandardError, ScriptError => error
         raise Failed, Failed.describe(error)
       end
@@ -43,17 +44,6 @@ module Plastic
       def irb(databases)
         require_relative "../console/irb_session"
         Plastic::Console::IrbSession.new(databases, environment).run
-      end
-
-      # A value JSON holds as it is stays as it is; anything else prints as its inspect text.
-      def self.json_data(value)
-        case value
-        when String, Integer, true, false, nil then value
-        when Float then value.finite? ? value : value.inspect
-        when Array then value.map { |item| json_data(item) }
-        when Hash then value.to_h { |key, item| [key.to_s, json_data(item)] }
-        else value.inspect
-        end
       end
     end
   end
