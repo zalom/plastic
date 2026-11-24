@@ -24,7 +24,7 @@ plastic intent spec 12                # State screen, then the speccing rules
 plastic intent spec 12 --from FILE    # Write spec.md from a file that holds every section
 plastic intent rule 12 "TEXT"         # Record a ruling, as a row and a work log line
 plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
-plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
+plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Note, Review, Commit or Report
 plastic intent note 12 "BRANCH into main at pull request 5" --kind Merged  # Add a delivery line under Verification
 plastic intent outcome 12 --from FILE  # Write the summary of outcome.md from a file
 plastic intent report 12 resources/output/reports/page.html  # Record a report so the sync reads it

@@ -13,7 +13,7 @@ module Plastic
         class Notes
           Kind = Data.define(:label, :heading)
 
-          NOTE_LABELS = %w[Review Commit Report].freeze
+          NOTE_LABELS = %w[Note Review Commit Report].freeze
           VERIFICATION_LABELS = ["Merged", "Committed", "Delivered", "Pull request", "Approved", "Reverted", "Abandoned"].freeze
           KINDS = [*NOTE_LABELS.map { |label| Kind.new(label:, heading: "## Notes") },
             *VERIFICATION_LABELS.map { |label| Kind.new(label:, heading: "## Verification") }].freeze
