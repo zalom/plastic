@@ -157,7 +157,7 @@ class IntentEndPullRequestTest < Plastic::TestCase
     result = finish
 
     assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "Pull request:"
+    assert_includes result.out, "plastic intent note 1 '<link or number>' --kind 'Pull request'"
   end
 
   def test_required_with_a_pull_request_and_no_approval_waits_for_the_person
@@ -179,7 +179,7 @@ class IntentEndPullRequestTest < Plastic::TestCase
 
     assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "plastic intent judge 1"
-    assert_includes result.out, "Pull request:"
+    assert_includes result.out, "plastic intent note 1 '<link or number>' --kind 'Pull request'"
   end
 
   def test_required_with_the_approval_closes
@@ -230,7 +230,7 @@ class IntentEndMergeTest < Plastic::TestCase
     result = finish
 
     assert_equal [1, "in_progress", 0], [result.code, retrieval.intent("1").status, work_rows("completions").size]
-    assert_includes result.out, "- Merged: "
+    assert_includes result.out, "--kind Merged"
     assert_match(/^next: plastic intent end 1/, result.out)
   end
 
@@ -254,12 +254,12 @@ class IntentEndMergeTest < Plastic::TestCase
     assert_match(/merge the pull request of intent 1 into the intent's base/, out)
   end
 
-  def test_the_merge_handoff_leaves_the_pull_request_open_only_when_the_owner_asked_and_names_sync_up
+  def test_the_merge_handoff_leaves_the_pull_request_open_only_when_the_owner_asked_and_names_the_note_command
     lacking_merge_record
     out = finish.out
 
     assert_match(/only when the owner asked/i, out)
-    assert_match(/plastic store sync up/, out)
+    assert_match(/plastic intent note 1 '<branch> into <base> at <commit or pull request>' --kind Merged/, out)
   end
 
   def test_a_negative_merge_record_is_named_by_the_handoff
@@ -327,7 +327,7 @@ class IntentEndMergeTest < Plastic::TestCase
     lacking_merge_record
     out = finish.out
 
-    ["- Merged: ", "- Committed: ", "- Delivered: ", "resources/output/reports", "resources/output/files"].each { |part| assert_includes out, part }
+    ["--kind Merged", "--kind Committed", "--kind Delivered", "resources/output/reports", "resources/output/files"].each { |part| assert_includes out, part }
   end
 
   def test_a_second_end_after_the_merge_record_resumes_and_closes

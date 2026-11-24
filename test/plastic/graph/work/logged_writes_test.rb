@@ -50,7 +50,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def test_abandoning_appends_an_abandoned_line
     intent
-    work.note_intent(work_intent, "note", "why it ends")
+    work.note_intent(work_intent, "Report", "why it ends")
     work.abandon_intent("1")
 
     assert_equal %w[opened noted abandoned], kinds
@@ -65,7 +65,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def test_a_note_appends_a_line_with_the_path_and_the_full_hash_of_the_document
     intent
-    work.note_intent(work_intent, "note", "one line")
+    work.note_intent(work_intent, "Report", "one line")
     line = lines.last
 
     assert_equal ["noted", "outcome.md", Digest::SHA256.hexdigest(graphs.retrieval.fetch("1", "outcome.md").body)], line.values_at(:kind, :path, :sha256)

@@ -2,6 +2,7 @@
 
 require_relative "../spec"
 require_relative "../../../../code_workflow"
+require_relative "../../../given_file"
 require_relative "../../../../graph/knowledge/spec_sections"
 require_relative "../../../../layout"
 
@@ -54,10 +55,8 @@ module Plastic
 
             # The text of the file and nil, or nil and why it cannot be the spec.
             def self.text_of(path)
-              text = File.binread(path).force_encoding(Encoding::UTF_8)
-              text.valid_encoding? ? [text, Plastic::Graph::Knowledge::SpecSections.problem(text)] : [nil, "the spec file #{path} is not UTF-8 text"]
-            rescue SystemCallError => e
-              [nil, "the spec file cannot be read: #{e.message}"]
+              text, problem = GivenFile.text(path, "spec")
+              [text, problem || Plastic::Graph::Knowledge::SpecSections.problem(text)]
             end
           end
         end

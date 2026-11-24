@@ -36,7 +36,7 @@ Goes with the store: the files of the store carry the change, and `plastic store
 | Step | The text the agent gets |
 | --- | --- |
 | 3 | Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent \<intent id> changed, close or delete its branch and worktree, and revert any commit that reached the base. Plastic runs no version control command; it records what you write. |
-| 4 | Write in \<intent folder>/outcome.md why the intent is dropped, and add the line '- Reverted: \<what was undone, or nothing delivered>' under ## Verification. Run plastic store sync up and then plastic intent abandon \<intent id> again. |
+| 4 | Write why the intent is dropped with plastic intent outcome \<intent id> --from FILE. Record the reason with plastic intent note \<intent id> 'superseded by intent \<id>' --kind Abandoned, or plastic intent note \<intent id> 'dropped because \<reason>' --kind Abandoned, and the revert with plastic intent note \<intent id> '\<what was undone, or nothing delivered>' --kind Reverted. Then run plastic intent abandon \<intent id> again. |
 | 7 | Stop the processes and the agents that intent \<intent id> started: servers, watchers, background jobs and subagents. Plastic runs none of them and stops none of them. |
 
 The command is `Plastic::Commands::Intent::Abandon`, in [`commands/intent/abandon.rb`](../../../../lib/plastic/commands/intent/abandon.rb).

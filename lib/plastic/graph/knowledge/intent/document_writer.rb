@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../intent"
+
 require_relative "../../evidence/writer"
 
 module Plastic

@@ -77,7 +77,8 @@ line and under `result.overdue`, for the driver to check on its worker; Plastic 
 | ------- | ------ |
 | `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
-| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. |
+| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. `--kind Merged`, `Committed`, `Delivered`, `Pull request`, `Approved`, `Reverted` or `Abandoned` writes the line under `## Verification` instead, and a line not in its form fails with exit 1. The kind is matched in any case. |
+| `plastic intent outcome ID --from FILE` | The summary of outcome.md, the text between its title and its first section, replaced by the file. The title and every section stay. A file that is empty or holds a heading fails with exit 1, and a closed intent refuses with exit 3. |
 
 `intent revise` writes the new What and Why into the intent file, and its work log line keeps
 the old What and Why. A done or abandoned intent refuses with

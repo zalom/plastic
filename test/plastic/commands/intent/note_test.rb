@@ -16,12 +16,12 @@ class IntentNoteCaseTest < Plastic::TestCase
       out: ["commit: abc123 proves it", "next: plastic next"]
   end
 
-def test_a_merged_note_prints_the_line_and_offers_next
-  ran("intent new Alpha")
+  def test_a_merged_note_prints_the_line_and_offers_next
+    ran("intent new Alpha")
 
-  assert_case line(%(intent note 1 "plastic/1 into alpha at pull request 5" --kind Merged)), code: 0,
-    out: ["merged: plastic/1 into alpha at pull request 5", "next: plastic next"]
-end
+    assert_case line(%(intent note 1 "plastic/1 into alpha at pull request 5" --kind Merged)), code: 0,
+      out: ["merged: plastic/1 into alpha at pull request 5", "next: plastic next"]
+  end
 
   def test_a_note_on_a_missing_intent_exits_1_and_names_it
     assert_case line('intent note 9 "text"'), code: 1, out: "", err: ["no intent 9 in this store"]

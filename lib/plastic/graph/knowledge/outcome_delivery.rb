@@ -10,15 +10,16 @@ module Plastic
       # path it names, with no step out of that folder.
       class OutcomeDelivery
         LABELS = { "Merged" => :merged?, "Committed" => :committed?, "Delivered" => :files? }.freeze
-        MISSING = "Add one delivery line to the Verification section of outcome.md: '%s' for a merge, '%s' for a direct commit, " \
-          "or '%s' for files that no version control holds. Then run plastic store sync up."
+        MISSING = "Record one delivery line in the Verification section of outcome.md: %s for a merge, %s for a direct commit, " \
+          "or %s for files that no version control holds."
         NOT_IN_FORM = "outcome.md says '%s', which is not a delivery line in the form '%s'. "
         NOT_IN_FOLDER = "outcome.md says '%s', but the intent folder holds no %s. "
-        FIX = "Fix that line or put the delivered files in place, then run plastic store sync up."
+        FIX = "Record a line in its form with %s, or put the delivered files in place."
 
-        def initialize(outcome, intent_folder)
+        def initialize(outcome, intent_folder, intent_id)
           @outcome = outcome
           @intent_folder = intent_folder
+          @intent_id = intent_id
         end
 
         def recorded? = merged? || committed? || files?
@@ -45,8 +46,11 @@ module Plastic
         # The message that asks for the delivery line, naming the one that does not count when there is one.
         def message
           found = finding
-          found.empty? ? format(MISSING, *LABELS.keys.map { |label| OutcomeForm.shown(label) }) : found + FIX
+          found.empty? ? format(MISSING, *LABELS.keys.map { |label| note(label) }) : found + format(FIX, note(rejection.split(": ", 2).first))
         end
+
+        # The command that writes the line of `label` in its form.
+        def note(label) = "plastic intent note #{@intent_id} '#{OutcomeForm.note_text(label)}' --kind #{label}"
 
         private
 

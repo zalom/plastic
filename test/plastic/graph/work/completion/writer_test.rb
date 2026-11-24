@@ -51,7 +51,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
 
     error = assert_raises(Plastic::Invalid) { writer.close("1") }
 
-    assert_includes error.message, "Merged:"
+    assert_includes error.message, "--kind Merged"
     assert_equal ["in_progress", nil], [retrieval.intent("1").status, structure.completions("1").first]
   end
 

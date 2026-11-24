@@ -6,7 +6,7 @@ class IntentOutcomeCaseTest < Plastic::TestCase
   def test_an_outcome_without_a_file_exits_2
     ran("intent new Alpha")
 
-    assert_case line("intent outcome 1"), code: 2, out: "", err: [/--from/]
+    assert_case line("intent outcome 1"), code: 2, out: "", err: ["plastic: missing --from"]
   end
 end
 

@@ -65,7 +65,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "Reverted:"
+    assert_includes result.out, "--kind Reverted"
   end
 
   def test_an_open_intent_with_a_node_without_the_reverted_bullet_hands_over_the_revert_steps
@@ -74,7 +74,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal [0, "open"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "Reverted:"
+    assert_includes result.out, "--kind Reverted"
   end
 
   %w[future open].each do |status|
@@ -95,7 +95,9 @@ class IntentAbandonTest < Plastic::TestCase
     assert_call result, code: 0, out: [
       "Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
       "Plastic runs no version control command; it records what you write.",
-      "Write in store/1--alpha/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. Run plastic store sync up and then plastic intent abandon 1 again."
+      "Write why the intent is dropped with plastic intent outcome 1 --from FILE.",
+      "Record the reason with plastic intent note 1 'superseded by intent <id>' --kind Abandoned, or plastic intent note 1 'dropped because <reason>' --kind Abandoned, " \
+      "and the revert with plastic intent note 1 '<what was undone, or nothing delivered>' --kind Reverted. Then run plastic intent abandon 1 again."
     ]
   end
 
