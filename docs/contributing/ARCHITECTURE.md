@@ -288,7 +288,7 @@ order, and later hooks read it from the session row.
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
 | A prompt | `plastic hook prompt` | Records the prompt in the chat history of `plastic.db`. |
-| Before a tool that can write | `plastic hook guard` | Denies an agent write to a core file of a store, any file of a closed intent, a folder no intent owns or an intent record under `docs/plans/` or `docs/specs/`, with the harness's deny decision and the reason. Only `resources/` of an open intent is open. It prints nothing for any other call. |
+| Before a tool that can write | `plastic hook guard` | Denies an agent write to a core file of a store, any file of a closed intent, a folder no intent owns or an intent record in a project folder that `project_records` of the layout names, with the harness's deny decision and the reason. Only `resources/` of an open intent is open. It prints nothing for any other call. |
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node and driver claims, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason, and releases the node claims and the driver claims of the session. |
 | Every other event | Nothing | No hook runs. |

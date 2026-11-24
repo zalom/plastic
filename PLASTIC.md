@@ -23,15 +23,8 @@ git is a hard dependency: agents run it, never Plastic's code.
 
 Pull request: What, Why, How, Tests (`plastic help completion-and-done`).
 
-Commands write the core files of an intent folder: `plastic intent spec ID --from FILE` writes
-`spec.md`, `plastic intent outcome ID --from FILE` writes the summary of `outcome.md`, and
-`plastic intent note ID TEXT --kind KIND` adds each line. A guard hook refuses an agent write to
-a core file, to any file of a closed intent, to an intent folder made by hand and to `docs/plans/`
-or `docs/specs/` in a project. Only `resources/` of an open intent is open to the agent.
-
-Record the delivery with `plastic intent note ID TEXT --kind KIND`: `Merged` for a merged pull
-request, `Committed` for a direct commit, and `Delivered` only for work that no version control
-holds. Before `plastic intent abandon ID`, write the summary and the `Abandoned` note.
+Commands write an intent's core files, and only `resources/` is open to agents. Record the
+delivery with `plastic intent note ID TEXT --kind Merged`, `Committed` or `Delivered`.
 Record a report with `plastic intent report ID PATH`. Research, a comparison of options, a review
 or audit that is the work, and a proposal for a ruling get a report with no ask. A plan, a delivery
 report or an explainer gets one only when asked or named by `reports.mandatory`. Tell by the
