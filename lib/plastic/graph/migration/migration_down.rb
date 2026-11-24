@@ -4,6 +4,7 @@ require_relative "../database"
 require_relative "../backup/writer"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
+require_relative "leftover_work_tables"
 require_relative "legacy_keep"
 require_relative "legacy_store"
 require_relative "legacy_table"
@@ -42,7 +43,8 @@ module Plastic
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
       REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
-                   "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables }.freeze
+                   "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables,
+                   "20261124120000" => LeftoverWorkTables }.freeze
       # The versions whose down takes off the links the migration wrote, and answers how many.
       REMOVALS = { "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }
