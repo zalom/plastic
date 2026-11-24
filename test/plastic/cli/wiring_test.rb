@@ -114,4 +114,27 @@ class WiringTest < Plastic::TestCase
 
     assert_equal %w[20261119000000 20261119190000 20261120090000], Plastic::Wiring.settings(@plastic_home).released
   end
+
+  def lock_wait_of(text)
+    seed_config(@plastic_home, "global:\n  sync:\n    lock_wait: #{text}\n")
+    Plastic::Wiring.lock_wait(Plastic::Wiring.config(@plastic_home))
+  end
+
+  def test_a_home_with_no_setting_has_no_store_lock
+    assert_nil Plastic::Wiring.store_lock(@plastic_home, "global")
+  end
+
+  def test_the_lock_switch_gives_the_store_lock
+    seed_config(@plastic_home, "global:\n  sync:\n    lock: true\n")
+
+    assert_instance_of Plastic::StoreLock, Plastic::Wiring.store_lock(@plastic_home, "global")
+  end
+
+  def test_the_lock_wait_reads_its_whole_seconds
+    assert_equal 5, lock_wait_of("5")
+  end
+
+  def test_a_lock_wait_that_is_no_whole_number_reads_the_shipped_wait
+    assert_equal 60, lock_wait_of("soon")
+  end
 end

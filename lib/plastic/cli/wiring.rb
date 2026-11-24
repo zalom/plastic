@@ -6,6 +6,7 @@ require_relative "../graph/settings_database"
 require_relative "../graph/backup/purger"
 require_relative "../graph/knowledge/sync_selection"
 require_relative "../graph/knowledge/sync_settings"
+require_relative "../store_lock"
 
 module Plastic
   # The one place that joins the settings to the graphs: the settings read and
@@ -24,6 +25,7 @@ module Plastic
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
     DAILY_BACKUPS = %w[backup daily].freeze
+    STORE_LOCK = %w[sync lock].freeze
 
     def self.config(home, harness: nil, clock: Time) = Config.new(home, harness:, clock:, database: settings_database(home))
 
@@ -50,6 +52,18 @@ module Plastic
 
     # How long a store keeps its backups: one day under the daily backups, else three days.
     def self.backup_retention(home) = daily_backups?(home) ? Graph::Backup::Purger::DAILY_RETENTION : Graph::Backup::Purger::RETENTION
+
+    # The lock of one store when sync.lock is on, with the seconds of sync.lock_wait; nil when it is off.
+    def self.store_lock(home, slug)
+      settings = config(home)
+      StoreLock.new(StoreLock.path(home, slug), wait: lock_wait(settings)) if settings.flag(STORE_LOCK, default: false)
+    end
+
+    # The seconds of sync.lock_wait, or the shipped wait when it holds no whole number.
+    def self.lock_wait(settings)
+      value = settings.value("sync.lock_wait").to_s
+      value.match?(/\A\d+\z/) ? Integer(value, 10) : StoreLock::WAIT
+    end
 
     def self.graphs(home:, store:, session: nil, clock: Time) = Graph.open(home:, store:, session:, clock:, sync: sync(home))
 
