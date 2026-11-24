@@ -21,7 +21,7 @@ module Plastic
         def_delegators :@intents, :write_intent, :close_intent, :abandon_intent, :approve_intent, :park_intent, :archive_intent,
           :unarchive_intent, :revise_intent
         def_delegators :@records, :add_ruling, :add_verdict, :note_intent, :amend_intents, :report_intent, :reporter
-        def_delegators :@nodes, :add_node, :claim_node, :record_run, :record_cost, :add_edge, :remove_edge, :drive_intent, :driver_problem, :renew_claims,
+        def_delegators :@nodes, :add_node, :claim_node, :record_run, :record_cost, :add_edge, :remove_edge, :drive_intent, :driver_problem, :driven?, :renew_claims,
           :release_claims, :release_driver, *LoggedNodes::NODE_KINDS.keys
 
         def initialize(writers)

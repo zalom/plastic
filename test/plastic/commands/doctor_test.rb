@@ -56,6 +56,15 @@ class DoctorCommandTest < Plastic::TestCase
     assert_includes result.err, "no harness unknown; the registered harnesses are claude-code, codex, hermes"
   end
 
+  def test_a_folder_that_breaks_the_layout_ends_with_the_repair_as_next
+    write(File.join(store_dir, "store", "1--alpha", "plan.md"), "# Plan\n")
+    result = doctor
+
+    assert_equal 1, result.code
+    assert_match(/layout #{SLUG} 1--alpha:\s+outside the layout: plan\.md/, result.out)
+    assert_includes result.out + result.err, "next: plastic intent repair --all --project #{SLUG}"
+  end
+
   def test_a_second_doctor_run_changes_no_file_under_the_home
     File.delete(machine_path)
     FileUtils.rm_rf(store_dir)

@@ -2,7 +2,7 @@
 #
 # This file is the one place that names the files and folders of an intent. Every command that works
 # in an intent folder reads it through Plastic::Layout (lib/plastic/layout.rb): the new-intent file,
-# the sync, the resource sort, the readers, the completion check and the doctor. The intent folder
+# the sync, the repair, the readers, the completion check and the doctor. The intent folder
 # section of PLASTIC.md and docs/help/intent-folder.md are generated from it by
 # `ruby bin/layout-docs`, and a test fails when either one differs.
 #
@@ -17,6 +17,9 @@
 # `document` reads it as the intent's own file, `legacy_rows` reads it into legacy rows, `lines` reads
 # it into work.log lines, `skip` leaves machine state alone, and `report` reads nothing and names the
 # file in the sync's output. `repair` says what `plastic intent repair` does with it, and `to` where it goes.
+#
+# Each change that a repair makes to a done or abandoned intent writes one `amended` line in its work.log, with
+# the reason that `amendments` gives for the kind of change.
 version: 1
 
 folder:
@@ -140,7 +143,7 @@ legacy:
     to: resources/tmp/
     why: A note between two sessions, never a record.
   - name: "*.lock"
-    match: ["*.lock", "**/*.lock"]
+    match: ["*.lock"]
     sync: skip
     repair: remove
     why: Machine state of an older release's locks; claims are rows now.
@@ -177,7 +180,7 @@ legacy:
 
 machine:
   skipped: '\A(?:delivery\.lock|\.DS_Store)\z'
-  swept: '\A(?:.*\.lock|\.DS_Store)\z'
+  swept: '\A\.DS_Store\z'
 
 store_root:
   purpose: What a store folder, stores/SLUG/, may hold beside its intent folders.
@@ -202,9 +205,35 @@ store_root:
     - name: roadmaps/
       repair: remove
       why: Roadmaps became needs links between intents.
+
+store_folder:
+  purpose: What the folder store/ of a store folder may hold beside its intent folders. `plastic intent repair --all` removes each leftover.
+  allowed:
+    - name: "{id}--{slug}/"
+      purpose: One folder for each intent.
+    - name: index.json
+      purpose: The index of the store, printed from the rows.
+    - name: .gitkeep
+      purpose: An empty file that keeps the folder of a store with no intent.
+    - name: .obsidian/
+      purpose: The settings of a note tool, such as Obsidian, that a person opens the store with.
+  legacy:
     - name: .sessions/
       repair: remove
-      why: The day ledger of an older release; session rows hold it. The owner reviews what it holds first.
+      why: The day ledger of an older release; session rows hold it.
     - name: .tmp/
       repair: remove
-      why: Heartbeat files of an older release. The owner reviews what it holds first.
+      why: Heartbeat files of an older release.
+    - name: work_graph.db
+      repair: remove_empty
+      why: An empty database made by mistake; the databases of a store sit beside store/. One that holds data is named and left.
+    - name: .enola/
+      repair: remove
+      why: Enola's snapshot folder sits beside store/, at the store root.
+
+amendments:
+  rename: the layout names the intent's own file intent.md
+  move: the layout names the folder this file belongs in
+  remove: a newer record holds what this file held
+  revision: an entry of the old revisions.md, with its own date
+  link: the repair moved the file this link names

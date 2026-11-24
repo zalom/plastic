@@ -37,7 +37,8 @@ module Plastic
 
     def self.file(role) = files.find { |entry| entry.role == role.to_sym } || raise(KeyError, "the layout has no #{role} file")
 
-    def self.name(role) = file(role).name
+    # The name of the core file of `role`; with no role, the name of this module, as every module answers.
+    def self.name(role = nil) = role ? file(role).name : super()
 
     def self.core_names = files.map(&:name)
 
@@ -90,11 +91,20 @@ module Plastic
     # Machine state of a store folder that no record holds: skipped when a sync lists the files.
     def self.skipped = Regexp.new(data.fetch("machine").fetch("skipped"))
 
-    # Where the repair of the legacy entry that names `rel` moves it, or nil.
+    # Where the repair of the legacy entry that names `rel` moves or renames it, or nil.
     def self.destination(rel) = legacy_for(rel)&.destination(rel)
 
     def self.store_root_allowed = Entries.root_allowed(data.fetch("store_root").fetch("allowed"))
 
     def self.store_root_legacy = Entries.root_legacy(data.fetch("store_root").fetch("legacy"))
+
+    # What the folder store/ of a store folder may hold beside its intent folders.
+    def self.store_folder_allowed = Entries.root_allowed(data.fetch("store_folder").fetch("allowed"))
+
+    # The leftovers of the folder store/ that a repair removes.
+    def self.store_folder_legacy = Entries.root_legacy(data.fetch("store_folder").fetch("legacy"))
+
+    # The reason an `amended` work log line gives for a kind of change: rename, move, remove, revision or link.
+    def self.amendment_reason(kind) = data.fetch("amendments").fetch(kind.to_s)
   end
 end

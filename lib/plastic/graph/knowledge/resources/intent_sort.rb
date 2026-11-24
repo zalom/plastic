@@ -30,7 +30,8 @@ module Plastic
 
             def changed_in(dir) = found.changed.map { |link| "#{dir}/#{rel}: #{link}" }
 
-            def amendments(intent_id, dir) = found.changed.uniq.map { |change| Amendment.new(intent_id, dir, rel, change, found.text) }
+            # One amendment for each changed link of the file, which `landed` names where the repair puts it.
+            def amendments(intent_id, dir, landed) = found.changed.uniq.map { |change| Amendment.new(intent_id, dir, landed, change, found.text) }
           end
 
           def self.linked?(rel) = %w[md html].include?(File.extname(rel).delete_prefix(".").downcase) && !LegacyPath.legacy?(rel)
@@ -42,19 +43,26 @@ module Plastic
             @reports = reports
           end
 
-          def moves = destinations.map { |from, to| Move.new("#{@dir}/#{from}", "#{@dir}/#{to}") }
+          def moves = (@plan.moving?(@dir) ? destinations : {}).map { |from, to| Move.new("#{@dir}/#{from}", "#{@dir}/#{to}") }
 
           # The moves of the reports that are neither recorded nor mandatory.
           def unasked = moves.select { |move| Knowledge::Reports.report?(move.inside_from) }
 
           def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @plan.moved) }
 
-          def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
+          # The links of this folder left as they are, listed only when the call repairs this folder.
+          def unresolved = @plan.moving?(@dir) ? results.flat_map { |linked| linked.unresolved_in(@dir) } : []
 
           def changed = results.flat_map { |linked| linked.changed_in(@dir) }
 
-          # The links the sort rewrites in the core files, the notes at the root of the intent folder.
-          def amendments = results.select { |linked| Layout.core?(linked.rel) }.flat_map { |linked| linked.amendments(intent_id, @dir) }
+          # The links the repair rewrites in the core files, the old intent file among them under its new name.
+          def amendments
+            results.map { |linked| [linked, landed(linked.rel)] }.select { |_, rel| Layout.core?(rel) }
+              .flat_map { |linked, rel| linked.amendments(intent_id, @dir, rel) }
+          end
+
+          # Where the file `rel` is once the repair is done.
+          def landed(rel) = @plan.moving?(@dir) ? destinations.fetch(rel, rel) : rel
 
           # The store paths that a recorded or mandatory report of this intent links to.
           def listed_targets

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../lib/plastic/graph/knowledge/resources/sort"
+require_relative "../../../../../lib/plastic/graph/knowledge/resources/sort_plan"
 require_relative "../../../../test_helpers/resources_homes"
 
 class ResourcesSortPlanTest < Plastic::TestCase
@@ -25,7 +25,7 @@ class ResourcesSortPlanTest < Plastic::TestCase
   end
 
   def test_a_sorted_store_has_an_empty_plan
-    put(MOVES.values.to_h { |rel| [rel, "x\n"] }.merge("spec.md" => "# Spec\n", "plan.md" => "# Plan\n"))
+    put(MOVES.values.to_h { |rel| [rel, "x\n"] }.merge("spec.md" => "# Spec\n"))
 
     assert_predicate SortPlan.new(@folder), :empty?
   end

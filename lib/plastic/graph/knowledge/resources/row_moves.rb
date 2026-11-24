@@ -6,12 +6,12 @@ module Plastic
   module Graph
     module Knowledge
       module Resources
-        # Moves the rows of the files a sort moves, in one transaction of the store: the documents and their heads
+        # Moves the rows of the files a repair moves, in one transaction of the store: the documents, their heads and the legacy rows
         # by path inside the intent, the kept files and the printed files by path inside the store. The
         # moves load into a temporary table, so each table takes one statement however many files move. A row
         # already at a target stops the transaction.
         class RowMoves
-          BY_INTENT = %w[documents document_heads].freeze
+          BY_INTENT = %w[documents document_heads legacy_intents_data].freeze
           BY_STORE = { "sqlar" => "name", "printed" => "path" }.freeze
           CREATE = "CREATE TEMP TABLE row_moves (intent_id, inside_from, inside_to, from_path, to_path)"
           LOAD = <<~SQL
