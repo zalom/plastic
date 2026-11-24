@@ -95,7 +95,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   # A migrated store whose empty roadmap tables migration, node inputs migration, deadline migration, driver migration, roadmap migration, node columns migration, run usage migration, time migration, page migration and trim went down, so the report migration is the newest it records.
-  def past_trim = migrated_previous_home.tap { |home| 10.times { down(home).call } }
+  def past_trim = migrated_previous_home.tap { |home| 11.times { down(home).call } }
 
   def test_the_report_migration_goes_down_by_removing_its_version_alone
     home = past_trim
