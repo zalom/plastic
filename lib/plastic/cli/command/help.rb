@@ -11,7 +11,7 @@ module Plastic
           @usage_line = usage_line
         end
 
-        def lines = [@usage_line, *details]
+        def lines = [@usage_line, *@tool.long_description.map { |text| "        #{text}" }, *details]
 
         private
 

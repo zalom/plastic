@@ -74,7 +74,7 @@ module Plastic
       def call_and_renew
         call
       ensure
-        renew_claims
+        renew_claims unless tool.renews_no_claims?
       end
 
       def call
