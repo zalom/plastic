@@ -60,6 +60,18 @@ class IntentRepairCommandTest < Plastic::TestCase
     assert_includes repair("2", "--dry-run").out, "preview: nothing to change"
   end
 
+  def close(status) = store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
+
+  def test_the_run_and_the_dry_run_list_a_done_intent_that_lacks_its_outcome_and_write_none
+    close("done")
+    preview = repair("1", "--dry-run").out
+    run = repair("1").out
+
+    assert_includes preview, "preview: missing #{INTENT}/outcome.md: the layout requires it of a done intent"
+    assert_includes run, "missing #{INTENT}/outcome.md: the layout requires it of a done intent"
+    refute at("#{INTENT}/outcome.md")
+  end
+
   def test_an_id_or_all_is_needed_and_not_both
     assert_equal [2, 2], [repair.code, repair("1", "--all").code]
   end
