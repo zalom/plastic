@@ -29,6 +29,13 @@ class HookEntriesTest < Minitest::Test
     assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook end || true)], commands_for(@settings["hooks"], "SessionEnd")
   end
 
+def test_claude_and_codex_write_the_guard_for_the_tools_that_write
+    entries { |rewriter| @groups = [rewriter.claude({})["hooks"]["PreToolUse"], rewriter.codex({ "hooks" => {} })["hooks"]["PreToolUse"]] }
+
+    assert_equal [[["Bash|Write|Edit|MultiEdit|NotebookEdit|apply_patch", %(env -u RUBYOPT "#{COMMAND}" hook guard || true)]]] * 2,
+      @groups.map { |groups| groups.map { |group| [group["matcher"], group["hooks"].first["command"]] } }
+  end
+
   def test_owns_its_hook_commands_and_no_one_elses
     entries do |rewriter|
       @owned = [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness codex || true), "/usr/local/bin/my-hook", "/opt/plastic/bin/plastic-ish"]
