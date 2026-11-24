@@ -98,3 +98,4 @@ What the folder store/ of a store folder may hold beside its intent folders. `pl
 | remove | a newer record holds what this file held |
 | revision | an entry of the old revisions.md, with its own date |
 | link | the repair moved the file this link names |
+| report | plastic intent unreport took out a report recorded by mistake |

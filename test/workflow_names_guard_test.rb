@@ -19,6 +19,7 @@ module WorkflowNameTable
     code_revise_intent: "Code::Intent::Revise",
     code_note_intent: "Code::Intent::Note",
     code_report_intent: "Code::Intent::Report",
+    code_unreport_intent: "Code::Intent::Unreport",
     code_show_spec: "Code::Intent::Spec",
     code_write_spec: "Code::Intent::Spec::Write",
     code_write_outcome: "Code::Intent::Outcome",
@@ -135,8 +136,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_seven_keys_in_order
-    assert_equal 97, MAPPING.size
+  def test_the_registry_holds_the_ninety_eight_keys_in_order
+    assert_equal 98, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

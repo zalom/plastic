@@ -4,7 +4,7 @@ require "fileutils"
 require_relative "reporter"
 require_relative "../reports"
 require_relative "../repair/removal"
-require_relative "../resources/row_moves"
+require_relative "../../knowledge/resources/row_moves"
 require_relative "../../evidence/writer"
 require_relative "../../../layout"
 
