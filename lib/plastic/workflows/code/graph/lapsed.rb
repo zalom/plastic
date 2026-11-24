@@ -42,7 +42,7 @@ module Plastic
               "last renewed #{Plastic.local(claim.last_renewed)}"
           end
 
-          def self.driver_words(claim) = claim.agent ? "driver, agent #{claim.agent}" : "driver"
+          def self.driver_words(claim) = ["driver", *claim.agent&.then { |agent| "agent #{agent}" }].join(", ")
 
           def self.offer_restart(context, claim)
             return unless claim

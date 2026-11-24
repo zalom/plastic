@@ -22,9 +22,9 @@ module Plastic
         def driver_problem(intent_id, session) = @drivers.problem(intent_id, session)
 
         # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
-        def drive_intent(intent_id:, by:, **fields)
+        def drive_intent(intent_id:, by:, take_over: nil, mode: nil, agent: nil)
           @log.recorded do
-            status, holder, line = @drivers.claim(intent_id:, by:, **fields)
+            status, holder, line = @drivers.claim(intent_id:, by:, take_over:, mode:, agent:)
             @log.line(intent_id, "driver", line) if line
             [status, holder]
           end
