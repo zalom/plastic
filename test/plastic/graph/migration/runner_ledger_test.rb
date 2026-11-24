@@ -35,7 +35,7 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
       ["alpha", NODES, "up", "2026-11-16T12:00:00Z", 1], ["alpha", NEEDS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVERS, "up", "2026-11-16T12:00:00Z", 1],
       ["alpha", DEADLINE, "up", "2026-11-16T12:00:00Z", 1], ["alpha", INPUTS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", EMPTY_ROADMAPS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", LEFTOVERS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", MISTAKES, "up", "2026-11-16T12:00:00Z", 1],
       ["alpha", DRIVER_MODE, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVER_AGENT, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", WORK_LOG_TEXT, "up", "2026-11-16T12:00:00Z", 1]],
+      ["alpha", WORK_LOG_TEXT, "up", "2026-11-16T12:00:00Z", 1], ["alpha", OWN_IDS, "up", "2026-11-16T12:00:00Z", 1]],
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 
