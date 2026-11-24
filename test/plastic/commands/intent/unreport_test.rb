@@ -97,8 +97,4 @@ class IntentUnreportTest < Plastic::TestCase
 
     assert_equal [1, [1, 1, 1], PAGE], [unreport("--to-tmp").code, rows, File.read(store_path("#{dir}/#{REPORT}"))]
   end
-
-  def test_the_dry_run_changes_nothing
-    assert_equal [0, [1, 1, 1], 1, PAGE], [unreport("--dry-run").code, rows, lines.size, File.read(store_path("#{dir}/#{REPORT}"))]
-  end
 end

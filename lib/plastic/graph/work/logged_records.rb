@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../knowledge/intent/reporter"
+require_relative "../knowledge/intent/unreporter"
 require_relative "../knowledge/intent/document_writer"
 require_relative "../../layout"
 
@@ -64,9 +65,25 @@ module Plastic
           end
         end
 
+        # Removes a report recorded by mistake, a ReportFile, and writes the `removed` line with `reason`. Returns the
+        # Unreporter::Removed.
+        def unreport_intent(report, reason, to_tmp: false)
+          removed = @log.recorded do
+            unreporter.remove(report, to_tmp).tap { |done| unreported(done, reason) }
+          end
+          removed.tap { @writers.retrieval.reindex([report.id]) }
+        end
+
         def reporter = (@reporter ||= Knowledge::Intent::Reporter.new(@writers.databases, @writers.retrieval, @writers.folder))
 
+        def unreporter = (@unreporter ||= Knowledge::Intent::Unreporter.new(@writers.databases, @writers.retrieval, @writers.folder))
+
         private
+
+        def unreported(removed, reason)
+          report = removed.report
+          @log.line(report.id, "removed", reason, path: report.path)
+        end
 
         def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
       end

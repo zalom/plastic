@@ -19,6 +19,7 @@ module Plastic
       code_revise_intent: "Code::Intent::Revise",
       code_note_intent: "Code::Intent::Note",
       code_report_intent: "Code::Intent::Report",
+      code_unreport_intent: "Code::Intent::Unreport",
       code_show_spec: "Code::Intent::Spec",
       code_write_spec: "Code::Intent::Spec::Write",
       code_write_outcome: "Code::Intent::Outcome",
