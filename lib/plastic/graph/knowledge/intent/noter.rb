@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "notes"
-require_relative "../../evidence/writer"
+require_relative "document_writer"
 require_relative "../../../layout"
 
 module Plastic
   module Graph
     module Knowledge
       class Intent
-        # Adds one line under Notes in an intent outcome as a new document revision.
+        # Adds one line of a note kind to its section of an intent outcome, Notes or Verification, as a new document
+        # revision.
         class Noter
           FILE = Layout.name(:outcome)
 
@@ -17,13 +18,12 @@ module Plastic
             @retrieval = retrieval
           end
 
-          def self.problem(text) = ("the note is one line; it holds a line break" if text.include?("\n"))
+          def self.problem(label, text) = Notes.problem(label, text)
 
-          def write(intent, kind, text)
+          def write(intent, label, text)
             id = intent.intent_id
-            body = Notes.for(@retrieval.fetch(id, FILE)&.body).add(kind, text)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:store), @retrieval.origin_id, clock: @retrieval.clock).write(id, FILE, body)
-            @retrieval.reference(id, FILE).fetch(:uri)
+            body = Notes.for(@retrieval.fetch(id, FILE)&.body, Notes.kind(label)).add(text)
+            DocumentWriter.new(@databases, @retrieval).write(id, FILE, body)
           end
         end
       end

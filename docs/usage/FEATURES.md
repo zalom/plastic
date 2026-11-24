@@ -80,7 +80,9 @@ line and under `result.overdue`, for the driver to check on its worker; Plastic 
 | ------- | ------ |
 | `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
-| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. |
+| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. `--kind Merged`, `Committed`, `Delivered`, `Pull request`, `Approved`, `Reverted` or `Abandoned` writes the line under `## Verification` instead, and a line not in its form fails with exit 1. The kind is matched in any case. |
+| `plastic intent spec ID --from FILE` | The whole spec.md, written from the file as its new revision. A file that lacks a section of the layout fails with exit 1 and names it, and a closed intent refuses with exit 3. |
+| `plastic intent outcome ID --from FILE` | The summary of outcome.md, the text between its title and its first section, replaced by the file. The title and every section stay. A file that is empty or holds a heading fails with exit 1, and a closed intent refuses with exit 3. |
 
 `intent revise` writes the new What and Why into the intent file, and its work log line keeps
 the old What and Why. A done or abandoned intent refuses with
@@ -232,7 +234,9 @@ and says what is wrong there: the files outside the layout, the retired files an
 `layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
 NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
 person: its repair says to move it out of the store folder by hand. A `revisions.md` that the repair
-cannot read gets the same kind of repair by hand.
+cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
+file that the layout requires in its state, such as `outcome.md`, gets a `layout NAME ID--SLUG:` row
+that names the files and has no repair, so the doctor lists it and does not fail on it.
 
 ## Undo a migration
 
@@ -251,6 +255,33 @@ default.
 A down exits 3 and changes nothing when the store is not at the newest version, when the newest
 migration the store records kept nothing or its rows were purged, or when a row it would put back changed after
 the migration. `plastic update` migrates the store up again after a down.
+
+## Commands write the intent folder
+
+Commands write every core file of an intent folder. `plastic intent new` writes `intent.md`,
+`plastic intent spec ID --from FILE` writes `spec.md`, and `plastic intent outcome ID --from FILE`
+and `plastic intent note` write `outcome.md`. The other core files are printed from the rows.
+`plastic intent abandon ID` refuses with exit 1 until outcome.md holds its summary and an
+`Abandoned` line, and names the command that writes each. A started intent also needs its
+`Reverted` line first.
+
+`plastic store sync up` fails with exit 1 on a hand edit of the `spec.md` or the `outcome.md` of a
+done or abandoned intent, and offers `plastic store sync down --overwrite PATH` to print the file
+from its rows again. A link that `plastic intent repair` rewrote in such a file, with its
+`amended` line on the work log, still syncs.
+
+The guard hook, `plastic hook guard`, runs before each tool call that can write in Claude Code
+and Codex. It denies the call, with a reason that names the command to run, when the call writes:
+
+- a core file of a store, such as `spec.md`, `store/index.json` or a database
+- any file of a done or abandoned intent
+- a file in an intent folder that no intent owns, such as a folder made by hand
+- an intent record under `docs/plans/` or `docs/specs/` in the project tree
+
+It reads the path of a file tool, the files of a patch, and the write forms of a shell command:
+a redirection, `tee`, `rm`, `mv`, `cp`, `touch`, `sed -i`, `dd of=` and an inline script. A read,
+such as `cat` or `grep`, passes. Only the `resources/` folder of an open intent is open to the
+agent. The guard is on for every install and has no setting.
 
 ## The resources layout
 
@@ -288,12 +319,15 @@ placeholder is removed, not moved. Each link the repair rewrites gets an `amende
 whose row keeps the exact old and new link in the fields `old_text` and `new_text`. An intent that
 a driver claim or a live node claim holds is refused with exit 3, and `--all` repairs the other
 intents first. Both the run and `--dry-run` print one line for each intent folder, the links that
-change and the other `amended` lines, then the totals: the intent folders and their changes by
-kind, counted apart, the links that change, the `amended` lines and the links left as they are.
-The links left as they are print only as a count unless `--links-left` lists each one. `--dry-run`
-writes nothing. A target that
-holds other bytes than the file that would move onto it stops the call with exit 3 and names the
-target. A second run finds nothing to change and says `repaired: nothing to change`.
+change, the other `amended` lines and the totals: the intent folders and their changes by kind,
+counted apart, the links that change, the `amended` lines and the links left as they are. The run
+prints its totals first and `--dry-run` prints them last. The links left as they are print only as
+a count unless `--links-left` lists each one. `--dry-run` writes nothing. A target that holds other
+bytes than the file that would move onto it stops the call with exit 3 and names the
+target. Each done or abandoned intent whose folder lacks a file that the layout requires in its
+state, such as `outcome.md`, gets one `missing` line in the run and in `--dry-run`. The repair
+lists it only and writes no such file, since the work of a closed intent is not written again. A
+second run changes nothing: it says `repaired: nothing to change`, or lists the missing files again.
 
 ## Help that costs nothing
 

@@ -3,6 +3,7 @@
 require_relative "intent_folders"
 require_relative "archived_intents"
 require_relative "readability"
+require_relative "closed_edits"
 require_relative "second_home"
 require_relative "old_savepoints"
 require_relative "unread_rows"
@@ -59,10 +60,13 @@ module Plastic
             UnreadRows.find(@folder.sync.selection, @databases.fetch(:store), dirs)
           end
 
-          # The changed files of `entries` that sync up would read and cannot.
+          # The changed files of `entries` that sync up would read and cannot: a closed intent's spec or outcome, or a
+          # file the store refuses.
           def unreadable_entries(entries)
             rowed = @retrieval.intents.map(&:dir)
-            found = Readability.new(@folder, @retrieval, @databases).call(entries.select { |entry| entry.readable_by_up?(rowed) }.map(&:path))
+            paths = entries.select { |entry| entry.readable_by_up?(rowed) }.map(&:path)
+            closed = ClosedEdits.new(@folder, @retrieval, @databases.fetch(:store)).call(paths)
+            found = closed.merge(Readability.new(@folder, @retrieval, @databases).call(paths - closed.keys))
             found.transform_keys { |path| Plan.owner(path) }
           end
         end

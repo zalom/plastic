@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 
 class IntentAbandonCaseTest < Plastic::TestCase
-  OUTCOME = "# Outcome\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n"
+  OUTCOME = "# Outcome\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n"
 
   def abandoned
     ran("intent new Alpha")
@@ -31,14 +31,14 @@ class IntentAbandonCaseTest < Plastic::TestCase
   end
 end
 
-class IntentAbandonTest < Plastic::TestCase
-  include LifecycleHelper
+# An intent to abandon, with the outcome lines it is given.
+module IntentAbandonFixture
+  REASON = "- Abandoned: dropped because the need went away\n"
+  REVERTED = "- Reverted: nothing delivered\n"
 
-  REVERTED = "\n## Verification\n- Reverted: nothing delivered\n"
-
-  def droppable(reverted: true, **fields)
+  def droppable(reverted: true, reason: REASON, **fields)
     intent = open_intent("Alpha", **fields)
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n#{REVERTED if reverted}")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n#{reason}#{REVERTED if reverted}")
     cli("store", "sync", "up")
     intent
   end
@@ -47,9 +47,14 @@ class IntentAbandonTest < Plastic::TestCase
 
   def supersede(from, to)
     store_graphs.databases.fetch(:store).transaction do |batch|
-      batch.put(:links, { from_ref: from, to_ref: to, kind: "supersedes", at: LifecycleHelper::EARLY })
+      batch.put(:links, { from_ref: from, to_ref: to, kind: "supersedes", at: Plastic::TestCase::LifecycleHelper::EARLY })
     end
   end
+end
+
+class IntentAbandonTest < Plastic::TestCase
+  include LifecycleHelper
+  include IntentAbandonFixture
 
   def test_an_option_is_a_usage_error
     droppable
@@ -65,7 +70,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "Reverted:"
+    assert_includes result.out, "--kind Reverted"
   end
 
   def test_an_open_intent_with_a_node_without_the_reverted_bullet_hands_over_the_revert_steps
@@ -74,7 +79,7 @@ class IntentAbandonTest < Plastic::TestCase
     result = abandon
 
     assert_equal [0, "open"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "Reverted:"
+    assert_includes result.out, "--kind Reverted"
   end
 
   %w[future open].each do |status|
@@ -95,7 +100,9 @@ class IntentAbandonTest < Plastic::TestCase
     assert_call result, code: 0, out: [
       "Use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
       "Plastic runs no version control command; it records what you write.",
-      "Write in store/1--alpha/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. Run plastic store sync up and then plastic intent abandon 1 again."
+      "Write why the intent is dropped with plastic intent outcome 1 --from FILE.",
+      "Record the reason with plastic intent note 1 'superseded by intent <id>' --kind Abandoned, or plastic intent note 1 'dropped because <reason>' --kind Abandoned, " \
+      "and the revert with plastic intent note 1 '<what was undone, or nothing delivered>' --kind Reverted. Then run plastic intent abandon 1 again."
     ]
   end
 
@@ -147,5 +154,45 @@ class IntentAbandonTest < Plastic::TestCase
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "someone-else")
 
     assert_equal [3, "open"], [abandon.code, retrieval.intent("1").status]
+  end
+end
+
+class IntentAbandonReasonTest < Plastic::TestCase
+  include LifecycleHelper
+  include IntentAbandonFixture
+
+  %w[future in_progress].each do |status|
+    define_method(:"test_a_#{status}_intent_without_the_abandon_reason_fails_names_both_forms_and_stays_#{status}") do
+      droppable(reason: "", status:)
+      result = abandon
+
+      assert_equal [1, "", status], [result.code, result.out, retrieval.intent("1").status]
+      assert_includes result.err, "Record why intent 1 is dropped with plastic intent note 1 'superseded by intent <id>' --kind Abandoned " \
+        "or plastic intent note 1 'dropped because <reason>' --kind Abandoned."
+    end
+  end
+
+  def test_an_abandon_reason_not_in_its_form_is_named_with_its_forms
+    droppable(reason: "- Abandoned: no longer needed\n")
+    result = abandon
+
+    assert_equal [1, "open"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err, "outcome.md says 'Abandoned: no longer needed', which is not an abandon reason in the form " \
+      "'Abandoned: superseded by intent <id>' or 'Abandoned: dropped because <reason>'."
+  end
+
+  def test_an_unstarted_intent_with_no_outcome_fails_and_names_the_outcome_command
+    open_intent("Alpha")
+    result = abandon
+
+    assert_equal [1, "open"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err, "Write the summary of outcome.md with plastic intent outcome 1 --from FILE."
+    assert_includes result.err, "--kind Abandoned"
+  end
+
+  def test_a_reason_naming_the_superseding_intent_closes_it
+    droppable(reason: "- Abandoned: superseded by intent 2\n")
+
+    assert_equal [0, "abandoned"], [abandon.code, retrieval.intent("1").status]
   end
 end

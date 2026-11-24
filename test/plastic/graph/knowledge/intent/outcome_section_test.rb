@@ -32,3 +32,15 @@ class OutcomeSectionTest < Minitest::Test
     assert_equal "\n## Reports\n\n- b\n", add("\n\n")
   end
 end
+
+class OutcomeSectionLevelTest < Minitest::Test
+  def add(body) = Plastic::Graph::Knowledge::Intent::OutcomeSection.for(body, "## Verification").add("- b")
+
+  def test_a_section_of_another_level_and_case_takes_the_line
+    assert_equal "# Outcome\n\n### verification\n\n- a\n- b\n\n## Notes\n", add("# Outcome\n\n### verification\n\n- a\n\n## Notes\n")
+  end
+
+  def test_a_deeper_heading_inside_the_section_stays_in_it
+    assert_equal "# Outcome\n\n## Verification\n\n### Checks\n\n- a\n- b\n", add("# Outcome\n\n## Verification\n\n### Checks\n\n- a\n")
+  end
+end

@@ -39,7 +39,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     files(spec: "# Spec\n")
     done_node
 
-    assert_equal ["Write the done criteria in spec.md and run plastic store sync up."], check.problems
+    assert_equal ["Write the done criteria with plastic intent spec 1 --from FILE."], check.problems
   end
 
   def test_open_decisions_ask_for_the_owner
@@ -73,7 +73,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     files(outcome: "# Outcome\n## Summary\n")
     done_node
 
-    assert_equal ["Write a substantive outcome.md in the intent folder and run plastic store sync up."], check.record_problems
+    assert_equal ["Write the summary of outcome.md with plastic intent outcome 1 --from FILE."], check.record_problems
   end
 
   def test_the_outcome_hash_is_the_sha256_of_its_body
@@ -102,7 +102,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     done_node
 
     assert_equal 1, check.verification_problems.size
-    assert_includes check.verification_problems.first, "Merged:"
+    assert_includes check.verification_problems.first, "--kind Merged"
     assert_empty check.record_problems
   end
 
@@ -121,9 +121,25 @@ class WorkCompletionCheckTest < Plastic::TestCase
     assert_equal 1, check.problems.size
   end
 
-  def test_abandon_problems_hold_only_the_outcome_substance
+  REASON = "Record why intent 1 is dropped with plastic intent note 1 'superseded by intent <id>' --kind Abandoned " \
+    "or plastic intent note 1 'dropped because <reason>' --kind Abandoned."
+
+  def test_abandon_problems_hold_the_outcome_summary_and_the_abandon_reason
     files(spec: "# Spec\n", outcome: "# Outcome\n")
 
-    assert_equal ["Write a substantive outcome.md in the intent folder and run plastic store sync up."], check.abandon_problems
+    assert_equal ["Write the summary of outcome.md with plastic intent outcome 1 --from FILE.", REASON], check.abandon_problems
+  end
+
+  def test_an_abandon_reason_in_its_form_leaves_no_abandon_problem
+    files(spec: "# Spec\n", outcome: "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: superseded by intent 4\n")
+
+    assert_empty check.abandon_problems
+  end
+
+  def test_an_abandon_reason_out_of_its_form_is_quoted_before_the_fix
+    files(spec: "# Spec\n", outcome: "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: superseded by intent <id>\n")
+
+    assert_equal ["outcome.md says 'Abandoned: superseded by intent <id>', which is not an abandon reason in the form " \
+      "'Abandoned: superseded by intent <id>' or 'Abandoned: dropped because <reason>'. #{REASON}"], check.abandon_problems
   end
 end

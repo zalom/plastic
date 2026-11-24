@@ -12,13 +12,13 @@ An intent is in one of these states: open, done, abandoned. An intent that is fu
 | File | Purpose | Required in | Writer |
 | --- | --- | --- | --- |
 | `intent.md` | The intent's own file, with its identity and the sections a person fills. | open, done, abandoned | plastic intent new |
-| `spec.md` | The goal, the done criteria, the open decisions and the constraints. | open, done | agent |
-| `outcome.md` | What was delivered, with one delivery line under Verification, and the notes and reports of the intent. | done | agent |
+| `spec.md` | The goal, the done criteria, the open decisions and the constraints. | open, done | plastic intent spec |
+| `outcome.md` | What was delivered, or why the work was dropped, with its delivery line or its abandon reason under Verification, and the notes and reports of the intent. | done, abandoned | plastic intent outcome and plastic intent note |
 | `graph.json` | The work graph, with its nodes, edges, runs and verdicts. | open, done, abandoned | rows |
 | `work.log` | The work log, one line for each event of the intent. | open, done, abandoned | rows |
 | `context.json` | The discovery and the context the intent was grilled with. | never | rows |
 
-Plastic prints a file whose writer is rows. A file the agent writes is read by `plastic store sync up`.
+Plastic prints a file whose writer is rows from the database rows, and the named commands write each other file. The agent writes no core file by hand.
 
 ## Shape of each file
 

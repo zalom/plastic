@@ -92,7 +92,7 @@ module LayoutDocs
       | --- | --- | --- | --- |
       #{core_rows.join("\n")}
 
-      Plastic prints a file whose writer is rows. A file the agent writes is read by `plastic store sync up`.
+      Plastic prints a file whose writer is rows from the database rows, and the named commands write each other file. The agent writes no core file by hand.
 
       ## Shape of each file
 

@@ -41,8 +41,8 @@ class TableWordsTest < Plastic::TestCase
     assert_empty said
   end
 
-  def test_the_help_of_intent_spec_names_what_it_prints
-    assert_equal "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md",
+  def test_the_help_of_intent_spec_names_what_it_writes_and_prints
+    assert_equal "Write spec.md from a file with --from, then print the grilling method, how done criteria are written, and the open decisions of spec.md",
       Plastic::CLI::TABLE.fetch("intent spec").last
   end
 

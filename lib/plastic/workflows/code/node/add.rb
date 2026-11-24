@@ -66,7 +66,7 @@ module Plastic
           def self.criterion_problem(context)
             intent_id = context.intent_id
             spec = Plastic::Graph::Knowledge::Spec.new(context.retrieval, intent_id)
-            return "intent #{intent_id} has no synced spec.md; write its done criteria, then run plastic store sync up" unless spec.present?
+            return "intent #{intent_id} has no spec.md; write its done criteria with plastic intent spec #{intent_id} --from FILE" unless spec.present?
 
             key_problem(spec.criteria_by_key.keys, context.criterion)
           end

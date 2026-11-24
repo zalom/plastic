@@ -30,13 +30,14 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent park`](intent-park/README.md) | Park an intent in progress with the reason it waits; intent start resumes it |
 | [`plastic intent rule`](intent-rule/README.md) | Write an owner ruling, with --supersedes to replace an older one |
 | [`plastic intent revise`](intent-revise/README.md) | Rewrite an intent's What and Why after grilling, keeping the old text as a revision |
-| [`plastic intent note`](intent-note/README.md) | Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision |
+| [`plastic intent note`](intent-note/README.md) | Add one line to the outcome of an intent, a note under Notes or a record of the delivery or the close under Verification, keeping the earlier text as a revision |
+| [`plastic intent outcome`](intent-outcome/README.md) | Write the summary of the outcome of an intent from a file, keeping its title and every section |
 | [`plastic intent report`](intent-report/README.md) | Record a report of an intent so the sync reads it |
 | [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; no node of it is claimed without it |
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
 | [`plastic intent grant`](intent-grant/README.md) | Grant one extra review round, on the owner's word, to an intent whose rounds are used |
-| [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |
+| [`plastic intent spec`](intent-spec/README.md) | Write spec.md from a file with --from, then print the grilling method, how done criteria are written, and the open decisions of spec.md |
 | [`plastic intent discover`](intent-discover/README.md) | Record deterministic retrieval candidates for an intent |
 | [`plastic intent context`](intent-context/README.md) | Read or submit selected retrieval context for an intent |
 | [`plastic intent show`](intent-show/README.md) | Print one intent's status, criteria, decisions, rulings and nodes |
@@ -143,5 +144,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | --- | --- |
 | [`plastic hook start`](hook-start/README.md) | SessionStart: name the harness, open the session row, print the state the rows carry |
 | [`plastic hook prompt`](hook-prompt/README.md) | UserPromptSubmit: record the prompt in the machine's chat history |
+| [`plastic hook guard`](hook-guard/README.md) | PreToolUse: refuse an agent write to a store's core files, a closed intent or a project's intent records |
 | [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew claims, run the stop gate |
 | [`plastic hook end`](hook-end/README.md) | SessionEnd: set the session's end time and reason |

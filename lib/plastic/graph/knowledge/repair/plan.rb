@@ -2,6 +2,7 @@
 
 require_relative "change"
 require_relative "folder_changes"
+require_relative "missing_files"
 require_relative "removal"
 require_relative "revisions"
 require_relative "totals"
@@ -14,14 +15,15 @@ module Plastic
       module Repair
         # What a repair of the intent folders of one store folder would do, read from the folder: the files that move or are
         # renamed where the layout names, the links that follow them, the files it removes, the entries of each old
-        # revisions.md, and the `amended` lines. It writes nothing. The scope names the folders of `dirs`, every folder when
-        # it is nil, never the folders of `held`, and the ids of the done and abandoned intents in `closed`. A closed intent
-        # gets one amended line for the structural changes of its folder and one for each link it changes; each revision
-        # entry is an amended line of any intent. An empty .gitkeep placeholder is removed, not moved. The links left as
-        # they are print only as a count unless `links_left` asks for each one.
+        # revisions.md, the `amended` lines, and the files the layout requires of a closed intent that its folder lacks. It
+        # writes nothing. The scope names the folders of `dirs`, every folder when it is nil, never the folders of `held`,
+        # the ids of the done and abandoned intents in `closed`, and their statuses by id in `states`. A closed intent gets
+        # one amended line for the structural changes of its folder and one for each link it changes; each revision entry
+        # is an amended line of any intent. An empty .gitkeep placeholder is removed, not moved. The links left as they
+        # are print only as a count unless `links_left` asks for each one.
         class Plan
-          Scope = Data.define(:dirs, :closed, :held) do
-            def initialize(dirs: nil, closed: Set.new, held: Set.new) = super
+          Scope = Data.define(:dirs, :closed, :held, :states) do
+            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}) = super
           end
 
           PLACEHOLDER = ".gitkeep"
@@ -49,26 +51,35 @@ module Plastic
           # One amended line for each entry of each revisions.md, with its own time; refused when a file cannot be read.
           def revisions = (@revisions ||= revision_files.flat_map { |path| revision_lines(path) })
 
-          def amendments = [*folders.select { |folder| closed?(folder.dir) }.map(&:change), *noted]
+          def amendments = (@amendments ||= [*folders.select { |folder| closed?(folder.dir) }.map(&:change), *noted])
 
           def empty? = moves.empty? && removals.empty? && revision_files.empty?
 
-          # One line for each intent folder it changes, each link it changes and each other amended line, then its totals.
-          def preview
-            return [] if empty? && sort.unresolved.empty?
+          # The files a closed intent of the scope lacks; a file a move of the repair brings counts as there.
+          def missing = (@missing ||= MissingFiles.new(@folder, @scope.states, dirs:, arriving: moves.map(&:to)))
 
+          # One line for each intent folder it changes, each link it changes, each other amended line and each thing it
+          # lists, then its totals.
+          def preview
             [*folders.map { |folder| folder_line(folder, "preview: would amend", "preview: would repair") },
               *sort.changed.map { |link| "preview: link would change #{link}" }, *noted.map(&:preview),
-              *left.map { |link| "preview: link left as it is #{link}" }, "preview: #{totals}"]
+              *listed.map { |line| "preview: #{line}" }, *summary("preview: ")]
           end
 
           # The lines a repair prints: its totals, then the lines of the preview as done.
           def report
-            ["repaired: #{totals}", *folders.map { |folder| folder_line(folder, "amended", "repaired") }, *sort.unasked,
-              *sort.changed.map { |link| "link changed #{link}" }, *noted.map(&:line), *left.map { |link| "link left as it is #{link}" }]
+            [*summary("repaired: "), *folders.map { |folder| folder_line(folder, "amended", "repaired") }, *sort.unasked,
+              *sort.changed.map { |link| "link changed #{link}" }, *noted.map(&:line), *listed]
           end
 
           private
+
+          # What the repair leaves as it is and lists: the links it cannot follow, when asked, and the files a closed intent
+          # lacks.
+          def listed = [*left.map { |link| "link left as it is #{link}" }, *missing.lines]
+
+          # The totals line, or none when the repair changes nothing and leaves no link.
+          def summary(prefix) = (empty? && sort.unresolved.empty?) ? [] : ["#{prefix}#{totals}"]
 
           def sort
             @sort ||= Resources::SortPlan.new(@folder, reports: @reports, closed: @scope.closed, only: @scope.dirs, held: @scope.held)

@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
+require_relative "../intent"
+
 module Plastic
   module Graph
     module Knowledge
       class Intent
-        # One section of an intent outcome, under its `## ` heading. A line added goes last in the section, and a missing
-        # section is added at the end of the outcome.
+        # One section of an intent outcome, under its heading. The section is found by its name at any heading level and
+        # in any case, and ends at the next heading of the same or a higher level. A line added goes last in the section,
+        # and a missing section is added at the end of the outcome under `heading` as given.
         class OutcomeSection
           STARTER = "# Outcome"
+          HEADING = /\A(#+)\s*(.*?)\s*\z/
 
           def self.for(body, heading)
             lines = body.to_s.lines.map(&:chomp)
@@ -17,11 +21,12 @@ module Plastic
           def initialize(lines, heading)
             @lines = lines
             @heading = heading
+            @name = heading[HEADING, 2]
           end
 
           # The whole outcome with `line` added to the section.
           def add(line)
-            start = @lines.index(@heading)
+            start = @lines.index { |text| text[HEADING, 2]&.casecmp?(@name) }
             start ? insert(start, line) : append(line)
             "#{@lines.join("\n")}\n"
           end
@@ -45,7 +50,8 @@ module Plastic
           end
 
           def section_end(start)
-            following = @lines[(start + 1)..].index { |text| text.start_with?("## ") }
+            depth = @lines[start][HEADING, 1].size
+            following = @lines[(start + 1)..].index { |text| (text[HEADING, 1]&.size || depth + 1) <= depth }
             following ? start + following : @lines.size - 1
           end
         end

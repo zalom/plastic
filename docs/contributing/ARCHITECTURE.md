@@ -96,6 +96,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
 | `CLI::Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap`, `Hooks::StopGate` | `lib/plastic/hooks/` | The text `hook start` prints and the decision whether `hook stop` blocks a stop. |
+| `Hooks::GuardVerdict`, `Hooks::ShellWrites` | `lib/plastic/hooks/` | Whether `hook guard` refuses a tool call, and why: the paths a file tool, a patch or the write forms of a shell command name, checked against the store layout, the intents of `store/index.json` and the project records of `lib/plastic/layout.yml`. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
@@ -140,7 +141,7 @@ database and writes only when `repair` or `reindex` rebuilds the derived search 
 | ----- | -------- | ------------- | ---------- | ------- |
 | Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic store sync up` | `plastic intent spec`, `plastic intent brief` |
-| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic store sync up`, `plastic store sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic intent repair`, `plastic store backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic store sync up`, `plastic store sync down`, `plastic intent new`, `plastic intent spec`, `plastic intent outcome`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic intent repair`, `plastic store backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
 
 `plastic update` and `plastic install` rebuild a store's search index at one point only: when their migration step compacts that store, which happens once for each store, while a file of it is not on incremental auto vacuum. A call that finds every store compacted leaves the index as it is.
 
@@ -287,6 +288,8 @@ order, and later hooks read it from the session row.
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
+| A prompt | `plastic hook prompt` | Records the prompt in the chat history of `plastic.db`. |
+| Before a tool that can write | `plastic hook guard` | Denies an agent write to a core file of a store, any file of a closed intent, a folder no intent owns or an intent record in a project folder that `project_records` of the layout names, with the harness's deny decision and the reason. Only `resources/` of an open intent is open. It prints nothing for any other call. |
 | End of a turn | `plastic hook stop` | Stamps the session's last turn, renews the node and driver claims of the agent `PLASTIC_AGENT` names, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason, and releases the node claims and the driver claims of the session. |
 | Every other event | Nothing | No hook runs. |
@@ -338,7 +341,9 @@ write, never a copy of the row.
 
 `plastic store sync up` reads every intent folder of a store. A folder with no row gives a row built
 from its intent file. A folder that cannot give a row is named with its reason, and the call
-exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
+exits 1. A hand edit of the `spec.md` or the `outcome.md` of a done or abandoned intent fails the sync up with
+exit 1, and `Graph::Knowledge::Sync::ClosedEdits` names it; a file whose hash matches an `amended` line of the work
+log passes. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
 whole chain against a temporary copy of the store and prints what the call would change.
 
 ### The layout of an intent folder
@@ -347,7 +352,8 @@ whole chain against a temporary copy of the store and prints what the call would
 `Plastic::Layout` (`lib/plastic/layout.rb`) serves it. Each core file has a purpose, the states that
 require it (open, done, abandoned) and a writer, and `intent.md`, `spec.md` and `outcome.md` have
 front matter and headings. The `legacy` entries name each file of an older layout, what a sync does
-with it and what a repair does. The `store_root` entries list what a store folder may hold. The sync,
+with it and what a repair does. The `store_root` entries list what a store folder may hold, and `project_records` names the folders of a project
+tree that once held intent records, which the guard hook refuses. The sync,
 the repair, the readers, the completion check and the new-intent file take their names from it,
 and `test/layout_names_guard_test.rb` fails when code outside the layout names a core file or a
 resources folder. `Strays` in `lib/plastic/graph/knowledge/sync/strays.rb` names every file that the layout does not allow. `ruby bin/layout-docs`

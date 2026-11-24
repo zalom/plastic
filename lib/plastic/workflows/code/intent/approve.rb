@@ -15,8 +15,8 @@ module Plastic
 
           open_intent_gates "go-ahead"
 
-          gate "intent %{intent_id} names no done criterion", stops: :failure, offers: "plastic intent spec %{intent_id}",
-            because: "an approval needs a done criterion to judge the delivery by; write one in spec.md",
+          gate "intent %{intent_id} names no done criterion", stops: :failure, offers: "plastic intent spec %{intent_id} --from FILE",
+            because: "an approval needs a done criterion to judge the delivery by; write the spec with one",
             pass: ->(context) { !Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty? }
 
           step "write the go-ahead", done: ->(context) { !context.retrieval.structure.approval(context.intent_id).nil? },

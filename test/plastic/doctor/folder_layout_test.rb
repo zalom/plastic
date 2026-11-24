@@ -119,6 +119,13 @@ class DoctorFolderLayoutReportsTest < Plastic::TestCase
     end
   end
 
+  def test_a_done_intent_that_lacks_a_required_file_is_listed_with_no_repair
+    store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
+    row = checks.find { |check| check.label == "layout global 1--alpha:" && check.repair.nil? }
+
+    assert_includes row.value, "done, and lacks outcome.md"
+  end
+
   def test_a_report_no_line_records_is_outside_the_layout
     assert_equal "outside the layout: #{FOLDER}/page.html", alpha.value
   end

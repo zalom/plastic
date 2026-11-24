@@ -20,7 +20,7 @@ class DoctorClaudeCodeTest < Plastic::TestCase
   end
 
   def test_the_checks_cover_the_record_the_hooks_and_the_instruction_files
-    labels = ["claude record:", "hook SessionStart:", "hook UserPromptSubmit:", "hook Stop:", "hook SessionEnd:", "CLAUDE.md:", "CLAUDE.md #{SLUG}:"]
+    labels = ["claude record:", "hook SessionStart:", "hook UserPromptSubmit:", "hook PreToolUse:", "hook Stop:", "hook SessionEnd:", "CLAUDE.md:", "CLAUDE.md #{SLUG}:"]
 
     assert_equal labels, checks.map(&:label)
   end

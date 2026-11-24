@@ -14,12 +14,15 @@ module Plastic
   module Doctor
     # Whether the folders of one store follow the layout: one finding for each intent folder that breaks it, saying what
     # is wrong there, one for the retired entries of the store folder, and one for each entry that holds data the layout
-    # does not allow, which is left to a person. Given the reports of the settings, it reads the `reported` lines of the
-    # store, when its database exists, and judges the reports folder as the repair does. It writes no file.
+    # does not allow, which is left to a person. A done or abandoned intent that lacks a file its state requires gets a
+    # row with no repair, since its work is not written again. Given the reports of the settings, it reads the
+    # `reported` lines of the store, when its database exists, and judges the reports folder as the repair does. It
+    # writes no file.
     class FolderLayout
       Knowledge = Graph::Knowledge
       COMMAND = "plastic intent repair"
       OPEN = ->(home, slug) { Graph.open(home:, store: slug).databases.fetch(:store) }
+      INTENTS = "SELECT intent_id, status FROM intents"
 
       def self.checks(scope, reports: nil)
         slugs = [Scope::GLOBAL, *scope.projects.keys].uniq
@@ -37,7 +40,7 @@ module Plastic
         return [] unless File.directory?(@folder.root)
 
         found = [*folder_checks, *leftover_checks]
-        found.empty? ? [Check.ok(label, "every intent folder follows the layout")] : found
+        [*(found.empty? ? [Check.ok(label, "every intent folder follows the layout")] : found), *missing_checks]
       rescue Refused => error
         [finding(label, error.message)]
       end
@@ -49,7 +52,9 @@ module Plastic
 
       private
 
-      def plan = Knowledge::Repair::Plan.new(@folder, reports: store_reports)
+      def plan = (@plan ||= Knowledge::Repair::Plan.new(@folder, reports: store_reports, states: closed_states))
+
+      def missing_checks = plan.missing.to_a.map { |missing| Check.new("layout #{@slug} #{File.basename(missing.dir)}:", missing.text, nil) }
 
       def folder_checks = BrokenFolders.new(plan, @folder).to_a.flat_map { |broken| broken.checks(self) }
 
@@ -66,16 +71,19 @@ module Plastic
 
       # The reports of the settings with the recorded ones of the store; nil leaves the reports folder unjudged.
       def store_reports
-        pairs = @reports && recorded_pairs
+        pairs = @reports && store_rows(Knowledge::Reports::RECORDED)&.map { |row| row.values_at("intent_id", "path") }
         pairs && Knowledge::Reports.new(mandatory: @reports.mandatory, recorded: -> { pairs })
       end
 
-      # The `reported` lines of the store, none when it has no database yet; nil when the database cannot be read, which
-      # the check of the store names.
-      def recorded_pairs
+      # The status of each done or abandoned intent of the store by its id, none when its database cannot be read.
+      def closed_states = Knowledge::Repair::MissingFiles.closed((store_rows(INTENTS) || []).map { |row| row.values_at("intent_id", "status") })
+
+      # The rows of a query of the store database, none when it has no database yet; nil when the database cannot be read,
+      # which the check of the store names.
+      def store_rows(sql)
         return [] unless File.file?(@folder.path(Graph::Schema.file(:knowledge)))
 
-        OPEN.call(@home, @slug).rows(Knowledge::Reports::RECORDED).map { |row| row.values_at("intent_id", "path") }
+        OPEN.call(@home, @slug).rows(sql)
       rescue Graph::Database::Error
         nil
       end

@@ -17,12 +17,12 @@ class LayoutTest < Plastic::TestCase
   def test_a_file_names_its_purpose_its_writer_and_the_states_that_require_it
     spec = Plastic::Layout.file(:spec)
 
-    assert_equal [%w[open done], "agent"], [spec.required, spec.writer]
+    assert_equal [%w[open done], "plastic intent spec"], [spec.required, spec.writer]
     refute_empty spec.purpose
   end
 
   def test_a_file_is_required_only_in_the_states_its_entry_lists
-    assert_equal %w[intent.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
+    assert_equal %w[intent.md outcome.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
   end
 
   def test_with_no_role_the_name_is_the_name_of_the_module

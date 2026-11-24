@@ -13,6 +13,10 @@ The sections of `spec.md` are `## Goal`, `## Done criteria`, `## Open decisions`
 `- [c1] text`. Under `## Constraints`, a bullet says what the work must keep true. The
 claim packet of a node carries those bullets, the first 20 of them.
 
+Write the spec in a file of your own, such as one in the intent's `resources/tmp/`, and pass it
+with `plastic intent spec ID --from FILE`. The command writes `spec.md` and refuses a text that
+lacks one of the four sections. Run it again with the whole new text each time the spec changes.
+
 Record each owner decision with `plastic intent rule ID "TEXT"`. When a new
 ruling replaces an older one, name it with `--supersedes RULING_ID`, and the
 older ruling stays on record with the link that marks it superseded.

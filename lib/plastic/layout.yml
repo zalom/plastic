@@ -10,8 +10,7 @@
 # open, in_progress and parked), then `done` or `abandoned`.
 #
 # A file's `writer` says who writes it: `rows` is a file that Plastic prints from the database rows,
-# a command is named when one writes the file, and `agent` is a file the agent writes in the folder
-# that `plastic store sync up` then reads.
+# and otherwise the commands that write the file are named. The agent writes no core file by hand.
 #
 # A legacy entry names a file or folder of an older layout. `sync` says what a sync up does with it:
 # `document` reads it as the intent's own file, `legacy_rows` reads it into legacy rows, `lines` reads
@@ -43,7 +42,7 @@ files:
     name: spec.md
     purpose: The goal, the done criteria, the open decisions and the constraints.
     required: [open, done]
-    writer: agent
+    writer: plastic intent spec
     headings:
       - name: Goal
         aliases: [Goals]
@@ -55,9 +54,9 @@ files:
         aliases: [Constraint]
   outcome:
     name: outcome.md
-    purpose: What was delivered, with one delivery line under Verification, and the notes and reports of the intent.
-    required: [done]
-    writer: agent
+    purpose: What was delivered, or why the work was dropped, with its delivery line or its abandon reason under Verification, and the notes and reports of the intent.
+    required: [done, abandoned]
+    writer: plastic intent outcome and plastic intent note
     headings: [Verification, Notes, Reports]
   graph:
     name: graph.json
@@ -97,6 +96,10 @@ resources:
       sync: never
   scratch: '\.(?:last|out|tmp)\z'
   tmp_types: [md, html]
+
+# The folders of a project tree that once held intent records. Intents live in the store, so the guard hook refuses
+# an agent write under them.
+project_records: [docs/plans/, docs/specs/]
 
 legacy:
   - name: "{id}--{slug}.md"

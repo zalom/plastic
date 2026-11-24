@@ -19,7 +19,7 @@ class RetrievalWritesGuardTest < Minitest::Test
     "plastic/workflows/code/backup/restore.rb" => %w[Store::Backup::Restore],
     "plastic/graph/knowledge/archive/operation.rb" => %w[Intent::Archive Intent::Unarchive],
     "plastic/graph/knowledge/archive/snapshot_index.rb" => %w[Intent::Archive Intent::Unarchive],
-    "plastic/graph/knowledge/intent/noter.rb" => %w[Intent::Note],
+    "plastic/graph/knowledge/intent/document_writer.rb" => %w[Intent::Note Intent::Spec Intent::Outcome],
     "plastic/graph/knowledge/intent/reporter.rb" => %w[Intent::Report],
     "plastic/graph/knowledge/intent/reviser.rb" => %w[Intent::Revise],
     "plastic/graph/knowledge/intent/writer.rb" => %w[Intent::New],

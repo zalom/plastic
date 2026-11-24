@@ -160,7 +160,7 @@ class CodexInstallTest < Plastic::TestCase
   end
 
   def test_the_install_names_the_hooks_it_changed_and_a_second_one_changes_none
-    assert_equal ["hook end", "hook prompt", "hook start", "hook stop"], install[:changed_hooks].sort
+    assert_equal ["hook end", "hook guard", "hook prompt", "hook start", "hook stop"], install[:changed_hooks].sort
     assert_empty install[:changed_hooks]
   end
 end
