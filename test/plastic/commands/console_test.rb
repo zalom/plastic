@@ -44,10 +44,10 @@ class ConsoleCommandTest < Plastic::TestCase
     assert_equal "1..3", JSON.parse(result.out).dig("result", "value")
   end
 
-  def test_json_without_eval_is_refused_with_the_usage_line_and_exit_two
+  def test_json_without_eval_is_refused_with_its_reason_and_exit_two
     result = console("--json")
 
-    assert_equal [2, true], [result.code, result.err.include?("--json needs --eval")]
+    assert_equal [2, true], [result.code, result.out.include?("--json needs --eval")]
   end
 
   def test_eval_reads_one_table_of_each_database_by_its_name
@@ -56,7 +56,7 @@ class ConsoleCommandTest < Plastic::TestCase
     }.to_h { |name, table| [name, console("--eval", "#{name}.execute('SELECT count(*) AS n FROM #{table}')")] }
 
     assert_equal [0] * 4, counts.values.map(&:code)
-    assert_equal '[{"n"=>1}]', counts.fetch("knowledge").out.chomp
+    assert_equal [{ "n" => 1 }].inspect, counts.fetch("knowledge").out.chomp
   end
 
   def test_help_lists_the_names_and_says_the_console_is_no_sandbox
