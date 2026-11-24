@@ -41,7 +41,7 @@ class ResourcesSortCommandTest < Plastic::TestCase
     store_database.transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
     out = sort("--dry-run").out
 
-    assert_includes out, "preview: would amend #{INTENT}/spec.md: link reviews/r1.md -> resources/tmp/reviews/r1.md; the resource sort moved its target"
+    assert_includes out, "preview: would amend #{INTENT}/spec.md: link reviews/r1.md -> resources/tmp/reviews/r1.md; #{Plastic::Layout.amendment_reason(:link)}"
     assert_equal 0, store_database.rows("SELECT count(*) AS n FROM work_log WHERE kind = 'amended'").first.fetch("n")
   end
 

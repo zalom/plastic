@@ -52,7 +52,7 @@ class ResourcesSortTest < Plastic::TestCase
   def test_files_without_a_destination_stay
     sort
 
-    assert_equal %w[delivery.lock plan.md spec.md], intent_files.select { |rel| rel.count("/").zero? && !MOVES.key?(rel) }.sort - %w[graph.json intent.md work.log]
+    assert_equal %w[delivery.lock spec.md], intent_files.select { |rel| rel.count("/").zero? && !MOVES.key?(rel) }.sort - %w[graph.json intent.md work.log]
   end
 
   def test_the_sync_preview_after_the_sort_is_empty

@@ -12,7 +12,7 @@ class ResourcesAmendmentSortTest < Plastic::TestCase
   fixtures :alpha_synced
 
   Resources = Plastic::Graph::Knowledge::Resources
-  REASON = "the resource sort moved its target"
+  REASON = Plastic::Layout.amendment_reason(:link)
   AMENDED = [
     ["spec.md", "spec.md: link reviews/r1.md -> resources/tmp/reviews/r1.md; #{REASON}"],
     ["spec.md", "spec.md: link resources/notes.md -> resources/tmp/notes.md; #{REASON}"]

@@ -94,7 +94,7 @@ What the folder store/ of a store folder may hold beside its intent folders. `pl
 | Change | Reason |
 | --- | --- |
 | rename | the layout names the intent's own file intent.md |
-| move | the layout keeps this file under resources/ |
+| move | the layout names the folder this file belongs in |
 | remove | a newer record holds what this file held |
 | revision | an entry of the old revisions.md, with its own date |
 | link | the repair moved the file this link names |

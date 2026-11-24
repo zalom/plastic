@@ -52,16 +52,26 @@ class RepairPlanTest < Plastic::TestCase
     assert_equal [], plan.amendments.map(&:text) - plan.revisions.map(&:text)
   end
 
-  def test_a_closed_intent_gets_one_amended_line_for_each_change_with_its_reason
-    reason = ->(kind) { Plastic::Layout.amendment_reason(kind) }
-    texts = plan(closed: Set["7"]).amendments.map(&:text)
+  def closed_texts = plan(closed: Set["7"]).amendments.map(&:text)
 
-    assert_includes texts, "renamed 7--old.md to intent.md; #{reason.call(:rename)}"
-    assert_includes texts, "moved plan.md to resources/references/plan.md; #{reason.call(:move)}"
-    assert_includes texts, "removed graph.md; #{reason.call(:remove)}"
-    assert_includes texts, "spec.md: link 7--old.md -> intent.md; #{reason.call(:link)}"
-    assert_includes texts, "intent.md: link plan.md -> resources/references/plan.md; #{reason.call(:link)}"
-    assert_equal 5 + 2 + 1 + 3, texts.size
+  def reason(kind) = Plastic::Layout.amendment_reason(kind)
+
+  def test_a_closed_intent_gets_one_amended_line_for_each_change
+    assert_equal 5 + 2 + 1 + 3, closed_texts.size
+  end
+
+  def test_the_rename_and_the_moves_of_a_closed_intent_give_their_reason
+    assert_equal ["renamed 7--old.md to intent.md; #{reason(:rename)}", "moved plan.md to resources/references/plan.md; #{reason(:move)}"],
+      closed_texts.grep(/\A(renamed 7--old|moved plan\.md)/)
+  end
+
+  def test_the_removals_of_a_closed_intent_give_their_reason
+    assert_includes closed_texts, "removed graph.md; #{reason(:remove)}"
+  end
+
+  def test_each_link_rewritten_in_a_core_file_of_a_closed_intent_gives_its_reason
+    assert_equal ["intent.md: link plan.md -> resources/references/plan.md; #{reason(:link)}", "spec.md: link 7--old.md -> intent.md; #{reason(:link)}"],
+      closed_texts.grep(/: link (plan\.md|7--old\.md) /).sort
   end
 
   def test_a_link_in_another_closed_intent_to_a_moved_file_is_rewritten_and_amended
@@ -85,14 +95,18 @@ class RepairPlanTest < Plastic::TestCase
     assert_includes error.message, "#{OLD}/revisions.md"
   end
 
-  def test_the_preview_names_every_change_and_writes_nothing
-    before = snapshot(@folder.root)
+  def test_the_preview_names_every_change
     lines = plan(closed: Set["7"]).preview
 
-    assert_includes lines, "preview: rename #{OLD}/7--old.md -> #{OLD}/intent.md"
-    assert_includes lines, "preview: remove #{OLD}/graph.md"
-    assert_includes lines, "preview: remove #{OLD}/revisions.md"
+    assert_equal ["preview: rename #{OLD}/7--old.md -> #{OLD}/intent.md", "preview: remove #{OLD}/graph.md", "preview: remove #{OLD}/revisions.md"],
+      lines.grep(/\Apreview: (rename|remove #{OLD}\/(graph|revisions)\.md)/)
     assert(lines.any? { |line| line.start_with?("preview: would amend #{OLD}: revisions.md v1") })
+  end
+
+  def test_the_preview_writes_nothing
+    before = snapshot(@folder.root)
+    plan(closed: Set["7"]).preview
+
     assert_equal before, snapshot(@folder.root)
   end
 
