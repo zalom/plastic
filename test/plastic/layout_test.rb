@@ -80,4 +80,24 @@ class LayoutTest < Plastic::TestCase
     assert_includes Plastic::Layout.store_root_allowed.map(&:name), "backups/"
     assert_equal "remove", Plastic::Layout.store_root_legacy.find { |entry| entry.name == ".sessions/" }.repair
   end
+
+  def with_legacy(**fields)
+    data = Marshal.load(Marshal.dump(Plastic::Layout.data))
+    data["legacy"] = [{ "name" => "x", "match" => ["x"], "sync" => "skip", "repair" => "remove", "why" => "w" }.merge(fields.transform_keys(&:to_s))]
+    Plastic::Layout::Problems.new(data).to_a
+  end
+
+  def test_a_legacy_entry_with_an_unknown_sync_or_repair_is_a_problem
+    assert_equal ["legacy entry x has the unknown sync nap", "legacy entry x has the unknown repair burn"], with_legacy(sync: "nap", repair: "burn")
+  end
+
+  def test_a_legacy_entry_that_moves_with_no_target_is_a_problem
+    assert_equal ["legacy entry x moves with no target"], with_legacy(repair: "move")
+  end
+
+  def test_a_legacy_entry_that_moves_to_a_file_keeps_no_part_of_the_path
+    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/y.md", why: "w")
+
+    assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
+  end
 end
