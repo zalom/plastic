@@ -31,7 +31,7 @@ module Plastic
             pass: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).used_up? }
 
           step "write the handover", done: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).handed_over? },
-            changes: { work: "The owner's handover of the last gap to the follow-up intent is written to the work log" } do |context|
+            changes: { work: "The owner's handover of the last gap to the follow-up intent is written to the work log as one `handed_over` line" } do |context|
             context.work.hand_over(context.intent_id, context.follow_up, context.reason)
           end
 

@@ -122,6 +122,16 @@ class IntentHandoverTest < Plastic::TestCase
     assert_equal [], handed_over_lines
   end
 
+  def test_a_handover_after_a_revise_and_an_accept_exits_3_with_no_line
+    cli("intent", "verdict", "1", "revise", "one")
+    cli("intent", "verdict", "1", "accept", "two")
+    follow_up
+    result = handover("2", REASON, "--owner")
+
+    assert_call result, code: 3, out: "", err: ["intent 1 still has a review round left or holds an accepted review; a handover needs the rounds used"]
+    assert_equal [], handed_over_lines
+  end
+
   def test_a_second_handover_exits_3_and_keeps_one_line
     handed_over
     result = handover("2", REASON, "--owner")
@@ -143,6 +153,18 @@ class IntentHandoverClosedTest < Plastic::TestCase
     result = handover("2", REASON, "--owner")
 
     assert_call result, code: 3, out: "", err: ["intent 1 is done"]
+    assert_equal [], handed_over_lines
+  end
+
+  def test_a_handover_of_an_abandoned_intent_exits_3_with_no_line
+    open_intent
+    write("store/1--alpha/outcome.md", DROPPED)
+    cli("store", "sync", "up")
+    cli("intent", "abandon", "1")
+    follow_up
+    result = handover("2", REASON, "--owner")
+
+    assert_call result, code: 3, out: "", err: ["intent 1 is abandoned"]
     assert_equal [], handed_over_lines
   end
 end

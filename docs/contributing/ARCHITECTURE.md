@@ -317,12 +317,12 @@ file, and `sync down` keeps the rows. `--overwrite` alone does the same for ever
 
 A command commits its rows first and prints its files after. A sync up that reads the hashes
 between those two steps finds the file and the rows both changed, and reports a false conflict
-over an intent another session is working on. With `sync.lock` on, every call that prints files,
-both syncs and `plastic intent repair` hold one store lock from the hand-edit check through the
+over an intent another session is working on. So every call that prints files,
+both syncs and `plastic intent repair` always hold one store lock from the hand-edit check through the
 print, so no sync sees a command halfway. The lock is an exclusive file lock on
-`~/.plastic/locks/SLUG.lock`, outside the store folder. A second call waits up to the seconds of
-`sync.lock_wait`, 60 by default, then fails with exit 1 and names the lock file. A dry run takes no
-lock, and the operating system frees the lock when its holder ends. `sync.lock` is off by default.
+`~/.plastic/locks/SLUG.lock`, outside the store folder. A second call waits up to 60 seconds,
+then fails with exit 1 and names the lock file. A dry run takes no lock, and the
+operating system frees the lock when its holder ends. No setting turns the lock off.
 
 A sync reads only the files that `Graph::Knowledge::SyncSelection` selects. Other files stay on
 disk and get no rows.

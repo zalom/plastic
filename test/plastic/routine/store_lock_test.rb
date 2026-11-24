@@ -3,24 +3,33 @@
 require "fileutils"
 require_relative "../../test_helper"
 
-# With sync.lock on, every call that prints files, and every sync and repair,
-# holds the store lock from its hand-edit check through its print. With
-# sync.lock_wait at 0, a call that finds the lock held stops at once.
+# Every call that prints files, and every sync and repair, holds the store lock
+# from its hand-edit check through its print. With the wait of Wiring at 0, a
+# call that finds the lock held stops at once.
 class RoutineStoreLockTest < Plastic::TestCase
   include LifecycleHelper
 
-  BUSY = /: another call holds the store lock, and the wait of 0 seconds in sync\.lock_wait ran out$/
+  BUSY = /: another call holds the store lock, and the wait of 0 seconds ran out$/
 
   def lock_path = File.join(@plastic_home, "locks", "global.lock")
 
-  # Turns the lock on with no wait, so a held lock stops the call at once.
-  def lock_on = %w[true 0].zip(%w[sync.lock sync.lock_wait]).each { |value, key| cli("config", "set", key, value) }
+  # No wait, so a held lock stops the call at once.
+  def setup
+    super
+    Plastic::Wiring.lock_wait = 0
+  end
 
+  def teardown
+    @held&.close
+    Plastic::Wiring.lock_wait = nil
+    super
+  end
+
+  # Kept in @held until the teardown, so the garbage collector cannot close the file and free the lock mid-test.
   def held_elsewhere
     FileUtils.mkdir_p(File.dirname(lock_path))
-    file = File.open(lock_path, File::RDWR | File::CREAT)
-    file.flock(File::LOCK_EX)
-    file
+    @held = File.open(lock_path, File::RDWR | File::CREAT)
+    @held.flock(File::LOCK_EX)
   end
 
   def intent_count = store_database.row("SELECT COUNT(*) AS n FROM intents").fetch("n")
@@ -33,7 +42,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_print_with_the_lock_held_stops_and_writes_no_row
     open_intent
-    lock_on
     held_elsewhere
     before = intent_count
     result = cli("intent", "new", "Beta")
@@ -44,7 +52,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_stopped_print_offers_the_same_call_again
     open_intent
-    lock_on
     held_elsewhere
 
     assert_match(/^next: plastic intent new Beta\n/, cli("intent", "new", "Beta").out)
@@ -52,7 +59,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_sync_up_with_the_lock_held_stops
     open_intent
-    lock_on
     held_elsewhere
 
     assert_busy(cli("store", "sync", "up"))
@@ -60,7 +66,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_sync_down_with_the_lock_held_stops
     open_intent
-    lock_on
     held_elsewhere
 
     assert_busy(cli("store", "sync", "down"))
@@ -68,7 +73,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_repair_with_the_lock_held_stops
     open_intent
-    lock_on
     held_elsewhere
 
     assert_busy(cli("intent", "repair", "1"))
@@ -76,7 +80,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_print_with_the_lock_free_finishes_and_frees_it
     open_intent
-    lock_on
     result = cli("intent", "new", "Beta")
 
     assert_equal [0, true], [result.code, File.open(lock_path) { |file| file.flock(File::LOCK_EX | File::LOCK_NB) != false }]
@@ -84,7 +87,6 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_dry_run_takes_no_lock
     open_intent
-    lock_on
     held_elsewhere
 
     assert_equal 0, cli("store", "sync", "up", "--dry-run").code
@@ -92,24 +94,8 @@ class RoutineStoreLockTest < Plastic::TestCase
 
   def test_a_call_that_prints_nothing_takes_no_lock
     open_intent
-    lock_on
     held_elsewhere
 
     assert_equal 0, cli("intent", "show", "1").code
-  end
-
-  def test_with_the_lock_off_a_held_lock_file_stops_nothing
-    open_intent
-    held_elsewhere
-
-    assert_equal 0, cli("intent", "new", "Beta").code
-  end
-
-  def test_with_the_lock_off_no_lock_folder_is_made
-    open_intent
-    cli("intent", "new", "Beta")
-    cli("store", "sync", "up")
-
-    refute_path_exists File.join(@plastic_home, "locks")
   end
 end
