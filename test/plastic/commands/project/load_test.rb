@@ -359,7 +359,7 @@ class ProjectLoadGuidanceTest < Plastic::TestCase
       FileUtils.chmod(0o755, File.join(bin, tool))
     end
 
-    plastic("project", "load", "blog", env: { "PATH" => "#{bin}:#{ENV.fetch("PATH")}" }, table: Plastic::CLI::TABLE)
+    with_path("#{bin}:#{ENV.fetch("PATH")}") { load("blog") }
 
     refute_path_exists marker
   end
@@ -389,6 +389,15 @@ class ProjectLoadGuidanceTest < Plastic::TestCase
   end
 
   private
+
+  # The command runs in this process, so a child it started would find the fake programs through this process's PATH.
+  def with_path(path)
+    saved = ENV.fetch("PATH")
+    ENV["PATH"] = path
+    yield
+  ensure
+    ENV["PATH"] = saved
+  end
 
   def outcome(intent, line)
     graphs = Plastic::Graph.create(home: @plastic_home, store: "blog")
