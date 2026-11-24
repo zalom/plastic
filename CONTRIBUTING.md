@@ -76,6 +76,14 @@ request is created, run the full suite one time with `ruby bin/test` and fix wha
 the pull request exists, CI takes over: read its failures and fix those, with no more full runs
 on your machine.
 
+## Change search ranking
+
+A change to how `plastic search` ranks, tokenizes or weights reports the hits before and after. Run
+`ruby bin/search-check FILE` on the known-question set of the store (`known-questions.json` in the
+intent folder of intent 529) once on the old code and once on the new, and put both totals in the
+pull request description. The script opens the store databases read-only. A ranking change with no
+before and after is not ready for review.
+
 ## Add a command
 
 1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line. A
