@@ -22,7 +22,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
-    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}, #{NODES}, #{NEEDS}, #{DRIVERS}, #{DEADLINE}, #{INPUTS}, #{EMPTY_ROADMAPS}, #{LEFTOVERS}, #{MISTAKES}); run plastic update first",
+    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}, #{NODES}, #{NEEDS}, #{DRIVERS}, #{DEADLINE}, #{INPUTS}, #{EMPTY_ROADMAPS}, #{LEFTOVERS}, #{MISTAKES}, #{DRIVER_MODE}); run plastic update first",
       down(beta_2_home).refusal
   end
 
@@ -31,7 +31,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   # A migrated store whose cleanup of the mistaken rows, leftover work tables migration, empty roadmap tables migration, node inputs migration, deadline migration, driver migration, roadmap migration, node columns migration, run usage migration, time migration, page migration and trim went down, so the report migration is the newest it records.
-  def past_trim = previous_home_with_times.tap { |home| migrate_store(home) }.tap { |home| 12.times { down(home).call } }
+  def past_trim = previous_home_with_times.tap { |home| migrate_store(home) }.tap { |home| 13.times { down(home).call } }
 
   def test_the_report_migration_goes_down_by_removing_its_version_alone
     home = past_trim
