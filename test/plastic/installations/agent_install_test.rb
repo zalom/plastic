@@ -102,6 +102,13 @@ class ClaudeInstallTest < Plastic::TestCase
     assert_equal claude("hooks", "plastic-statusline"), JSON.parse(File.read(claude("settings.json"))).dig("statusLine", "command")
   end
 
+  def test_a_local_model_id_set_for_a_role_reaches_its_role_file
+    config_with("harnesses:\n  claude-code:\n    agents:\n      models:\n        demo-role: qwen3-coder:30b\n")
+    install
+
+    assert_includes File.read(claude("agents", "demo-role.md")), "model: qwen3-coder:30b\n"
+  end
+
   def test_a_status_line_that_plastic_wrote_is_replaced_without_asking
     config_with("global:\n  statusline: true\n")
     write(claude("settings.json"), JSON.generate("statusLine" => { "type" => "command", "command" => claude("hooks", "plastic-statusline") }))
@@ -128,6 +135,13 @@ class CodexInstallTest < Plastic::TestCase
 
     assert_equal [true, true, true], [result[:success], File.exist?(File.join(fresh, ".codex", "agents", "demo-role.toml")),
       File.exist?(File.join(fresh, ".agents", "plastic", "VERSION"))]
+  end
+
+  def test_a_local_model_id_set_for_a_role_reaches_its_toml_model_field
+    config_with("harnesses:\n  codex:\n    agents:\n      models:\n        demo-role: qwen3-coder:30b\n")
+    install
+
+    assert_includes File.read(File.join(fresh, ".codex", "agents", "demo-role.toml")), %(model = "qwen3-coder:30b"\n)
   end
 
   def test_the_skills_land_in_the_shared_agents_folder_and_the_section_in_the_codex_instructions
