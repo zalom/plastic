@@ -20,15 +20,16 @@ class RoutineStoreLockTest < Plastic::TestCase
   end
 
   def teardown
+    @held&.close
     Plastic::Wiring.lock_wait = nil
     super
   end
 
+  # Kept in @held until the teardown, so the garbage collector cannot close the file and free the lock mid-test.
   def held_elsewhere
     FileUtils.mkdir_p(File.dirname(lock_path))
-    file = File.open(lock_path, File::RDWR | File::CREAT)
-    file.flock(File::LOCK_EX)
-    file
+    @held = File.open(lock_path, File::RDWR | File::CREAT)
+    @held.flock(File::LOCK_EX)
   end
 
   def intent_count = store_database.row("SELECT COUNT(*) AS n FROM intents").fetch("n")
