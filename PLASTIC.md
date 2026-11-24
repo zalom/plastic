@@ -41,7 +41,8 @@ run `plastic intent approve ID` themselves when the `because:` line of `plastic 
 delivery. `plastic intent park ID REASON` parks started work with the reason it waits.
 When the owner says auto, background agents or processes run the delivery from the first step.
 The main session stays open as the orchestrator: it dispatches, records and reports, and
-never blocks on the work.
+never blocks on the work. While agents deliver, it runs `plastic graph lapsed` on a timer and
+restarts the helper it names.
 
 Agents run every command, from opening an intent to closing it, without asking. A person
 is in the loop for decisions and the direction of the work only. Exit codes: 0 succeeded,
