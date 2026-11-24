@@ -20,8 +20,8 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 
-  # The node inputs, deadline and driver migrations are the newest, so three more downs come first.
-  def drivers_down(home) = 3.times { down(home) }
+  # The empty roadmap tables, node inputs, deadline and driver migrations are the newest, so four more downs come first.
+  def drivers_down(home) = 4.times { down(home) }
 
   def test_a_new_store_has_no_judge_or_verdict_column_on_a_node
     home = fresh_home

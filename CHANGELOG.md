@@ -6,6 +6,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - `plastic graph show` prints the start, end and length of each run, and `running` for a run with no end; `--json` carries them under `runs`. After `plastic node done`, the nodes now ready are named and the `next:` line claims the first.
+- Store migration `20261124090000` drops the five roadmap tables (`roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`) from `work_graph.db`. Migration `20261123120000` had dropped them, but a checkout from before the schema gate (before commit 804fa952, 16 November 2026) opened the migrated store with no gate and made them again, all empty; no release and no gated code makes them. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. Its down builds the five tables again, empty and with the text of the old tables.
+
 ## 3.0.0-beta.18
 
 - The driver docs have a worked section for running a worker on a local Ollama model, through `claude -p` and through `codex exec --oss`, and say how to set the model of a role with `plastic config set agents.models.ROLE MODEL`. No code changed: the setting and a literal model id already worked, and tests now prove it.
