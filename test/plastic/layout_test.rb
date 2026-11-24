@@ -22,7 +22,7 @@ class LayoutTest < Plastic::TestCase
   end
 
   def test_a_file_is_required_only_in_the_states_its_entry_lists
-    assert_equal %w[intent.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
+    assert_equal %w[intent.md outcome.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
   end
 
   def test_a_core_file_is_found_by_its_path_and_a_stray_is_not

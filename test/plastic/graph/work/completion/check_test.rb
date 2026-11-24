@@ -121,9 +121,25 @@ class WorkCompletionCheckTest < Plastic::TestCase
     assert_equal 1, check.problems.size
   end
 
-  def test_abandon_problems_hold_only_the_outcome_substance
+  REASON = "Record why intent 1 is dropped with plastic intent note 1 'superseded by intent <id>' --kind Abandoned " \
+    "or plastic intent note 1 'dropped because <reason>' --kind Abandoned."
+
+  def test_abandon_problems_hold_the_outcome_summary_and_the_abandon_reason
     files(spec: "# Spec\n", outcome: "# Outcome\n")
 
-    assert_equal ["Write the summary of outcome.md with plastic intent outcome 1 --from FILE."], check.abandon_problems
+    assert_equal ["Write the summary of outcome.md with plastic intent outcome 1 --from FILE.", REASON], check.abandon_problems
+  end
+
+  def test_an_abandon_reason_in_its_form_leaves_no_abandon_problem
+    files(spec: "# Spec\n", outcome: "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: superseded by intent 4\n")
+
+    assert_empty check.abandon_problems
+  end
+
+  def test_an_abandon_reason_out_of_its_form_is_quoted_before_the_fix
+    files(spec: "# Spec\n", outcome: "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: superseded by intent <id>\n")
+
+    assert_equal ["outcome.md says 'Abandoned: superseded by intent <id>', which is not an abandon reason in the form " \
+      "'Abandoned: superseded by intent <id>' or 'Abandoned: dropped because <reason>'. #{REASON}"], check.abandon_problems
   end
 end

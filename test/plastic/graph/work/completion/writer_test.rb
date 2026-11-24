@@ -65,7 +65,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
   end
 
   def test_abandoning_an_abandoned_intent_changes_nothing
-    ready
+    ready(records: "- Abandoned: dropped because the need went away\n")
     writer.abandon("1")
     before = retrieval.intent("1").to_h
     writer.abandon("1")
@@ -94,7 +94,7 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
   end
 
   def dropped(intent = @intent)
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Abandoned: dropped because the need went away\n")
     sync_up
   end
 
@@ -132,6 +132,14 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
     writer.abandon("2")
 
     assert_equal "abandoned", retrieval.intent("2").status
+  end
+
+  def test_abandoning_without_the_abandon_reason_raises_names_it_and_writes_nothing
+    write("#{@intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n")
+    sync_up
+
+    error = assert_raises(Plastic::Invalid) { writer.abandon("1") }
+    assert_equal ["open", true], [retrieval.intent("1").status, error.message.include?("--kind Abandoned")]
   end
 
   def test_abandoning_without_an_outcome_raises_and_writes_nothing
