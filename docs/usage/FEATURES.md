@@ -169,7 +169,8 @@ off by default.
 `migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
 table of each store. While it is off, `plastic update` leaves that table in place. Turn it on with
 `plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each store
-keeps the table in its `legacy.db` before the drop. The switch is off by default.
+loses the table, and a later migration deletes the copy the drop kept, since the table was a mistake.
+The switch is off by default.
 
 ## Chat history
 
@@ -227,10 +228,10 @@ are outside the resources layout`, with the repair `plastic resources sort --sto
 
 ## Undo a migration
 
-A migration that removes data keeps it in `legacy.db` in the store folder, in the same
-transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
-migration that drops `document_revisions`, and the one that trims what it kept in `legacy.db` to
-what a down needs, run only once `migrate.drop_document_revisions` is on; the switch is off by
+A migration that removes the owner's data keeps it in `legacy.db` in the store folder, in the same
+transaction. A migration that removes what an agent made by mistake deletes it and keeps no copy and offers no undo. The ledger in `plastic.db` records each migration that runs on a
+store. The migration that drops `document_revisions`, and the one that trims what it kept in
+`legacy.db`, run only once `migrate.drop_document_revisions` is on; the switch is off by
 default.
 
 | Command | What it does |
