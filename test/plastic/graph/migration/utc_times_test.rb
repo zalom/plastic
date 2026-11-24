@@ -46,8 +46,8 @@ class GraphUtcTimesTest < Plastic::TestCase
 
   def down(home) = Plastic::Graph::MigrationDown.new(without_usage(home), "alpha", NOW).call
 
-  # Every table, but the five roadmap tables and the table the roadmap migration makes from them: the down of the empty roadmap tables migration builds them empty, and the next run keeps them as empty copies in legacy.db.
-  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }.reject { |table, _rows| ROADMAP_TABLES.any? { |name| table.start_with?(name) } }
+  # Every table, but the five roadmap tables and the table the roadmap migration makes from them: the down of the empty roadmap tables migration builds them empty, and the next run keeps them as empty copies in legacy.db. The down of the leftover work tables migration leaves an empty sqlite_sequence in work_graph.db.
+  def contents(home, name) = alpha_rows(home, name, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").flatten.to_h { |table| [table, alpha_rows(home, name, "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }.reject { |table, rows| ROADMAP_TABLES.any? { |name| table.start_with?(name) } || (table == "sqlite_sequence" && rows.empty?) }
 
   def test_the_migration_writes_every_time_with_an_offset_in_utc_and_leaves_dates_utc_times_and_blanks
     assert_equal AFTER, times(migrated)

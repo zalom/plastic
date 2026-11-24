@@ -18,10 +18,13 @@ module StaleWords
     lib/plastic/graph/migration/store_migration.rb
     lib/plastic/graph/rows/savepoint.rb
     lib/plastic/graph/db/migrate/store/20261117000000_store_from_beta_2.sql
+    lib/plastic/graph/db/migrate/store/20261124120000_drop_leftover_work_tables.sql
+    lib/plastic/graph/migration/leftover_work_tables.rb
     lib/plastic/graph/work/node_result.rb
     lib/plastic/workflows/sync_steps.rb
     tools/store_proof.rb
     docs/reference/commands/sync-down/README.md
+    docs/contributing/MIGRATIONS.md
   ].freeze
   STORAGE_WORDS = Regexp.union(OLD_LAYOUT, REMOVED_STORAGE)
 

@@ -173,6 +173,20 @@ had the tables gets them empty from the down too. Opening a store with that old 
 tables again, and no later migration drops them, because the version is recorded and never runs again. The stop is
 to bring that checkout past commit 804fa952.
 
+Migration `20261124120000` drops ten leftover tables of `work_graph.db`: `savepoints`, `changes`, `intents`,
+`clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries` and `printed`. The same old
+checkout made them, local `alpha` at fdb2b9d3 of 13 November 2026, which opened the `plastic` store with no
+gate and made each table that its `schema.rb` declared for the work database and the store lacked; the
+current schema declares none of them there. All ten held no row when the migration was written. Seven of the
+names and `printed` are live tables of `knowledge_graph.db` or `plastic.db`, so every statement names the
+`work` schema, `LegacyTable` finds these ten in `work` for this version only
+(`LeftoverWorkTables.home?`), and no live table is read, kept or dropped. The migration has no switch. It is
+in `KEEPS`, and `LeftoverWorkTables::VERSION` marks it as keeping a table only when it holds a row: a table
+that holds a row is kept whole in `legacy.db` as `<table>_20261124120000` before the drop, an empty table is
+kept nowhere, and a store with none of the tables only records the version. Its down, `LeftoverWorkTables`
+in `REBUILDS`, builds the ten tables again, empty and with the exact text of the old tables, and puts back
+each row that the migration kept. The stop is the same: bring that checkout past commit 804fa952.
+
 ## Hold a migration behind a switch
 
 A migration that changes stored data ships behind a config switch that is off by default, as

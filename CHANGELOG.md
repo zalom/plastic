@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Store migration `20261124120000` drops ten leftover tables (`savepoints`, `changes`, `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `printed`) from `work_graph.db`. The same checkout from before the schema gate (local `alpha` at fdb2b9d3) made them: its schema declared them for the work database, and the current schema declares none there. Only the `work` copies are dropped; the live tables of the same names in `knowledge_graph.db` and `plastic.db` keep every row. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. It has no switch. Its down builds the ten tables again, empty and with the text of the old tables.
+
 ## 3.0.0-beta.20
 
 - `bin/search-check FILE` scores a known-question file against a store: it prints a hit or miss with its rank for each question and a total, and opens the store databases read-only. CONTRIBUTING.md asks a change to search ranking to report the hits before and after.
