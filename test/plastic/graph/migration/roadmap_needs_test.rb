@@ -133,7 +133,7 @@ class RoadmapNeedsDownTest < Plastic::TestCase
   include RoadmapStoreHelpers
 
   # The empty roadmap tables, node inputs, deadline and driver migrations are the newest, so their downs come first and the next down undoes the roadmap migration.
-  def undo_drivers(home) = 7.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
+  def undo_drivers(home) = 8.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }
 
   def down_result(home) = plastic("store", "migration", "down", "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: FixedClock::Clock.new(MIGRATED_AT + 3600))
 
