@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../layout"
 require_relative "../../../graph/knowledge/spec"
 require_relative "../../../graph/work/main_session"
 require_relative "../../lines"
@@ -19,7 +20,7 @@ module Plastic
           sets :intent
 
           def self.spec_line(context, spec)
-            file = "#{context.intent.dir}/spec.md"
+            file = File.join(context.intent.dir, Plastic::Layout.name(:spec))
             return "spec: #{file}; #{Lines::CRITERIA}" if spec.present?
 
             "spec: none yet; the agent writes it with plastic intent spec #{context.intent_id} --from FILE, and #{Lines::CRITERIA}"

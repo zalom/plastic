@@ -23,7 +23,7 @@ module Plastic
         scope = context.scope
         root = package_root(scope)
         package = Installations::Package.new(root:, home: scope.plastic_home, version: Installations::PackageVersion.new(root).call, settings: context.settings, clock: context.clock)
-        new(package, agents: Installations::AgentSet::DEFAULTS.map { |agent| rehome(agent, scope.home) })
+        new(package, agents: Installations::AgentSet::DEFAULTS.map { |agent| rehome(agent, scope.home) }, tmp_dirs: Installations::RetiredSessionState.folders(scope.setting("PLASTIC_TMP")))
       end
 
       def self.running(scope)

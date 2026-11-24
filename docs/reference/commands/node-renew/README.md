@@ -21,6 +21,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The claim of this session on the node is renewed to now | the work graph database, in the store folder | stays on this machine |
+| The claim of this agent of the session on the node is renewed to now | the work graph database, in the store folder | stays on this machine |
 
 The command is `Plastic::Commands::Node::Renew`, in [`commands/node/renew.rb`](../../../../lib/plastic/commands/node/renew.rb).

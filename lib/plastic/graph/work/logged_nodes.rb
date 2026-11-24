@@ -36,8 +36,8 @@ module Plastic
         # Renews the claims of one agent of the session: an empty agent is the session's own.
         def renew_claims(session, agent: "") = @log.recorded { [@writers.nodes.renew_claims(session, agent:), @drivers.renew(session, agent:)] }
 
-        # Renews the claim of the session on one node, and no other claim.
-        def renew_node(intent_id:, id:, by:) = @log.recorded { @writers.nodes.renew_node(intent_id:, id:, by:) }
+        # Renews the claim of one agent of the session on one node, and no other claim, and says whether it renewed one.
+        def renew_node(intent_id:, id:, by:, agent: "") = @log.recorded { @writers.nodes.renew_node(intent_id:, id:, by:, agent:) }
 
         # The session ended: its node claims and its driver claims go at once.
         def release_claims(session) = @log.recorded { [@release.call(session), @drivers.release(session)] }
