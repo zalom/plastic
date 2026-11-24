@@ -230,7 +230,9 @@ and says what is wrong there: the files outside the layout, the retired files an
 `layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
 NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
 person: its repair says to move it out of the store folder by hand. A `revisions.md` that the repair
-cannot read gets the same kind of repair by hand.
+cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
+file that the layout requires in its state, such as `outcome.md`, gets a `layout NAME ID--SLUG:` row
+that names the files and has no repair, so the doctor lists it and does not fail on it.
 
 ## Undo a migration
 
@@ -285,7 +287,10 @@ claim or a live node claim holds is refused with exit 3, and `--all` repairs the
 first. Both the run and `--dry-run` list the links that change and the links left as they are in the folders it repairs;
 `--dry-run` also lists every change and every `amended` line, and writes nothing. A target that
 holds other bytes than the file that would move onto it stops the call with exit 3 and names the
-target. A second run finds nothing to change and says `repaired: nothing to change`.
+target. Each done or abandoned intent whose folder lacks a file that the layout requires in its
+state, such as `outcome.md`, gets one `missing` line in the run and in `--dry-run`. The repair
+lists it only and writes no such file, since the work of a closed intent is not written again. A
+second run changes nothing: it says `repaired: nothing to change`, or lists the missing files again.
 
 ## Help that costs nothing
 

@@ -31,7 +31,10 @@ class RepairMissingFilesTest < Plastic::TestCase
   end
 
   def test_an_abandoned_intent_lists_each_file_its_state_requires
-    assert_equal (required("abandoned") - ["spec.md"]).sort, missing(dirs: [ABANDONED]).to_a.first.names.sort
+    listed = missing(dirs: [ABANDONED])
+
+    assert_equal (required("abandoned") - ["spec.md"]).sort, listed.to_a.first.names.sort
+    assert_includes listed.lines.first, "the layout requires it of an abandoned intent"
   end
 
   def test_an_open_intent_is_never_listed

@@ -28,24 +28,30 @@ module Plastic
 
           def call
             plan = repair_plan
-            return [] if plan.empty?
+            return plan.missing.lines if plan.empty?
 
-            amendments = plan.amendments
-            merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
-            apply(moves, merges, plan.rewrites, amendments)
+            count = change(plan)
             remove(plan)
             settle(plan)
-            print_logs(amendments)
-            plan.report(moves.size + merges.size)
+            print_logs(plan.amendments)
+            plan.report(count)
           end
 
           private
 
+          # Moves the files, merges those already at their target, rewrites the links and writes the amended lines; the count
+          # of the files moved.
+          def change(plan)
+            merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
+            apply(moves, merges, plan.rewrites, plan.amendments)
+            moves.size + merges.size
+          end
+
           def rows = Resources::RowMoves.new(@graphs.databases.fetch(:store))
 
           def repair_plan
-            closed = Resources::SortPlan.closed(@graphs.retrieval)
-            Plan.new(@folder, reports: @reports, closed:, **@plan)
+            retrieval = @graphs.retrieval
+            Plan.new(@folder, reports: @reports, closed: Resources::SortPlan.closed(retrieval), states: MissingFiles.states(retrieval.intents), **@plan)
           end
 
           def apply(moves, merges, rewrites, amendments)
