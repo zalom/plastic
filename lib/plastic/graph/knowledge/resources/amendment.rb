@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
+require_relative "../../../layout"
+
 module Plastic
   module Graph
     module Knowledge
       module Resources
-        # One link that a sort rewrites in a core file, a note at the root of the intent folder `dir`. `change` holds the old
+        # One link that a repair rewrites in a core file of the intent folder `dir`. `change` holds the old
         # and the new link, and `body` the new text of the file. A closed intent gets an `amended` work log line for each.
         Amendment = Data.define(:intent_id, :dir, :rel, :change, :body) do
-          self::REASON = "the resource sort moved its target"
-
-          # The text of the work log line: the file, the old link, the new link and the reason.
-          def text = "#{rel}: link #{change}; #{self.class::REASON}"
+          # The text of the work log line: the file, the old link, the new link and the reason the layout gives.
+          def text = "#{rel}: link #{change}; #{Layout.amendment_reason(:link)}"
 
           def line = "amended #{dir}/#{text}"
 

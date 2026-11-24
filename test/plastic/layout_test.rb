@@ -25,6 +25,10 @@ class LayoutTest < Plastic::TestCase
     assert_equal %w[intent.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
   end
 
+  def test_with_no_role_the_name_is_the_name_of_the_module
+    assert_equal "Plastic::Layout", Plastic::Layout.name
+  end
+
   def test_a_core_file_is_found_by_its_path_and_a_stray_is_not
     assert_equal [true, false], [Plastic::Layout.core?("spec.md"), Plastic::Layout.core?("notes.md")]
   end
@@ -78,7 +82,57 @@ class LayoutTest < Plastic::TestCase
 
   def test_the_store_root_lists_what_it_may_hold_and_each_old_name_with_its_repair
     assert_includes Plastic::Layout.store_root_allowed.map(&:name), "backups/"
-    assert_equal "remove", Plastic::Layout.store_root_legacy.find { |entry| entry.name == ".sessions/" }.repair
+    assert_equal "keep", Plastic::Layout.store_root_legacy.find { |entry| entry.name == "originals/" }.repair
+  end
+
+  def test_the_store_folder_lists_what_it_may_hold_and_each_leftover_with_its_repair
+    allowed = Plastic::Layout.store_folder_allowed.map(&:name)
+    repairs = Plastic::Layout.store_folder_legacy.to_h { |entry| [entry.name, entry.repair] }
+
+    assert_equal ["{id}--{slug}/", "index.json", ".gitkeep", ".obsidian/"], allowed
+    assert_equal({ ".sessions/" => "remove", ".tmp/" => "remove", "work_graph.db" => "remove_empty", ".enola/" => "remove" }, repairs)
+  end
+
+  def test_each_kind_of_amendment_has_its_reason
+    reasons = %i[rename move remove revision link].map { |kind| Plastic::Layout.amendment_reason(kind) }
+
+    assert(reasons.all? { |reason| reason.is_a?(String) && !reason.empty? })
+    assert_raises(KeyError) { Plastic::Layout.amendment_reason(:polish) }
+  end
+
+  def test_the_old_intent_file_is_renamed_to_intent_md
+    assert_equal "intent.md", Plastic::Layout.destination("12--old-name.md")
+  end
+
+  def test_a_lock_file_is_old_machine_state_only_at_the_top_of_the_folder
+    assert_equal [true, false], [Plastic::Layout.machine?("watch.lock"), Plastic::Layout.machine?("resources/app/Gemfile.lock")]
+  end
+
+  def test_a_legacy_entry_that_moves_to_a_file_keeps_no_part_of_the_path
+    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/y.md", why: "w")
+
+    assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
+  end
+
+  def test_a_file_that_moves_to_a_folder_keeps_its_name
+    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
+  end
+end
+
+# A layout file with a broken entry is a problem the layout names.
+class LayoutProblemsTest < Plastic::TestCase
+  def test_a_layout_without_a_reason_for_a_kind_of_amendment_is_a_problem
+    data = Marshal.load(Marshal.dump(Plastic::Layout.data))
+    data["amendments"].delete("link")
+
+    assert_equal ["the amendments have no reason for link"], Plastic::Layout::Problems.new(data).to_a
+  end
+
+  def test_a_store_folder_leftover_with_an_unknown_repair_is_a_problem
+    data = Marshal.load(Marshal.dump(Plastic::Layout.data))
+    data["store_folder"]["legacy"].first["repair"] = "burn"
+
+    assert_equal ["store folder entry .sessions/ has the unknown repair burn"], Plastic::Layout::Problems.new(data).to_a
   end
 
   def with_legacy(**fields)
@@ -93,15 +147,5 @@ class LayoutTest < Plastic::TestCase
 
   def test_a_legacy_entry_that_moves_with_no_target_is_a_problem
     assert_equal ["legacy entry x moves with no target"], with_legacy(repair: "move")
-  end
-
-  def test_a_legacy_entry_that_moves_to_a_file_keeps_no_part_of_the_path
-    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/y.md", why: "w")
-
-    assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
-  end
-
-  def test_a_file_that_moves_to_a_folder_keeps_its_name
-    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
   end
 end

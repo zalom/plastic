@@ -85,6 +85,9 @@ module Plastic
             [standing ? :took_over : :driving, held&.session, Handover.new(by:, held:, take_over:).text]
           end
 
+          # Whether a live claim holds the intent, whichever session holds it.
+          def held?(intent_id) = holder(intent_id)&.live? || false
+
           def renew(session, agent: "") = write_for(RENEW_SQL, session, agent:)
 
           def release(session) = write_for(RELEASE_SQL, session)

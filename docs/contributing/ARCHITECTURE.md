@@ -140,7 +140,7 @@ database and writes only when `repair` or `reindex` rebuilds the derived search 
 | ----- | -------- | ------------- | ---------- | ------- |
 | Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic store sync up` | `plastic intent spec`, `plastic intent brief` |
-| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic store sync up`, `plastic store sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic resources sort`, `plastic store backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic store sync up`, `plastic store sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic intent repair`, `plastic store backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
 
 `plastic update` and `plastic install` rebuild a store's search index at one point only: when their migration step compacts that store, which happens once for each store, while a file of it is not on incremental auto vacuum. A call that finds every store compacted leaves the index as it is.
 
@@ -348,7 +348,7 @@ whole chain against a temporary copy of the store and prints what the call would
 require it (open, done, abandoned) and a writer, and `intent.md`, `spec.md` and `outcome.md` have
 front matter and headings. The `legacy` entries name each file of an older layout, what a sync does
 with it and what a repair does. The `store_root` entries list what a store folder may hold. The sync,
-the resource sort, the readers, the completion check and the new-intent file take their names from it,
+the repair, the readers, the completion check and the new-intent file take their names from it,
 and `test/layout_names_guard_test.rb` fails when code outside the layout names a core file or a
 resources folder. `Strays` in `lib/plastic/graph/knowledge/sync/strays.rb` names every file that the layout does not allow. `ruby bin/layout-docs`
 builds the intent folder section of `PLASTIC.md` and `docs/help/intent-folder.md` from the layout file,
@@ -364,6 +364,7 @@ when every intent it needs is done or abandoned. `plastic next`, `plastic graph 
 | ------- | ------------ |
 | `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
 | `plastic intent archive ID` | Saves the whole intent folder in `knowledge_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent repair (ID \| --all)` | Applies the layout to old intent folders: renames and moves files where the layout says, removes retired files, and turns each entry of an old `revisions.md` into an `amended` line. A done or abandoned intent gets one `amended` line for each change. An intent that a driver or a live node claim holds is refused. `--dry-run` lists every change and writes nothing. |
 | `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
 | `plastic store backup --project SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
 | `plastic store backup list --project SLUG` | Lists the backups of a store. |

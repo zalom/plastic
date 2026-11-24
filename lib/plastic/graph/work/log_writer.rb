@@ -19,12 +19,14 @@ module Plastic
           recorded { yield.tap { |moved,| moved && line(intent_id, kind, wording) } }
         end
 
+        # One line at the end of the intent's work log. `parts` may name the node, the path, the body whose hash the line
+        # keeps, and `at`, a stored time for a line that records an older event; the clock gives the time otherwise.
         def line(intent_id, kind, text, **parts)
           body = parts[:body]
           top = store.row(TOP_SQL, intent_id:).fetch("top")
           store.transaction do |batch|
-            batch.put(:work_log, { intent_id:, position: top + 1, at: stamp, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:, path: parts.fetch(:path, ""),
-                                   sha256: body ? Digest::SHA256.hexdigest(body) : "", text:, origin_id: @writers.retrieval.origin_id })
+            batch.put(:work_log, { intent_id:, position: top + 1, at: parts.fetch(:at) { stamp }, phase: "", node: parts.fetch(:node, ""), session_id: @writers.session, kind:,
+                                   path: parts.fetch(:path, ""), sha256: body ? Digest::SHA256.hexdigest(body) : "", text:, origin_id: @writers.retrieval.origin_id })
           end
         end
 

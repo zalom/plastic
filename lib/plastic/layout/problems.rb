@@ -8,16 +8,19 @@ module Plastic
       REPAIRS = %w[rename amend remove move].freeze
       FILE_KEYS = %w[name purpose required writer].freeze
       LEGACY_KEYS = %w[name match sync repair why].freeze
+      STORE_FOLDER_REPAIRS = %w[remove remove_empty].freeze
+      AMENDMENTS = %w[rename move remove revision link].freeze
+      TOP = %w[version folder states files resources legacy machine store_root store_folder amendments].freeze
 
       def initialize(data)
         @data = data
       end
 
-      def to_a = [*top_level, *file_problems, *legacy_problems].freeze
+      def to_a = [*top_level, *file_problems, *legacy_problems, *store_folder_problems, *amendment_problems].freeze
 
       private
 
-      def top_level = %w[version folder states files resources legacy machine store_root].reject { |key| @data.key?(key) }.map { |key| "the layout has no #{key}" }
+      def top_level = TOP.reject { |key| @data.key?(key) }.map { |key| "the layout has no #{key}" }
 
       def states = @data.fetch("states", [])
 
@@ -34,8 +37,15 @@ module Plastic
       def legacy_words(entry)
         [("legacy entry #{entry["name"]} has the unknown sync #{entry["sync"]}" unless SYNCS.include?(entry["sync"])),
           ("legacy entry #{entry["name"]} has the unknown repair #{entry["repair"]}" unless REPAIRS.include?(entry["repair"])),
-          ("legacy entry #{entry["name"]} moves with no target" if entry["repair"] == "move" && entry["to"].nil?)].compact
+          ("legacy entry #{entry["name"]} moves with no target" if %w[move rename].include?(entry["repair"]) && entry["to"].nil?)].compact
       end
+
+      def store_folder_problems
+        @data.fetch("store_folder", {}).fetch("legacy", []).reject { |entry| STORE_FOLDER_REPAIRS.include?(entry["repair"]) }
+          .map { |entry| "store folder entry #{entry["name"]} has the unknown repair #{entry["repair"]}" }
+      end
+
+      def amendment_problems = (AMENDMENTS - @data.fetch("amendments", {}).keys).map { |kind| "the amendments have no reason for #{kind}" }
     end
   end
 end

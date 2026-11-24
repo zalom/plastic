@@ -25,7 +25,7 @@ module Plastic
 
           def onto_other_bytes?(folder) = folder.exist?(to) && folder.digest(to) != folder.digest(from)
 
-          def refusal = "#{to} already holds other bytes than #{from}; move one of them away, then run plastic resources sort again"
+          def refusal = "#{to} already holds other bytes than #{from}; move one of them away, then run plastic intent repair again"
 
           def relocate(folder, rename)
             target = folder.path(to)

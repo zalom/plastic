@@ -7,7 +7,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | Command | What it does |
 | --- | --- |
 | [`plastic version`](version/README.md) | Print the installed Plastic version and release channel |
-| [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair |
+| [`plastic doctor`](doctor/README.md) | Check the installation, the databases, the hooks of this harness and the folder layout of each store, rebuild a search index that is out of step, and name each repair |
 | [`plastic init`](init/README.md) | Find the installed harnesses and install Plastic into the ones the person picks |
 | [`plastic install`](install/README.md) | Install the core files and make the global store |
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
@@ -44,6 +44,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent link`](intent-link/README.md) | Write a typed link from an intent to a ref |
 | [`plastic intent unlink`](intent-unlink/README.md) | Remove a link |
 | [`plastic intent archive`](intent-archive/README.md) | Archive an intent directory |
+| [`plastic intent repair`](intent-repair/README.md) | Apply the folder layout to one intent folder, or to every one with --all |
 | [`plastic intent unarchive`](intent-unarchive/README.md) | Restore an archived intent's directory exactly as it was archived |
 
 ## project
@@ -83,12 +84,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic store migration purge`](store-migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
 | [`plastic store sync up`](store-sync-up/README.md) | Read the files changed by hand into rows |
 | [`plastic store sync down`](store-sync-down/README.md) | Write the rows that changed into files |
-
-## resources
-
-| Command | What it does |
-| --- | --- |
-| [`plastic resources sort`](resources-sort/README.md) | Move one store's files into the resources layout and rewrite their links |
 
 ## document
 

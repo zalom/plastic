@@ -1,6 +1,6 @@
 # plastic doctor
 
-Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair.
+Check the installation, the databases, the hooks of this harness and the folder layout of each store, rebuild a search index that is out of step, and name each repair.
 
 ```sh
 plastic doctor [--harness NAME]
