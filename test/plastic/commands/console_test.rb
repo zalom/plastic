@@ -73,6 +73,14 @@ class ConsoleCommandTest < Plastic::TestCase
     assert_includes result.out, "SQLite3::Database"
   end
 
+  def test_the_interactive_console_writes_no_file_and_no_history_and_restores_standard_output
+    before = digests
+    stdout = $stdout
+    console(input: "work.class\nexit\n", env: { "PLASTIC_SESSION" => "s-1" })
+
+    assert_equal [before, true], [digests, $stdout.equal?(stdout)]
+  end
+
   def test_a_write_through_each_name_fails_as_read_only_and_exits_one
     codes = NAMES.map { |name| console("--eval", "#{name}.execute('CREATE TABLE probe (id INTEGER)')") }
 
