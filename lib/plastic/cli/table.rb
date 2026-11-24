@@ -36,6 +36,7 @@ module Plastic
         "intent note" => ["Commands::Intent::Note", "Add one line to the outcome of an intent, a note under Notes or a record of the delivery or the close under Verification, keeping the earlier text as a revision"],
         "intent outcome" => ["Commands::Intent::Outcome", "Write the summary of the outcome of an intent from a file, keeping its title and every section"],
         "intent report" => ["Commands::Intent::Report", "Record a report of an intent so the sync reads it"],
+        "intent unreport" => ["Commands::Intent::Unreport", "Remove a report recorded by mistake: its rows, its outcome line and its file, which --to-tmp moves to resources/tmp/"],
         "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; no node of it is claimed without it"],
         "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
         "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],

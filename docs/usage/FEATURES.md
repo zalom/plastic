@@ -299,8 +299,13 @@ more types through the setting `sync.types`. In `resources/output/reports/` it r
 report that `plastic intent report ID PATH` recorded or that the setting `reports.mandatory`
 names; every other file there stays on disk with no row. Which work needs a report is the
 guidance of `plastic help completion-and-done`; the command records. Each recorded report gets
-one line under `## Reports` in outcome.md. When a sync up no longer reads a path, it removes the rows of that
-path. `resources/references/` is read only when its
+one line under `## Reports` in outcome.md. `plastic intent unreport ID PATH --reason TEXT` removes a
+report recorded by mistake: it drops the rows of the report, takes its line out of `## Reports`,
+and deletes the file, or moves it to `resources/tmp/` with `--to-tmp`. The work log keeps the
+`reported` line and gains a `removed` line with the reason, so the sync, the repair and the doctor
+no longer count the report. On a done or abandoned intent the removal also writes an `amended`
+line for the changed outcome, as a repair does, and `--dry-run` previews the removal. When a sync
+up no longer reads a path, it removes the rows of that path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
 

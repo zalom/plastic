@@ -113,9 +113,9 @@ class DoctorFolderLayoutReportsTest < Plastic::TestCase
     write("#{INTENT}/#{FOLDER}/page.html", "<p>page</p>\n")
   end
 
-  def record(path)
+  def record(path, kind: "reported", position: 1)
     store_database.transaction do |batch|
-      batch.put(:work_log, { intent_id: "1", position: 1, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path:, sha256: "", text: "the page" })
+      batch.put(:work_log, { intent_id: "1", position:, at: STAMP, phase: "", node: "", session_id: "s", kind:, path:, sha256: "", text: "the page" })
     end
   end
 
@@ -134,6 +134,13 @@ class DoctorFolderLayoutReportsTest < Plastic::TestCase
     record("#{FOLDER}/page.html")
 
     assert_nil alpha
+  end
+
+  def test_a_removed_report_is_outside_the_layout_again
+    record("#{FOLDER}/page.html")
+    record("#{FOLDER}/page.html", kind: "removed", position: 2)
+
+    assert_equal "outside the layout: #{FOLDER}/page.html", alpha.value
   end
 
   def test_a_report_the_setting_names_is_in_the_layout

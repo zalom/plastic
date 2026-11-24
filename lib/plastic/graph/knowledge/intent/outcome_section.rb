@@ -31,7 +31,21 @@ module Plastic
             "#{@lines.join("\n")}\n"
           end
 
+          # The whole outcome with each of `gone` taken out of the section, and the heading with them when the section is
+          # left with no text. A missing section leaves the outcome as it is.
+          def without(gone)
+            start = @lines.index { |text| text[HEADING, 2]&.casecmp?(@name) }
+            start && cut(start, section_end(start), gone)
+            @lines.pop while @lines.last&.empty?
+            "#{@lines.join("\n")}\n"
+          end
+
           private
+
+          def cut(start, stop, gone)
+            kept = @lines[(start + 1)..stop].reject { |text| gone.include?(text) }
+            @lines[start..stop] = kept.all?(&:empty?) ? [] : [@lines[start], *kept]
+          end
 
           def append(line)
             @lines.pop while @lines.last&.empty?

@@ -26,6 +26,8 @@ plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, ke
 plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
 plastic intent note 12 "BRANCH into main at pull request 5" --kind Merged  # Add a delivery line under Verification
 plastic intent outcome 12 --from FILE  # Write the summary of outcome.md from a file
+plastic intent report 12 resources/output/reports/page.html  # Record a report so the sync reads it
+plastic intent unreport 12 resources/output/reports/page.html --reason "TEXT" --to-tmp  # Remove a report recorded by mistake and move its file to resources/tmp/
 plastic session note "TEXT"           # Write the one prose line of this session
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
