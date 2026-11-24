@@ -56,6 +56,12 @@ plastic update --channel stable   # Back to the stable channel
 `--channel`, an update stays on the channel of the active release. `plastic version` prints the
 channel.
 
+A store that a run of unreleased code has moved past every release is newer than the installed
+code, and every command but `plastic update` refuses it with exit 3. `plastic update` and
+`plastic update --dry-run` still run: they leave the store as it is, and an update installs the
+newest release of the channel. When no release is newer, `plastic update` and its dry run exit 1
+and say the store came from unreleased code; wait for a release that holds its migration.
+
 ## Stable-line guarantees
 
 What a user on the `latest` channel can rely on:

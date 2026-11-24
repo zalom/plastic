@@ -18,6 +18,15 @@ class SchemaHomeMigrationTest < Plastic::TestCase
     assert_equal tables_of(File.join(fresh_home, "plastic.db")).keys, tables_of(File.join(home, "plastic.db")).keys
   end
 
+  def test_a_home_database_that_records_an_unknown_version_is_left_as_it_is_and_named
+    home = old_layout(fresh_home)
+    Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+    record_unknown_version(File.join(home, "plastic.db"))
+    report = Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
+
+    assert_equal [{ "home" => [UNKNOWN] }, {}], [report.newer, report.failed]
+  end
+
   def test_the_columns_of_every_table_match_a_new_plastic_db
     home = old_layout(fresh_home)
     Runner.new(home:, now: NOW, selection: Plastic::Graph::Knowledge::SyncSelection.none).call

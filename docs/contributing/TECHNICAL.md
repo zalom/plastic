@@ -149,3 +149,22 @@ suite red.
 | `varar/` | The 9 core acceptance documents. |
 | `test/varar/` | The step files for the core acceptance documents. |
 | `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the core documents. |
+
+## Run from source
+
+`ruby exe/plastic` runs the code of the checkout you are in. Against the real `~/.plastic` it
+migrates the stores to the newest migration of that branch. An `alpha` checkout can hold a
+migration newer than every release, so one run moves the store past the release you have
+installed, and the installed `plastic` then refuses every command with
+`Plastic::Graph::Ahead`. `plastic update` still runs on such a store and installs a newer
+release when one exists; when none exists it exits 1 and says the store came from unreleased
+code. Run from source only against a scratch home.
+
+Set the two variables of a scratch home from a literal path, never from `$HOME` in the same line:
+
+```bash
+S=/path/to/scratch; export HOME=$S PLASTIC_HOME=$S/.plastic
+```
+
+In `export HOME=x PLASTIC_HOME=$HOME/.plastic` the shell expands `$HOME` before it sets `HOME`,
+so `PLASTIC_HOME` names the real `~/.plastic`.
