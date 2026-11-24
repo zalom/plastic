@@ -287,9 +287,20 @@ and Codex. It denies the call, with a reason that names the command to run, when
 - an intent record under `docs/plans/` or `docs/specs/` in the project tree
 
 It reads the path of a file tool, the files of a patch, and the write forms of a shell command:
-a redirection, `tee`, `rm`, `mv`, `cp`, `touch`, `sed -i`, `dd of=` and an inline script. A read,
-such as `cat` or `grep`, passes. Only the `resources/` folder of an open intent is open to the
-agent. The guard is on for every install and has no setting.
+a redirection, `tee`, `rm`, `mv`, `cp`, `touch`, `sed -i`, `dd of=` and an inline script. An inline
+script is the code an interpreter such as `ruby`, `python3`, `node`, `perl` or `bash` is given with
+`-e`, `-c` or `--eval`, on standard input or in a here-document; every word of such a command counts
+as a path it may write. A relative path is read from the folder that the `cd` words before it move
+to, and a `cd` inside a subshell, `( ... )`, ends with it. A read, such as `cat` or `grep`, passes.
+Only the `resources/` folder of an open intent is open to the agent. The guard is on for every
+install and has no setting.
+
+The guard reads the words of a command and runs nothing, so it cannot see:
+
+- what a program file opens, such as `ruby tool.rb` or `bin/build`
+- a path held in a variable other than `HOME` and `PLASTIC_HOME`, or built by the shell at run time
+- a `cd` to a variable, `cd -`, `pushd` and `popd`
+- a write by a command that another command starts, such as `xargs`, `find -exec` or `make`
 
 ## The resources layout
 
