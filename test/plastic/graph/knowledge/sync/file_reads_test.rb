@@ -104,4 +104,39 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
 
     assert_equal ["# changed words\n"], fts("SELECT body FROM document_fts WHERE path = 'notes.md'")
   end
+
+  # The retrieval graph of the test, with a count of the reads of the intent rows.
+  class CountedIntents < SimpleDelegator
+    attr_reader :reads
+
+    def initialize(retrieval)
+      super
+      @reads = 0
+    end
+
+    def intents
+      @reads += 1
+      super
+    end
+  end
+
+  def test_one_call_of_three_files_reads_the_intent_rows_once
+    names = %w[a.md b.md c.md].each { |name| write("#{DIR}/#{name}", "# #{name}\n") }
+    counted = CountedIntents.new(retrieval)
+    Plastic::Graph::Knowledge::Sync::FileReads.new(folder:, retrieval: counted, databases: store_graphs.databases, printer: nil).read_all(names.map { |name| "#{DIR}/#{name}" })
+
+    assert_equal 1, counted.reads
+  end
+
+  def intent_reads_of_a_call(*names)
+    names.each { |name| write("#{DIR}/#{name}", "# #{name}\n") }
+    counted = CountedIntents.new(retrieval)
+    printer = Plastic::Graph::Printer.new(folder, store_graphs.databases, counted)
+    Plastic::Graph::Knowledge::Sync::FileReads.new(folder:, retrieval: counted, databases: store_graphs.databases, printer:).call(names.map { |name| "#{DIR}/#{name}" })
+    counted.reads
+  end
+
+  def test_the_reads_of_the_intent_rows_in_one_call_do_not_grow_with_the_files
+    assert_equal intent_reads_of_a_call("a.md"), intent_reads_of_a_call("b.md", "c.md", "d.md")
+  end
 end

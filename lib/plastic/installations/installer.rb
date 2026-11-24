@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require "tmpdir"
 require_relative "../config/upgrade"
 require_relative "home_ignore"
 require_relative "../installations"
@@ -52,7 +51,7 @@ module Plastic
 
       def newer? = ReleaseFeed.newer?(version, installed_version)
 
-      def core_files = CoreFiles.new(package_root).call
+      def core_files = CoreFiles.new(package_root, status_line: package.choices.statusline?).call
 
       def install_agents(selected:, statusline: nil, already_registered: [])
         kind = installed? ? :update : :install
