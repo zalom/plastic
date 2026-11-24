@@ -104,6 +104,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
 
     assert_equal ["# changed words\n"], fts("SELECT body FROM document_fts WHERE path = 'notes.md'")
   end
+
   # The retrieval graph of the test, with a count of the reads of the intent rows.
   class CountedIntents < SimpleDelegator
     attr_reader :reads
@@ -126,6 +127,7 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
 
     assert_equal 1, counted.reads
   end
+
   def intent_reads_of_a_call(*names)
     names.each { |name| write("#{DIR}/#{name}", "# #{name}\n") }
     counted = CountedIntents.new(retrieval)

@@ -72,6 +72,7 @@ class DistributionTest < Plastic::TestCase
 
     refute_path_exists cache
   end
+
   def status_line = File.join(plastic, "hooks", "statusline")
 
   def test_with_the_status_line_off_the_home_gets_no_status_line_script
