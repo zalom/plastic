@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic update` runs on a store newer than the installed code. It leaves such a store as it is, names it, and installs the newer release; before, the migration step raised `Plastic::Graph::Ahead` and the advice in the refusal could not be followed. When no release is newer, it exits 1 and says the store came from unreleased code. Every other command still refuses with exit 3, and its refusal now names that case. `docs/contributing/TECHNICAL.md` says how to run from source on a scratch home.
+
 ## 3.0.0-beta.18
 
 - The driver docs have a worked section for running a worker on a local Ollama model, through `claude -p` and through `codex exec --oss`, and say how to set the model of a role with `plastic config set agents.models.ROLE MODEL`. No code changed: the setting and a literal model id already worked, and tests now prove it.

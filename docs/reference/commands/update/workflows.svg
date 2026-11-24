@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 694" width="834" height="694" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 711" width="834" height="711" role="img" xml:space="preserve">
 <title>The workflows of one call of plastic update, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -107,31 +107,38 @@
 <text x="417" y="191" class="k" text-anchor="middle">update the home</text>
 <path d="M 417 201 L 417 215" class="wire"/>
 <path d="M 412 207 L 417 215 L 422 207 Z" class="head"/>
-<rect x="290" y="215" width="254" height="83" rx="6" class="lane-code"/>
+<rect x="290" y="215" width="254" height="100" rx="6" class="lane-code"/>
 <text x="302" y="235" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="302" y="255" class="t" text-anchor="start">Downloads and checks the newest</text>
 <text x="302" y="272" class="t" text-anchor="start">release and names the command</text>
-<text x="302" y="289" class="t" text-anchor="start">that installs it.</text>
-<path d="M 417 298 L 417 324" class="wire"/>
-<path d="M 412 316 L 417 324 L 422 316 Z" class="head"/>
-<rect x="290" y="324" width="254" height="66" rx="6" class="stop-end"/>
-<text x="302" y="344" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="364" class="t" text-anchor="start">The home holds Plastic &lt;to&gt;.</text>
-<text x="302" y="381" class="t" text-anchor="start">next: plastic version</text>
-<rect x="290" y="398" width="254" height="100" rx="6" class="stop-end"/>
-<text x="302" y="418" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="438" class="t" text-anchor="start">Plastic &lt;release&gt; is downloaded</text>
-<text x="302" y="455" class="t" text-anchor="start">and checked; this command</text>
-<text x="302" y="472" class="t" text-anchor="start">installs it.</text>
-<text x="302" y="489" class="t" text-anchor="start">next: &lt;command&gt;</text>
-<rect x="290" y="506" width="254" height="83" rx="6" class="stop-end"/>
-<text x="302" y="526" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="546" class="t" text-anchor="start">Plastic &lt;active&gt; is the newest</text>
-<text x="302" y="563" class="t" text-anchor="start">release on its channel.</text>
-<text x="302" y="580" class="t" text-anchor="start">next: plastic version</text>
-<rect x="290" y="597" width="254" height="83" rx="6" class="stop-end"/>
-<text x="302" y="617" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="637" class="t" text-anchor="start">Run the installer command</text>
-<text x="302" y="654" class="t" text-anchor="start">above, then update again.</text>
-<text x="302" y="671" class="t" text-anchor="start">next: plastic update</text>
+<text x="302" y="289" class="t" text-anchor="start">that installs it; a store newer</text>
+<text x="302" y="306" class="t" text-anchor="start">than this code is left as it is.</text>
+<rect x="588" y="215" width="222" height="66" rx="6" class="stop-failure"/>
+<text x="600" y="235" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="600" y="255" class="t" text-anchor="start">A check fails. The events</text>
+<text x="600" y="272" class="t" text-anchor="start">below show each check.</text>
+<path d="M 544 265 L 588 265" class="wire-failure"/>
+<path d="M 580 260 L 588 265 L 580 270 Z" class="head"/>
+<path d="M 417 315 L 417 341" class="wire"/>
+<path d="M 412 333 L 417 341 L 422 333 Z" class="head"/>
+<rect x="290" y="341" width="254" height="66" rx="6" class="stop-end"/>
+<text x="302" y="361" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="381" class="t" text-anchor="start">The home holds Plastic &lt;to&gt;.</text>
+<text x="302" y="398" class="t" text-anchor="start">next: plastic version</text>
+<rect x="290" y="415" width="254" height="100" rx="6" class="stop-end"/>
+<text x="302" y="435" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="455" class="t" text-anchor="start">Plastic &lt;release&gt; is downloaded</text>
+<text x="302" y="472" class="t" text-anchor="start">and checked; this command</text>
+<text x="302" y="489" class="t" text-anchor="start">installs it.</text>
+<text x="302" y="506" class="t" text-anchor="start">next: &lt;command&gt;</text>
+<rect x="290" y="523" width="254" height="83" rx="6" class="stop-end"/>
+<text x="302" y="543" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="563" class="t" text-anchor="start">Plastic &lt;active&gt; is the newest</text>
+<text x="302" y="580" class="t" text-anchor="start">release on its channel.</text>
+<text x="302" y="597" class="t" text-anchor="start">next: plastic version</text>
+<rect x="290" y="614" width="254" height="83" rx="6" class="stop-end"/>
+<text x="302" y="634" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="654" class="t" text-anchor="start">Run the installer command</text>
+<text x="302" y="671" class="t" text-anchor="start">above, then update again.</text>
+<text x="302" y="688" class="t" text-anchor="start">next: plastic update</text>
 </svg>

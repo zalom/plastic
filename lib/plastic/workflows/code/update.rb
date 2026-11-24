@@ -16,7 +16,7 @@ module Plastic
       # names install.sh.
       class Update < CodeWorkflow
         clear_declarations
-        summary "Downloads and checks the newest release and names the command that installs it."
+        summary "Downloads and checks the newest release and names the command that installs it; a store newer than this code is left as it is."
 
         sets :newer, :synced, :active, :release, :downloaded, :command, :migrated, :unreleased
 
