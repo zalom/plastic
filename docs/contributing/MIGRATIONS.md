@@ -79,24 +79,30 @@ runs. Any other `user_version` counts as newer than this code.
 ## Say what kind of data a migration removes
 
 Each migration that drops a table or rows states which kind of data it removes. There are three
-kinds, and `LegacyKeep::KINDS` in `lib/plastic/graph/migration/legacy_keep.rb` holds the
-statement of each.
+kinds. `LegacyKeep::KINDS` in `lib/plastic/graph/migration/legacy_keep.rb` holds the statement of
+each store migration, and `HomeMigration::KINDS` in `lib/plastic/graph/migration/home_migration.rb`
+holds the statement of each home migration. The two lists are apart because a home migration and
+a store migration may share a version.
 
 - The owner's data is what a person made or chose: time values, roadmaps and roadmap links, the
   text of a document they wrote. The migration keeps it in `legacy.db` and offers an undo.
 - A mistake is data that an agent created by error, such as a table a migration made that no
   command should have made. The migration deletes it. No copy stays in `legacy.db`, no file or
   free page holds its text, and `plastic store migration list` offers no undo for it.
-- Rebuilt data is data that the code builds again from the owner's data, such as a report row
-  that the next sync up reads back from the files. The migration drops it, keeps nothing, and its
-  down removes the version alone.
+- Rebuilt data is data whose loss costs the owner nothing: the migration moved it into a new
+  table or column, the code builds it again from the owner's data, such as a report row that the
+  next sync up reads back from the files, or there was none. The home migration `20261117000000`
+  drops the tables `backups` and `locks` as rebuilt data: the backup folders are the record of
+  each backup, and the node claims of each store say who holds what. A store migration of rebuilt
+  data keeps nothing, and its down removes the version alone.
 
 Only the owner's data is kept. When a migration removes a mistake, it does not keep the rows
 "just in case": a copy of a mistake is a second mistake, and it stays in every backup of
 `legacy.db`.
 
-`test/migration_data_kinds_guard_test.rb` reads each migration file and each data step. It fails
-when a migration that drops a table or deletes rows does not state its kind in `KINDS`.
+`test/migration_data_kinds_guard_test.rb` reads each store and home migration file and each data
+step. It fails when a migration that drops a table or deletes rows does not state its kind in
+its `KINDS`.
 
 A mistake runs in its own migration. Migration `20261124150000` deletes what migration
 `20261119000000` kept of `document_revisions`: 40 rows across the stores, which an agent made by
