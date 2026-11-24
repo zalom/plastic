@@ -3,14 +3,8 @@
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/previous_store"
 
-# Migration 20261124120000 drops the ten tables of older layouts that the work database no longer declares, keeps their
-# rows when one holds any, never touches the live tables of the same names in knowledge_graph.db and plastic.db, and its
-# down builds them again in the old shape.
-class GraphLeftoverWorkTablesTest < Plastic::TestCase
-  include BackupHomes
-  include PreviousStore
-
-  NOW = Time.utc(2026, 11, 24, 12, 0, 0)
+# The ten tables as the old checkout made them, and a live row in each knowledge table that shares a name.
+module LeftoverTexts
   TABLES = %w[savepoints changes intents clusters completions approvals verdicts archives archive_entries printed].freeze
   EXACT = [
     'CREATE TABLE "savepoints"("intent_id" TEXT NOT NULL, "position" INTEGER NOT NULL, "at" TEXT, "text" TEXT NOT NULL, "origin_id" TEXT NOT NULL, "session_id" TEXT, UNIQUE("intent_id", "position", "origin_id"))',
@@ -29,7 +23,17 @@ class GraphLeftoverWorkTablesTest < Plastic::TestCase
     INSERT INTO main.intents (intent_id, origin_id, slug, title, status) VALUES ('live-1', 'o', 'live', 'Live intent', 'open');
     INSERT INTO main.printed (path, sha256, at, origin_id) VALUES ('live/spec.md', 'sha', 'then', 'o');
   SQL
+end
 
+# Migration 20261124120000 drops the ten tables of older layouts that the work database no longer declares, keeps their
+# rows when one holds any, never touches the live tables of the same names in knowledge_graph.db and plastic.db, and its
+# down builds them again in the old shape.
+class GraphLeftoverWorkTablesTest < Plastic::TestCase
+  include BackupHomes
+  include PreviousStore
+  include LeftoverTexts
+
+  NOW = Time.utc(2026, 11, 24, 12, 0, 0)
   def work_tables(home) = alpha_rows(home, "work_graph.db", "SELECT name FROM sqlite_master WHERE type = 'table'").flatten
 
   def table_texts(home) = alpha_rows(home, "work_graph.db", "SELECT sql FROM sqlite_master WHERE name IN ('#{TABLES.join("', '")}')").flatten
