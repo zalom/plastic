@@ -65,8 +65,8 @@ module Plastic
           end
         end
 
-        # Removes a report recorded by mistake, a ReportFile, and writes the `removed` line with `reason`. Returns the
-        # Unreporter::Removed.
+        # Removes a report recorded by mistake, a ReportFile, and writes the `removed` line with `reason`; a closed intent
+        # whose outcome changed also gets an `amended` line with the new outcome. Returns the Unreporter::Removed.
         def unreport_intent(report, reason, to_tmp: false)
           removed = @log.recorded do
             unreporter.remove(report, to_tmp).tap { |done| unreported(done, reason) }
@@ -82,7 +82,11 @@ module Plastic
 
         def unreported(removed, reason)
           report = removed.report
-          @log.line(report.id, "removed", reason, path: report.path)
+          id = report.id
+          @log.line(id, "removed", reason, path: report.path)
+          return unless removed.amends?
+
+          @log.line(id, "amended", removed.amendment, path: Knowledge::Intent::Unreporter::FILE, body: removed.outcome, old_text: report.line(""), new_text: "")
         end
 
         def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))

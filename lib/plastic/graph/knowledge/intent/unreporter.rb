@@ -14,16 +14,24 @@ module Plastic
       class Intent
         # Removes one report of an intent that was recorded by mistake: the rows that hold it (its documents, its head
         # and its printed record), its line under Reports in the outcome, and its file, which is deleted or moved to
-        # resources/tmp/. The `removed` work log line is written by Work::LoggedRecords.
+        # resources/tmp/. The `removed` work log line, and the `amended` line of a closed intent, are written by
+        # Work::LoggedRecords.
         class Unreporter
           FILE = Reporter::FILE
           HEADING = Reporter::HEADING
           TMP = Layout.resource(:tmp)
+          CLOSED = %w[done abandoned].freeze
 
           # What one removal did: the report, the outcome it left, nil when the outcome did not list the report, and the
           # path the file moved to inside the intent folder, nil when it was deleted.
           Removed = Data.define(:report, :outcome, :moved) do
             def words = moved ? "moved: #{report.path} to #{moved}" : "removed: #{report.path}"
+
+            # Whether the removal changed the outcome of an intent that is done or abandoned.
+            def amends? = !outcome.nil? && CLOSED.include?(report.intent.status)
+
+            # The text of the `amended` line: the file, the report and the reason the layout gives.
+            def amendment = "#{FILE}: report #{report.path} removed; #{Layout.amendment_reason(:report)}"
           end
 
           # Where `--to-tmp` moves the report, inside the intent folder: its path under resources/tmp/.
