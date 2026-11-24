@@ -66,14 +66,14 @@ module Plastic
       def root = File.join(@home, "stores", @slug)
 
       # A store written by newer code is left as it is: nothing here may open it, since the gate refuses it.
-def newer = (@newer ||= newer_reading)
+      def newer = (@newer ||= newer_reading)
 
-def newer_reading
-  return unless File.file?(knowledge_file)
+      def newer_reading
+        return unless File.file?(knowledge_file)
 
-  reading = SchemaState.of_file(knowledge_file, :store, released: @released)
-  RecordsNewer.new(reading.unknown) if reading.ahead?
-end
+        reading = SchemaState.of_file(knowledge_file, :store, released: @released)
+        RecordsNewer.new(reading.unknown) if reading.ahead?
+      end
 
       def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
 

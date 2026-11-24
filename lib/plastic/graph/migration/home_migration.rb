@@ -38,10 +38,10 @@ module Plastic
 
       def current = File.join(@home, "plastic.db")
 
-def settle(path)
-  reading = SchemaState.of_file(path, :home)
-  reading.ahead? ? RecordsNewer.new(reading.unknown) : migrate(path)
-end
+      def settle(path)
+        reading = SchemaState.of_file(path, :home)
+        reading.ahead? ? RecordsNewer.new(reading.unknown) : migrate(path)
+      end
 
       def migrate(path) = preparation_failure(path) || advance
 

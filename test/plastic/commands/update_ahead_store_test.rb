@@ -65,8 +65,6 @@ class UpdateAheadStoreTest < Plastic::TestCase
     result = call("status")
 
     assert_equal 3, result.code
-    assert_includes result.err, "is newer than this code"
-    assert_includes result.err, "plastic update"
-    assert_includes result.err, "unreleased code"
+    assert_match(/is newer than this code.*run plastic update.*unreleased code/, result.err)
   end
 end
