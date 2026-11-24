@@ -55,10 +55,16 @@ class ResourcesReportSortTest < Plastic::TestCase
 
   def test_machine_files_in_the_reports_folder_stay
     write("#{INTENT}/#{FOLDER}/.DS_Store", "finder\n")
-    write("#{INTENT}/#{FOLDER}/build.lock", "pid\n")
     sort
 
-    assert_equal [true, true], [at("#{FOLDER}/.DS_Store"), at("#{FOLDER}/build.lock")]
+    assert at("#{FOLDER}/.DS_Store")
+  end
+
+  def test_a_lock_file_below_the_top_of_the_folder_is_an_ordinary_file
+    write("#{INTENT}/#{FOLDER}/Gemfile.lock", "GEM\n")
+    sort
+
+    assert_equal [false, true], [at("#{FOLDER}/Gemfile.lock"), at("resources/tmp/Gemfile.lock")]
   end
 
   BETA = "store/2--beta"

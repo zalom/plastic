@@ -73,5 +73,28 @@ What a store folder, stores/SLUG/, may hold beside its intent folders.
 | `INDEX.md` | import | The index of a store written before store/index.json; the first sync up imports it. |
 | `originals/` | keep | Files a legacy import copied before it removed them; the databases hold them now. |
 | `roadmaps/` | remove | Roadmaps became needs links between intents. |
-| `.sessions/` | remove | The day ledger of an older release; session rows hold it. The owner reviews what it holds first. |
-| `.tmp/` | remove | Heartbeat files of an older release. The owner reviews what it holds first. |
+
+What the folder store/ of a store folder may hold beside its intent folders. `plastic intent repair --all` removes each leftover.
+
+| Name | Status | Purpose or repair |
+| --- | --- | --- |
+| `store/{id}--{slug}/` | allowed | One folder for each intent. |
+| `store/index.json` | allowed | The index of the store, printed from the rows. |
+| `store/.gitkeep` | allowed | An empty file that keeps the folder of a store with no intent. |
+| `store/.obsidian/` | allowed | The settings of a note tool, such as Obsidian, that a person opens the store with. |
+| `store/.sessions/` | remove | The day ledger of an older release; session rows hold it. |
+| `store/.tmp/` | remove | Heartbeat files of an older release. |
+| `store/work_graph.db` | remove empty | An empty database made by mistake; the databases of a store sit beside store/. One that holds data is named and left. |
+| `store/.enola/` | remove | Enola's snapshot folder sits beside store/, at the store root. |
+
+## Amendments
+
+`plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Each change writes one `amended` line in the intent's work.log with the reason for its kind.
+
+| Change | Reason |
+| --- | --- |
+| rename | the layout names the intent's own file intent.md |
+| move | the layout keeps this file under resources/ |
+| remove | a newer record holds what this file held |
+| revision | an entry of the old revisions.md, with its own date |
+| link | the repair moved the file this link names |

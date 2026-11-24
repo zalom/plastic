@@ -61,8 +61,15 @@ module LayoutDocs
     allowed + Plastic::Layout.store_root_legacy.map { |entry| "| `#{entry.name}` | #{entry.repair} | #{entry.why} |" }
   end
 
+  def self.store_folder_rows
+    allowed = Plastic::Layout.store_folder_allowed.map { |entry| "| `store/#{entry.name}` | allowed | #{entry.purpose} |" }
+    allowed + Plastic::Layout.store_folder_legacy.map { |entry| "| `store/#{entry.name}` | #{entry.repair.tr("_", " ")} | #{entry.why} |" }
+  end
+
+  def self.amendment_rows = Plastic::Layout.data.fetch("amendments").map { |kind, reason| "| #{kind} | #{reason} |" }
+
   # The page docs/help/intent-folder.md.
-  def self.page = [intro, files_part, store_part].join("\n")
+  def self.page = [intro, files_part, store_part, amendments_part].join("\n")
 
   def self.intro
     <<~TEXT
@@ -119,6 +126,24 @@ module LayoutDocs
       | Name | Status | Purpose or repair |
       | --- | --- | --- |
       #{root_rows.join("\n")}
+
+      #{Plastic::Layout.data.fetch("store_folder").fetch("purpose")}
+
+      | Name | Status | Purpose or repair |
+      | --- | --- | --- |
+      #{store_folder_rows.join("\n")}
+    TEXT
+  end
+
+  def self.amendments_part
+    <<~TEXT
+      ## Amendments
+
+      `plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Each change writes one `amended` line in the intent's work.log with the reason for its kind.
+
+      | Change | Reason |
+      | --- | --- |
+      #{amendment_rows.join("\n")}
     TEXT
   end
 
