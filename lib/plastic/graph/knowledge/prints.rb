@@ -8,6 +8,7 @@ require_relative "prints/index_print"
 require_relative "prints/parts"
 require_relative "prints/graph_print"
 require_relative "prints/context_print"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -24,7 +25,7 @@ module Plastic
     # The same rows always print the same bytes, so a hash tells whether a
     # file or its rows changed since the last print.
     module Prints
-      WORK_LOG = "work.log"
+      WORK_LOG = Layout.name(:log)
 
       module_function
 

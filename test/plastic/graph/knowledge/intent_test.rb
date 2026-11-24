@@ -99,4 +99,8 @@ class KnowledgeIntentTest < Plastic::TestCase
     assert_equal %w[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at], intent.index_h.keys
     assert_equal "1a", intent.index_h["intent_id"]
   end
+
+  def test_an_intent_keys_its_own_file_or_the_older_name_after_its_folder
+    assert_equal [["1a", "intent.md"], ["1a", "1a--build.md"]], [intent.key_among(%w[intent.md]), intent.key_among(%w[spec.md])]
+  end
 end

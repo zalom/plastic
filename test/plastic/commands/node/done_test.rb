@@ -41,16 +41,16 @@ class NodeDoneTest < Plastic::TestCase
     assert_includes Plastic::Commands::Node::Done.usage_line("node done"), "--file PATH"
   end
 
-  def heads = store_database.rows("SELECT path FROM document_heads WHERE path LIKE '_.md'").map { |row| row.fetch("path") }
+  def heads = store_database.rows("SELECT path FROM document_heads WHERE path LIKE '%/_.md'").map { |row| File.basename(row.fetch("path")) }
 
   def test_file_option_limits_the_read_to_that_file
     cli("node", "add", "1", "Second", "--criterion", KEY)
     cli("node", "claim", "1", "n2", "--agent", "tester")
     dir = retrieval.intent("1").dir
-    write("#{dir}/a.md", "# a\n")
-    write("#{dir}/b.md", "# b\n")
+    write("#{dir}/resources/output/files/a.md", "# a\n")
+    write("#{dir}/resources/output/files/b.md", "# b\n")
 
-    assert_call cli("node", "done", "1", "n1", "ok", "--file", "a.md"), code: 0, out: /node: n1 done/
+    assert_call cli("node", "done", "1", "n1", "ok", "--file", "resources/output/files/a.md"), code: 0, out: /node: n1 done/
     assert_equal ["a.md"], heads
   end
 
@@ -58,11 +58,11 @@ class NodeDoneTest < Plastic::TestCase
     cli("node", "add", "1", "Second", "--criterion", KEY)
     cli("node", "claim", "1", "n2", "--agent", "tester")
     dir = retrieval.intent("1").dir
-    write("#{dir}/a.md", "# a\n")
-    write("#{dir}/b.md", "# b\n")
-    cli("node", "done", "1", "n1", "ok", "--file", "a.md")
+    write("#{dir}/resources/output/files/a.md", "# a\n")
+    write("#{dir}/resources/output/files/b.md", "# b\n")
+    cli("node", "done", "1", "n1", "ok", "--file", "resources/output/files/a.md")
     after_first = heads
-    cli("node", "done", "1", "n2", "ok", "--file", "b.md")
+    cli("node", "done", "1", "n2", "ok", "--file", "resources/output/files/b.md")
 
     assert_equal [%w[a.md], %w[a.md b.md]], [after_first, heads.sort]
   end
@@ -85,8 +85,8 @@ class NodeDoneTest < Plastic::TestCase
 
   def test_without_the_file_option_every_changed_file_is_read
     dir = retrieval.intent("1").dir
-    write("#{dir}/a.md", "# a\n")
-    write("#{dir}/b.md", "# b\n")
+    write("#{dir}/resources/output/files/a.md", "# a\n")
+    write("#{dir}/resources/output/files/b.md", "# b\n")
     cli("node", "done", "1", "n1", "ok")
 
     assert_equal %w[a.md b.md], heads.sort

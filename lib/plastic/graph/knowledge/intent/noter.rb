@@ -2,6 +2,7 @@
 
 require_relative "notes"
 require_relative "../../evidence/writer"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -9,7 +10,7 @@ module Plastic
       class Intent
         # Adds one line under Notes in an intent outcome as a new document revision.
         class Noter
-          FILE = "outcome.md"
+          FILE = Layout.name(:outcome)
 
           def initialize(databases, retrieval)
             @databases = databases

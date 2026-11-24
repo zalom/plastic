@@ -9,6 +9,8 @@ module StaleWords
   LONG_DATE = /\b(?:#{MONTHS.join("|")}) \d{1,2}, 20\d\d\b/
   OLD_LAYOUT_READERS = %w[
     lib/plastic/doctor/core.rb
+    lib/plastic/layout.rb
+    lib/plastic/layout.yml
     lib/plastic/graph/backup/integrity.rb
     lib/plastic/graph/database/local.rb
     lib/plastic/graph/knowledge/reader/intent_file.rb
@@ -20,11 +22,11 @@ module StaleWords
     lib/plastic/graph/db/migrate/store/20261117000000_store_from_beta_2.sql
     lib/plastic/graph/db/migrate/store/20261124120000_drop_leftover_work_tables.sql
     lib/plastic/graph/migration/leftover_work_tables.rb
-    lib/plastic/graph/work/node_result.rb
     lib/plastic/workflows/sync_steps.rb
     tools/store_proof.rb
     docs/reference/commands/store-sync-down/README.md
     docs/contributing/MIGRATIONS.md
+    docs/help/intent-folder.md
   ].freeze
   STORAGE_WORDS = Regexp.union(OLD_LAYOUT, REMOVED_STORAGE)
 

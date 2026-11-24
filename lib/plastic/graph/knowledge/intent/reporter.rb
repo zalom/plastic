@@ -6,6 +6,7 @@ require_relative "report_file"
 require_relative "../reports"
 require_relative "../sync_selection"
 require_relative "../../evidence/writer"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -15,7 +16,7 @@ module Plastic
         # and its line under Reports in the outcome.
         # The `reported` work log line that holds the record is written by Work::LoggedWrites.
         class Reporter
-          FILE = "outcome.md"
+          FILE = Layout.name(:outcome)
           HEADING = "## Reports"
           MANDATORY = ReportFile::MANDATORY
           LATEST = "SELECT sha256 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path " \

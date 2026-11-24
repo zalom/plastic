@@ -6,6 +6,7 @@ require_relative "readability"
 require_relative "second_home"
 require_relative "old_savepoints"
 require_relative "unread_rows"
+require_relative "strays"
 require_relative "../new_types"
 
 module Plastic
@@ -50,7 +51,7 @@ module Plastic
           def reads(entries, folders)
             second_home = SecondHome.new(@folder, @retrieval, folders)
             { archived: ArchivedIntents.new(@folder, @retrieval).missing.size, second_home:, new_types: NewTypes.new(@folder).call,
-              unreadable_files: unreadable_entries(entries).merge(second_home.problems), unread: }
+              unreadable_files: unreadable_entries(entries).merge(second_home.problems), unread:, strays: Strays.find(@folder) }
           end
 
           def unread
