@@ -50,8 +50,7 @@ module Plastic
           end
         end
 
-        # Writes the `amended` lines of the links that the resource sort rewrote in the core files of closed intents, all in
-        # one transaction.
+        # Writes the `amended` lines of the changes a repair made to intent folders, all in one transaction.
         def amend_intents(amendments)
           @log.recorded { amendments.each { |amendment| amendment.write(@log) } }
         end

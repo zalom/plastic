@@ -112,7 +112,7 @@ Checked with `claude --help` and `codex exec --help` on 22 November 2026:
 
 `plastic graph check ID` reports a schema file that names no live node. It prints a `hand edit:` line
 under each finding that no command repairs, a `repair:` line under each finding that one does, and no
-`next:` line when only hand-edit findings remain. `plastic resources sort` leaves the files of
+`next:` line when only hand-edit findings remain. `plastic intent repair` leaves the files of
 `resources/tmp/schemas/` where they are.
 
 ## Sessions and claims

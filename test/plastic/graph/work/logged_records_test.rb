@@ -2,7 +2,7 @@
 
 require_relative "../../../test_helper"
 
-# The records kept beside an intent: a report from its ReportFile value, and the amendments of the resource sort.
+# The records kept beside an intent: a report from its ReportFile value, and the amendments of a repair.
 class WorkLoggedRecordsTest < Plastic::TestCase
   include ConfigHomes
 
@@ -27,6 +27,13 @@ class WorkLoggedRecordsTest < Plastic::TestCase
     assert_equal [["1", REPORT, ""]], reported
   end
   Amendment = Struct.new(:text) { def write(log) = log.line("1", "amended", text, path: "a.md") }
+  Dated = Struct.new(:text) { def write(log) = log.line("1", "amended", text, at: "2026-09-01T00:00:00Z") }
+
+  def test_an_amendment_with_its_own_time_keeps_it
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work.amend_intents([Dated.new("old entry")])
+
+    assert_equal ["2026-09-01T00:00:00Z"], store_database.rows("SELECT at FROM work_log WHERE kind = 'amended'").map { |row| row.fetch("at") }
+  end
 
   def test_amendments_write_their_lines_in_one_go
     Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work.amend_intents([Amendment.new("one"), Amendment.new("two")])

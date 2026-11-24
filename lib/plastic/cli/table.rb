@@ -13,7 +13,7 @@ module Plastic
     FAMILIES = {
       "core" => {
         "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
-        "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair"],
+        "doctor" => ["Commands::Doctor", "Check the installation, the databases, the hooks of this harness and the folder layout of each store, rebuild a search index that is out of step, and name each repair"],
         "init" => ["Commands::Init", "Find the installed harnesses and install Plastic into the ones the person picks"],
         "install" => ["Commands::Install", "Install the core files and make the global store"],
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
@@ -48,6 +48,7 @@ module Plastic
         "intent link" => ["Commands::Intent::Link", "Write a typed link from an intent to a ref"],
         "intent unlink" => ["Commands::Intent::Unlink", "Remove a link"],
         "intent archive" => ["Commands::Intent::Archive", "Archive an intent directory"],
+        "intent repair" => ["Commands::Intent::Repair", "Apply the folder layout to one intent folder, or to every one with --all"],
         "intent unarchive" => ["Commands::Intent::Unarchive", "Restore an archived intent's directory exactly as it was archived"]
       },
       "project" => {
@@ -75,9 +76,6 @@ module Plastic
         "store migration purge" => ["Commands::Store::Migration::Purge", "Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it"],
         "store sync up" => ["Commands::Store::Sync::Up", "Read the files changed by hand into rows"],
         "store sync down" => ["Commands::Store::Sync::Down", "Write the rows that changed into files"]
-      },
-      "resources" => {
-        "resources sort" => ["Commands::Resources::Sort", "Move one store's files into the resources layout and rewrite their links"]
       },
       "document" => {
         "document get" => ["Commands::Document::Get", "Fetch the current text of one document; an older pinned reference is named as changed"],
