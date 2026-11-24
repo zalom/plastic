@@ -9,8 +9,10 @@ require_relative "../schema/state"
 require_relative "kept_files_cleanup"
 require_relative "legacy_keep"
 require_relative "legacy_pages"
+require_relative "legacy_table"
 require_relative "legacy_trim"
 require_relative "migration_reason"
+require_relative "mistaken_rows"
 require_relative "records_newer"
 require_relative "report_rows"
 require_relative "roadmap_needs"
@@ -31,7 +33,7 @@ module Plastic
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup, "20261119180000" => ReportRows, "20261119190000" => LegacyTrim,
                      "20261120090000" => LegacyPages, "20261121090000" => UtcTimes,
-                     "20261123120000" => RoadmapNeeds }.freeze
+                     "20261123120000" => RoadmapNeeds, "20261124150000" => MistakenRows }.freeze
 
       # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
       # their switch, which the run applies.
@@ -94,10 +96,9 @@ module Plastic
 
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
-        data = DATA_STEPS.select { |version, _step| pending?(version) }
         attach = attachments
         migrating = Database::ConnectionPool.for(knowledge_file, attach:)
-        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
+        migrate_and_rewrite(migrating, attach)
         settle_legacy(attach.key?(:legacy) && kept_nothing?(migrating))
       rescue SQLite3::Exception, Database::Error, SystemCallError
         release
@@ -105,7 +106,18 @@ module Plastic
         raise
       end
 
+      def migrate_and_rewrite(migrating, attach)
+        data = DATA_STEPS.select { |version, _step| pending?(version) }
+        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
+        rewrite_legacy(migrating, data, attach)
+      end
+
       def legacy_file = File.join(root, LegacyKeep::FILE)
+
+      # Writes legacy.db anew once a mistaken copy is deleted, since a deleted row stays in its freed page until then.
+      def rewrite_legacy(migrating, data, attach)
+        migrating.execute("VACUUM #{LegacyTable::SCHEMA}") if attach.key?(:legacy) && data.keys.intersect?(MistakenRows::VERSIONS)
+      end
 
       def kept_nothing?(migrating) = migrating.get_first_value("SELECT count(*) FROM legacy.sqlite_master").zero?
 

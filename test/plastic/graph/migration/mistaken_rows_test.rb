@@ -23,7 +23,7 @@ class GraphMistakenRowsTest < Plastic::TestCase
   def kept_sql(with_owner)
     rows = Array.new(40) { |index| "INSERT INTO #{MISTAKEN} VALUES ('sha#{index}', 'a long earlier text of a spec, #{"x" * 400}');" }.join("\n")
     owner = with_owner ? "CREATE TABLE #{OWNER}(old TEXT); INSERT INTO #{OWNER} VALUES ('2026-11-01T10:00:00+01:00');" : ""
-    "CREATE TABLE #{MISTAKEN}(sha256 TEXT, body TEXT);\n#{rows}\n#{owner}"
+    "PRAGMA auto_vacuum = INCREMENTAL;\nCREATE TABLE #{MISTAKEN}(sha256 TEXT, body TEXT);\n#{rows}\n#{owner}"
   end
 
   def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
