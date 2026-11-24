@@ -34,14 +34,14 @@ module Plastic
 
       FileUtils.mkdir_p(File.dirname(@path))
       File.open(@path, File::RDWR | File::CREAT) do |file|
-        take(file)
+        wait_for(file)
         holding(&)
       end
     end
 
     private
 
-    def take(file)
+    def wait_for(file)
       tries = (@wait / PAUSE).round
       until file.flock(File::LOCK_EX | File::LOCK_NB)
         raise Busy, format(LINE, @path, @wait) if tries.zero?
