@@ -344,44 +344,19 @@ class PreviousStoreLegacyKeepTest < Plastic::TestCase
 
   def legacy(home, sql) = read_file(legacy_file(home), sql)
 
-  def test_a_store_of_the_previous_release_keeps_every_row_of_document_revisions_in_legacy_db_in_its_old_shape
+  def test_a_store_of_the_previous_release_deletes_every_row_of_document_revisions_and_makes_no_legacy_db
     home = previous_home
-    before = knowledge(home, "SELECT * FROM document_revisions")
-    shape = knowledge(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions')")
     migrate(home)
 
-    assert_equal [before, shape], [legacy(home, "SELECT * FROM document_revisions_#{DROP}"), legacy(home, "SELECT name, type, \"notnull\", pk FROM pragma_table_info('document_revisions_#{DROP}')")]
+    assert_equal [[], false], [knowledge(home, "SELECT name FROM sqlite_master WHERE name = 'document_revisions'"), File.exist?(legacy_file(home))]
   end
 
-  def test_a_store_of_the_previous_release_keeps_no_sqlar_row_in_legacy_db
+  def test_a_store_of_the_previous_release_keeps_no_sqlar_row_and_prints_the_file_back
     home = previous_home
     keep(home, "originals/roadmaps/plan.md", "old roadmap")
     migrate(home)
 
-    assert_equal [[["document_revisions_#{DROP}"]], "old roadmap"],
-      [legacy(home, "SELECT name FROM sqlite_master WHERE type = \x27table\x27"), File.read(File.join(store_root(home), "originals/roadmaps/plan.md"))]
-  end
-
-  def revise(home, *row)
-    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |database| database.execute("INSERT INTO document_revisions VALUES (?, ?, ?, ?, ?, ?)", row) }
-  end
-
-  def head(home, path, sha)
-    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) do |database|
-      database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES (\x271\x27, ?, \x27text\x27, \x27now\x27, \x27origin\x27)", [path])
-      database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (\x271\x27, ?, ?, \x27now\x27, \x27origin\x27)", [path, sha])
-    end
-  end
-
-  def test_a_store_of_the_previous_release_keeps_only_the_earlier_revision_texts_of_the_paths_the_sync_reads
-    home = previous_home
-    revise(home, "cur", "1", "intent.md", "text", "now", "origin")
-    revise(home, "tmp", "1", "resources/tmp/x.md", "scratch", "now", "origin")
-    revise(home, "road", "", "roadmaps/plan.md", "plan", "now", "origin")
-    head(home, "intent.md", "cur")
-    migrate(home)
-
-    assert_equal [["road"], ["sha"]], legacy(home, "SELECT sha256 FROM document_revisions_#{DROP} ORDER BY sha256")
+    assert_equal [false, "old roadmap"], [File.exist?(legacy_file(home)), File.read(File.join(store_root(home), "originals/roadmaps/plan.md"))]
   end
 
   def test_a_store_whose_cleanup_is_refused_makes_no_legacy_db
@@ -482,13 +457,13 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
   def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call
 
   def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
-    home = previous_home
+    home = previous_home_with_times
     Pool.created.clear
     migrate(home)
     Pool.release(home)
     Pool.remove_created(alpha_file(home, ""))
 
-    assert_equal [false, ["document_revisions_#{DROP}"]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
+    assert_equal [false, [OWNER_KEPT]], [Pool.created.include?(File.expand_path(alpha_file(home, "legacy.db"))), legacy_tables(home)]
   end
 end
 
@@ -505,7 +480,7 @@ class StoreMigrationLegacyRollbackTest < Plastic::TestCase
 
   # A store whose legacy.db holds the rows of a first run, put back before the drop with new rows, and a cleanup that fails.
   def failing_second_run
-    home = migrated_previous_home
+    home = previous_home_with_times.tap { |first| migrate_store(first) }
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute_batch(LATER) }
     [home, migrate_store(home)]
   end
@@ -513,8 +488,8 @@ class StoreMigrationLegacyRollbackTest < Plastic::TestCase
   def test_a_failed_run_into_a_legacy_db_that_holds_rows_leaves_only_the_old_rows_and_the_store_behind
     home, report = failing_second_run
 
-    assert_equal ["it could not be migrated (refused)", [["sha"]], [["sha2"]], false],
-      [report.failed.fetch("alpha"), alpha_rows(home, "legacy.db", "SELECT sha256 FROM document_revisions_#{DROP}"),
+    assert_equal ["it could not be migrated (refused)", [OWNER_KEPT], [["sha2"]], false],
+      [report.failed.fetch("alpha"), legacy_tables(home),
         alpha_rows(home, "knowledge_graph.db", "SELECT sha256 FROM document_revisions"), recorded(home).include?(DROP)]
   end
 end
@@ -533,11 +508,11 @@ class StoreMigrationSwitchTest < Plastic::TestCase
     assert_equal [["alpha"], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
   end
 
-  def test_once_the_switch_is_on_the_store_runs_the_drop_and_keeps_the_table_in_legacy_db
+  def test_once_the_switch_is_on_the_store_runs_the_drop_and_deletes_the_table_with_no_copy
     home = previous_home
     report = migrate(home, Plastic::Graph::MigrationList::HELD.keys)
 
-    assert_equal [["alpha"], true, [], ["document_revisions_#{DROP}"]], [report.migrated, recorded(home).include?(DROP), revisions_table(home), legacy_tables(home)]
+    assert_equal [["alpha"], true, [], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
   end
 end
 
@@ -629,10 +604,10 @@ class ReportRowsMigrationTest < Plastic::TestCase
     assert File.file?(File.join(alpha_file(@home, ""), DIR, LOOSE))
   end
 
-  def test_the_report_migration_is_recorded_and_keeps_nothing_in_legacy_db
+  def test_the_report_migration_is_recorded_and_makes_no_legacy_db
     @home = synced_home
     migrate(@home)
 
-    assert_equal [true, ["document_revisions_#{DROP}"]], [recorded(@home).include?(REPORTS), legacy_tables(@home)]
+    assert_equal [true, false], [recorded(@home).include?(REPORTS), File.exist?(alpha_file(@home, "legacy.db"))]
   end
 end

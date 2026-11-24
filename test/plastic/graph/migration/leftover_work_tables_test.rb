@@ -61,7 +61,8 @@ class GraphLeftoverWorkTablesTest < Plastic::TestCase
     end
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  # The mistaken rows cleanup is the newest and removes its version alone, so its down comes first.
+  def down(home) = 2.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
 
   def test_a_new_store_has_none_of_the_ten_tables_in_the_work_database
     home = fresh_home

@@ -16,8 +16,19 @@ class GraphLegacyPagesTest < Plastic::TestCase
 
   def contents(home) = legacy_tables(home).to_h { |table| [table, alpha_rows(home, "legacy.db", "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
 
-  # A store that ran the drop and the trim as release 3.0.0-beta.5 shipped them, which left the freed pages in legacy.db.
-  def trimmed_home = previous_home.tap { |home| migrate(home, [DROP, TRIM]) }
+  JUNK = <<~SQL
+    CREATE TABLE junk(text TEXT);
+    WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60) INSERT INTO junk SELECT printf('%0400d', i) FROM n;
+    DROP TABLE junk;
+  SQL
+
+  # A store that ran the drop and the trim as release 3.0.0-beta.5 shipped them, which left the freed pages in legacy.db: the owner's time rows stay in it, and a table that was dropped leaves free pages.
+  def trimmed_home
+    previous_home_with_times.tap do |home|
+      migrate(home, [DROP, TRIM])
+      SQLite3::Database.open(alpha_file(home, "legacy.db")) { |database| database.execute_batch(JUNK) }
+    end
+  end
 
   def test_the_trim_of_release_beta_5_left_free_pages_in_legacy_db
     assert_operator pages(trimmed_home).last, :>, 0
@@ -34,7 +45,7 @@ class GraphLegacyPagesTest < Plastic::TestCase
 
   def test_a_store_that_ran_the_trim_before_ends_the_same_as_one_that_runs_all_three_together
     apart = trimmed_home.tap { |home| migrate(home, ALL) }
-    together = previous_home.tap { |home| migrate(home, ALL) }
+    together = previous_home_with_times.tap { |home| migrate(home, ALL) }
 
     assert_equal [pages(apart), contents(apart)], [pages(together), contents(together)]
   end
