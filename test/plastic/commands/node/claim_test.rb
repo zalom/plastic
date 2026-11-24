@@ -251,8 +251,9 @@ end
 class NodeClaimStartTest < Plastic::TestCase
   def claim = plastic("node", "claim", "1", "n1", "--agent", "tester", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
+  # The spec is read while the intent is open, then the status is set, as a closed intent holds its spec in rows.
   def intent_with_node(status)
-    open_keyed_intent(status:)
+    open_keyed_intent
     store_graphs.databases.fetch(:store).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:)
     end
