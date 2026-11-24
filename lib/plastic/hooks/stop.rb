@@ -41,7 +41,7 @@ module Plastic
       def record_turn
         work = graphs.work
         work.stamp_turn(session_id, directory:)
-        work.renew_claims(session_id)
+        work.renew_claims(session_id, agent: environment.agent)
       end
 
       def record_reply(event)

@@ -33,4 +33,22 @@ class WorkflowRenewNodeTest < Plastic::TestCase
 
     assert_equal "node n1 is held by session s-2", refusal.message
   end
+
+  OLD = "2026-01-01T00:00:00Z"
+
+  def two_claims_seen_long_ago
+    work = store_graphs.work
+    work.add_node(intent_id: "1", title: "Test", criterion: "it runs")
+    %w[n1 n2].each { |id| work.claim_node(intent_id: "1", id:, by: "s-1") }
+    store_graphs.databases.fetch(:store).transaction { |batch| batch.add("UPDATE nodes SET seen_at = :old", old: OLD) }
+  end
+
+  def seen_at(id) = retrieval.node("1", id).seen_at
+
+  def test_a_renewal_renews_only_the_node_it_names
+    two_claims_seen_long_ago
+    renew
+
+    assert_equal [true, OLD], [seen_at("n1") > OLD, seen_at("n2")]
+  end
 end

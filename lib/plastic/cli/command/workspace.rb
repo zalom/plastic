@@ -26,14 +26,14 @@ module Plastic
 
         def settings = Wiring.settings(scope.plastic_home, clock: @environment.clock)
 
-        # Renews the claims of this session after the call, in the store the call reached and
-        # only when its work database exists: a renewal never makes one.
+        # Renews the claims of the agent that made the call, in its session, after the call, in the store the call reached
+        # and only when its work database exists: a renewal never makes one.
         def renew_claims
           session = @environment.session
           return unless session && @scope
 
           opened = graphs
-          opened.work.renew_claims(session) if File.exist?(opened.databases.fetch(:store).path)
+          opened.work.renew_claims(session, agent: @environment.agent) if File.exist?(opened.databases.fetch(:store).path)
         rescue SQLite3::Exception, Graph::MissingStore, Graph::OutOfStep
           nil
         end

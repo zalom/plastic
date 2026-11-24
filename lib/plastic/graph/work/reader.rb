@@ -27,7 +27,7 @@ module Plastic
 
         # The driver claims taken by plastic intent auto, of intents still in progress, with the title of each.
         AGENT_DRIVERS_SQL = <<~SQL
-          SELECT drivers.intent_id, intents.title, drivers.session_id, drivers.claimed_at, drivers.seen_at
+          SELECT drivers.intent_id, intents.title, drivers.session_id, drivers.claimed_at, drivers.seen_at, drivers.agent
           FROM drivers JOIN intents ON intents.intent_id = drivers.intent_id AND intents.origin_id = drivers.origin_id
           WHERE drivers.origin_id = :origin AND drivers.mode = 'auto' AND intents.status = 'in_progress'
           ORDER BY CAST(drivers.intent_id AS INTEGER), drivers.intent_id

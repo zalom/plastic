@@ -271,6 +271,13 @@ it has no switch, and a driver row it finds keeps no mode until its session driv
 `ALONE`, and its down, `DriverModeColumn` in `REBUILDS`, drops the column again; the backup that the
 down takes first holds any mode a driver row had.
 
+Migration `20261124200000` adds the nullable column `agent` to `drivers` in `work_graph.db`: the
+name `PLASTIC_AGENT` gave when `plastic intent start` or `plastic intent auto` took the driver claim,
+or none when the session's own agent took it. In agent delivery only that agent renews the claim. It
+writes no value, so it has no switch, and a driver row it finds keeps no agent, which the session's
+own agent renews. It is in `ALONE`, and its down, `DriverAgentColumn` in `REBUILDS`, drops the column
+again; the backup that the down takes first holds any agent a driver row had.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
