@@ -16,13 +16,9 @@ module InstallerRelease
   # bundle program and the gems come from the Ruby the release runs on.
   class Bundle
     RUN = ->(env, command) { system(env, *command, exception: true) }
-    SAY = ->(text) { warn(text) }
-    LEFT_OUT = "plastic console needs a C compiler (Xcode command line tools with the licence accepted, or build-essential). " \
-      "The install left it out; every other command works. Install a compiler and run the installer again to add it."
 
-    def initialize(run: RUN, say: SAY)
+    def initialize(run: RUN)
       @runner = run
-      @say = say
     end
 
     def call(release_path, ruby)
@@ -41,15 +37,10 @@ module InstallerRelease
 
     private
 
-    attr_reader :runner, :say
+    attr_reader :runner
 
-    # The console group needs a compiler on some machines. When the install fails, it runs once more without that group.
     def install(env, ruby)
-      command = [ruby.bundle, "install", "--standalone", "--quiet"]
-      runner.call(env, command)
-    rescue RuntimeError
-      runner.call(env.merge("BUNDLE_WITHOUT" => "console"), command)
-      say.call(LEFT_OUT)
+      runner.call(env, [ruby.bundle, "install", "--standalone", "--quiet"])
     end
   end
 end

@@ -74,29 +74,40 @@ class RuntimeBundleTest < Minitest::Test
     end
   end
 
-  def test_the_runtime_gemfile_names_irb_in_the_console_group
+  def test_the_runtime_gemfile_names_no_irb_and_no_console_group
     gemfile = File.read(File.join(REPO, "runtime", "Gemfile"))
 
-    assert_match(/^group :console do\n  gem "irb", "~> 1\.19"\nend$/, gemfile)
+    refute_match(/irb|console/, gemfile)
   end
 
-  def test_the_development_gemfile_names_irb
+  def test_the_runtime_lock_carries_no_irb_and_no_gem_only_irb_needs
+    lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    names = %w[irb reline io-console rdoc prism rbs erb pp prettyprint logger tsort]
+
+    assert_empty(names.select { |name| lock.match?(/^\s+#{Regexp.escape(name)} \(/) })
+  end
+
+  def test_the_runtime_lock_keeps_the_prebuilt_sqlite3_of_its_four_platforms
+    lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    platforms = %w[aarch64-linux-gnu arm64-darwin x86_64-darwin x86_64-linux-gnu]
+
+    assert_equal platforms, lock.scan(/^    sqlite3 \(2\.9\.6-([^)]+)\)/).flatten
+  end
+
+  def test_console_eval_loads_no_irb
+    Dir.mktmpdir("plastic-eval") do |home|
+      env = { "HOME" => home, "PLASTIC_HOME" => File.join(home, ".plastic") }
+      exe = File.join(REPO, "exe", "plastic")
+      ChildProcess.capture3(env, RbConfig.ruby, "--disable-gems", exe, "install")
+      code = 'at_exit { $stderr.print [defined?(IRB).inspect, $LOADED_FEATURES.grep(%r{/irb(\.rb|/)}).size].join(" ") }; ' \
+             "ARGV.replace(%w[console --eval 1+1]); load #{exe.inspect}"
+      out, err, status = ChildProcess.capture3(env, RbConfig.ruby, "--disable-gems", "-e", code)
+
+      assert_equal [0, "2\n", "nil 0"], [status.exitstatus, out, err]
+    end
+  end
+
+  def test_the_development_gemfile_keeps_irb_for_the_tests
     assert_match(/^gem "irb", "~> 1\.19"$/, File.read(File.join(REPO, "Gemfile")))
-  end
-
-  def test_the_runtime_lock_pins_the_development_irb
-    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
-    development = File.read(File.join(REPO, "Gemfile.lock"))
-    version = development[/^    irb \(([^)]+)\)/, 1]
-
-    assert_includes runtime, "    irb (#{version})"
-  end
-
-  def test_the_standalone_bundle_loads_irb_without_rubygems
-    skip "no standalone bundle is built in this checkout" unless File.file?(File.join(REPO, "runtime", "bundle", "bundler", "setup.rb"))
-
-    out, err, status = ChildProcess.capture3({}, RbConfig.ruby, "--disable-gems", "-r", File.join(REPO, "runtime", "bundle", "bundler", "setup.rb"), "-e", "require 'irb'; print IRB::VERSION")
-
-    assert_equal [0, "", true], [status.exitstatus, err, out.match?(/\A1\.\d+/)]
   end
 end

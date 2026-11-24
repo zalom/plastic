@@ -18,7 +18,8 @@ module Plastic
 
       option :eval, switch: "-e, --eval CODE", text: "run this Ruby once, print its value and exit"
       long_description "Opens work, knowledge, retrieval and plastic read-only: the three files of the store and plastic.db.",
-        "The console is no sandbox: Ruby can still write files."
+        "The console is no sandbox: Ruby can still write files.",
+        "IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`."
 
       def call
         raise Usage, "--json needs --eval" if json? && !code

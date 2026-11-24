@@ -10,6 +10,8 @@ Opens work, knowledge, retrieval and plastic read-only: the three files of the s
 
 The console is no sandbox: Ruby can still write files.
 
+IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`.
+
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `-e, --eval CODE` | run this Ruby once, print its value and exit |  |
