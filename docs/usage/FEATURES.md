@@ -325,11 +325,13 @@ entry of an old `revisions.md` into an `amended` line with the date of the entry
 file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
 and `.tmp/`, and names each entry that holds data and leaves it.
 
-A done or abandoned intent changes in its structure only, never in its work. Its folder gets one
+A done or abandoned intent keeps its work. The repair changes its structure, and inside its files
+it changes only a relative link that points at a file the repair moved. Its folder gets one
 `amended` line on the intent's work log that lists every rename, move and removal, each kind with
 its reason. The files of an old `actions/` folder move as one change, and an empty `.gitkeep`
-placeholder is removed, not moved. Each link the repair rewrites gets an `amended` line of its own,
-whose row keeps the exact old and new link in the fields `old_text` and `new_text`. An intent that
+placeholder is removed, not moved. A link the repair rewrites, in a done intent as in an open one,
+is an amendment of its own: it gets an `amended` line whose row keeps the exact old and new link in
+the fields `old_text` and `new_text`. An intent that
 a driver claim or a live node claim holds is refused with exit 3, and `--all` repairs the other
 intents first. Both the run and `--dry-run` print one line for each intent folder, the links that
 change, the other `amended` lines and the totals: the intent folders and their changes by kind,
