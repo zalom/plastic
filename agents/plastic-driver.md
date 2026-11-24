@@ -26,8 +26,12 @@ intent's graph loop. Plastic holds the graph and starts nothing; you start the w
    the node and finishes it itself with `plastic node done ID NODE TEXT --output PATH`, where PATH is a JSON file (Plastic refuses output that is not JSON), so the nodes that need this one read its output
    in their own packet. When it cannot finish it uses `plastic node fail` with the reason, and writes nothing else.
 5. While workers run, each renews its own claim with `plastic node renew ID NODE`, for example every
-   five minutes. The driver waits for the harness's notice that a worker ended, then runs
-   `plastic graph ready ID --json` again and goes to step 2. It does not poll in a loop.
+   five minutes. When the harness says a worker ended, the driver runs `plastic graph ready ID --json`
+   again and goes to step 2.
+6. While workers run, the driver also runs `plastic graph lapsed` on a timer, for example every five
+   minutes. A worker that stopped renewing has a lapsed claim, and the command lists it. When it lists
+   one, the driver runs its `next:` command for a lapsed driver claim, or starts a new worker for the node it names,
+   with the agent name the `next:` line gives, for a lapsed node claim. The new worker's claim takes the lapsed one.
 
 ## Check on an overdue node
 
@@ -64,6 +68,10 @@ read the graph again.
 
 ## Rules
 
+- A helper never ends its turn to wait on a background job or a monitor notice: the notice may never
+  reach it, and its claim lapses while it waits. It runs each check in the foreground and reads the result itself.
+  When one run would pass the time limit of the tool, it splits a long suite into its layers, such as the
+  unit layer, the end-to-end layer and the gate. This holds for you and for each worker you start.
 - One driver for each intent. Two drivers on one intent claim nodes against each other. Give your
   session its own `PLASTIC_SESSION` when you run next to another one.
 - Exit code 3 means Plastic refused the call. Stop that node, report what was refused, and do not

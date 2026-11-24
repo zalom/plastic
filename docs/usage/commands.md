@@ -7,6 +7,7 @@ This page lists the commands by task. [The command reference](../reference/comma
 plastic status                        # Active work in every store
 plastic graph resume                  # Where this project's work stopped and what runs next
 plastic graph resume --stores blog,shop  # The same, for several named projects
+plastic graph lapsed                  # The agent deliveries whose claims lapsed, and the restart command
 plastic next                          # The next action in one line
 ```
 

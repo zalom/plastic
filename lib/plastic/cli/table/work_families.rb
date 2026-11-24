@@ -23,6 +23,7 @@ module Plastic
       },
       "graph" => {
         "graph check" => ["Commands::Graph::Check", "Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node"],
+        "graph lapsed" => ["Commands::Graph::Lapsed", "List the agent deliveries whose claims lapsed and the command that restarts each"],
         "graph ready" => ["Commands::Graph::Ready", "List the nodes ready to claim"],
         "graph resume" => ["Commands::Graph::Resume", "Say where each named store's work stopped and what runs next"],
         "graph show" => ["Commands::Graph::Show", "Print every node, with the node it was found in, and every need of an intent"]

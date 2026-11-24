@@ -264,6 +264,13 @@ adds the column back, fills it from position 1 and drops the table; a node with 
 keeps only the first, and the backup that the down takes first holds the rest. A graph file that an
 earlier release printed with `input` on a node still reads: the sync reads it as a row at position 1.
 
+Migration `20261124173000` adds the nullable column `mode` to `drivers` in `work_graph.db`: `guided`
+when `plastic intent start` took the driver claim, `auto` when `plastic intent auto` took it.
+`plastic graph lapsed` reads it to list only the intents in agent delivery. It writes no value, so
+it has no switch, and a driver row it finds keeps no mode until its session drives again. It is in
+`ALONE`, and its down, `DriverModeColumn` in `REBUILDS`, drops the column again; the backup that the
+down takes first holds any mode a driver row had.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
