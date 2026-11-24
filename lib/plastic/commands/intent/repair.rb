@@ -24,6 +24,8 @@ module Plastic
 
         backs_up_first
 
+        holds_store_lock
+
         workflow :code_preview_repair_intent do
           on :done, next: :noop
           on :continue, next: :code_repair_intent

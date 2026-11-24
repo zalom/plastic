@@ -164,6 +164,13 @@ sync.types` command to include it. `plastic init` offers images and videos picke
 packets, plans and notes go to `resources/tmp`, and copies of outside material go to
 `resources/references`.
 
+Several sessions on one store can make `plastic store sync up` report a false conflict: a command
+of another session has written its rows and not yet printed its files. Turn on `sync.lock` with
+`plastic config set sync.lock true`, and every call that prints files, both syncs and
+`plastic intent repair` take turns on one lock of the store. A call waits up to the seconds of
+`sync.lock_wait`, 60 by default, then stops with exit 1 and names the lock file. The switch is off by
+default.
+
 With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
 Plastic command or hook of the day copies the databases of every store as the start-of-day backup,
 and each session end after it replaces the day's end-of-day backup. A store always keeps its

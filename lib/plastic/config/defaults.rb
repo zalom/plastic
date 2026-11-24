@@ -16,7 +16,7 @@ module Plastic
         "review" => { "pull_request" => "off" },
         "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false, "drop_document_revisions" => false },
-        "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [] },
+        "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [], "lock" => false, "lock_wait" => 60 },
         "reports" => { "mandatory" => [] },
         "advisor" => { "enabled" => true },
         "backup" => { "daily" => false },
