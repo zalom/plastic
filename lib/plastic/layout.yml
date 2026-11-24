@@ -216,6 +216,12 @@ store_root:
     - name: AGENTS.md
       repair: keep
       why: A copy of the AGENTS.md of the project, which an older release kept in the store; the repository holds the file, and nothing reads this copy.
+    - name: config.yml
+      repair: remove
+      why: The settings of a project, from an older template. An older Plastic release wrote it, and no current code reads it.
+    - name: resources/
+      repair: remove
+      why: The resources folder of the retired project links script. An older Plastic release wrote it, and no current code reads it.
 
 store_folder:
   purpose: What the folder store/ of a store folder may hold beside its intent folders. `plastic intent repair --all` removes each leftover.

@@ -93,6 +93,17 @@ class DoctorFolderLayoutTest < Plastic::TestCase
     assert_equal [["layout global:", "ok, every intent folder follows the layout", nil]], checks.map(&:to_a)
   end
 
+  # An older release wrote a config.yml and a resources/ folder at the store root; the doctor no longer flags them.
+  def test_the_config_file_and_the_resources_folder_of_an_older_release_are_legacy_with_the_repair_remove
+    put("spec.md" => "# Spec\n")
+    root("config.yml" => "project: global\n", "REVIEWS.md" => "# Reviews\n")
+    FileUtils.mkdir_p(File.join(folder.root, "resources"))
+    legacy = Plastic::Layout.store_root_legacy.to_h { |entry| [entry.name, entry.repair] }
+
+    assert_equal [["layout global REVIEWS.md:", "the layout does not name it", "move REVIEWS.md out of the store by hand, then run plastic doctor again"]], checks.map(&:to_a)
+    assert_equal %w[remove remove], legacy.values_at("config.yml", "resources/")
+  end
+
   # A store whose database the pool never opened, so the damaged file is what the check reads.
   def test_a_store_database_that_cannot_be_read_leaves_the_reports_folder_unjudged
     beta = Plastic::Graph::Knowledge::StoreFolder.new(File.join(@plastic_home, "stores", "beta"))
