@@ -6,12 +6,15 @@ module Plastic
   module Graph
     module Knowledge
       # The reports of a store that a sync reads: each one `plastic intent report` recorded for its intent, as a
-      # `reported` line of the work log, and each one the setting reports.mandatory names, in every intent. A
-      # mandatory name is a path inside resources/output/reports/; a recorded path is a path inside the intent
-      # folder. The recorded reports load on the first question, from the store bound with `recorded_from`.
+      # `reported` line of the work log that no `removed` line of `plastic intent unreport` follows, and each one the
+      # setting reports.mandatory names, in every intent. A mandatory name is a path inside resources/output/reports/; a
+      # recorded path is a path inside the intent folder. The recorded reports load on the first question, from the
+      # store bound with `recorded_from`.
       class Reports
         FOLDER = Layout.resource(:reports)
-        RECORDED = "SELECT intent_id, path FROM work_log WHERE kind = 'reported'"
+        # A `reported` line counts until a `removed` line of the same intent and path follows it.
+        RECORDED = "SELECT intent_id, path FROM work_log r WHERE kind = 'reported' AND NOT EXISTS (SELECT 1 FROM work_log u " \
+                   "WHERE u.kind = 'removed' AND u.intent_id = r.intent_id AND u.path = r.path AND u.position > r.position)"
         NOTHING = -> { [] }
         PARTS = ["", ".", ".."].freeze
 

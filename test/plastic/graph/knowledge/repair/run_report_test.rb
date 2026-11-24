@@ -17,9 +17,9 @@ class RepairRunReportTest < Plastic::TestCase
 
   def repair(**options) = Plastic::Graph::Knowledge::Repair::Run.new(folder, store_graphs, **options).call
 
-  def record(path, intent_id: "1")
+  def record(path, intent_id: "1", kind: "reported", position: 1)
     store_database.transaction do |batch|
-      batch.put(:work_log, { intent_id:, position: 1, at: STAMP, phase: "", node: "", session_id: "s", kind: "reported", path:, sha256: "", text: "the page" })
+      batch.put(:work_log, { intent_id:, position:, at: STAMP, phase: "", node: "", session_id: "s", kind:, path:, sha256: "", text: "the page" })
     end
   end
 
@@ -45,6 +45,14 @@ class RepairRunReportTest < Plastic::TestCase
     repair(reports: Plastic::Graph::Knowledge::Reports.new(mandatory: %w[page.html]))
 
     assert_equal [true, PAGE], [at("#{FOLDER}/page.svg"), read("#{FOLDER}/page.html")]
+  end
+
+  def test_the_files_of_a_removed_report_move_as_those_of_an_unasked_one
+    record("#{FOLDER}/page.html")
+    record("#{FOLDER}/page.html", kind: "removed", position: 2)
+    repair
+
+    assert_equal [false, true], [at("#{FOLDER}/page.svg"), at("resources/tmp/page.svg")]
   end
 
   def test_the_files_of_an_unasked_report_move_with_it
