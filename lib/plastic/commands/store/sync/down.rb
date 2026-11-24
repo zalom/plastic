@@ -15,6 +15,8 @@ module Plastic
 
           backs_up_first
 
+          holds_store_lock
+
           option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
 
           workflow :code_preview_sync_down do

@@ -12,6 +12,7 @@ require_relative "routine/traversal"
 require_relative "routine/preview"
 require_relative "routine/backup_first"
 require_relative "routine/printing"
+require_relative "routine/store_locking"
 require_relative "routine/given_facts"
 require_relative "routine/graph_report"
 require_relative "workflow"
@@ -35,10 +36,12 @@ module Plastic
     extend Preview::Declaration
     extend BackupFirst::Declaration
     extend Printing::Facts
+    extend StoreLocking::Declaration
     extend GivenFacts
     include Preview
     include BackupFirst
     include Printing
+    include StoreLocking
     include GraphReport
 
     KEPT_RUN_WORDS = "The run of the call is kept for a resume"
@@ -82,8 +85,10 @@ module Plastic
     def finish(command_run)
       ctx = context(command_run)
       report(ctx) do
-        refuse_hand_edits(ctx)
-        walk(command_run, ctx)
+        under_store_lock do
+          refuse_hand_edits(ctx)
+          walk(command_run, ctx)
+        end
       end
     end
 
