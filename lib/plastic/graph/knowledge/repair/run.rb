@@ -3,7 +3,7 @@
 require "fileutils"
 require_relative "plan"
 require_relative "../reports"
-require_relative "../resources/row_moves"
+require_relative "../../knowledge/resources/row_moves"
 
 module Plastic
   module Graph

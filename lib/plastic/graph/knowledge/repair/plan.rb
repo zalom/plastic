@@ -3,7 +3,7 @@
 require_relative "change"
 require_relative "removal"
 require_relative "revisions"
-require_relative "../resources/sort_plan"
+require_relative "../../knowledge/resources/sort_plan"
 require_relative "../../../errors"
 
 module Plastic

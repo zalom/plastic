@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../resources/move"
+require_relative "../../knowledge/resources/move"
 
 module Plastic
   module Graph
