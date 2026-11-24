@@ -55,30 +55,69 @@ class SearchCheckTest < Minitest::Test
 
   def checksums = Dir.glob(File.join(@store, "*"), File::FNM_DOTMATCH).select { File.file?(_1) }.sort.to_h { [File.basename(_1), Digest::SHA256.file(_1).hexdigest] }
 
+  def three_questions = write_questions([question("q1", "how long does the lease last", ["10"]), question("q2", "chained status bar", ["20"]), question("q3", "unrelated zebra", ["30"])])
+
   def test_prints_one_line_for_each_question_and_a_total
-    write_questions([question("q1", "how long does the lease last", ["10"]), question("q2", "chained status bar", ["20"]), question("q3", "unrelated zebra", ["30"])])
-    code, out, err = run_cli(@questions)
-    assert_equal [0, ""], [code, err]
+    three_questions
+    _code, out, = run_cli(@questions)
+
     assert_equal 4, out.lines.size
+    assert_match(%r{total 2/3}, out.lines.last)
+  end
+
+  def test_marks_each_question_a_hit_with_its_rank_or_a_miss
+    three_questions
+    _code, out, = run_cli(@questions)
+
     assert_match(/\Aq1 +hit +rank 1/, out.lines[0])
     assert_match(/\Aq3 +miss/, out.lines[2])
-    assert_match(%r{total 2/3}, out.lines.last)
+  end
+
+  def test_a_run_exits_0_with_nothing_on_standard_error
+    three_questions
+
+    assert_equal [0, ""], run_cli(@questions).then { |code, _out, err| [code, err] }
+  end
+
+  def test_empty_keywords_count_as_a_miss_not_an_error
+    write_questions([question("q1", "lease", ["10"], keywords: "")])
+
+    assert_equal [0, true], run_cli(@questions, "--keywords").then { |code, out, _err| [code, out.include?("miss")] }
+  end
+
+  def test_two_question_files_exit_2_with_the_usage
+    code, _out, err = run_cli(@questions, @questions)
+
+    assert_equal 2, code
+    assert_match(/usage: search-check/, err)
+  end
+
+  def test_a_store_holding_two_origins_exits_2
+    SQLite3::Database.new(File.join(@store, "knowledge_graph.db")) { |db| db.execute("INSERT INTO document_heads VALUES ('10', 'spec.md', 'sha10', 'x', 'o2')") }
+    write_questions([question("q1", "lease", ["10"])])
+    code, _out, err = run_cli(@questions)
+
+    assert_equal 2, code
+    assert_match(/2 origins/, err)
   end
 
   def test_counts_a_hit_when_any_listed_answer_is_in_the_first_five
     write_questions([question("q1", "marketplace skills risk", %w[10 30])])
     _code, out, = run_cli(@questions)
+
     assert_match(/q1 +hit +rank 1/, out)
   end
 
   def test_with_keywords_it_searches_the_keywords_instead_of_the_question
     write_questions([question("q1", "zebra zebra", ["10"], keywords: "lease renewal")])
+
     assert_match(%r{total 0/1}, run_cli(@questions)[1])
     assert_match(%r{total 1/1}, run_cli(@questions, "--keywords")[1])
   end
 
   def test_the_limit_sets_how_many_intents_count
     write_questions([question("q1", "command lease marketplace", ["30"])])
+
     assert_match(/q1 +hit/, run_cli(@questions, "--limit", "3")[1])
     assert_match(/q1 +miss/, run_cli(@questions, "--limit", "1")[1])
   end
@@ -87,11 +126,13 @@ class SearchCheckTest < Minitest::Test
     write_questions([question("q1", "lease", ["10"])])
     before = checksums
     run_cli(@questions)
+
     assert_equal before, checksums
   end
 
   def test_a_missing_question_file_exits_2_with_a_message_and_no_output
     code, out, err = run_cli(File.join(@root, "absent.json"))
+
     assert_equal [2, ""], [code, out]
     assert_match(/absent\.json/, err)
   end
@@ -99,8 +140,9 @@ class SearchCheckTest < Minitest::Test
   def test_a_missing_store_exits_2_and_creates_no_file
     write_questions([question("q1", "lease", ["10"])])
     code, _out, err = run_cli(@questions, "--store", File.join(@root, "nowhere"))
+
     assert_equal 2, code
     assert_match(/nowhere/, err)
-    refute File.exist?(File.join(@root, "nowhere"))
+    refute_path_exists File.join(@root, "nowhere")
   end
 end
