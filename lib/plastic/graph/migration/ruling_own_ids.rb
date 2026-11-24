@@ -13,10 +13,8 @@ module Plastic
       VERSION = "20261124233000"
       RULINGS = "SELECT intent_id, id, text, origin_id FROM main.rulings WHERE substr(text, 1, length(id)) = id"
       RULING = "UPDATE main.rulings SET text = ? WHERE intent_id = ? AND id = ? AND origin_id = ?"
-      LINES = "SELECT intent_id, position, origin_id, text FROM work.work_log WHERE kind = 'ruled'"
+      LINES = "SELECT intent_id, position, origin_id, text FROM work.work_log WHERE kind = 'ruled' AND instr(text, ' ') > 0"
       LINE = "UPDATE work.work_log SET text = ? WHERE intent_id = ? AND position = ? AND origin_id = ?"
-      # A ruled line: the ruling's id, one space, and the ruling's text.
-      RULED = /\A(\S+) (.*)\z/m
 
       # The number of rulings and of work log lines it stripped.
       Result = Data.define(:rulings, :lines) do
@@ -46,8 +44,9 @@ module Plastic
 
       def lines
         rewrite(LINE, @connection.read(LINES)) do |row|
-          id, text = RULED.match(row.fetch("text"))&.captures
-          "#{id} #{own_text(text, id)}" if id
+          # A ruled line holds the ruling's id, one space, and the ruling's text.
+          id, text = row.fetch("text").split(" ", 2)
+          "#{id} #{own_text(text, id)}"
         end
       end
 
@@ -55,7 +54,7 @@ module Plastic
       def rewrite(sql, rows)
         rows.count do |row|
           text = yield(row)
-          next false if text.nil? || text == row.fetch("text")
+          next false if text == row.fetch("text")
 
           @connection.execute(sql, [text, row.fetch("intent_id"), row.fetch("id") { row.fetch("position") }, row.fetch("origin_id")])
         end

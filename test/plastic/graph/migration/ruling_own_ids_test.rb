@@ -17,13 +17,13 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
   LINES = [[1, "ruled", "D1 D1 D1: One lock serializes the calls"], [2, "ruled", "D2 D2: The lock file sits outside"],
     [3, "ruled", "D3 Jev chose it"], [4, "noted", "D1 D1 a note"]].freeze
 
-  def seeded
+  def seeded(rulings: RULINGS, lines: LINES)
     previous_home.tap do |home|
       SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
-        RULINGS.each { |row| database.execute("INSERT INTO rulings (intent_id, id, text, at, origin_id) VALUES (?, ?, ?, 'then', 'o')", row) }
+        rulings.each { |row| database.execute("INSERT INTO rulings (intent_id, id, text, at, origin_id) VALUES (?, ?, ?, 'then', 'o')", row) }
       end
       SQLite3::Database.open(alpha_file(home, "work_graph.db")) do |database|
-        LINES.each { |row| database.execute("INSERT INTO work_log (intent_id, position, at, kind, text, origin_id) VALUES ('1', ?, 'then', ?, ?, 'o')", row) }
+        lines.each { |row| database.execute("INSERT INTO work_log (intent_id, position, at, kind, text, origin_id) VALUES ('1', ?, 'then', ?, ?, 'o')", row) }
       end
     end
   end
@@ -61,6 +61,13 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
     report = migrate_store(seeded)
 
     assert_includes report.notes, "migrate: alpha stripped the leading own id from 4 rulings and 2 work log lines, an agent's mistake with no copy " \
+                                  "and no undo; run plastic store sync down --project alpha so the printed work.log files carry them"
+  end
+
+  def test_the_note_counts_one_ruling_and_one_line_in_the_singular
+    report = migrate_store(seeded(rulings: [["1", "D1", "D1: Go"]], lines: [[1, "ruled", "D1 D1: Go"]]))
+
+    assert_includes report.notes, "migrate: alpha stripped the leading own id from 1 ruling and 1 work log line, an agent's mistake with no copy " \
                                   "and no undo; run plastic store sync down --project alpha so the printed work.log files carry them"
   end
 
