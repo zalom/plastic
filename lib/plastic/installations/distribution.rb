@@ -45,7 +45,7 @@ module Plastic
         FileUtils.chmod(0o755, launchers)
       end
 
-      def files = CoreFiles.new(@package.root).call
+      def files = CoreFiles.new(@package.root, status_line: @package.choices.statusline?).call
 
       def place(path)
         source = File.join(@package.root, path)

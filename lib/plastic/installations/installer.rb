@@ -52,7 +52,7 @@ module Plastic
 
       def newer? = ReleaseFeed.newer?(version, installed_version)
 
-      def core_files = CoreFiles.new(package_root).call
+      def core_files = CoreFiles.new(package_root, status_line: package.choices.statusline?).call
 
       def install_agents(selected:, statusline: nil, already_registered: [])
         kind = installed? ? :update : :install
