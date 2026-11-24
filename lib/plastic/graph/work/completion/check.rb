@@ -31,7 +31,7 @@ module Plastic
 
           def verification_problems = verification.missing_records
 
-          def abandon_problems = [outcome_problem].compact
+          def abandon_problems = [outcome_problem, reason_problem].compact
 
           def verification = @verification ||= Knowledge::Outcome.new(@retrieval, @intent_id, folder: @folder)
 
@@ -46,12 +46,20 @@ module Plastic
             "Give each done criterion in spec.md its own key; #{clashes} names two different criteria." unless clashes.empty?
           end
 
-          def criteria_problem = ("Write the done criteria in spec.md and run plastic store sync up." if criteria.empty?)
+          def criteria_problem = ("Write the done criteria with plastic intent spec #{@intent_id} --from FILE." if criteria.empty?)
 
           def decisions_problem = ("Ask the owner to settle the open decisions and record the updated spec." if spec.open_decisions.any?)
 
           def outcome_problem
-            "Write a substantive outcome.md in the intent folder and run plastic store sync up." if outcome&.body.to_s.gsub(/^\s*#.*$/, "").strip.empty?
+            "Write the summary of outcome.md with plastic intent outcome #{@intent_id} --from FILE." if outcome&.body.to_s.gsub(/^\s*#.*$/, "").strip.empty?
+          end
+
+          def reason_problem
+            return if verification.abandoned?
+
+            found = verification.rejected("Abandoned")
+            quoted = found ? "outcome.md says '#{found}', which is not an abandon reason in the form #{Knowledge::OutcomeForm.shown_forms("Abandoned")}. " : ""
+            "#{quoted}Record why intent #{@intent_id} is dropped with #{Knowledge::OutcomeForm.note_commands("Abandoned", @intent_id)}."
           end
         end
       end

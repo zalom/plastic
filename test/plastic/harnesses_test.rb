@@ -17,9 +17,14 @@ class HarnessesTest < Plastic::TestCase
   end
 
   def test_each_entry_names_the_hook_command_of_each_event
-    events = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "Stop" => "hook stop", "SessionEnd" => "hook end" }
+    events = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "PreToolUse" => "hook guard", "Stop" => "hook stop",
+               "SessionEnd" => "hook end" }
 
     assert_equal [events, events], %w[claude-code codex].map { |name| Plastic::Harnesses.fetch(name).events }
+  end
+
+  def test_the_guard_event_matches_the_tools_that_write_and_the_others_match_every_tool
+    assert_equal ["Bash|Write|Edit|MultiEdit|NotebookEdit|apply_patch", ""], [Plastic::Harnesses.matcher("PreToolUse"), Plastic::Harnesses.matcher("Stop")]
   end
 
   def test_hermes_declares_its_folder_and_installer_and_no_hook_events_or_detection_fields

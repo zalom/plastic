@@ -51,8 +51,9 @@ module Plastic
             NOT_JUDGED = "No accepted review counts yet."
 
             def self.record_facts(context)
-              check = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id, folder: Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root))
-              context[:requirements] = check.record_problems + (review_required?(context) ? pull_request_problems(check) : [])
+              intent_id = context.intent_id
+              check = Plastic::Graph::Work::Completion::Check.new(context.retrieval, intent_id, folder: Plastic::Graph::Knowledge::StoreFolder.new(context.scope.root))
+              context[:requirements] = check.record_problems + (review_required?(context) ? pull_request_problems(check, intent_id) : [])
               review_facts(context)
               verification_facts(context, check.verification)
             end
@@ -85,15 +86,15 @@ module Plastic
               context.settings.config.choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
-            def self.pull_request_problems(check)
-              check.verification.pull_request? ? [] : ["Add a line starting Pull request: to the Verification section of outcome.md and run plastic store sync up."]
+            def self.pull_request_problems(check, intent_id)
+              check.verification.pull_request? ? [] : ["Record the pull request with #{Plastic::Graph::Knowledge::OutcomeForm.note_commands("Pull request", intent_id)}."]
             end
 
             def self.ready_for_approval?(context) = context.requirements.empty? && context.judged
 
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { !context.used_up }
-            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic store sync up",
+            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}record it with plastic intent note %{intent_id} '<person> on <YYYY-MM-DD>' --kind Approved once they approve",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
             def self.verified?(context) = context.delivery_recorded

@@ -22,7 +22,7 @@ class CodexHooksTest < Plastic::TestCase
   def test_the_install_names_the_hooks_it_changed
     changed, = merge
 
-    assert_equal ["hook end", "hook prompt", "hook start", "hook stop"], changed.sort
+    assert_equal ["hook end", "hook guard", "hook prompt", "hook start", "hook stop"], changed.sort
   end
 
   def test_a_second_install_changes_no_hook

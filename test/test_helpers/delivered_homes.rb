@@ -12,7 +12,7 @@ module DeliveredHomes
   RECORDS = "- Merged: plastic/1 into alpha at abc123\n" \
             "- Pull request: https://example.test/pull/1\n- Approved: the owner on 2026-10-05\n"
   OUTCOME = "# Outcome\n\nDelivered and verified.\n\n## Verification\n#{RECORDS}"
-  DROPPED = "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n"
+  DROPPED = "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n"
 
   def deliver(kernel)
     kernel.command!("intent", "auto", "1", "--take-over", "the delivery runs in its own session", env: SESSION)

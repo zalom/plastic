@@ -10,7 +10,7 @@ module ArchitectureFigures
     BOXES = Diagram.parse(<<~TABLE).freeze
       install | zone | 10 10 1140 135 | Plastic install: ~/.local/share/plastic | | | |
       launcher | | 30 44 230 | ~/.local/bin/plastic | link | line | | Found on the PATH, / where you run plastic.
-      active | | 330 44 260 | active/bin/plastic | program | code | | Ruby. One command, plastic, / and the three hooks.
+      active | | 330 44 260 | active/bin/plastic | program | code | | Ruby. One command, plastic, / and the five hooks.
       releases | | 660 44 220 | releases/VERSION/ | folder | line | | One folder for each release; / active points to one.
       download | | 940 44 190 | download/ | folder | line | | The files plastic update / fetched.
       home | zone | 10 165 1140 170 | Plastic home | | | |

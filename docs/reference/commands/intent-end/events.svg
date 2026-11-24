@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 1302" width="834" height="1302" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 1286" width="834" height="1286" role="img" xml:space="preserve">
 <title>The events of one call of plastic intent end, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -133,90 +133,89 @@
 <text x="492" y="416" class="t" text-anchor="start">the intent, a follow-up intent and one more</text>
 <text x="492" y="432" class="t" text-anchor="start">round: plastic intent grant &lt;intent id&gt; REASON</text>
 <text x="492" y="448" class="t" text-anchor="start">--owner.</text>
-<path d="M 424 374 L 432 374 L 432 529 L 480 529" class="wire-refusal"/>
-<path d="M 472 524 L 480 529 L 472 534 Z" class="head"/>
-<rect x="480" y="466" width="330" height="126" rx="6" class="stop-refusal"/>
+<path d="M 424 374 L 432 374 L 432 521 L 480 521" class="wire-refusal"/>
+<path d="M 472 516 L 480 521 L 472 526 Z" class="head"/>
+<rect x="480" y="466" width="330" height="110" rx="6" class="stop-refusal"/>
 <text x="492" y="484" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="502" class="t" text-anchor="start">The pull request of intent &lt;intent id&gt; waits</text>
 <text x="492" y="518" class="t" text-anchor="start">for the person&#39;s approval; &lt;approval found&gt;</text>
-<text x="492" y="534" class="t" text-anchor="start">add the line &#39;Approved: &lt;person&gt; on</text>
-<text x="492" y="550" class="t" text-anchor="start">&lt;YYYY-MM-DD&gt;&#39; to the Verification section of</text>
-<text x="492" y="566" class="t" text-anchor="start">outcome.md once they approve, then run plastic</text>
-<text x="492" y="582" class="t" text-anchor="start">store sync up.</text>
-<text x="24" y="626" class="way" text-anchor="start">When the intent still needs records or a verdict before it can end:</text>
-<rect x="24" y="638" width="400" height="51" rx="6" class="lane-agent"/>
-<circle cx="44" cy="657" r="8" class="badge"/>
-<text x="44" y="661" class="badge-t" text-anchor="middle">4</text>
-<text x="64" y="660" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="64" y="680" class="t" text-anchor="start">Finish the required records.</text>
-<path d="M 64 689 L 64 715" class="wire"/>
-<path d="M 59 707 L 64 715 L 69 707 Z" class="head"/>
-<rect x="24" y="715" width="400" height="51" rx="6" class="lane-agent"/>
-<circle cx="44" cy="734" r="8" class="badge"/>
-<text x="44" y="738" class="badge-t" text-anchor="middle">5</text>
-<text x="64" y="737" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="64" y="757" class="t" text-anchor="start">Have the delivery judged.</text>
-<path d="M 424 746 L 480 746" class="wire-handoff"/>
-<path d="M 472 741 L 480 746 L 472 751 Z" class="head"/>
-<rect x="480" y="715" width="330" height="62" rx="6" class="stop-handoff"/>
-<text x="492" y="733" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
-<text x="492" y="751" class="t" text-anchor="start">Intent &lt;intent id&gt; cannot end yet. &lt;missing&gt;.</text>
-<text x="492" y="767" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
-<text x="24" y="811" class="way" text-anchor="start">When the delivery of the work is not recorded yet:</text>
-<rect x="24" y="823" width="400" height="51" rx="6" class="lane-agent"/>
-<circle cx="44" cy="842" r="8" class="badge"/>
-<text x="44" y="846" class="badge-t" text-anchor="middle">6</text>
-<text x="64" y="845" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="64" y="865" class="t" text-anchor="start">Record the delivery.</text>
-<path d="M 424 854 L 480 854" class="wire-handoff"/>
-<path d="M 472 849 L 480 854 L 472 859 Z" class="head"/>
-<rect x="480" y="823" width="330" height="62" rx="6" class="stop-handoff"/>
-<text x="492" y="841" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
-<text x="492" y="859" class="t" text-anchor="start">The agent records the delivery in outcome.md.</text>
-<text x="492" y="875" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
-<text x="24" y="919" class="way" text-anchor="start">When the records, the verdict and the delivery are in place:</text>
-<rect x="24" y="931" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="950" r="8" class="badge"/>
-<text x="44" y="954" class="badge-t" text-anchor="middle">7</text>
-<text x="64" y="953" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="973" class="t" text-anchor="start">Forget the close of an earlier call.</text>
-<path d="M 64 982 L 64 1008" class="wire"/>
-<path d="M 59 1000 L 64 1008 L 69 1000 Z" class="head"/>
-<rect x="24" y="1008" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="1027" r="8" class="badge"/>
-<text x="44" y="1031" class="badge-t" text-anchor="middle">8</text>
-<text x="64" y="1030" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="1050" class="t" text-anchor="start">Close the intent.</text>
-<path d="M 64 1059 L 64 1085" class="wire"/>
-<path d="M 59 1077 L 64 1085 L 69 1077 Z" class="head"/>
-<rect x="24" y="1085" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="1104" r="8" class="badge"/>
-<text x="44" y="1108" class="badge-t" text-anchor="middle">9</text>
-<text x="64" y="1107" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="1127" class="t" text-anchor="start">Fill the cost of the runs.</text>
-<path d="M 64 1136 L 64 1162" class="wire"/>
-<path d="M 59 1154 L 64 1162 L 69 1154 Z" class="head"/>
-<rect x="24" y="1162" width="400" height="51" rx="6" class="lane-agent"/>
-<circle cx="44" cy="1181" r="8" class="badge"/>
-<text x="44" y="1185" class="badge-t" text-anchor="middle">10</text>
-<text x="64" y="1184" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="64" y="1204" class="t" text-anchor="start">Stop what intent &lt;intent id&gt; started.</text>
-<path d="M 424 1193 L 480 1193" class="wire-end"/>
-<path d="M 472 1188 L 480 1193 L 472 1198 Z" class="head"/>
-<rect x="480" y="1162" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="1180" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="1198" class="t" text-anchor="start">The agent stops the processes and agents the</text>
-<text x="492" y="1214" class="t" text-anchor="start">intent started.</text>
-<rect x="24" y="1254" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="1266" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="1254" width="14" height="14" rx="3" class="lane-agent"/>
-<text x="160" y="1266" class="k" text-anchor="start">Agent Workflow</text>
-<rect x="259" y="1254" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="279" y="1266" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="395" y="1254" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="415" y="1266" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="533" y="1254" width="14" height="14" rx="3" class="stop-handoff"/>
-<text x="553" y="1266" class="k" text-anchor="start">Hands off, run again</text>
-<rect x="675" y="1254" width="14" height="14" rx="3" class="stop-end"/>
-<text x="695" y="1266" class="k" text-anchor="start">Ends</text>
+<text x="492" y="534" class="t" text-anchor="start">record it with plastic intent note &lt;intent id&gt;</text>
+<text x="492" y="550" class="t" text-anchor="start">&#39;&lt;person&gt; on &lt;YYYY-MM-DD&gt;&#39; --kind Approved</text>
+<text x="492" y="566" class="t" text-anchor="start">once they approve.</text>
+<text x="24" y="610" class="way" text-anchor="start">When the intent still needs records or a verdict before it can end:</text>
+<rect x="24" y="622" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="641" r="8" class="badge"/>
+<text x="44" y="645" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="644" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="664" class="t" text-anchor="start">Finish the required records.</text>
+<path d="M 64 673 L 64 699" class="wire"/>
+<path d="M 59 691 L 64 699 L 69 691 Z" class="head"/>
+<rect x="24" y="699" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="718" r="8" class="badge"/>
+<text x="44" y="722" class="badge-t" text-anchor="middle">5</text>
+<text x="64" y="721" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="741" class="t" text-anchor="start">Have the delivery judged.</text>
+<path d="M 424 730 L 480 730" class="wire-handoff"/>
+<path d="M 472 725 L 480 730 L 472 735 Z" class="head"/>
+<rect x="480" y="699" width="330" height="62" rx="6" class="stop-handoff"/>
+<text x="492" y="717" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
+<text x="492" y="735" class="t" text-anchor="start">Intent &lt;intent id&gt; cannot end yet. &lt;missing&gt;.</text>
+<text x="492" y="751" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
+<text x="24" y="795" class="way" text-anchor="start">When the delivery of the work is not recorded yet:</text>
+<rect x="24" y="807" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="826" r="8" class="badge"/>
+<text x="44" y="830" class="badge-t" text-anchor="middle">6</text>
+<text x="64" y="829" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="849" class="t" text-anchor="start">Record the delivery.</text>
+<path d="M 424 838 L 480 838" class="wire-handoff"/>
+<path d="M 472 833 L 480 838 L 472 843 Z" class="head"/>
+<rect x="480" y="807" width="330" height="62" rx="6" class="stop-handoff"/>
+<text x="492" y="825" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
+<text x="492" y="843" class="t" text-anchor="start">The agent records the delivery in outcome.md.</text>
+<text x="492" y="859" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
+<text x="24" y="903" class="way" text-anchor="start">When the records, the verdict and the delivery are in place:</text>
+<rect x="24" y="915" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="934" r="8" class="badge"/>
+<text x="44" y="938" class="badge-t" text-anchor="middle">7</text>
+<text x="64" y="937" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="957" class="t" text-anchor="start">Forget the close of an earlier call.</text>
+<path d="M 64 966 L 64 992" class="wire"/>
+<path d="M 59 984 L 64 992 L 69 984 Z" class="head"/>
+<rect x="24" y="992" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="1011" r="8" class="badge"/>
+<text x="44" y="1015" class="badge-t" text-anchor="middle">8</text>
+<text x="64" y="1014" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="1034" class="t" text-anchor="start">Close the intent.</text>
+<path d="M 64 1043 L 64 1069" class="wire"/>
+<path d="M 59 1061 L 64 1069 L 69 1061 Z" class="head"/>
+<rect x="24" y="1069" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="1088" r="8" class="badge"/>
+<text x="44" y="1092" class="badge-t" text-anchor="middle">9</text>
+<text x="64" y="1091" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="1111" class="t" text-anchor="start">Fill the cost of the runs.</text>
+<path d="M 64 1120 L 64 1146" class="wire"/>
+<path d="M 59 1138 L 64 1146 L 69 1138 Z" class="head"/>
+<rect x="24" y="1146" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="1165" r="8" class="badge"/>
+<text x="44" y="1169" class="badge-t" text-anchor="middle">10</text>
+<text x="64" y="1168" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="1188" class="t" text-anchor="start">Stop what intent &lt;intent id&gt; started.</text>
+<path d="M 424 1177 L 480 1177" class="wire-end"/>
+<path d="M 472 1172 L 480 1177 L 472 1182 Z" class="head"/>
+<rect x="480" y="1146" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="1164" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="1182" class="t" text-anchor="start">The agent stops the processes and agents the</text>
+<text x="492" y="1198" class="t" text-anchor="start">intent started.</text>
+<rect x="24" y="1238" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="1250" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="1238" width="14" height="14" rx="3" class="lane-agent"/>
+<text x="160" y="1250" class="k" text-anchor="start">Agent Workflow</text>
+<rect x="259" y="1238" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="279" y="1250" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="395" y="1238" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="415" y="1250" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="533" y="1238" width="14" height="14" rx="3" class="stop-handoff"/>
+<text x="553" y="1250" class="k" text-anchor="start">Hands off, run again</text>
+<rect x="675" y="1238" width="14" height="14" rx="3" class="stop-end"/>
+<text x="695" y="1250" class="k" text-anchor="start">Ends</text>
 </svg>

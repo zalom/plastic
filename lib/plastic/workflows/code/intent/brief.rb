@@ -22,7 +22,7 @@ module Plastic
             file = "#{context.intent.dir}/spec.md"
             return "spec: #{file}; #{Lines::CRITERIA}" if spec.present?
 
-            "spec: none yet; the agent writes #{file}, and #{Lines::CRITERIA}"
+            "spec: none yet; the agent writes it with plastic intent spec #{context.intent_id} --from FILE, and #{Lines::CRITERIA}"
           end
 
           read "find the intent" do |context|

@@ -41,9 +41,9 @@ module Plastic
         settings.merge("hooks" => kept.merge(own) { |_event, theirs, ours| theirs + ours })
       end
 
-      def own_groups(harness) = Harnesses.fetch(harness).events.transform_values { |words| [group(%("#{@command}" #{words}))] }
+      def own_groups(harness) = Harnesses.fetch(harness).events.to_h { |event, words| [event, [group(%("#{@command}" #{words}), Harnesses.matcher(event))]] }
 
-      def group(line) = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "env -u RUBYOPT #{line} || true" }] }
+      def group(line, matcher = "") = { "matcher" => matcher, "hooks" => [{ "type" => "command", "command" => "env -u RUBYOPT #{line} || true" }] }
 
       def without_ours(entries) = Array(entries).reject { |entry| ours?(entry) }
 

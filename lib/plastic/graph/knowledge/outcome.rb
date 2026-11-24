@@ -27,7 +27,7 @@ module Plastic
         def initialize(retrieval, intent_id, folder: nil)
           @lines = retrieval.fetch(intent_id, Layout.name(:outcome))&.body.to_s.lines.map(&:chomp)
           @headings = @lines.map { |line| line.match(HEADING) }
-          @delivery = OutcomeDelivery.new(self, folder&.path(retrieval.intent(intent_id).dir))
+          @delivery = OutcomeDelivery.new(self, folder&.path(retrieval.intent(intent_id).dir), intent_id)
         end
 
         # The messages that ask for the records this outcome lacks.
@@ -42,6 +42,8 @@ module Plastic
         def pull_request? = recorded?("Pull request")
 
         def approved? = positive?("Approved")
+
+        def abandoned? = positive?("Abandoned")
 
         def reverted? = recorded?("Reverted")
 
