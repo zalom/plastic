@@ -44,3 +44,19 @@ class OutcomeSectionLevelTest < Minitest::Test
     assert_equal "# Outcome\n\n## Verification\n\n### Checks\n\n- a\n- b\n", add("# Outcome\n\n## Verification\n\n### Checks\n\n- a\n")
   end
 end
+
+class OutcomeSectionWithoutTest < Minitest::Test
+  def without(body) = Plastic::Graph::Knowledge::Intent::OutcomeSection.for(body, "## Reports").without(["- b"])
+
+  def test_the_section_keeps_its_other_lines
+    assert_equal "# Outcome\n\n## Reports\n\n- a\n", without("# Outcome\n\n## Reports\n\n- a\n- b\n")
+  end
+
+  def test_a_section_left_empty_goes_with_its_heading
+    assert_equal "# Outcome\n\nText\n\n## Notes\n\n- n\n", without("# Outcome\n\nText\n\n## Reports\n\n- b\n\n## Notes\n\n- n\n")
+  end
+
+  def test_an_outcome_that_was_only_the_section_is_left_empty
+    assert_equal "\n", without("## Reports\n\n- b\n")
+  end
+end

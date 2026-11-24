@@ -92,6 +92,21 @@ class IntentUnreportTest < Plastic::TestCase
     assert_equal [2, [1, 1, 1]], [call("unreport", "1", REPORT).code, rows]
   end
 
+  def test_an_outcome_line_removed_by_hand_leaves_the_outcome_as_it_is
+    write("#{dir}/outcome.md", OUTCOME)
+    sync_up
+
+    assert_equal [0, [0, 0, 0], OUTCOME], [unreport.code, rows, outcome]
+  end
+
+  def test_a_report_whose_file_is_gone_loses_its_rows_and_moves_nothing
+    File.delete(store_path("#{dir}/#{REPORT}"))
+    result = unreport("--to-tmp")
+
+    assert_equal [0, [0, 0, 0], false], [result.code, rows, File.exist?(store_path("#{dir}/#{MOVED}"))]
+    assert_includes result.out, "removed: #{REPORT}"
+  end
+
   def test_a_file_already_in_tmp_stops_the_move_and_writes_nothing
     write("#{dir}/#{MOVED}", "other\n")
 

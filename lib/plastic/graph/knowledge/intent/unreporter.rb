@@ -63,9 +63,10 @@ module Plastic
           def recorded?(report) = Reports.none.recorded_from(store).recorded?(report.id, report.path)
 
           # Writes the outcome without the line of the report; returns the new outcome, or nil when it did not list it.
+          # A recorded report always has an outcome: `plastic intent report` writes its line there, and a sync keeps it.
           def unlist(report)
             id = report.id
-            report.unlisted(@retrieval.fetch(id, FILE)&.body.to_s, HEADING).tap { |body| body && writer.write(id, FILE, body) }
+            report.unlisted(@retrieval.fetch(id, FILE).body, HEADING).tap { |body| body && writer.write(id, FILE, body) }
           end
 
           def move(report)
