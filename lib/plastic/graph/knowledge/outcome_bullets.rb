@@ -13,15 +13,14 @@ module Plastic
           @lines = lines
         end
 
-        def to_a = @lines.slice_before { |line| line.match?(BULLET) }.filter_map { |group| joined(group) }
+        def to_a = @lines.slice_before { |line| line.match?(BULLET) }.filter_map { |group| self.class.joined(*group) }
 
-        private
-
-        def joined(group)
-          text = group.first[BULLET, 1]
+        # The text of a bullet line joined with the indented lines that wrap it, or nil when `head` is no bullet.
+        def self.joined(head, *rest)
+          text = head[BULLET, 1]
           return unless text
 
-          [text, *group.drop(1).take_while { |line| line.match?(WRAPPED) }.map(&:strip)].join(" ")
+          [text, *rest.take_while { |line| line.match?(WRAPPED) }.map(&:strip)].join(" ")
         end
       end
     end
