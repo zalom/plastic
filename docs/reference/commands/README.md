@@ -16,6 +16,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
 | [`plastic search`](search/README.md) | Search indexed passages across selected stores for the words of a question, best match first |
+| [`plastic console`](console/README.md) | Open IRB over the store databases read-only, or run one piece of Ruby with --eval and print its value |
 
 ## intent
 

@@ -81,7 +81,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 - One session drives an intent at a time. `plastic intent start` and `plastic intent auto` take the driver claim, which lapses after 15 minutes without a renewal, as a node claim does, and goes when the session ends. Another session is refused with exit 3 and the driver is named; the owner's word, `--take-over REASON`, takes it over.
 - One session works a node at a time. A node claim, `plastic node claim ID NODE --agent NAME`, names the
   session that holds it and opens one run of the node. The session renews its claims at every
-  `plastic` command and at the stop hook, and a claim lapses after 15 minutes without a
+  `plastic` command, except `plastic console`, and at the stop hook, and a claim lapses after 15 minutes without a
   renewal. If a node is claimed by another session, back off. A session that finds a lapsed
   claim takes it with `plastic node claim`, which closes the old run as `lapsed`. The old
   holder's next node command exits 3 and changes nothing. `plastic graph show ID` names the

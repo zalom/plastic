@@ -22,8 +22,10 @@ module CommandReference
       private
 
       def head
-        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", "```sh", @page.usage, "```", ""]
+        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", "```sh", @page.usage, "```", "", *description]
       end
+
+      def description = @page.description.flat_map { |line| [line, ""] }
 
       def inputs
         rows = @page.arguments.map { |arg| "| `#{arg.label}` | #{arg.text} | |" } + @page.options.map { |opt| "| `#{opt.switch}` | #{opt.text} | #{Page.default(opt)} |" }
