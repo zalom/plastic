@@ -18,6 +18,7 @@ plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
 plastic intent start 12               # Set it in progress for guided work and print the code worktree
 plastic intent park 12 "TEXT"         # Park started work with the reason it waits
 plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
+plastic intent handover 12 13 "TEXT" --owner  # Hand the last gap to follow-up intent 13, on the owner's word, once the rounds are used, so intent 12 can end
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent spec 12 --from FILE    # Write spec.md from a file that holds every section

@@ -109,7 +109,8 @@ module WorkflowNameTable
     code_impede_node: "Code::Node::Impede",
     code_resolve_node: "Code::Node::Resolve",
     code_park_intent: "Code::Intent::Park",
-    code_grant_round: "Code::Intent::Grant"
+    code_grant_round: "Code::Intent::Grant",
+    code_hand_over_gap: "Code::Intent::Handover"
   }.freeze
 end
 
@@ -136,8 +137,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_eight_keys_in_order
-    assert_equal 98, MAPPING.size
+  def test_the_registry_holds_the_ninety_nine_keys_in_order
+    assert_equal 99, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 

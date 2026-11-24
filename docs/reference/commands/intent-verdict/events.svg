@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 1125" width="834" height="1125" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 1189" width="834" height="1189" role="img" xml:space="preserve">
 <title>The events of one call of plastic intent verdict, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -140,58 +140,62 @@
 <text x="492" y="502" class="t" text-anchor="start">a done node, or the intent cannot end.</text>
 <text x="492" y="518" class="t" text-anchor="start">next: plastic node add &lt;intent id&gt; TITLE</text>
 <text x="492" y="534" class="t" text-anchor="start">--criterion KEY</text>
-<path d="M 424 476 L 432 476 L 432 607 L 480 607" class="wire-refusal"/>
-<path d="M 472 602 L 480 607 L 472 612 Z" class="head"/>
-<rect x="480" y="552" width="330" height="110" rx="6" class="stop-refusal"/>
+<path d="M 424 476 L 432 476 L 432 623 L 480 623" class="wire-refusal"/>
+<path d="M 472 618 L 480 623 L 472 628 Z" class="head"/>
+<rect x="480" y="552" width="330" height="142" rx="6" class="stop-refusal"/>
 <text x="492" y="570" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
 <text x="492" y="588" class="t" text-anchor="start">The judge&#39;s review round of intent &lt;intent id&gt;</text>
 <text x="492" y="604" class="t" text-anchor="start">is used; the owner decides between abandoning</text>
-<text x="492" y="620" class="t" text-anchor="start">the intent, a follow-up intent and one more</text>
-<text x="492" y="636" class="t" text-anchor="start">round: plastic intent grant &lt;intent id&gt; REASON</text>
-<text x="492" y="652" class="t" text-anchor="start">--owner.</text>
-<path d="M 64 501 L 64 688" class="wire"/>
-<path d="M 59 680 L 64 688 L 69 680 Z" class="head"/>
-<rect x="24" y="688" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="707" r="8" class="badge"/>
-<text x="44" y="711" class="badge-t" text-anchor="middle">4</text>
-<text x="64" y="710" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="730" class="t" text-anchor="start">Count the rounds written so far.</text>
-<path d="M 64 739 L 64 765" class="wire"/>
-<path d="M 59 757 L 64 765 L 69 757 Z" class="head"/>
-<rect x="24" y="765" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="784" r="8" class="badge"/>
-<text x="44" y="788" class="badge-t" text-anchor="middle">5</text>
-<text x="64" y="787" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="807" class="t" text-anchor="start">Write the verdict.</text>
-<path d="M 424 777 L 444 777 L 444 820 L 480 820" class="wire-refusal"/>
-<path d="M 472 815 L 480 820 L 472 825 Z" class="head"/>
-<rect x="480" y="765" width="330" height="110" rx="6" class="stop-refusal"/>
-<text x="492" y="783" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="801" class="t" text-anchor="start">The judge&#39;s review round of intent &lt;intent id&gt;</text>
-<text x="492" y="817" class="t" text-anchor="start">is used; the owner decides between abandoning</text>
-<text x="492" y="833" class="t" text-anchor="start">the intent, a follow-up intent and one more</text>
-<text x="492" y="849" class="t" text-anchor="start">round: plastic intent grant &lt;intent id&gt; REASON</text>
-<text x="492" y="865" class="t" text-anchor="start">--owner.</text>
-<path d="M 424 790 L 438 790 L 438 930 L 480 930" class="wire-end"/>
-<path d="M 472 925 L 480 930 L 472 935 Z" class="head"/>
-<rect x="480" y="883" width="330" height="94" rx="6" class="stop-end"/>
-<text x="492" y="901" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="919" class="t" text-anchor="start">The judge asked for a revision; add a node</text>
-<text x="492" y="935" class="t" text-anchor="start">that fixes it.</text>
-<text x="492" y="951" class="t" text-anchor="start">next: plastic node add &lt;intent id&gt; TITLE</text>
-<text x="492" y="967" class="t" text-anchor="start">--criterion KEY</text>
-<path d="M 424 803 L 432 803 L 432 1016 L 480 1016" class="wire-end"/>
-<path d="M 472 1011 L 480 1016 L 472 1021 Z" class="head"/>
-<rect x="480" y="985" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="1003" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="1021" class="t" text-anchor="start">Intent &lt;intent id&gt; is accepted.</text>
-<text x="492" y="1037" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
-<rect x="24" y="1077" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="1089" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="1077" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="1089" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="1077" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="296" y="1089" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="414" y="1077" width="14" height="14" rx="3" class="stop-end"/>
-<text x="434" y="1089" class="k" text-anchor="start">Ends</text>
+<text x="492" y="620" class="t" text-anchor="start">the intent with plastic intent abandon &lt;intent</text>
+<text x="492" y="636" class="t" text-anchor="start">id&gt;, a follow-up intent with plastic intent</text>
+<text x="492" y="652" class="t" text-anchor="start">handover &lt;intent id&gt; FOLLOW_UP REASON --owner,</text>
+<text x="492" y="668" class="t" text-anchor="start">and one more round with plastic intent grant</text>
+<text x="492" y="684" class="t" text-anchor="start">&lt;intent id&gt; REASON --owner.</text>
+<path d="M 64 501 L 64 720" class="wire"/>
+<path d="M 59 712 L 64 720 L 69 712 Z" class="head"/>
+<rect x="24" y="720" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="739" r="8" class="badge"/>
+<text x="44" y="743" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="742" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="762" class="t" text-anchor="start">Count the rounds written so far.</text>
+<path d="M 64 771 L 64 797" class="wire"/>
+<path d="M 59 789 L 64 797 L 69 789 Z" class="head"/>
+<rect x="24" y="797" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="816" r="8" class="badge"/>
+<text x="44" y="820" class="badge-t" text-anchor="middle">5</text>
+<text x="64" y="819" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="839" class="t" text-anchor="start">Write the verdict.</text>
+<path d="M 424 809 L 444 809 L 444 868 L 480 868" class="wire-refusal"/>
+<path d="M 472 863 L 480 868 L 472 873 Z" class="head"/>
+<rect x="480" y="797" width="330" height="142" rx="6" class="stop-refusal"/>
+<text x="492" y="815" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="833" class="t" text-anchor="start">The judge&#39;s review round of intent &lt;intent id&gt;</text>
+<text x="492" y="849" class="t" text-anchor="start">is used; the owner decides between abandoning</text>
+<text x="492" y="865" class="t" text-anchor="start">the intent with plastic intent abandon &lt;intent</text>
+<text x="492" y="881" class="t" text-anchor="start">id&gt;, a follow-up intent with plastic intent</text>
+<text x="492" y="897" class="t" text-anchor="start">handover &lt;intent id&gt; FOLLOW_UP REASON --owner,</text>
+<text x="492" y="913" class="t" text-anchor="start">and one more round with plastic intent grant</text>
+<text x="492" y="929" class="t" text-anchor="start">&lt;intent id&gt; REASON --owner.</text>
+<path d="M 424 822 L 438 822 L 438 994 L 480 994" class="wire-end"/>
+<path d="M 472 989 L 480 994 L 472 999 Z" class="head"/>
+<rect x="480" y="947" width="330" height="94" rx="6" class="stop-end"/>
+<text x="492" y="965" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="983" class="t" text-anchor="start">The judge asked for a revision; add a node</text>
+<text x="492" y="999" class="t" text-anchor="start">that fixes it.</text>
+<text x="492" y="1015" class="t" text-anchor="start">next: plastic node add &lt;intent id&gt; TITLE</text>
+<text x="492" y="1031" class="t" text-anchor="start">--criterion KEY</text>
+<path d="M 424 835 L 432 835 L 432 1080 L 480 1080" class="wire-end"/>
+<path d="M 472 1075 L 480 1080 L 472 1085 Z" class="head"/>
+<rect x="480" y="1049" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="1067" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="1085" class="t" text-anchor="start">Intent &lt;intent id&gt; is accepted.</text>
+<text x="492" y="1101" class="t" text-anchor="start">next: plastic intent end &lt;intent id&gt;</text>
+<rect x="24" y="1141" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="1153" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="1141" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="1153" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="1141" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="1153" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="1141" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="1153" class="k" text-anchor="start">Ends</text>
 </svg>

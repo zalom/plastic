@@ -70,7 +70,7 @@ class IntentVerdictTest < Plastic::TestCase
     result = verdict("revise", "two")
 
     assert_equal [1, 2], verdicts.map { |row| row.fetch("round") }
-    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent, a follow-up intent and one more round: plastic intent grant 1 REASON --owner"]
+    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent with plastic intent abandon 1, a follow-up intent with plastic intent handover 1 FOLLOW_UP REASON --owner, and one more round with plastic intent grant 1 REASON --owner"]
     refute_match(/^next:/, result.out)
   end
 

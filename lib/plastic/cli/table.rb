@@ -41,6 +41,7 @@ module Plastic
         "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
         "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],
         "intent grant" => ["Commands::Intent::Grant", "Grant one extra review round, on the owner's word, to an intent whose rounds are used"],
+        "intent handover" => ["Commands::Intent::Handover", "Hand the last gap of an intent whose rounds are used to a follow-up intent, on the owner's word, so the intent can end"],
         "intent spec" => ["Commands::Intent::Spec", "Write spec.md from a file with --from, then print the grilling method, how done criteria are written, and the open decisions of spec.md"],
         "intent discover" => ["Commands::Intent::Discover", "Record deterministic retrieval candidates for an intent"],
         "intent context" => ["Commands::Intent::Context", "Read or submit selected retrieval context for an intent"],
