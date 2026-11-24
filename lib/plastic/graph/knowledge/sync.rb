@@ -15,6 +15,7 @@ require_relative "sync/legacy_import"
 require_relative "sync/intent_folders"
 require_relative "sync/archived_intents"
 require_relative "sync/old_savepoints"
+require_relative "sync/strays"
 require_relative "sync/declared_prints"
 
 module Plastic
@@ -55,7 +56,7 @@ module Plastic
         def read_up(plan)
           write_folders
           paths = plan.entries_for(:read).map(&:path) | plan.second_home.paths
-          lines = read(paths) + remove_unread(plan)
+          lines = read(paths) + remove_unread(plan) + plan.strays.lines
           printer.print(plan.printed_up(Prints.of_store(@retrieval).to_h { |print| [print.path, print] }))
           reindex(paths)
           lines

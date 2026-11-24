@@ -833,3 +833,29 @@ class SyncLegacyMetadataTest < Plastic::TestCase
     end
   end
 end
+
+# A sync up reads only the files the layout allows, and names every other file it finds.
+class SyncUpStraysTest < Plastic::TestCase
+  include BetaFolder
+
+  def test_a_markdown_file_at_the_top_of_a_folder_is_named_and_not_read_as_a_note
+    write("store/2--beta/notes.md", "# Notes\n\nThe zanzibar route.\n")
+    result = sync
+
+    assert_includes result.out, "store/2--beta/notes.md is not in the intent folder layout; plastic help intent-folder lists the files it allows"
+    assert_empty store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE path = 'notes.md'")
+  end
+
+  def test_a_file_of_an_older_layout_names_its_repair
+    write("store/2--beta/revisions.md", "# Revisions\n")
+
+    assert_includes sync.out, "store/2--beta/revisions.md is a file of an older layout: amend; plastic help intent-folder says why"
+  end
+
+  def test_the_files_the_layout_allows_are_not_named
+    write("store/2--beta/resources/tmp/scratch.md", "# Scratch\n")
+    write("store/2--beta/resources/output/files/shot.png", "png")
+
+    refute_includes sync.out, "is not in the intent folder layout"
+  end
+end
