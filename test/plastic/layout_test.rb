@@ -96,6 +96,27 @@ class LayoutTest < Plastic::TestCase
     assert_raises(KeyError) { Plastic::Layout.amendment_reason(:polish) }
   end
 
+  def test_the_old_intent_file_is_renamed_to_intent_md
+    assert_equal "intent.md", Plastic::Layout.destination("12--old-name.md")
+  end
+
+  def test_a_lock_file_is_old_machine_state_only_at_the_top_of_the_folder
+    assert_equal [true, false], [Plastic::Layout.machine?("watch.lock"), Plastic::Layout.machine?("resources/app/Gemfile.lock")]
+  end
+
+  def test_a_legacy_entry_that_moves_to_a_file_keeps_no_part_of_the_path
+    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/y.md", why: "w")
+
+    assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
+  end
+
+  def test_a_file_that_moves_to_a_folder_keeps_its_name
+    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
+  end
+end
+
+# A layout file with a broken entry is a problem the layout names.
+class LayoutProblemsTest < Plastic::TestCase
   def test_a_layout_without_a_reason_for_a_kind_of_amendment_is_a_problem
     data = Marshal.load(Marshal.dump(Plastic::Layout.data))
     data["amendments"].delete("link")
@@ -110,14 +131,6 @@ class LayoutTest < Plastic::TestCase
     assert_equal ["store folder entry .sessions/ has the unknown repair burn"], Plastic::Layout::Problems.new(data).to_a
   end
 
-  def test_the_old_intent_file_is_renamed_to_intent_md
-    assert_equal "intent.md", Plastic::Layout.destination("12--old-name.md")
-  end
-
-  def test_a_lock_file_is_old_machine_state_only_at_the_top_of_the_folder
-    assert_equal [true, false], [Plastic::Layout.machine?("watch.lock"), Plastic::Layout.machine?("resources/app/Gemfile.lock")]
-  end
-
   def with_legacy(**fields)
     data = Marshal.load(Marshal.dump(Plastic::Layout.data))
     data["legacy"] = [{ "name" => "x", "match" => ["x"], "sync" => "skip", "repair" => "remove", "why" => "w" }.merge(fields.transform_keys(&:to_s))]
@@ -130,15 +143,5 @@ class LayoutTest < Plastic::TestCase
 
   def test_a_legacy_entry_that_moves_with_no_target_is_a_problem
     assert_equal ["legacy entry x moves with no target"], with_legacy(repair: "move")
-  end
-
-  def test_a_legacy_entry_that_moves_to_a_file_keeps_no_part_of_the_path
-    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/y.md", why: "w")
-
-    assert_equal ["resources/tmp/y.md", nil], [entry.destination("x.md"), entry.with(repair: "remove").destination("x.md")]
-  end
-
-  def test_a_file_that_moves_to_a_folder_keeps_its_name
-    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
   end
 end

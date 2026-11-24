@@ -74,6 +74,16 @@ class DoctorFolderLayoutTest < Plastic::TestCase
       "move store/work_graph.db out of the store folder by hand, then run plastic doctor again"]], checks.map(&:to_a)
   end
 
+  # A store whose database the pool never opened, so the damaged file is what the check reads.
+  def test_a_store_database_that_cannot_be_read_leaves_the_reports_folder_unjudged
+    beta = Plastic::Graph::Knowledge::StoreFolder.new(File.join(@plastic_home, "stores", "beta"))
+    { "store/1--alpha/spec.md" => "# Spec\n", "store/1--alpha/resources/output/reports/page.html" => "<p>page</p>\n",
+      Plastic::Graph::Schema.file(:knowledge) => "not a database\n" }.each { |rel, text| beta.write(rel, text) }
+    found = Plastic::Doctor::FolderLayout.checks(Scope.new(@plastic_home, { "beta" => {} }), reports: Plastic::Graph::Knowledge::Reports.new(mandatory: []))
+
+    assert_equal ["layout global:", "layout beta:"], found.map(&:label)
+  end
+
   def test_the_check_changes_no_file
     put(OLD_FILES)
     before = snapshot(@plastic_home)
