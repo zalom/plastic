@@ -380,6 +380,14 @@ class ProjectLoadGuidanceTest < Plastic::TestCase
     assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Fix - Committed: alpha at abc1234"], values(load("blog"), "delivered:")
   end
 
+  def test_a_delivered_row_shows_a_merged_line_that_the_outcome_wraps_over_two_lines
+    register("blog")
+    intent = store_intent("blog", "Post", status: "done", closed_at: DAY)
+    outcome(intent, "- Merged: plastic/9--post into alpha at pull request 190\n  (merge commit abc1234)\n- Tests: green")
+
+    assert_equal ["#{Plastic.local_day(DAY)} #{intent.intent_id} Post - Merged: plastic/9--post into alpha at pull request 190 (merge commit abc1234)"], values(load("blog"), "delivered:")
+  end
+
   def test_a_delivered_row_whose_outcome_has_no_delivery_line_shows_the_day_and_title
     register("blog")
     intent = store_intent("blog", "Note", status: "done", closed_at: DAY)
