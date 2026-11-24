@@ -140,7 +140,7 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
   def test_build_refuses_a_legacy_store_down
     write("INDEX.md", "# Index\n")
 
-    assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"], built(:down).to_h.values_at(:legacy, :problem)
+    assert_equal [false, "this store still has INDEX.md; run plastic store sync up to import it first"], built(:down).to_h.values_at(:legacy, :problem)
   end
 
   def test_entries_join_the_prints_the_files_and_the_recorded_hashes

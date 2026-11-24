@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/commands/migration/list"
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/commands/store/migration/list"
 
 class MigrationListTest < Plastic::TestCase
   include PreviousStore
 
   CLOCK = FixedClock::Clock.new(MIGRATED_AT + 3600)
 
-  def list(home) = plastic("migration", "list", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
+  def list(home) = plastic("store", "migration", "list", "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
-  def down(home) = plastic("migration", "down", "--store", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
+  def down(home) = plastic("store", "migration", "down", "--project", "alpha", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
-  def json_list(home) = plastic("migration", "list", "--store", "alpha", "--json", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
+  def json_list(home) = plastic("store", "migration", "list", "--project", "alpha", "--json", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
   # A home whose store alpha this release made, so it records every migration and its legacy.db holds nothing.
   def fresh_home

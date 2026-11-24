@@ -22,7 +22,7 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
   def test_a_legacy_store_must_be_imported_first
     write("INDEX.md", "# Index\n")
 
-    assert_equal "this store still has INDEX.md; run plastic sync up to import it first", writer.problem
+    assert_equal "this store still has INDEX.md; run plastic store sync up to import it first", writer.problem
   end
 
   def test_write_stores_the_reason_of_a_parked_intent

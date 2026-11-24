@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/commands/migration/down"
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/commands/store/migration/down"
 
 class MigrationDownTest < Plastic::TestCase
   include PreviousStore
@@ -9,13 +9,13 @@ class MigrationDownTest < Plastic::TestCase
   # The down runs an hour after the migration, so its backup folder sorts last.
   CLOCK = FixedClock::Clock.new(MIGRATED_AT + 3600)
 
-  def down(home, *argv) = plastic("migration", "down", *argv, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
+  def down(home, *argv) = plastic("store", "migration", "down", *argv, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE, clock: CLOCK)
 
   def revisions(home) = alpha_rows(home, "knowledge_graph.db", "SELECT * FROM document_revisions")
 
   def assert_refused_unchanged(home, mention)
     before = [store_bytes(home), backup_folders(home)]
-    result = down(home, "--store", "alpha")
+    result = down(home, "--project", "alpha")
 
     assert_equal [3, ""], [result.code, result.out]
     assert_includes result.err, mention
@@ -24,37 +24,37 @@ class MigrationDownTest < Plastic::TestCase
 
   def test_a_down_puts_back_document_revisions_in_their_old_shape
     home = migrated_to_drop
-    down(home, "--store", "alpha")
+    down(home, "--project", "alpha")
 
     assert_equal [["sha", "1", "intent.md", "old text", "then", "origin"]], revisions(home)
   end
 
   def test_a_down_removes_the_version_from_the_store_and_the_rows_from_legacy_db
     home = migrated_to_drop
-    down(home, "--store", "alpha")
+    down(home, "--project", "alpha")
 
     assert_equal [false, []], [recorded(home).include?(DROP), legacy_tables(home)]
   end
 
   def test_a_down_prints_what_it_put_back_and_offers_the_list_of_the_store_never_plastic_rollback
-    result = down(migrated_to_drop, "--store", "alpha")
+    result = down(migrated_to_drop, "--project", "alpha")
 
     assert_call result, code: 0,
-      out: ["down: put back 1 row of document_revisions from legacy.db", "down: alpha no longer records migration #{DROP}", "down: built 0 rows of document_revisions from the current documents", "next: plastic migration list --store alpha"]
+      out: ["down: put back 1 row of document_revisions from legacy.db", "down: alpha no longer records migration #{DROP}", "down: built 0 rows of document_revisions from the current documents", "next: plastic store migration list --project alpha"]
     refute_includes result.out, "rollback"
   end
 
   def test_a_down_takes_a_backup_of_the_store_first
     home = migrated_to_drop
-    down(home, "--store", "alpha")
+    down(home, "--project", "alpha")
     folder = backup_folders(home).last
 
-    assert_equal "migration down", Plastic::Graph::Backup::Folders.new(alpha_file(home, "")).report(folder).fetch("reason")
+    assert_equal "store migration down", Plastic::Graph::Backup::Folders.new(alpha_file(home, "")).report(folder).fetch("reason")
   end
 
   def test_a_down_adds_a_down_row_to_the_ledger
     home = migrated_to_drop
-    down(home, "--store", "alpha")
+    down(home, "--project", "alpha")
 
     assert_equal ["alpha", DROP, "down", '{"document_revisions":1}', 0], ledger_rows(home).last
   end
@@ -80,7 +80,7 @@ class MigrationDownTest < Plastic::TestCase
   def test_a_ledger_that_refuses_the_down_row_leaves_the_store_down_exits_0_and_says_so_on_one_line
     home = migrated_to_drop
     refuse_ledger(home, "down")
-    result = down(home, "--store", "alpha")
+    result = down(home, "--project", "alpha")
 
     assert_equal [0, false, ["down: alpha no longer records migration #{DROP}, but the ledger in plastic.db has no down row for it (plastic.db: refused)"]],
       [result.code, recorded(home).include?(DROP), result.err.lines.map(&:chomp)]
@@ -91,24 +91,17 @@ class MigrationDownTest < Plastic::TestCase
     FileUtils.mkdir_p(alpha_file(home, "backups"))
     File.chmod(0o555, alpha_file(home, "backups"))
     before = store_bytes(home)
-    result = down(home, "--store", "alpha")
+    result = down(home, "--project", "alpha")
 
     assert_equal [1, before], [result.code, store_bytes(home)]
   ensure
     File.chmod(0o755, alpha_file(home, "backups"))
   end
 
-  def test_a_call_without_store_is_a_usage_error
+  def test_a_call_without_a_project_is_a_usage_error
     result = down(migrated_to_drop)
 
     assert_equal [2, ""], [result.code, result.out]
-    assert_includes result.err, "--store"
-  end
-
-  def test_a_call_with_project_is_a_usage_error
-    result = down(migrated_to_drop, "--store", "alpha", "--project", "alpha")
-
-    assert_equal [2, ""], [result.code, result.out]
-    assert_includes result.err, "--project does not apply"
+    assert_includes result.err, "--project"
   end
 end

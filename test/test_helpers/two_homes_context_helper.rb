@@ -27,7 +27,7 @@ module TwoHomesContextHelper
   # A change of the context on a home through its rows, printed to the file by sync down.
   def change_part(home, part, data)
     put_part(home, part, data)
-    call_in(home, "sync", "down")
+    call_in(home, "store", "sync", "down")
   end
 
   def part_of(home, part, origin: origin_of(home))

@@ -7,7 +7,7 @@ require_relative "support/child_process"
 class CommandNamesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   COMMANDS = File.join(ROOT, "lib", "plastic", "commands")
-  FRESH_PROCESS_ENTRIES = ["backup list", "backup purge", "backup restore", "config get", "config list", "config set"].freeze
+  FRESH_PROCESS_ENTRIES = ["store backup list", "store backup purge", "store backup restore", "config get", "config list", "config set"].freeze
 
   def camel(word) = word.split("_").map(&:capitalize).join
 
@@ -78,9 +78,9 @@ class CommandNamesTest < Minitest::Test
   end
 
   def parent_after(words)
-    parent = words.split.first.capitalize
-    code = %(require "plastic/cli"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), false).class)
-    out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, words, parent, chdir: ROOT)
+    path = words.split[0..-2].map { |word| camel(word) }.join("::")
+    code = %(require "plastic/cli"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), true).class)
+    out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, words, path, chdir: ROOT)
     [status.success?, out]
   end
 

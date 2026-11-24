@@ -23,7 +23,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 0, result.code, result.err
     assert_equal ["Beta, after grilling"] * 2, [retrieval.intent("1").title, what_in_file]
-    refute_includes result.out, "plastic sync down"
+    refute_includes result.out, "plastic store sync down"
   end
 
   def test_a_revise_with_why_writes_the_new_what_and_why_into_the_head_revision
@@ -182,7 +182,7 @@ class IntentReviseImportedTest < Plastic::TestCase
   def test_an_imported_folder_keeps_its_own_file_through_a_revise
     page = "---\nid: \"2\"\nintent: \"Beta\"\ncreated: \"#{STAMP}\"\n---\n\n# 2 - Beta\n"
     write("store/2--beta/2--beta.md", page)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
     result = call("2", "Beta, revised")
     rows = store_graphs.databases.fetch(:store).rows("SELECT path FROM documents WHERE intent_id = :id AND path LIKE :like", id: "2", like: "%beta.md")

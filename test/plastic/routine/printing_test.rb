@@ -144,12 +144,12 @@ class RoutinePrintingContextTest < Plastic::TestCase
     edited_context
     refused = cli("intent", "note", "1", "a line")
 
-    assert_equal [1, "next: plastic sync up"], [refused.code, refused.out[/^next: .*$/]], refused.err
+    assert_equal [1, "next: plastic store sync up"], [refused.code, refused.out[/^next: .*$/]], refused.err
   end
 
   def test_sync_up_reads_a_context_with_other_content_into_its_rows
     path = edited_context
-    named = cli("sync", "up")
+    named = cli("store", "sync", "up")
     again = cli("intent", "note", "1", "a line")
     rows = JSON.parse(retrieval.structure.contexts("1").first.data)
 
@@ -203,10 +203,10 @@ class RoutinePrintingIndexTest < Plastic::TestCase
   def test_an_index_that_was_never_printed_is_cleared_by_sync_up_and_intent_new_passes
     write("store/index.json", "{}\n")
     refused = cli("intent", "new", "First")
-    named = cli("sync", "up")
+    named = cli("store", "sync", "up")
     again = cli("intent", "new", "First")
 
-    assert_equal [1, "next: plastic sync up", 0, 0], [refused.code, refused.out[/^next: .*$/], named.code, again.code], again.err
+    assert_equal [1, "next: plastic store sync up", 0, 0], [refused.code, refused.out[/^next: .*$/], named.code, again.code], again.err
   end
 
   def add_imported_cluster
@@ -217,7 +217,7 @@ class RoutinePrintingIndexTest < Plastic::TestCase
   def test_an_index_with_other_content_than_the_rows_is_refused_though_printed_before_and_sync_up_clears_it
     open_intent
     add_imported_cluster
-    results = [cli("intent", "new", "Beta"), cli("sync", "up"), cli("intent", "new", "Beta")]
+    results = [cli("intent", "new", "Beta"), cli("store", "sync", "up"), cli("intent", "new", "Beta")]
 
     assert_equal [1, 0, 0], results.map(&:code), results.last.err
     assert_includes File.read(store_path("store/index.json")), "imported"
@@ -277,7 +277,7 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     path = junk_graph
     refused = note
 
-    assert_equal [1, true, "next: plastic sync down --overwrite #{path}"], [refused.code, refused.err.include?("cannot be read"), refused.out[/^next: .*$/]], refused.err
+    assert_equal [1, true, "next: plastic store sync down --overwrite #{path}"], [refused.code, refused.err.include?("cannot be read"), refused.out[/^next: .*$/]], refused.err
   end
 
   def test_a_graph_that_cannot_be_read_is_cleared_by_the_command_the_refusal_names_and_printed_again
@@ -294,7 +294,7 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     write("#{intent.dir}/spec.md", "#{keyed_spec}\nEdited.\n")
     steps = followed(note, 2)
 
-    assert_equal [%w[sync up], %w[sync down --overwrite] + ["#{other.dir}/graph.json"], 0], [steps[0], steps[1], note.code]
+    assert_equal [%w[store sync up], %w[store sync down --overwrite] + ["#{other.dir}/graph.json"], 0], [steps[0], steps[1], note.code]
   end
 
   # The command each refusal names, run in turn `count` times.
@@ -310,7 +310,7 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
   # sync up names the file, prints it again and exits 0; the refused call then runs.
   def generated_round_trip(path, hand_text, call)
     refused = call.call
-    up = cli("sync", "up")
+    up = cli("store", "sync", "up")
 
     [refused.out[/^next: .*$/], refused.err.include?("read it into rows"), up.code, up.out.include?("read #{path}"), holds?(path, hand_text), call.call.code]
   end
@@ -324,13 +324,13 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     write(path, JSON.generate(JSON.parse(File.read(store_path(path))).merge("context" => { "my_note" => "keep this" })))
     add = -> { cli("node", "add", "1", "T", "--criterion", KEY) }
 
-    assert_equal ["next: plastic sync up", true, 0, true, true, 0], generated_round_trip(path, "my_note", add)
+    assert_equal ["next: plastic store sync up", true, 0, true, true, 0], generated_round_trip(path, "my_note", add)
   end
 
   def test_a_bare_overwrite_of_sync_down_leaves_a_one_sided_hand_edit_alone
     path = "#{specified.dir}/spec.md"
     write(path, "#{keyed_spec}\nEdited.\n")
-    result = cli("sync", "down", "--overwrite")
+    result = cli("store", "sync", "down", "--overwrite")
 
     assert_equal [0, true], [result.code, File.read(store_path(path)).include?("Edited.")], result.err
   end
@@ -338,7 +338,7 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
   def test_an_overwrite_of_one_path_prints_it_from_its_rows_though_the_rows_did_not_change
     path = "#{specified.dir}/spec.md"
     write(path, "#{keyed_spec}\nEdited.\n")
-    result = cli("sync", "down", "--overwrite", path)
+    result = cli("store", "sync", "down", "--overwrite", path)
 
     assert_equal [0, false], [result.code, File.read(store_path(path)).include?("Edited.")], result.err
   end

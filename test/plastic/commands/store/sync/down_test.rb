@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
+require_relative "../../../../test_helper"
 
 class SyncDownTest < Plastic::TestCase
-  def sync_down = plastic("sync", "down", table: Plastic::CLI::TABLE)
+  def sync_down = plastic("store", "sync", "down", table: Plastic::CLI::TABLE)
 
   def archive(intent, *options)
     plastic("intent", "archive", intent.intent_id, *options, table: Plastic::CLI::TABLE)

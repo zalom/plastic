@@ -102,7 +102,7 @@ class SchemaRunnerTest < Plastic::TestCase
     migrated = store_digests(home).except("retrieval_graph.db")
     Plastic::Graph::Database::ConnectionPool.release(home)
     seed_config(home, "global:\n  migrate:\n    drop_document_revisions: true\n")
-    restore_call(home, "--store", "alpha", "--latest")
+    restore_call(home, "--project", "alpha", "--latest")
 
     assert_equal [Plastic::Graph::MIGRATIONS.versions(:store)], versions_in(home, "/alpha/knowledge_graph.db")
     assert_equal migrated, store_digests(home).except("retrieval_graph.db")

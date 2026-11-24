@@ -16,7 +16,7 @@ module LegacyImportAcceptance
       FileUtils.rm(kernel.path("store/1a--beta-route/1a--beta-route.md"))
     end,
     "a folder with no entry" => ->(kernel) { kernel.write("store/9--stray/spec.md", "# Stray\n") },
-    "imported" => ->(kernel) { kernel.command!("sync", "up") }
+    "imported" => ->(kernel) { kernel.command!("store", "sync", "up") }
   }.freeze
 
   # A copy of the legacy store with the fixture's change, built once per fixture.

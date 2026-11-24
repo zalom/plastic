@@ -107,7 +107,7 @@ class IntentReportTest < Plastic::TestCase
 
   def test_a_recorded_report_is_read_by_the_next_sync
     call("1", REPORT)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
     assert_includes store_database.rows("SELECT path FROM documents").map { |row| row["path"] }, REPORT
   end

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/commands/backup/purge"
-require_relative "../../../../lib/plastic/commands/backup/list"
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/commands/store/backup/purge"
+require_relative "../../../../../lib/plastic/commands/store/backup/list"
 
 class BackupPurgeUnrealInputTest < Plastic::TestCase
   include BackupHomes
@@ -21,7 +21,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
     define_method(:"test_interrupted_deletes_a_folder_whose_status_file_is_#{label.tr(" ", "_")}") do
       home = fresh_home
       folder(home, STOPPED, status_text: text)
-      result = purge_call(home, "--store", "alpha", "--interrupted", clock: NOW)
+      result = purge_call(home, "--project", "alpha", "--interrupted", clock: NOW)
 
       assert_equal [0, []], [result.code, folder_names(home)]
     end
@@ -29,7 +29,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
     define_method(:"test_failed_leaves_a_folder_whose_status_file_is_#{label.tr(" ", "_")}") do
       home = fresh_home
       folder(home, STOPPED, status_text: text)
-      result = purge_call(home, "--store", "alpha", "--failed", clock: NOW)
+      result = purge_call(home, "--project", "alpha", "--failed", clock: NOW)
 
       assert_equal [0, [STOPPED]], [result.code, folder_names(home)]
     end
@@ -37,7 +37,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
     define_method(:"test_list_shows_a_folder_whose_status_file_is_#{label.tr(" ", "_")}") do
       home = fresh_home
       folder(home, STOPPED, status_text: text)
-      result = list_call(home, "--store", "alpha")
+      result = list_call(home, "--project", "alpha")
 
       assert_equal 0, result.code
       assert_includes result.out, "unknown"
@@ -49,7 +49,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
       home = fresh_home
       folder(home, name)
       folder(home, STOPPED)
-      result = purge_call(home, "--store", "alpha", "--older-than", "2027-01-01")
+      result = purge_call(home, "--project", "alpha", "--older-than", "2027-01-01")
 
       assert_equal [0, [name]], [result.code, folder_names(home)]
     end
@@ -57,7 +57,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
     define_method(:"test_interrupted_leaves_the_folder_#{name}") do
       home = fresh_home
       folder(home, name)
-      result = purge_call(home, "--store", "alpha", "--interrupted", clock: NOW)
+      result = purge_call(home, "--project", "alpha", "--interrupted", clock: NOW)
 
       assert_equal [0, [name]], [result.code, folder_names(home)]
     end
@@ -65,7 +65,7 @@ class BackupPurgeUnrealInputTest < Plastic::TestCase
     define_method(:"test_list_shows_the_folder_#{name}_without_crashing") do
       home = fresh_home
       folder(home, name)
-      result = list_call(home, "--store", "alpha")
+      result = list_call(home, "--project", "alpha")
 
       assert_equal 0, result.code
       assert_includes result.out, name

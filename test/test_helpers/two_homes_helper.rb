@@ -12,10 +12,10 @@ module TwoHomesHelper
   def two_homes(seed: ->(_home) {})
     with_home do |a|
       seed.call(a)
-      call_in(a, "sync", "down")
+      call_in(a, "store", "sync", "down")
       with_home do |b|
         pull(b, a)
-        call_in(b, "sync", "up")
+        call_in(b, "store", "sync", "up")
         yield a, b
       end
     end

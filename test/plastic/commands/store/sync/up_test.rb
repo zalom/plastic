@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/commands/sync/up"
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/commands/store/sync/up"
 require "json"
-require_relative "../../../test_helpers/delivered_homes"
-require_relative "../../../test_helpers/two_homes"
+require_relative "../../../../test_helpers/delivered_homes"
+require_relative "../../../../test_helpers/two_homes"
 
 class SyncUpTest < Plastic::TestCase
   fixtures :legacy
 
-  def import = plastic("sync", "up", table: Plastic::CLI::TABLE)
+  def import = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
   def legacy_metadata
     write("store/1--alpha-service/spec.md", "# Spec\n\n## Decisions\n- D1 Keep local ownership\n")
@@ -40,7 +40,7 @@ class SyncUpTest < Plastic::TestCase
 
   def test_preview_does_not_import_the_original_store
     before = snapshot(store_root)
-    result = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
+    result = plastic("store", "sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 0, out: ["preview"]
     assert_equal before, snapshot(store_root)
@@ -49,7 +49,7 @@ end
 
 # Sync up reads every intent folder, whatever store/index.json says.
 class SyncUpFoldersTest < Plastic::TestCase
-  def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
+  def sync = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
   def page(id, title) = "---\nid: #{id.to_json}\nintent: #{title.to_json}\ncreated: #{STAMP.to_json}\n---\n\n# #{id} - #{title}\n"
 
@@ -182,7 +182,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     intent = open_intent
     path = "#{intent.dir}/context.json"
     write(path, "{}\n")
-    result = cli("sync", "up")
+    result = cli("store", "sync", "up")
 
     assert_equal [0, "{}\n"], [result.code, File.read(store_path(path))], result.err
   end
@@ -190,7 +190,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
   def test_sync_up_prints_a_generated_index_with_other_content_and_leaves_it_level
     open_intent
     index_with_cluster
-    result = cli("sync", "up")
+    result = cli("store", "sync", "up")
     printed = File.read(index_path)
 
     assert_equal [0, "#{JSON.pretty_generate(JSON.parse(printed))}\n", true], [result.code, printed, printed.include?("imported")], result.err
@@ -200,7 +200,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     open_intent
     index_with_cluster
     before = File.read(index_path)
-    result = cli("sync", "up", "--dry-run")
+    result = cli("store", "sync", "up", "--dry-run")
 
     assert_equal [0, true, before], [result.code, result.out.include?("paths that would change: 1"), File.read(index_path)], result.err
   end
@@ -209,7 +209,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     open_intent
     compact = JSON.generate(JSON.parse(File.read(index_path)))
     write("store/index.json", compact)
-    result = cli("sync", "up")
+    result = cli("store", "sync", "up")
 
     assert_equal [0, compact], [result.code, File.read(index_path)], result.err
   end
@@ -218,7 +218,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     specified
     other = open_intent("Beta")
     write("#{other.dir}/graph.json", "{\"hand\":true}\n")
-    result = cli("sync", "up")
+    result = cli("store", "sync", "up")
 
     assert_equal [1, true], [result.code, result.out.include?("sync down --overwrite #{other.dir}/graph.json")], result.err
   end
@@ -229,7 +229,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
       yield home
       file = File.join(home, "stores", "global", path)
       File.write(file, text)
-      [call_in(home, "sync", "up", "--dry-run"), File.read(file), call_in(home, "sync", "up")]
+      [call_in(home, "store", "sync", "up", "--dry-run"), File.read(file), call_in(home, "store", "sync", "up")]
     end
   end
 
@@ -244,7 +244,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     call_in(home, "intent", "new", "Beta")
     spec = File.join(home, "stores", "global", "store/1--beta/spec.md")
     File.write(spec, "# Spec\n\n## Done criteria\n- [ ] [done] it is done\n")
-    call_in(home, "sync", "up")
+    call_in(home, "store", "sync", "up")
     home_graphs(home).databases.fetch(:store).transaction { |batch| batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP }) }
     File.write(spec, "file change\n")
   end
@@ -253,7 +253,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
     codes = [[], ["--merge"]].flat_map do |options|
       with_home do |home|
         conflicting_spec(home)
-        [call_in(home, "sync", "up", "--dry-run", *options).code, call_in(home, "sync", "up", *options).code]
+        [call_in(home, "store", "sync", "up", "--dry-run", *options).code, call_in(home, "store", "sync", "up", *options).code]
       end
     end
 
@@ -261,7 +261,7 @@ class SyncUpGeneratedTest < Plastic::TestCase
   end
 
   def test_a_preview_of_sync_up_with_an_overwrite_that_names_no_file_prints_the_plain_reason
-    dry = with_home { |home| call_in(home, "sync", "up", "--dry-run", "--overwrite", "store/9--none/spec.md") }
+    dry = with_home { |home| call_in(home, "store", "sync", "up", "--dry-run", "--overwrite", "store/9--none/spec.md") }
 
     assert_equal [1, "plastic: store/9--none/spec.md names no file and no rows of this store\n"], [dry.code, dry.err], dry.out
   end
@@ -271,7 +271,7 @@ end
 module BetaFolder
   include ConfigHomes
 
-  def sync = plastic("sync", "up", table: Plastic::CLI::TABLE)
+  def sync = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
   def setup
     super
@@ -425,7 +425,7 @@ class SyncUpUnreadRowsTest < Plastic::TestCase
     left_the_selection
     sync
     File.delete(folder.path("store/2--beta/#{PAGE}"))
-    plastic("sync", "down", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "down", table: Plastic::CLI::TABLE)
 
     refute_path_exists folder.path("store/2--beta/#{PAGE}")
   end
@@ -471,7 +471,7 @@ class SyncUpGraphArchiveKeptTest < Minitest::Test
 
   def test_a_parked_and_an_abandoned_intent_keep_their_reason_and_disposition_on_a_second_home
     with_homes(method(:kept)) do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       sql = "SELECT intent_id, status, disposition, reason FROM intents ORDER BY intent_id"
 
       assert_includes query(second, sql), ["2", "parked", nil, "Waiting for the supplier"]
@@ -490,7 +490,7 @@ class SyncUpGraphArchiveRefusalTest < Minitest::Test
 
   def test_unarchive_on_the_second_home_refuses_and_leaves_the_archive_mark
     with_homes(method(:archived)) do |_first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       call = second.command("intent", "unarchive", "1")
 
       assert_equal [3, [[nil]], false], [call.code, query(second, "SELECT restored_at FROM archives"), File.exist?(second.path(DIR))]
@@ -514,14 +514,14 @@ class SyncUpGraphArchiveRepeatTest < Minitest::Test
 
   def test_a_delivered_archived_intent_arrives_with_its_completion_and_a_second_sync_up_changes_nothing
     with_homes(method(:archived)) do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       arrived = rows_of(second)
       index = second.read("store/index.json")
 
       refute_empty arrived.last
       assert_equal rows_of(first), arrived
 
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal [arrived, index], [rows_of(second), second.read("store/index.json")]
     end
@@ -540,10 +540,10 @@ class SyncUpGraphArchiveRestoredTest < Minitest::Test
 
   def test_a_restored_archive_survives_a_sync_up
     with_homes(method(:archived)) do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       first.command!("intent", "unarchive", "1")
       before = query(first, ARCHIVES)
-      first.command!("sync", "up")
+      first.command!("store", "sync", "up")
 
       assert_equal before, query(first, ARCHIVES)
       refute_nil before.first.last
@@ -559,7 +559,7 @@ class SyncUpGraphArchiveTest < Minitest::Test
 
   def archived(kernel)
     kernel.write("#{DIR}/outcome.md", DROPPED)
-    kernel.command!("sync", "up")
+    kernel.command!("store", "sync", "up")
     kernel.command!("intent", "abandon", "1", env: SESSION)
     kernel.command!("intent", "archive", "1")
   end
@@ -568,7 +568,7 @@ class SyncUpGraphArchiveTest < Minitest::Test
 
   def test_an_archived_intent_reads_archived_with_its_status_completion_and_index_on_a_second_home
     with_homes(method(:archived)) do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal seen_from(first), seen_from(second)
       assert_equal [["1", nil]], query(second, "SELECT intent_id, restored_at FROM archives")
@@ -581,7 +581,7 @@ class SyncUpGraphClaimTest < Minitest::Test
 
   def test_the_second_home_can_claim_the_next_node_of_the_graph
     with_two_homes do |_first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_includes second.command!("node", "claim", "1", "n2", "--agent", "tester").out, "n2"
     end
@@ -605,7 +605,7 @@ class SyncUpGraphCompletionStatusTest < Minitest::Test
 
   def test_a_delivered_intent_reads_done_and_delivered_on_a_second_home
     with_homes(method(:deliver)) do |_first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal [["done", "delivered"]], query(second, "SELECT status, disposition FROM intents")
     end
@@ -619,7 +619,7 @@ class SyncUpGraphCompletionTest < Minitest::Test
 
   def test_the_completion_of_a_delivered_intent_continues_on_a_second_home
     with_homes(method(:deliver)) do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       refute_empty query(first, COMPLETION)
       assert_equal query(first, COMPLETION), query(second, COMPLETION)
@@ -633,8 +633,8 @@ class SyncUpGraphDownTest < Minitest::Test
 
   def test_sync_down_after_the_move_writes_nothing_and_exits_zero
     with_two_homes do |first, second|
-      second.command!("sync", "up")
-      call = second.command("sync", "down")
+      second.command!("store", "sync", "up")
+      call = second.command("store", "sync", "down")
 
       assert_equal [0, "none"], [call.code, call.files]
       assert_equal first.read(GRAPH), second.read(GRAPH)
@@ -647,12 +647,12 @@ class SyncUpGraphEmptiedTest < Minitest::Test
 
   def test_a_graph_emptied_in_one_home_is_read_in_the_other_and_empties_the_rows_there
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       emptied = JSON.pretty_generate(JSON.parse(second.read(GRAPH)).merge("approval" => nil, "verdicts" => [], "nodes" => [], "edges" => []))
       second.write(GRAPH, "#{emptied}\n")
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       first.write(GRAPH, second.read(GRAPH))
-      first.command!("sync", "up")
+      first.command!("store", "sync", "up")
 
       assert_equal [[], []], [query(second, "SELECT id FROM nodes"), query(first, "SELECT id FROM nodes")]
     end
@@ -665,7 +665,7 @@ class SyncUpGraphIndexTest < Minitest::Test
   def test_the_index_after_the_move_equals_the_copied_one_except_for_origin_ids
     with_two_homes do |first, second|
       copied = unstamped(second.read("store/index.json"))
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal copied, unstamped(second.read("store/index.json"))
       assert_equal unstamped(first.read("store/index.json")), unstamped(second.read("store/index.json"))
@@ -674,7 +674,7 @@ class SyncUpGraphIndexTest < Minitest::Test
 
   def test_a_verdict_survives_the_move
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       sql = "SELECT round, verdict, findings FROM verdicts"
 
       refute_empty query(first, sql)
@@ -688,10 +688,10 @@ class SyncUpGraphRepeatTest < Minitest::Test
 
   def test_a_second_sync_up_leaves_graph_json_and_its_printed_hash_as_they_are
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       bytes = second.read(GRAPH)
       printed = second.rows("knowledge_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal bytes, first.read(GRAPH)
       assert_equal [bytes, printed], [second.read(GRAPH), second.rows("knowledge_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")]
@@ -704,7 +704,7 @@ class SyncUpGraphSurvivalTest < Minitest::Test
 
   def test_findings_that_hold_id_and_intent_id_survive_the_move_unchanged
     with_two_homes do |_first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal ["The test is red for the right reason; see :id and :intent_id"], query(second, "SELECT findings FROM nodes WHERE id = 'n1'").flatten
     end
@@ -716,7 +716,7 @@ class SyncUpGraphTest < Minitest::Test
 
   def test_the_nodes_of_one_machine_continue_on_a_second_home_after_sync_up
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal nodes(first), nodes(second)
       assert_equal [second.origin], query(second, "SELECT DISTINCT origin_id FROM nodes").flatten
@@ -725,7 +725,7 @@ class SyncUpGraphTest < Minitest::Test
 
   def test_the_edges_approval_and_status_of_one_machine_continue_on_a_second_home
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       sql = ["SELECT count(*) FROM edges", "SELECT count(*) FROM approvals", "SELECT status FROM intents"]
 
       assert_equal sql.map { |text| query(first, text) }, sql.map { |text| query(second, text) }
@@ -738,7 +738,7 @@ class SyncUpGraphViewsTest < Minitest::Test
 
   def test_graph_show_and_graph_resume_say_the_same_in_both_homes
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
 
       assert_equal first.command!("graph", "show", "1").out, second.command!("graph", "show", "1").out
       assert_equal first.command!("graph", "resume").out, second.command!("graph", "resume").out
@@ -752,7 +752,7 @@ class SyncLegacyCleanupTest < Plastic::TestCase
 
   fixtures :legacy
 
-  def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
+  def apply = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
   def remove_after_import = seed_config(@plastic_home, "migrate:\n  remove_after_import: true\n")
 
@@ -794,7 +794,7 @@ end
 class SyncLegacyMetadataTest < Plastic::TestCase
   fixtures :legacy
 
-  def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
+  def apply = plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
 
   def spec_with(decisions) = "# Spec\n\n## Decisions\n#{decisions.map { |line| "- #{line}\n" }.join}"
 
