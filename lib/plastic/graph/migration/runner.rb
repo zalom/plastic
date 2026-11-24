@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "home_migration"
+require_relative "records_newer"
 require_relative "migration_ledger"
 require_relative "migration_reason"
 require_relative "store_migration"
@@ -13,18 +14,30 @@ module Plastic
     class SchemaRunner
       # `migrated` names the stores that moved; `failed` maps each store that stayed behind to the reason; `notes` holds
       # the lines the migrations of the stores report.
-      Report = Data.define(:migrated, :failed, :notes) do
+      # `newer` maps each database that records versions this code does not know to those versions; the run leaves it as it is.
+      Report = Data.define(:migrated, :failed, :notes, :newer) do
         def self.of(results, notes = [])
-          grouped = results.group_by { |_slug, outcome| outcome.is_a?(String) ? :failed : outcome }
-          new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h, notes:)
+          grouped = results.group_by { |_slug, outcome| group(outcome) }
+          new(migrated: grouped.fetch(:migrated, []).map(&:first), failed: grouped.fetch(:failed, []).to_h, notes:,
+            newer: grouped.fetch(:newer, []).to_h { |slug, outcome| [slug, outcome.versions] })
         end
 
-        def initialize(migrated:, failed:, notes: []) = super
+        def self.group(outcome)
+          case outcome
+          when String then :failed
+          when RecordsNewer then :newer
+          else outcome
+          end
+        end
+
+        def initialize(migrated:, failed:, notes: [], newer: {}) = super
+
+        def newer_lines = newer.map { |store, versions| "migrate: #{store} was written by newer code (it records #{versions.join(", ")}); update leaves it as it is" }
 
         def behind_lines = failed.map { |store, reason| "migrate: #{store} stays behind because #{reason}; fix the cause and run plastic update" }
 
         # Every line a person reads: the stores that stayed behind, then the notes.
-        def lines = behind_lines + notes
+        def lines = behind_lines + newer_lines + notes
       end
 
       # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of

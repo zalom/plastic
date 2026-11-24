@@ -11,6 +11,7 @@ require_relative "legacy_keep"
 require_relative "legacy_pages"
 require_relative "legacy_trim"
 require_relative "migration_reason"
+require_relative "records_newer"
 require_relative "report_rows"
 require_relative "roadmap_needs"
 require_relative "store_age"
@@ -50,6 +51,9 @@ module Plastic
       attr_reader :notes, :ledger
 
       def call
+        newer = RecordsNewer.read(knowledge_file, :store, released: @released)
+        return newer if newer
+
         return compacted(:current) unless behind?
 
         StoreAge.call(root) if pending?(MIGRATIONS.baseline(:store))

@@ -44,7 +44,7 @@ module Plastic
         reading = state
         return build_missing_files if reading.current?
 
-        raise Ahead, refusal("is newer than this code (it records #{reading.unknown.join(", ")})") if reading.ahead?
+        raise Ahead, ahead_refusal(reading.unknown) if reading.ahead?
 
         settle
       rescue SQLite3::BusyException
@@ -103,6 +103,8 @@ module Plastic
       end
 
       def refusal(reason) = "#{@file} #{reason}; run plastic update"
+
+      def ahead_refusal(unknown) = refusal("is newer than this code (it records #{unknown.join(", ")})") + "; when no release is newer, it came from unreleased code"
     end
   end
 end
