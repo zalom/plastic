@@ -265,6 +265,11 @@ and `plastic intent note` write `outcome.md`. The other core files are printed f
 `Abandoned` line, and names the command that writes each. A started intent also needs its
 `Reverted` line first.
 
+A command that prints an intent's files refuses with exit 1, before it writes a row, when one of
+those files changed by hand since its last print, and offers `plastic store sync up` to read it
+first. A core file on disk that no row holds counts as changed by hand too, so a hand-written
+`outcome.md` that no sync has read is never built again from empty rows and overwritten.
+
 `plastic store sync up` fails with exit 1 on a hand edit of the `spec.md` or the `outcome.md` of a
 done or abandoned intent, and offers `plastic store sync down --overwrite PATH` to print the file
 from its rows again. A link that `plastic intent repair` rewrote in such a file, with its
