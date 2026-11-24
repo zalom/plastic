@@ -79,9 +79,10 @@ class GuardVerdictTest < Plastic::TestCase
 
   def test_each_shell_write_form_that_names_a_core_file_is_refused
     spec = path("spec.md")
+
     ["echo x > #{spec}", "echo x >> '#{spec}'", "echo x | tee #{spec}", "rm -f #{spec}", "mv #{spec} /tmp/spec.md",
-     "cp /tmp/spec.md #{spec}", "touch #{spec}", "sed -i '' 's/a/b/' #{spec}", "dd if=/dev/zero of=#{spec}",
-     "ruby -e 'File.write(\"#{spec}\", 1)'", "cd /tmp && FOO=1 rm #{spec}"].each do |command|
+      "cp /tmp/spec.md #{spec}", "touch #{spec}", "sed -i '' 's/a/b/' #{spec}", "dd if=/dev/zero of=#{spec}",
+      "ruby -e 'File.write(\"#{spec}\", 1)'", "cd /tmp && FOO=1 rm #{spec}"].each do |command|
       refute_nil shell(command), command
     end
   end
@@ -92,6 +93,7 @@ class GuardVerdictTest < Plastic::TestCase
 
   def test_a_shell_read_of_a_core_file_passes
     spec = path("spec.md")
+
     ["cat #{spec}", "grep -n Goal #{spec}", "cp #{spec} /tmp/spec.md", "wc -l #{spec} > /tmp/count"].each do |command|
       assert_nil shell(command), command
     end
@@ -110,6 +112,31 @@ class GuardVerdictTest < Plastic::TestCase
     refute_nil verdict.reason("apply_patch", { command: patch })
     refute_nil verdict.reason("apply_patch", { input: patch.sub("Update", "Add") })
     assert_nil verdict.reason("apply_patch", { input: patch.sub(path("outcome.md"), path("resources/tmp/a.md")) })
+  end
+
+  def test_another_file_of_an_intent_folder_is_refused_outside_resources
+    assert_includes write_tool(path("draft.md")), "only Plastic commands write files there"
+  end
+
+  def test_a_file_printed_from_the_rows_is_refused
+    assert_includes write_tool(path("graph.json")), "Plastic prints it from the database rows"
+  end
+
+  def test_a_home_path_of_an_unknown_user_passes
+    assert_nil shell("rm ~no-such-user-here/spec.md")
+  end
+
+  def test_a_store_with_no_index_owns_no_folder
+    assert_includes write_tool(File.join(@plastic_home, "stores", "other", "store", "1--a", "spec.md")), "no intent owns"
+  end
+
+  def test_a_home_whose_stores_were_not_moved_keeps_its_global_store_under_store
+    Dir.mktmpdir("guard-home") do |home|
+      unmoved = Plastic::Hooks::GuardVerdict.new(home:, cwd: @project)
+
+      refute_nil unmoved.reason("Write", { file_path: File.join(home, "store", "index.json") })
+      assert_nil unmoved.reason("Write", { file_path: File.join(home, "notes.md") })
+    end
   end
 
   def test_a_tool_that_writes_nothing_passes

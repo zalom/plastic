@@ -23,7 +23,7 @@ class HarnessesTest < Plastic::TestCase
     assert_equal [events, events], %w[claude-code codex].map { |name| Plastic::Harnesses.fetch(name).events }
   end
 
-def test_the_guard_event_matches_the_tools_that_write_and_the_others_match_every_tool
+  def test_the_guard_event_matches_the_tools_that_write_and_the_others_match_every_tool
     assert_equal ["Bash|Write|Edit|MultiEdit|NotebookEdit|apply_patch", ""], [Plastic::Harnesses.matcher("PreToolUse"), Plastic::Harnesses.matcher("Stop")]
   end
 

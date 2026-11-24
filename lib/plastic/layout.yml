@@ -92,6 +92,10 @@ resources:
   scratch: '\.(?:last|out|tmp)\z'
   tmp_types: [md, html]
 
+# The folders of a project tree that once held intent records. Intents live in the store, so the guard hook refuses
+# an agent write under them.
+project_records: [docs/plans/, docs/specs/]
+
 legacy:
   - name: "{id}--{slug}.md"
     match: ["[0-9]*--*.md"]

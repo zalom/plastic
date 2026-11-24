@@ -66,6 +66,9 @@ module Plastic
 
     def self.tmp_types = data.fetch("resources").fetch("tmp_types")
 
+    # The folders of a project tree that once held intent records, such as docs/specs/.
+    def self.project_records = data.fetch("project_records")
+
     def self.legacy = data.fetch("legacy").map { |entry| LegacyEntry.from(entry) }
 
     # The legacy entry that names `rel`, a path inside the intent folder, or nil.

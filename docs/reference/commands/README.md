@@ -149,5 +149,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | --- | --- |
 | [`plastic hook start`](hook-start/README.md) | SessionStart: name the harness, open the session row, print the state the rows carry |
 | [`plastic hook prompt`](hook-prompt/README.md) | UserPromptSubmit: record the prompt in the machine's chat history |
+| [`plastic hook guard`](hook-guard/README.md) | PreToolUse: refuse an agent write to a store's core files, a closed intent or a project's intent records |
 | [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew claims, run the stop gate |
 | [`plastic hook end`](hook-end/README.md) | SessionEnd: set the session's end time and reason |

@@ -34,6 +34,7 @@ module Plastic
       "hook" => {
         "hook start" => ["Hooks::Start", "SessionStart: name the harness, open the session row, print the state the rows carry"],
         "hook prompt" => ["Hooks::Prompt", "UserPromptSubmit: record the prompt in the machine's chat history"],
+        "hook guard" => ["Hooks::Guard", "PreToolUse: refuse an agent write to a store's core files, a closed intent or a project's intent records"],
         "hook stop" => ["Hooks::Stop", "Stop: stamp the turn, renew claims, run the stop gate"],
         "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
       }
