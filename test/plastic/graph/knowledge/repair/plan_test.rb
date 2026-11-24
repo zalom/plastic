@@ -88,6 +88,20 @@ class RepairPlanTest < Plastic::TestCase
     assert_equal [], plan(dirs: [OLD]).moves.map(&:from).grep(/8--other/)
   end
 
+  def test_a_repair_of_one_intent_still_amends_the_link_a_closed_neighbor_has_to_a_moved_file
+    found = plan(dirs: [OLD], closed: Set["8"])
+
+    assert_equal ["spec.md: link ../7--old/plan.md -> ../7--old/resources/references/plan.md; #{Plastic::Layout.amendment_reason(:link)}"],
+      found.amendments.select { |line| line.intent_id == "8" }.map(&:text)
+  end
+
+  def test_a_repair_of_one_intent_lists_only_its_own_links_left_as_they_are
+    @folder.write("#{OLD}/spec.md", "# Spec\n\n[gone](missing.md)\n")
+    left = ->(dirs) { plan(dirs:).preview.grep(/link left as it is/) }
+
+    assert_equal [["preview: link left as it is #{OLD}/spec.md: missing.md"], []], [left.call([OLD]), left.call([OTHER])]
+  end
+
   def test_a_revisions_file_with_no_readable_entry_is_refused
     @folder.write("#{OLD}/revisions.md", "# Revisions\n\nNothing dated.\n")
     error = assert_raises(Plastic::Refused) { plan.revisions }

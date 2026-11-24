@@ -25,6 +25,10 @@ class LayoutTest < Plastic::TestCase
     assert_equal %w[intent.md graph.json work.log], Plastic::Layout.required_in("abandoned").map(&:name)
   end
 
+  def test_with_no_role_the_name_is_the_name_of_the_module
+    assert_equal "Plastic::Layout", Plastic::Layout.name
+  end
+
   def test_a_core_file_is_found_by_its_path_and_a_stray_is_not
     assert_equal [true, false], [Plastic::Layout.core?("spec.md"), Plastic::Layout.core?("notes.md")]
   end

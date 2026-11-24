@@ -47,6 +47,19 @@ class IntentRepairCommandTest < Plastic::TestCase
     assert_includes out, "preview: remove store/.sessions/"
   end
 
+  def test_the_dry_run_of_one_intent_names_its_changes_and_no_store_leftover
+    out = repair("2", "--dry-run").out
+
+    assert_includes out, "preview: move #{OTHER}/plan.md -> #{OTHER}/resources/references/plan.md"
+    refute_includes out, "store/.sessions/"
+  end
+
+  def test_the_dry_run_of_an_intent_with_nothing_to_change_says_so
+    repair("2")
+
+    assert_includes repair("2", "--dry-run").out, "preview: nothing to change"
+  end
+
   def test_an_id_or_all_is_needed_and_not_both
     assert_equal [2, 2], [repair.code, repair("1", "--all").code]
   end
