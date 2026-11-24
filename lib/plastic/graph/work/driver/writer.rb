@@ -46,9 +46,9 @@ module Plastic
         # is the owner's word. The write is guarded by the holder it read, so two sessions cannot both win.
         class Writer
           TAKE_SQL = <<~SQL
-            INSERT INTO drivers (intent_id, origin_id, session_id, claimed_at, seen_at)
-            VALUES (:intent_id, :origin, :by, :now, :now)
-            ON CONFLICT (intent_id, origin_id) DO UPDATE SET session_id = :by, claimed_at = :now, seen_at = :now
+            INSERT INTO drivers (intent_id, origin_id, session_id, claimed_at, seen_at, mode)
+            VALUES (:intent_id, :origin, :by, :now, :now, :mode)
+            ON CONFLICT (intent_id, origin_id) DO UPDATE SET session_id = :by, claimed_at = :now, seen_at = :now, mode = :mode
             WHERE session_id IS :holder
             RETURNING session_id
           SQL
@@ -70,12 +70,12 @@ module Plastic
           end
 
           # [:driving, holder, line], [:took_over, holder, line] or [:held, holder, nil]. The line is the work log text of a
-          # change of driver, nil when the same session drives again.
-          def claim(intent_id:, by:, take_over: nil)
+          # change of driver, nil when the same session drives again. The mode names the delivery: guided or auto.
+          def claim(intent_id:, by:, take_over: nil, mode: nil)
             held = holder(intent_id)
             standing = held&.standing_for?(by)
             return [:held, held.session, nil] if standing && take_over.to_s.empty?
-            return [:held, current_session(intent_id), nil] unless write(intent_id, by, held&.session)
+            return [:held, current_session(intent_id), nil] unless write(intent_id, by, held&.session, mode)
 
             [standing ? :took_over : :driving, held&.session, Handover.new(by:, held:, take_over:).text]
           end
@@ -100,8 +100,8 @@ module Plastic
 
           def current_session(intent_id) = holder(intent_id).session
 
-          def write(intent_id, by, holder)
-            bind = { intent_id:, origin: @retrieval.origin_id, by:, holder:, now: Plastic.timestamp(@clock.now) }
+          def write(intent_id, by, holder, mode)
+            bind = { intent_id:, origin: @retrieval.origin_id, by:, holder:, mode:, now: Plastic.timestamp(@clock.now) }
             @databases.fetch(:store).transaction { |batch| batch.write(:drivers, TAKE_SQL, **bind) }.any?
           end
 

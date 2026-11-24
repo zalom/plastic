@@ -189,7 +189,7 @@ text that Plastic prints in the planning hand-off.
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
-They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it.
+They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it. The row keeps the `mode` of the delivery: `guided` from `plastic intent start`, `auto` from `plastic intent auto`. `plastic graph lapsed` reads the rows of mode `auto` and lists each lapsed driver claim and each lapsed node claim of those intents, with the command that restarts the first. It renews no claim, so the session that runs it on a timer cannot hide a lapse.
 `plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
 holds the node and lapses after 900 seconds without a renewal; each command of the session and
@@ -421,7 +421,7 @@ A migration that removes data keeps it in `legacy.db` in the same transaction, a
 newest migration the store records from those rows. A migration that changes stored data waits
 behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
 migration that writes every stored time in UTC, the migration that drops the node columns
-`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops ten leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
+`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops 10 leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
 23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 

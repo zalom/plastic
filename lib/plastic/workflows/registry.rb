@@ -81,6 +81,7 @@ module Plastic
       code_migration_list: "Code::Migration::List",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
+      code_lapsed_graph: "Code::Graph::Lapsed",
       code_load_projects: "Code::Project::Load",
       code_list_projects: "Code::Project::List",
       code_list_chat: "Code::Chat::List",
