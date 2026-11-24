@@ -17,12 +17,25 @@ class ResourcesClassificationTest < Plastic::TestCase
       destinations("reviews/r1.md", "packets/p.json", "nodes/n1/brief.md")
   end
 
-  def test_legacy_files_have_no_destination
-    assert_equal [nil, nil, nil], destinations("plan.md", "checklist.md", "actions/a1.md")
+  def test_the_plan_the_checklist_and_the_action_files_go_to_references
+    assert_equal %w[resources/references/plan.md resources/references/checklist.md resources/references/actions/a1.md],
+      destinations("plan.md", "checklist.md", "actions/a1.md")
+  end
+
+  def test_the_old_intent_file_is_renamed_to_intent_md
+    assert_equal ["intent.md"], destinations("12--old-name.md")
+  end
+
+  def test_files_the_repair_removes_or_amends_have_no_destination
+    assert_equal [nil] * 4, destinations("graph.md", "savepoint.md", "revisions.md", "delivery.write.lock")
   end
 
   def test_lock_and_ds_store_files_have_no_destination
     assert_equal [nil, nil, nil, nil], destinations("delivery.lock", "watch.lock", "delivery.write.lock", "resources/.DS_Store")
+  end
+
+  def test_a_file_the_layout_does_not_allow_goes_whole_to_tmp
+    assert_equal %w[resources/tmp/review.rb resources/tmp/tools/run.rb resources/tmp/notes.md], destinations("review.rb", "tools/run.rb", "notes.md")
   end
 
   def test_the_notes_and_the_sorted_folders_have_no_destination
@@ -31,7 +44,7 @@ class ResourcesClassificationTest < Plastic::TestCase
 
   def test_a_loose_markdown_or_html_file_and_scratch_go_to_tmp_and_other_output_to_files
     assert_equal %w[resources/tmp/notes.md resources/tmp/page.html resources/output/files/data.csv resources/output/files/review.rb resources/tmp/runner-step.last],
-      destinations("resources/notes.md", "page.html", "resources/data.csv", "review.rb", "runner-step.last")
+      destinations("resources/notes.md", "page.html", "resources/data.csv", "resources/review.rb", "runner-step.last")
   end
 
   def test_a_file_directly_under_output_is_sorted_by_its_type
