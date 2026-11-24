@@ -114,6 +114,30 @@ class IntentAbandonTest < Plastic::TestCase
     assert_equal ["abandoned", "cancelled", nil], [retrieval.intent("1").status, retrieval.intent("1").disposition, structure.completions("1").first]
   end
 
+  def test_abandoning_prints_the_index_and_the_work_log_line_it_wrote
+    droppable
+    result = abandon
+
+    assert_call result, code: 0, out: /^files:  store\/index\.json\n        store\/1--alpha\/work\.log\n/
+    assert_includes File.read(store_path("store/1--alpha/work.log")), "abandoned - - Abandoned: cancelled"
+  end
+
+  def test_a_sync_down_after_an_abandon_writes_no_file
+    droppable
+    abandon
+
+    assert_call cli("store", "sync", "down"), code: 0, out: "next: plastic next\nbecause: the files hold every row that changed\n"
+  end
+
+  def test_an_outcome_changed_by_hand_and_not_read_in_refuses_and_names_sync_up
+    droppable
+    write("store/1--alpha/outcome.md", "#{File.read(store_path("store/1--alpha/outcome.md"))}\nA late line.\n")
+    result = abandon
+
+    assert_call result, code: 1, out: /\Anext: plastic store sync up\n/, err: /outcome.md/
+    assert_equal "open", retrieval.intent("1").status
+  end
+
   def test_a_supersedes_link_from_another_intent_gives_superseded
     droppable
     open_intent("Beta")
