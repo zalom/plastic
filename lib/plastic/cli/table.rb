@@ -13,7 +13,7 @@ module Plastic
     FAMILIES = {
       "core" => {
         "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
-        "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair"],
+        "doctor" => ["Commands::Doctor", "Check the installation, the databases, the hooks of this harness and the folder layout of each store, rebuild a search index that is out of step, and name each repair"],
         "init" => ["Commands::Init", "Find the installed harnesses and install Plastic into the ones the person picks"],
         "install" => ["Commands::Install", "Install the core files and make the global store"],
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],

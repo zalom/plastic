@@ -12,7 +12,7 @@ module Plastic
         # holds data. An entry the layout does not name is named and left. Machine state, such as .DS_Store, is no entry.
         class StoreLeftovers
           ROOT = "store"
-          HOLDS_DATA = "it holds data"
+          HOLDS_DATA = "it holds data, and the layout does not allow it here"
           UNNAMED = "the layout does not name it"
 
           def initialize(folder)
@@ -22,8 +22,11 @@ module Plastic
           # The paths, relative to the store folder, that a repair removes; a folder ends with a slash.
           def removals = (@removals ||= entries.filter_map { |name, entry| shown(name) if entry && removable?(name, entry) })
 
+          # Each entry a repair leaves although the layout does not allow it, as its path and the reason it stays.
+          def kept = entries.filter_map { |name, entry| (why = kept_reason(name, entry)) && [shown(name), why] }
+
           # One line for each entry a repair leaves although the layout does not allow it.
-          def left = entries.filter_map { |name, entry| left_line(name, entry) }
+          def left = kept.map { |rel, why| "left #{rel}: #{why}" }
 
           def preview = removals.map { |rel| "preview: remove #{rel}" }
 
@@ -36,14 +39,15 @@ module Plastic
 
           # Each entry of store/ that the layout does not allow, with the legacy entry that names it, or nil.
           def entries
-            names = File.directory?(@folder.path(ROOT)) ? Dir.children(@folder.path(ROOT)).sort : []
+            root = @folder.path(ROOT)
+            names = File.directory?(root) ? Dir.children(root).sort : []
             names.reject { |name| allowed?(name) || name.match?(Layout.skipped) }.map { |name| [name, legacy(name)] }
           end
 
-          def left_line(name, entry)
-            return "left #{shown(name)}: #{UNNAMED}" unless entry
+          def kept_reason(name, entry)
+            return UNNAMED unless entry
 
-            "left #{shown(name)}: #{HOLDS_DATA}" unless removable?(name, entry)
+            HOLDS_DATA unless removable?(name, entry)
           end
 
           def allowed?(name) = Layout.store_folder_allowed.any? { |entry| named?(entry.name, name) }

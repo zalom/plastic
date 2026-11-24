@@ -32,7 +32,7 @@ class RepairStoreLeftoversTest < Plastic::TestCase
   def test_a_database_that_holds_data_is_named_and_left
     @folder.write("store/work_graph.db", "SQLite format 3\u0000")
 
-    assert_equal [false, ["left store/work_graph.db: it holds data"]], [leftovers.removals.include?("store/work_graph.db"), leftovers.left]
+    assert_equal [false, ["left store/work_graph.db: it holds data, and the layout does not allow it here"]], [leftovers.removals.include?("store/work_graph.db"), leftovers.left]
   end
 
   def test_an_entry_the_layout_does_not_name_is_named_and_left
