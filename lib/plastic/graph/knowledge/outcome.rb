@@ -16,6 +16,7 @@ module Plastic
         extend Forwardable
 
         HEADING = /\A(#+)\s*(.*?)\s*\z/
+        CONTINUATION = /\A\s+\S/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
 
         def_delegator :@delivery, :recorded?, :delivery_recorded?
@@ -44,12 +45,25 @@ module Plastic
 
         def reverted? = recorded?("Reverted")
 
-        def verification = section.filter_map { |line| line[BULLET, 1]&.delete("*")&.strip }
+        # Each bullet joined with the indented lines that wrap it, so a long delivery line reads whole.
+        def verification = bullets.map { |bullet| bullet.delete("*").strip }
 
         # The values written after `label:` under Verification, in order.
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
         private
+
+        def bullets
+          section.each_with_object([]) do |line, found|
+            if (bullet = line[BULLET, 1])
+              found << bullet
+            elsif line.match?(CONTINUATION) && found.any? && !wrapped_stop?(line)
+              found[-1] = "#{found.last} #{line.strip}"
+            end
+          end
+        end
+
+        def wrapped_stop?(line) = line.strip.match?(/\A[-*]\s/)
 
         def recorded?(label) = values(label).any?
 
