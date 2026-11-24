@@ -39,7 +39,7 @@ Everything else the work makes or reads. The agent writes here and no core file.
 
 ## Files of an older layout
 
-`plastic store sync up` reads or skips each of these by the sync column, and any file that is neither here nor above is named as a stray. The repair column says what `plastic intent repair` does.
+`plastic store sync up` reads or skips each of these by the sync column, and any file that is neither here nor above is named as a stray. The repair column says what a repair of an older folder does.
 
 | Name | Sync | Repair | Why |
 | --- | --- | --- | --- |

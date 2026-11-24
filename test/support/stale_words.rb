@@ -26,6 +26,7 @@ module StaleWords
     tools/store_proof.rb
     docs/reference/commands/store-sync-down/README.md
     docs/contributing/MIGRATIONS.md
+    docs/help/intent-folder.md
   ].freeze
   STORAGE_WORDS = Regexp.union(OLD_LAYOUT, REMOVED_STORAGE)
 
