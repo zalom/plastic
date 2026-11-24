@@ -60,6 +60,23 @@ class UpdateAheadStoreTest < Plastic::TestCase
     assert_includes result.err, UNKNOWN
   end
 
+  def test_a_dry_run_with_no_newer_release_stops_at_the_same_gate_as_the_update
+    result = update_ahead("99.0.0-alpha.1", "--dry-run")
+
+    assert_equal 1, result.code
+    assert_match(/unreleased code.*#{UNKNOWN}/, result.err)
+  end
+
+  def test_a_dry_run_changes_nothing_of_the_store
+    ahead_store
+    before = beta_2_files(@plastic_home)
+    installed("99.0.0-alpha.1")
+    activated("99.0.0-alpha.1")
+    call("update", "--dry-run", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_LOCAL_RELEASE" => local_release("99.0.0-alpha.1") })
+
+    assert_equal before, beta_2_files(@plastic_home)
+  end
+
   def test_every_other_command_still_refuses_with_exit_3_and_a_step_that_works
     ahead_store
     result = call("status")
