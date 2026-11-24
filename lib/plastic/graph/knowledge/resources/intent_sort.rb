@@ -50,7 +50,8 @@ module Plastic
 
           def rewrites = results.select(&:changed?).map { |linked| linked.rewrite(@dir, @plan.moved) }
 
-          def unresolved = results.flat_map { |linked| linked.unresolved_in(@dir) }
+          # The links of this folder left as they are, listed only when the call repairs this folder.
+          def unresolved = @plan.moving?(@dir) ? results.flat_map { |linked| linked.unresolved_in(@dir) } : []
 
           def changed = results.flat_map { |linked| linked.changed_in(@dir) }
 

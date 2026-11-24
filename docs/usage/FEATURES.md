@@ -282,7 +282,7 @@ and `.tmp/`, and names each entry that holds data and leaves it.
 A done or abandoned intent changes in its structure only, never in its work: each change writes one
 `amended` line on that intent's work log with the reason for its kind. An intent that a driver
 claim or a live node claim holds is refused with exit 3, and `--all` repairs the other intents
-first. Both the run and `--dry-run` list the links that change and the links left as they are;
+first. Both the run and `--dry-run` list the links that change and the links left as they are in the folders it repairs;
 `--dry-run` also lists every change and every `amended` line, and writes nothing. A target that
 holds other bytes than the file that would move onto it stops the call with exit 3 and names the
 target. A second run finds nothing to change and says `repaired: nothing to change`.
