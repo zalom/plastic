@@ -233,8 +233,11 @@ and says what is wrong there: the files outside the layout, the retired files an
 `revisions.md`. The retired entries of the store folder, such as `.sessions/`, get one
 `layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
 NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
-person: its repair says to move it out of the store folder by hand. A `revisions.md` that the repair
-cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
+person: its repair says to move it out of the store folder by hand. An entry at the root of a
+store, beside `store/`, that the layout does not name, such as a `REVIEWS.md` a person left there,
+gets a `layout NAME ENTRY:` row whose repair says to move it out of the store by hand. The entries
+the layout names there are listed in [the store folder section of the intent folder page](../help/intent-folder.md#the-store-folder). A
+`revisions.md` that the repair cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
 file that the layout requires in its state, such as `outcome.md`, gets a `layout NAME ID--SLUG:` row
 that names the files and has no repair, so the doctor lists it and does not fail on it.
 

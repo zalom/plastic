@@ -73,6 +73,8 @@ What a store folder, stores/SLUG/, may hold beside its intent folders.
 | `INDEX.md` | import | The index of a store written before store/index.json; the first sync up imports it. |
 | `originals/` | keep | Files a legacy import copied before it removed them; the databases hold them now. |
 | `roadmaps/` | remove | Roadmaps became needs links between intents. |
+| `project.yml` | keep | The release settings of a project, which an older release wrote; nothing reads this file now. |
+| `AGENTS.md` | keep | A copy of the AGENTS.md of the project, which an older release kept in the store; the repository holds the file, and nothing reads this copy. |
 
 What the folder store/ of a store folder may hold beside its intent folders. `plastic intent repair --all` removes each leftover.
 

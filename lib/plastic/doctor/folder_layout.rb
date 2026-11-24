@@ -9,15 +9,16 @@ require_relative "../graph/knowledge/reports"
 require_relative "../graph/knowledge/repair/plan"
 require_relative "../graph/knowledge/repair/store_leftovers"
 require_relative "folder_layout/broken_folder"
+require_relative "folder_layout/root_entries"
 
 module Plastic
   module Doctor
-    # Whether the folders of one store follow the layout: one finding for each intent folder that breaks it, saying what
-    # is wrong there, one for the retired entries of the store folder, and one for each entry that holds data the layout
-    # does not allow, which is left to a person. A done or abandoned intent that lacks a file its state requires gets a
-    # row with no repair, since its work is not written again. Given the reports of the settings, it reads the
-    # `reported` lines of the store, when its database exists, and judges the reports folder as the repair does. It
-    # writes no file.
+    # Whether the folders of one store follow the layout: one finding for each intent folder that breaks it, saying
+    # what is wrong there, one for the retired entries of the store folder, and one for each entry that holds data the
+    # layout does not allow or that the layout does not name at the store root, which is left to a person. A done or
+    # abandoned intent that lacks a file its state requires gets a row with no repair, since its work is not written
+    # again. Given the reports of the settings, it reads the `reported` lines of the store, when its database exists,
+    # and judges the reports folder as the repair does. It writes no file.
     class FolderLayout
       Knowledge = Graph::Knowledge
       COMMAND = "plastic intent repair"
@@ -39,7 +40,7 @@ module Plastic
       def checks
         return [] unless File.directory?(@folder.root)
 
-        found = [*folder_checks, *leftover_checks]
+        found = [*folder_checks, *leftover_checks, *root_checks]
         [*(found.empty? ? [Check.ok(label, "every intent folder follows the layout")] : found), *missing_checks]
       rescue Refused => error
         [finding(label, error.message)]
@@ -66,6 +67,13 @@ module Plastic
       def retired_check(removals) = (finding("layout #{@slug} store/:", "retired: #{removals.join(", ")}") unless removals.empty?)
 
       def kept_check(rel, why) = Check.finding("layout #{@slug} #{rel}:", why, "move #{rel} out of the store folder by hand, then run plastic doctor again")
+
+      # One finding for each entry at the store root that the layout does not name, which is left to a person.
+      def root_checks = RootEntries.new(@folder.root).to_a.map { |rel| unnamed_check(rel) }
+
+      def unnamed_check(rel)
+        Check.finding("layout #{@slug} #{rel}:", Knowledge::Repair::StoreLeftovers::UNNAMED, "move #{rel} out of the store by hand, then run plastic doctor again")
+      end
 
       def label = "layout #{@slug}:"
 
