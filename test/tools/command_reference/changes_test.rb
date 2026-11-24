@@ -72,7 +72,7 @@ class CommandReferenceChangesTest < Minitest::Test
   def test_the_rows_of_intent_end_hold_the_change_and_the_files
     texts = page("intent end").changes.map(&:text)
 
-    assert_includes texts, "The intent is marked done and its completion is saved"
+    assert_includes texts, "The intent is marked done, its completion is saved and its driver claim is released"
     refute(texts.any? { |text| text.match?(/lock/i) })
     assert_includes texts, "The files of the intent and the index of the store are rewritten"
   end

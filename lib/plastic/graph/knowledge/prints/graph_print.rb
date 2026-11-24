@@ -7,7 +7,7 @@ require_relative "print"
 module Plastic
   module Graph
     module Prints
-      # The graph.json print of an intent: the go-ahead, the completion, the verdicts, the nodes with their runs and the edges.
+      # The graph.json print of an intent: the go-ahead, the completion, the verdicts, the nodes with their input paths and runs, and the edges.
       module GraphPrint
         module_function
 
@@ -18,13 +18,13 @@ module Plastic
 
         def parts(id, rows)
           { "approval" => single(rows.approvals(id)), "completion" => single(rows.completions(id)), "verdicts" => plain_all(rows.verdicts(id)),
-            "nodes" => nodes(rows.nodes(id)), "runs" => plain_all(rows.runs(id)), "edges" => plain_all(rows.edges(id)) }
+            "nodes" => nodes(rows.nodes(id)), "node_inputs" => plain_all(rows.node_inputs(id)), "runs" => plain_all(rows.runs(id)), "edges" => plain_all(rows.edges(id)) }
         end
 
         def single(records) = records.first&.then { |row| plain(row) }
 
         def text(id, parts)
-          data = { "intent" => id, "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "runs" => [], "edges" => [] }.merge(parts)
+          data = { "intent" => id, "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "node_inputs" => [], "runs" => [], "edges" => [] }.merge(parts)
           "#{JSON.pretty_generate(data)}\n"
         end
 

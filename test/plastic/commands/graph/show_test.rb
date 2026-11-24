@@ -41,6 +41,14 @@ class GraphShowTest < Plastic::TestCase
     assert_call result, code: 0, out: ["node: n1 open a", "node: n2 open b", "edge: n1 to n2", "next: plastic graph ready 1"], err: ""
   end
 
+  def test_prints_each_input_path_of_a_node_on_its_own_line_under_the_node
+    open_keyed_intent
+    plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", "--input", "docs/b.md", table: Plastic::CLI::TABLE)
+    add_node("b")
+
+    assert_call call("1"), code: 0, out: ["node: n1 open a", "input: docs/a.md", "input: docs/b.md", "node: n2 open b", "next: plastic graph ready 1"], err: ""
+  end
+
   def test_a_hand_edited_graph_json_survives_the_call_and_no_row_is_added
     intent = open_keyed_intent
     add_node("a")

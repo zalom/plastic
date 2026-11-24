@@ -15,7 +15,7 @@ class NodeClaimPacketTest < Plastic::TestCase
     cli("intent", "approve", "1")
     cli("intent", "start", "1")
     cli("node", "add", "1", "Build", "--criterion", KEY)
-    cli("node", "add", "1", "Test", "--criterion", KEY, "--input", "run the suite")
+    cli("node", "add", "1", "Test", "--criterion", KEY, "--input", "run the suite", "--input", "docs/b.md")
     cli("edge", "add", "1", "n1", "n2")
   end
 
@@ -42,10 +42,22 @@ class NodeClaimPacketTest < Plastic::TestCase
     assert_equal({ "key" => KEY, "text" => CRITERION }, packet.fetch("criterion"))
   end
 
-  def test_the_packet_carries_the_input_of_the_node
+  def test_the_packet_carries_the_input_paths_of_the_node_in_order
     finish_first
 
-    assert_equal "run the suite", packet.fetch("input")
+    assert_equal ["run the suite", "docs/b.md"], packet.fetch("inputs")
+  end
+
+  def test_the_packet_has_no_input_key
+    finish_first
+
+    refute_includes packet.keys, "input"
+  end
+
+  def test_a_node_with_no_input_carries_an_empty_list_of_inputs
+    packet = JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out).dig("result", "packet")
+
+    assert_equal [], packet.fetch("inputs")
   end
 
   def test_the_packet_carries_the_output_of_each_needed_node_as_json
@@ -68,7 +80,7 @@ class NodeClaimPacketTest < Plastic::TestCase
     finish_first("--output", output_file)
     lines = claim_second.out.lines.map(&:chomp)
 
-    assert_equal ["node: n2 Test", "criterion: works", "criterion text: It works", "input: run the suite", "needs: n1 {\"files\":[\"a.rb\"],\"count\":1}"], lines.first(5)
+    assert_equal ["node: n2 Test", "criterion: works", "criterion text: It works", "input: run the suite", "input: docs/b.md", "needs: n1 {\"files\":[\"a.rb\"],\"count\":1}"], lines.first(6)
   end
 
   def test_the_text_claim_says_the_output_is_a_json_file

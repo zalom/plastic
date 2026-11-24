@@ -28,10 +28,12 @@ around broken data. A legitimately absent value is not broken data.
 install-time checked dependency as git (see the Stack section above). Search it before
 re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
-QMD, Serena and Enola are companion tools a person or an agent runs beside Plastic. `plastic
+Plastic's own `plastic search` and the retrieval graph are the search over the stores. Enola is
+the companion tool a person or an agent runs beside Plastic for the structure of the code. `plastic
 architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
-the architecture map with a tool it chooses. For code work only, the planning handoff tells the agent to map the code and read this file before it plans; nothing is asked after delivery. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
-its own `qmd query` or `qmd search` commands.
+the architecture map with a tool it chooses. For code work only, the planning handoff tells the agent
+to map the code and read this file before it plans; nothing is asked after delivery. Plastic runs no
+such tool and stores no map.
 
 ## Contributor rules
 

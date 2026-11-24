@@ -16,7 +16,7 @@ module Plastic
       #                   -> needs_info -> open
       #                   -> impeded -> open
       #   open -> removed
-      Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :input, :output, :question, :answer,
+      Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :output, :question, :answer,
         :reason, :findings, :updated_at, :origin_id, :claimed_by, :claimed_at, :seen_at, :answered_at, :deadline) do
         include Record
 

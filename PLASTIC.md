@@ -1,11 +1,13 @@
 # Plastic
 
 Plastic is one command, `plastic`. `plastic help` lists commands, `plastic help <command>`
-gives one command's options, and `plastic help tools` covers RTK, QMD and Enola.
+gives one command's options, and `plastic help tools` covers RTK and Enola.
 
 `plastic status` shows the work of every store by group. `plastic graph resume` says where
 the work stopped and what runs next, across several projects with `--stores a,b`. When a
 person says "continue", run it. `plastic next` prints that one action.
+
+Before re-deriving a decision, run `plastic search TERMS`.
 
 When a person says "Load project X" or "Load projects X, Y, Z", run `plastic project load`
 with those projects, do what its `then:` line says, and run it again to refresh. The next work

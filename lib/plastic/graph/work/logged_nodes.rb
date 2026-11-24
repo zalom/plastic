@@ -35,6 +35,9 @@ module Plastic
         # The session ended: its node claims and its driver claims go at once.
         def release_claims(session) = @log.recorded { [@release.call(session), @drivers.release(session)] }
 
+        # The intent is closed: its driver claim goes, whoever holds it. Returns the session that held it, or nil.
+        def release_driver(intent_id) = @log.recorded { @drivers.release_intent(intent_id) }
+
         def add_node(intent_id:, **fields)
           @log.recorded { @writers.nodes.add_node(intent_id:, **fields).tap { |node| node && @log.line(intent_id, "added", node.title.to_s, node: node.id) } }
         end

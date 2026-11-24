@@ -9,6 +9,7 @@ module Plastic
       # The launchers and the Codex dispatcher earlier installs wrote. A
       # command is theirs only when one of its words names one of these
       # files, never by a substring, so a user's plastic-writing-style stays.
+      # The qmd-search name stays only so an old QMD hook can be removed.
       OLD_LAUNCHERS = %w[session-start check-update savepoint record close capture message-display stop statusline
         edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget qmd-search
         retrieval-gate model-instructions opus-manual continue future-intent-check auto-arm gate-check
