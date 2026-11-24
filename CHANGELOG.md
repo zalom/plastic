@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- `plastic update` runs on a store newer than the installed code. It leaves such a store as it is, names it, and installs the newer release; before, the migration step raised `Plastic::Graph::Ahead` and the advice in the refusal could not be followed. When no release is newer, it exits 1 and says the store came from unreleased code. Every other command still refuses with exit 3, and its refusal now names that case. `docs/contributing/TECHNICAL.md` says how to run from source on a scratch home.
+
 ## 3.0.0-beta.19
 
 - `plastic project load` tells the agent to rewrite a question into keywords, run three to five `plastic search` calls and read one passage with `plastic document get REF --passage N`. A project with a repository gets a `history:` row that points to the version control tool and the architecture tool, and a `delivered:` row ends with the `Merged:` or `Committed:` line of its outcome when it has one. Plastic runs neither tool.

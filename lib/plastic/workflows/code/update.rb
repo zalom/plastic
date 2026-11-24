@@ -16,9 +16,9 @@ module Plastic
       # names install.sh.
       class Update < CodeWorkflow
         clear_declarations
-        summary "Downloads and checks the newest release and names the command that installs it."
+        summary "Downloads and checks the newest release and names the command that installs it; a store newer than this code is left as it is."
 
-        sets :newer, :synced, :active, :release, :downloaded, :command, :migrated
+        sets :newer, :synced, :active, :release, :downloaded, :command, :migrated, :unreleased
 
         read "check whether the running package is newer" do |context|
           installation = Installation.of(context)
@@ -36,12 +36,17 @@ module Plastic
 
         step "bring the databases to the newest layout", done: ->(context) { !context.migrated.nil? },
           changes: { databases: "Every database behind its sequence is migrated after a backup of its store", backups: "A migration backup is written for each store that moves" } do |context|
-          context[:migrated] = SchemaMigration.bring_current(context).migrated
+          report = SchemaMigration.bring_current(context)
+          context[:migrated] = report.migrated
+          context[:unreleased] = Plastic::Graph::RecordsNewer.describe(report.newer)
         end
 
         read "find a newer release on the chosen channel" do |context|
           newest_release(context) unless context.newer
         end
+
+        gate "no release is newer than %{active}, and a store came from unreleased code (%{unreleased}); update again once a release holds that migration",
+          stops: :failure, pass: ->(context) { context.synced || context.release || context.active.nil? || context.unreleased.to_s.empty? }
 
         step "download the newer release", done: ->(context) { context.release.nil? || context.downloaded },
           changes: { home: "The newer release is downloaded and made the active release" } do |context|
