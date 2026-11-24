@@ -23,7 +23,7 @@ class GraphMigrationDownTest < Plastic::TestCase
   end
 
   def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
-    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}, #{NODES}, #{NEEDS}, #{DRIVERS}, #{DEADLINE}, #{INPUTS}, #{EMPTY_ROADMAPS}); run plastic update first",
+    assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.baseline(:store)}, 20261119180000, #{UTC}, #{USAGE}, #{NODES}, #{NEEDS}, #{DRIVERS}, #{DEADLINE}, #{INPUTS}, #{EMPTY_ROADMAPS}, #{LEFTOVERS}); run plastic update first",
       down(beta_2_home).refusal
   end
 
