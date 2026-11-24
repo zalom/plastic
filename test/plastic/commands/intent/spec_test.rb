@@ -77,3 +77,87 @@ class IntentSpecTest < Plastic::TestCase
     assert_includes result.out, "next: plastic store sync up"
   end
 end
+
+class IntentSpecFromTest < Plastic::TestCase
+  SPEC = "# Spec\n\n## Goal\n\nShip it.\n\n## Done criteria\n\n- [c1] it ships\n\n## Open decisions\n\nNone.\n\n## Constraints\n\n- no network\n"
+
+  def call(*args) = plastic("intent", "spec", *args, table: Plastic::CLI::TABLE)
+
+  def draft(text = SPEC) = File.join(@home, "draft.md").tap { |path| File.write(path, text) }
+
+  def body = retrieval.fetch("1", "spec.md")&.body
+
+  def test_a_spec_from_a_file_is_written_as_the_spec_of_the_intent
+    open_intent
+
+    result = call("1", "--from", draft)
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_equal SPEC, body
+  end
+
+  def test_a_spec_from_a_file_says_what_was_written_and_prints_the_file
+    intent = open_intent
+
+    result = call("1", "--from", draft)
+
+    assert_includes result.out, "spec: written from #{draft}"
+    assert_equal SPEC, File.read(store_path("#{intent.dir}/spec.md"))
+  end
+
+  def test_a_spec_from_a_file_leaves_a_work_log_line
+    open_intent
+
+    call("1", "--from", draft)
+
+    assert_includes retrieval.structure.work_log("1").map(&:kind), "specified"
+  end
+
+  def test_a_spec_that_names_its_sections_by_their_older_names_is_written
+    open_intent
+    text = SPEC.sub("## Done criteria", "## Acceptance Criteria").sub("## Open decisions", "## Open Questions")
+
+    result = call("1", "--from", draft(text))
+
+    assert_equal [0, text], [result.code, body]
+  end
+
+  def test_a_spec_that_lacks_a_section_of_the_layout_fails_and_writes_nothing
+    open_intent
+
+    result = call("1", "--from", draft("# Spec\n\n## Goal\n\nShip it.\n\n## Done criteria\n\n- [c1] it ships\n"))
+
+    assert_equal [1, nil], [result.code, body]
+    assert_includes result.err, "the spec lacks the sections Open decisions and Constraints"
+  end
+
+  def test_a_spec_from_a_missing_file_fails_and_writes_nothing
+    open_intent
+
+    result = call("1", "--from", File.join(@home, "missing.md"))
+
+    assert_equal [1, nil], [result.code, body]
+    assert_includes result.err, "the spec file cannot be read"
+  end
+
+  %w[done abandoned].each do |status|
+    define_method(:"test_a_#{status}_intent_refuses_a_new_spec_and_offers_next") do
+      open_intent(status:)
+
+      result = call("1", "--from", draft)
+
+      assert_equal [3, nil], [result.code, body]
+      assert_includes result.err, "intent 1 is #{status}; a closed intent keeps its spec"
+      assert_match(/^next: plastic next/, result.out)
+    end
+  end
+
+  def test_the_spec_without_from_writes_nothing
+    open_intent
+
+    result = call("1")
+
+    assert_equal [0, nil], [result.code, body]
+    refute_includes result.out, "spec: written"
+  end
+end
