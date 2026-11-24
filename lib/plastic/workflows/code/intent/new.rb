@@ -18,7 +18,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the store is still in the old format and needs plastic sync up first, the parent or the intent to link after is not in the store, or the reference is not valid",
+            words: "the store is still in the old format and needs plastic store sync up first, the parent or the intent to link after is not in the store, or the reference is not valid",
             pass: ->(context) { context.problem.nil? }
 
           step "write the intent", done: ->(context) { !context.intent_id.nil? },

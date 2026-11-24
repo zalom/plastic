@@ -27,7 +27,7 @@ module Plastic
           context.print("backup: #{context.name}, #{files} #{(files == 1) ? "database" : "databases"}, #{context.bytes} bytes")
         end
 
-        outcome :done, offers: "plastic backup list --store %{store}", because: "backup %{name} is on disk"
+        outcome :done, offers: "plastic store backup list --project %{project}", because: "backup %{name} is on disk"
       end
     end
   end

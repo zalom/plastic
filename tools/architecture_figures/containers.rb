@@ -35,14 +35,14 @@ module ArchitectureFigures
       ["program.bottom@0.5", "knowledge.top"],
       ["program.bottom@0.8", "retrieval.top"],
       ["work.bottom", "index.top", ["printed"]],
-      ["knowledge.bottom", "folder.top@0.2", ["printed from the rows;", "sync up reads edits back"]]
+      ["knowledge.bottom", "folder.top@0.2", ["printed from the rows;", "store sync up reads edits back"]]
     ].freeze
     NAMES = [
       ["path", "exe/plastic", "exe/plastic"],
       *%w[plastic.db work_graph.db knowledge_graph.db retrieval_graph.db].map { |name| ["database", name, name] },
       *%w[command_runs sessions intents nodes runs edges documents rulings links sqlar].map { |name| ["table", name, name] },
       *%w[store/index.json spec.md graph.json work.log outcome.md context.json].map { |name| ["store_file", name, name] },
-      ["command", "sync up", "sync up"]
+      ["command", "store sync up", "store sync up"]
     ].freeze
 
     def self.diagrams = [Diagram.new(META, BOXES, ARROWS)]

@@ -86,14 +86,14 @@ module Plastic
             end
 
             def self.pull_request_problems(check)
-              check.verification.pull_request? ? [] : ["Add a line starting Pull request: to the Verification section of outcome.md and run plastic sync up."]
+              check.verification.pull_request? ? [] : ["Add a line starting Pull request: to the Verification section of outcome.md and run plastic store sync up."]
             end
 
             def self.ready_for_approval?(context) = context.requirements.empty? && context.judged
 
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { !context.used_up }
-            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up",
+            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic store sync up",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
             def self.verified?(context) = context.delivery_recorded

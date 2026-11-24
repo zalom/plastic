@@ -8,7 +8,7 @@ module Plastic
         # still holds the bytes that release printed, and names each one a person changed.
         class OldSavepoints
           FILE = "savepoint.md"
-          REASONS = { edited: "changed by hand; plastic sync up reads it into work.log", unprinted: "never printed by this home" }.freeze
+          REASONS = { edited: "changed by hand; plastic store sync up reads it into work.log", unprinted: "never printed by this home" }.freeze
 
           attr_reader :removable, :kept
 

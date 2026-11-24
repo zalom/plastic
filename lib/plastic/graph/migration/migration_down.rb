@@ -122,7 +122,7 @@ module Plastic
       end
 
       def backed_up
-        Backup::Writer.new(@store.root, @slug, now: @now, reason: "migration down").call.fetch(:name)
+        Backup::Writer.new(@store.root, @slug, now: @now, reason: "store migration down").call.fetch(:name)
       rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError => error
         raise BackupFailed, "the backup of #{@slug} failed (#{MigrationReason.of(error)}), so the down changed nothing"
       end
