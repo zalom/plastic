@@ -33,6 +33,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent note`](intent-note/README.md) | Add one line to the outcome of an intent, a note under Notes or a record of the delivery or the close under Verification, keeping the earlier text as a revision |
 | [`plastic intent outcome`](intent-outcome/README.md) | Write the summary of the outcome of an intent from a file, keeping its title and every section |
 | [`plastic intent report`](intent-report/README.md) | Record a report of an intent so the sync reads it |
+| [`plastic intent unreport`](intent-unreport/README.md) | Remove a report recorded by mistake: its rows, its outcome line and its file, which --to-tmp moves to resources/tmp/ |
 | [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; no node of it is claimed without it |
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
