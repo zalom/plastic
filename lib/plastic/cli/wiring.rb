@@ -25,7 +25,6 @@ module Plastic
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
     DAILY_BACKUPS = %w[backup daily].freeze
-    STORE_LOCK = %w[sync lock].freeze
 
     def self.config(home, harness: nil, clock: Time) = Config.new(home, harness:, clock:, database: settings_database(home))
 
@@ -53,16 +52,15 @@ module Plastic
     # How long a store keeps its backups: one day under the daily backups, else three days.
     def self.backup_retention(home) = daily_backups?(home) ? Graph::Backup::Purger::DAILY_RETENTION : Graph::Backup::Purger::RETENTION
 
-    # The lock of one store when sync.lock is on, with the seconds of sync.lock_wait; nil when it is off.
-    def self.store_lock(home, slug)
-      settings = config(home)
-      StoreLock.new(StoreLock.path(home, slug), wait: lock_wait(settings)) if settings.flag(STORE_LOCK, default: false)
-    end
+    # The lock of one store, which waits lock_wait seconds for another holder.
+    def self.store_lock(home, slug) = StoreLock.new(StoreLock.path(home, slug), wait: lock_wait)
 
-    # The seconds of sync.lock_wait, or the shipped wait when it holds no whole number.
-    def self.lock_wait(settings)
-      value = settings.value("sync.lock_wait").to_s
-      value.match?(/\A\d+\z/) ? Integer(value, 10) : StoreLock::WAIT
+    class << self
+      # The seam through which a test shortens the wait; nil gives back the shipped wait.
+      attr_writer :lock_wait
+
+      # The seconds a call waits for a store lock that another call holds: StoreLock::WAIT unless a test set it.
+      def lock_wait = @lock_wait || StoreLock::WAIT
     end
 
     def self.graphs(home:, store:, session: nil, clock: Time) = Graph.open(home:, store:, session:, clock:, sync: sync(home))

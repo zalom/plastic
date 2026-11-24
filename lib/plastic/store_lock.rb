@@ -11,7 +11,7 @@ module Plastic
   class StoreLock
     PAUSE = 0.05
     WAIT = 60
-    LINE = "%s: another call holds the store lock, and the wait of %s seconds in sync.lock_wait ran out"
+    LINE = "%s: another call holds the store lock, and the wait of %s seconds ran out"
     HELD = :plastic_store_locks
 
     # Another call held the lock past the wait.
