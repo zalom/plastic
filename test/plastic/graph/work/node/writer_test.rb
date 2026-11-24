@@ -182,15 +182,39 @@ class WorkNodeWriterRenewTest < Plastic::TestCase
     work.add_node(intent_id: "1", title: "Test", criterion: "it works")
     work.claim_node(intent_id: "1", id: "n2", by: "s-1", agent: "tester")
     @clock.now = START + 1200
-    work.renew_node(intent_id: "1", id: "n1", by: "s-1")
+    work.renew_node(intent_id: "1", id: "n1", by: "s-1", agent: "tester")
 
     assert_equal ["2026-11-24T09:20:00Z", RENEWED], [seen_at, retrieval.node("1", "n2").seen_at]
   end
 
   def test_a_renewal_of_one_node_held_by_another_session_changes_nothing
     delivery("auto")
-    work.renew_node(intent_id: "1", id: "n1", by: "s-2")
+    work.renew_node(intent_id: "1", id: "n1", by: "s-2", agent: "tester")
 
     assert_equal CLAIMED, seen_at
+  end
+
+  def test_in_agent_delivery_another_agent_of_the_session_leaves_the_claim_of_one_node
+    delivery("auto")
+
+    assert_equal [false, CLAIMED], [work.renew_node(intent_id: "1", id: "n1", by: "s-1", agent: "other"), seen_at]
+  end
+
+  def test_in_agent_delivery_a_renewal_of_one_node_that_names_no_agent_leaves_the_claim_of_a_helper
+    delivery("auto")
+
+    assert_equal [false, CLAIMED], [work.renew_node(intent_id: "1", id: "n1", by: "s-1"), seen_at]
+  end
+
+  def test_in_agent_delivery_the_agent_that_holds_the_claim_renews_its_node
+    delivery("auto")
+
+    assert_equal [true, RENEWED], [work.renew_node(intent_id: "1", id: "n1", by: "s-1", agent: "tester"), seen_at]
+  end
+
+  def test_in_guided_work_a_renewal_of_one_node_that_names_no_agent_renews_the_claim_of_its_session
+    delivery("guided")
+
+    assert_equal [true, RENEWED], [work.renew_node(intent_id: "1", id: "n1", by: "s-1"), seen_at]
   end
 end

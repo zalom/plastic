@@ -74,6 +74,24 @@ class DoctorFolderLayoutTest < Plastic::TestCase
       "move store/work_graph.db out of the store folder by hand, then run plastic doctor again"]], checks.map(&:to_a)
   end
 
+  def root(files) = files.each { |rel, text| File.write(File.join(folder.root, rel), text) }
+
+  def test_an_entry_of_the_store_root_the_layout_does_not_name_is_left_to_a_person
+    put("spec.md" => "# Spec\n")
+    root("REVIEWS.md" => "# Reviews\n")
+
+    assert_equal [["layout global REVIEWS.md:", "the layout does not name it", "move REVIEWS.md out of the store by hand, then run plastic doctor again"]],
+      checks.map(&:to_a)
+  end
+
+  def test_the_entries_the_layout_allows_or_names_at_the_store_root_are_no_finding
+    put("spec.md" => "# Spec\n")
+    root(".gitignore" => "*.db\n", "knowledge_graph.db-wal" => "", "project.yml" => "slug: global\n", "AGENTS.md" => "# Agents\n", ".DS_Store" => "")
+    FileUtils.mkdir_p(File.join(folder.root, "originals"))
+
+    assert_equal [["layout global:", "ok, every intent folder follows the layout", nil]], checks.map(&:to_a)
+  end
+
   # A store whose database the pool never opened, so the damaged file is what the check reads.
   def test_a_store_database_that_cannot_be_read_leaves_the_reports_folder_unjudged
     beta = Plastic::Graph::Knowledge::StoreFolder.new(File.join(@plastic_home, "stores", "beta"))
