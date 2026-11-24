@@ -54,16 +54,16 @@ class InstallerReleaseBundleTest < Minitest::Test
     assert_match(/false/, error.message)
   end
 
-def test_a_failed_install_raises_after_one_run_and_never_leaves_a_group_out
-  calls = []
-  run = lambda do |env, command|
-    calls << [env, command]
-    raise "bundle install failed"
-  end
+  def test_a_failed_install_raises_after_one_run_and_never_leaves_a_group_out
+    calls = []
+    run = lambda do |env, command|
+      calls << [env, command]
+      raise "bundle install failed"
+    end
 
-  assert_raises(RuntimeError) { InstallerRelease::Bundle.new(run:).call(release_with_gemfile, RUBY) }
-  assert_equal [false], calls.map { |env, _command| env.key?("BUNDLE_WITHOUT") }
-end
+    assert_raises(RuntimeError) { InstallerRelease::Bundle.new(run:).call(release_with_gemfile, RUBY) }
+    assert_equal [false], calls.map { |env, _command| env.key?("BUNDLE_WITHOUT") }
+  end
 
   private
 

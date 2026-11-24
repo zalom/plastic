@@ -10,7 +10,7 @@ class ConsoleIrbSessionTest < Minitest::Test
 
   def test_a_missing_irb_fails_in_one_line_that_says_where_to_add_it
     session = Plastic::Console::IrbSession.new(nil, nil)
-    session.define_singleton_method(:require) { |name| name == "irb" ? raise(LoadError) : true }
+    session.define_singleton_method(:require) { |name| (name == "irb") ? raise(LoadError) : true }
     error = assert_raises(Plastic::Failed) { session.start }
 
     assert_equal "plastic console needs irb, which this Ruby installation does not have; add it with `gem install irb`", error.message

@@ -74,27 +74,27 @@ class RuntimeBundleTest < Minitest::Test
     end
   end
 
-def test_the_runtime_gemfile_names_no_irb_and_no_console_group
-  gemfile = File.read(File.join(REPO, "runtime", "Gemfile"))
+  def test_the_runtime_gemfile_names_no_irb_and_no_console_group
+    gemfile = File.read(File.join(REPO, "runtime", "Gemfile"))
 
-  refute_match(/irb|console/, gemfile)
-end
+    refute_match(/irb|console/, gemfile)
+  end
 
-def test_the_runtime_lock_carries_no_irb_and_no_gem_only_irb_needs
-  lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
-  names = %w[irb reline io-console rdoc prism rbs erb pp prettyprint logger tsort]
+  def test_the_runtime_lock_carries_no_irb_and_no_gem_only_irb_needs
+    lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    names = %w[irb reline io-console rdoc prism rbs erb pp prettyprint logger tsort]
 
-  assert_empty(names.select { |name| lock.match?(/^\s+#{Regexp.escape(name)} \(/) })
-end
+    assert_empty(names.select { |name| lock.match?(/^\s+#{Regexp.escape(name)} \(/) })
+  end
 
-def test_the_runtime_lock_keeps_the_prebuilt_sqlite3_of_its_four_platforms
-  lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
-  platforms = %w[aarch64-linux-gnu arm64-darwin x86_64-darwin x86_64-linux-gnu]
+  def test_the_runtime_lock_keeps_the_prebuilt_sqlite3_of_its_four_platforms
+    lock = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    platforms = %w[aarch64-linux-gnu arm64-darwin x86_64-darwin x86_64-linux-gnu]
 
-  assert_equal platforms, lock.scan(/^    sqlite3 \(2\.9\.6-([^)]+)\)/).flatten
-end
+    assert_equal platforms, lock.scan(/^    sqlite3 \(2\.9\.6-([^)]+)\)/).flatten
+  end
 
-def test_the_development_gemfile_keeps_irb_for_the_tests
-  assert_match(/^gem "irb", "~> 1\.19"$/, File.read(File.join(REPO, "Gemfile")))
-end
+  def test_the_development_gemfile_keeps_irb_for_the_tests
+    assert_match(/^gem "irb", "~> 1\.19"$/, File.read(File.join(REPO, "Gemfile")))
+  end
 end
