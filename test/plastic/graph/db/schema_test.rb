@@ -68,7 +68,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261124150000", ""], [status.success?, out, err]
+    assert_equal [true, "20261124173000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy
