@@ -1,0 +1,210 @@
+# The layout of an intent folder, and of the store folder that holds it.
+#
+# This file is the one place that names the files and folders of an intent. Every command that works
+# in an intent folder reads it through Plastic::Layout (lib/plastic/layout.rb): the new-intent file,
+# the sync, the resource sort, the readers, the completion check and the doctor. The intent folder
+# section of PLASTIC.md and docs/help/intent-folder.md are generated from it by
+# `ruby bin/layout-docs`, and a test fails when either one differs.
+#
+# States: an intent is `open` from its first row until it closes (this covers the statuses future,
+# open, in_progress and parked), then `done` or `abandoned`.
+#
+# A file's `writer` says who writes it: `rows` is a file that Plastic prints from the database rows,
+# a command is named when one writes the file, and `agent` is a file the agent writes in the folder
+# that `plastic sync up` then reads.
+#
+# A legacy entry names a file or folder of an older layout. `sync` says what a sync up does with it:
+# `document` reads it as the intent's own file, `legacy_rows` reads it into legacy rows, `lines` reads
+# it into work.log lines, `skip` leaves machine state alone, and `report` reads nothing and names the
+# file in the sync's output. `repair` says what `plastic intent repair` does with it, and `to` where it goes.
+version: 1
+
+folder:
+  name: "{id}--{slug}"
+  purpose: One folder for each intent, in store/. The folder name never changes after the intent is made.
+  slug_words: 6
+
+states: [open, done, abandoned]
+
+files:
+  intent:
+    name: intent.md
+    purpose: The intent's own file, with its identity and the sections a person fills.
+    required: [open, done, abandoned]
+    writer: plastic intent new
+    front_matter: [id, intent, parent, ref, origin, created]
+    headings: [Intent, Context, Outcome, Insights]
+  spec:
+    name: spec.md
+    purpose: The goal, the done criteria, the open decisions and the constraints.
+    required: [open, done]
+    writer: agent
+    headings:
+      - name: Goal
+        aliases: [Goals]
+      - name: Done criteria
+        aliases: [Acceptance Criteria, Acceptance]
+      - name: Open decisions
+        aliases: [Open Questions]
+      - name: Constraints
+        aliases: [Constraint]
+  outcome:
+    name: outcome.md
+    purpose: What was delivered, with one delivery line under Verification, and the notes and reports of the intent.
+    required: [done]
+    writer: agent
+    headings: [Verification, Notes, Reports]
+  graph:
+    name: graph.json
+    purpose: The work graph, with its nodes, edges, runs and verdicts.
+    required: [open, done, abandoned]
+    writer: rows
+  log:
+    name: work.log
+    purpose: The work log, one line for each event of the intent.
+    required: [open, done, abandoned]
+    writer: rows
+  context:
+    name: context.json
+    purpose: The discovery and the context the intent was grilled with.
+    required: []
+    writer: rows
+
+resources:
+  name: resources
+  purpose: Everything else the work makes or reads. The agent writes here and no core file.
+  folders:
+    reports:
+      path: resources/output/reports/
+      purpose: A report that `plastic intent report` recorded, or one that the setting reports.mandatory names.
+      sync: recorded
+    files:
+      path: resources/output/files/
+      purpose: The files the work delivers.
+      sync: by_type
+    references:
+      path: resources/references/
+      purpose: Copies of outside material the work reads.
+      sync: setting
+    tmp:
+      path: resources/tmp/
+      purpose: Tool output, packets, plans, notes, link lists and parts of a research job.
+      sync: never
+  scratch: '\.(?:last|out|tmp)\z'
+  tmp_types: [md, html]
+
+legacy:
+  - name: "{id}--{slug}.md"
+    match: ["*--*.md"]
+    sync: document
+    repair: rename
+    to: intent.md
+    why: Older folders named the intent file after the folder.
+  - name: revisions.md
+    match: [revisions.md]
+    sync: report
+    repair: amend
+    why: Each entry becomes an amended line of work.log with its original date, and the file goes.
+  - name: graph.md
+    match: [graph.md]
+    sync: report
+    repair: remove
+    why: graph.json holds the steps of the intent, and the removal is recorded as an amendment.
+  - name: plan.md
+    match: [plan.md]
+    sync: legacy_rows
+    repair: move
+    to: resources/references/
+    why: The plan of an older release; graph.json holds the plan now.
+  - name: checklist.md
+    match: [checklist.md]
+    sync: legacy_rows
+    repair: move
+    to: resources/references/
+    why: The checklist of an older release; the nodes of graph.json hold it now.
+  - name: actions/
+    match: ["actions/**/*"]
+    sync: legacy_rows
+    repair: move
+    to: resources/references/actions/
+    why: The action files of an older release.
+  - name: savepoint.md
+    match: [savepoint.md]
+    sync: lines
+    repair: remove
+    why: work.log holds its lines, and a sync down removes the file when it still holds the printed bytes.
+  - name: handoff.md
+    match: [handoff.md]
+    sync: report
+    repair: move
+    to: resources/tmp/
+    why: A note between two sessions, never a record.
+  - name: "*.lock"
+    match: ["*.lock", "**/*.lock"]
+    sync: skip
+    repair: remove
+    why: Machine state of an older release's locks; claims are rows now.
+  - name: nodes/
+    match: ["nodes/**/*"]
+    sync: report
+    repair: move
+    to: resources/tmp/nodes/
+    why: Node files of an older release.
+  - name: packets/
+    match: ["packets/**/*"]
+    sync: report
+    repair: move
+    to: resources/tmp/packets/
+    why: Packets are tool output.
+  - name: reviews/
+    match: ["reviews/**/*"]
+    sync: report
+    repair: move
+    to: resources/tmp/reviews/
+    why: Reviews are tool output.
+  - name: references/
+    match: ["references/**/*"]
+    sync: report
+    repair: move
+    to: resources/references/
+    why: Outside material belongs under resources/.
+  - name: resources/sources/
+    match: ["resources/sources/**/*"]
+    sync: report
+    repair: move
+    to: resources/references/sources/
+    why: Sources are references.
+
+machine:
+  skipped: '\A(?:delivery\.lock|\.DS_Store)\z'
+  swept: '\A(?:.*\.lock|\.DS_Store)\z'
+
+store_root:
+  purpose: What a store folder, stores/SLUG/, may hold beside its intent folders.
+  allowed:
+    - name: store/
+      purpose: The intent folders, store/index.json, and an empty .gitkeep in a store with no intent.
+    - name: backups/
+      purpose: Copies of the work and knowledge databases, one folder for each backup.
+    - name: "*.db"
+      purpose: The work, knowledge, retrieval and legacy databases, with their journal files.
+    - name: .gitignore
+      purpose: Lists the databases and the backups, so they are never versioned.
+    - name: .enola/
+      purpose: The snapshot folder of Enola, which a person or an agent runs beside Plastic.
+  legacy:
+    - name: INDEX.md
+      repair: import
+      why: The index of a store written before store/index.json; the first sync up imports it.
+    - name: originals/
+      repair: keep
+      why: Files a legacy import copied before it removed them; the databases hold them now.
+    - name: roadmaps/
+      repair: remove
+      why: Roadmaps became needs links between intents.
+    - name: .sessions/
+      repair: remove
+      why: The day ledger of an older release; session rows hold it. The owner reviews what it holds first.
+    - name: .tmp/
+      repair: remove
+      why: Heartbeat files of an older release. The owner reviews what it holds first.
