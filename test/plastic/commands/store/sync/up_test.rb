@@ -223,6 +223,19 @@ class SyncUpGeneratedTest < Plastic::TestCase
     assert_equal [1, true], [result.code, result.out.include?("sync down --overwrite #{other.dir}/graph.json")], result.err
   end
 
+  def test_sync_up_fails_on_a_hand_edit_of_a_closed_intents_spec_and_offers_the_overwrite
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n")
+    cli("store", "sync", "up")
+    cli("intent", "abandon", "1")
+    write("#{intent.dir}/spec.md", "# Spec\n\nRewritten after the close.\n")
+    result = cli("store", "sync", "up")
+    printed = "#{intent.dir}/spec.md: intent 1 is abandoned, and a closed intent keeps its spec.md as it closed; " \
+      "run plastic store sync down --overwrite #{intent.dir}/spec.md"
+
+    assert_equal [1, true, false], [result.code, result.out.include?(printed), retrieval.fetch("1", "spec.md").body.include?("Rewritten")], result.err
+  end
+
   # A preview copies committed files, so it runs in a home of its own: the dry run, the file it left, then the real run.
   def preview_then_apply(path, text)
     with_home do |home|
