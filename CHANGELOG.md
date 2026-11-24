@@ -6,6 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - Store migration `20261124090000` drops the five roadmap tables (`roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`) from `work_graph.db`. Migration `20261123120000` had dropped them, but a checkout from before the schema gate (before commit 804fa952, 16 November 2026) opened the migrated store with no gate and made them again, all empty; no release and no gated code makes them. A table that holds a row is kept whole in `legacy.db` first, and an empty one is kept nowhere. Its down builds the five tables again, empty and with the text of the old tables.
+- `bin/search-check FILE` scores a known-question file against a store: it prints a hit or miss with its rank for each question and a total, and opens the store databases read-only. CONTRIBUTING.md asks a change to search ranking to report the hits before and after.
 
 ## 3.0.0-beta.18
 
