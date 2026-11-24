@@ -26,6 +26,7 @@ module PreviousStore
   DRIVER_MODE = "20261124173000"
   DRIVER_AGENT = "20261124200000"
   WORK_LOG_TEXT = "20261124210000"
+  OWN_IDS = "20261124233000"
   OWNER_TIME = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('91', 'o', '91--a', 'A', 'open', '2026-10-05', '2026-10-05T10:00:00+02:00')"
   OWNER_KEPT = "changed_values_#{UTC}"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
@@ -47,7 +48,7 @@ module PreviousStore
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
       database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES, DRIVER_MODE, DRIVER_AGENT, WORK_LOG_TEXT])
+      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES, DRIVER_MODE, DRIVER_AGENT, WORK_LOG_TEXT, OWN_IDS])
     end
     older_work_layout(home)
   end

@@ -21,9 +21,9 @@ class KnowledgeRulingWriterTest < Plastic::TestCase
   end
 
   def test_a_leading_copy_of_the_rulings_own_id_is_dropped
-    texts = ["D1 Ship it", "D2: Wait", "D3. Hold", "D4 - Go"].map { |text| writer.add_ruling(intent_id: "1", text:).text }
+    texts = ["D1 Ship it", "D2: Wait", "D3. Hold", "D4 - Go", "D5 D5: Run"].map { |text| writer.add_ruling(intent_id: "1", text:).text }
 
-    assert_equal %w[Ship\ it Wait Hold Go], texts
+    assert_equal %w[Ship\ it Wait Hold Go Run], texts
   end
 
   def test_another_id_at_the_start_and_an_id_inside_a_word_are_kept
