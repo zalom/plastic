@@ -33,9 +33,9 @@ module Plastic
 
       def match?(rel) = match.any? { |glob| File.fnmatch?(glob, rel, File::FNM_PATHNAME | File::FNM_DOTMATCH | File::FNM_EXTGLOB) }
 
-      # Where `rel` goes on a repair that moves it: the target folder or file, with the rest of the path kept.
+      # Where `rel` goes on a repair that moves or renames it: the target folder or file, with the rest of the path kept.
       def destination(rel)
-        return unless repair == "move"
+        return unless %w[move rename].include?(repair)
 
         to.end_with?("/") ? "#{to}#{rel.delete_prefix(folder_prefix)}" : to
       end

@@ -19,6 +19,18 @@ class LayoutDocsTest < Minitest::Test
     assert_empty(names.reject { |name| LayoutDocs.page.include?("`#{name}`") })
   end
 
+  def test_the_page_names_every_entry_of_the_store_folder
+    names = (Plastic::Layout.store_folder_allowed + Plastic::Layout.store_folder_legacy).map(&:name)
+
+    assert_empty(names.reject { |name| LayoutDocs.page.include?("`store/#{name}`") })
+  end
+
+  def test_the_page_gives_the_reason_of_each_kind_of_amendment
+    reasons = %i[rename move remove revision link].map { |kind| Plastic::Layout.amendment_reason(kind) }
+
+    assert_empty(reasons.reject { |reason| LayoutDocs.page.include?(reason) })
+  end
+
   def test_the_section_replaces_itself_and_never_doubles
     once = LayoutDocs.plastic_text(LayoutDocs.plastic_text)
 
