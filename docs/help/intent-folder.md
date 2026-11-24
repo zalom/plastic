@@ -75,6 +75,8 @@ What a store folder, stores/SLUG/, may hold beside its intent folders.
 | `roadmaps/` | remove | Roadmaps became needs links between intents. |
 | `project.yml` | keep | The release settings of a project, which an older release wrote; nothing reads this file now. |
 | `AGENTS.md` | keep | A copy of the AGENTS.md of the project, which an older release kept in the store; the repository holds the file, and nothing reads this copy. |
+| `config.yml` | remove | The settings of a project, from an older template. An older Plastic release wrote it, and no current code reads it. |
+| `resources/` | remove | The resources folder of the retired project links script. An older Plastic release wrote it, and no current code reads it. |
 
 What the folder store/ of a store folder may hold beside its intent folders. `plastic intent repair --all` removes each leftover.
 
