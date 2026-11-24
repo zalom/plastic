@@ -78,7 +78,44 @@ class LayoutTest < Plastic::TestCase
 
   def test_the_store_root_lists_what_it_may_hold_and_each_old_name_with_its_repair
     assert_includes Plastic::Layout.store_root_allowed.map(&:name), "backups/"
-    assert_equal "remove", Plastic::Layout.store_root_legacy.find { |entry| entry.name == ".sessions/" }.repair
+    assert_equal "keep", Plastic::Layout.store_root_legacy.find { |entry| entry.name == "originals/" }.repair
+  end
+
+  def test_the_store_folder_lists_what_it_may_hold_and_each_leftover_with_its_repair
+    allowed = Plastic::Layout.store_folder_allowed.map(&:name)
+    repairs = Plastic::Layout.store_folder_legacy.to_h { |entry| [entry.name, entry.repair] }
+
+    assert_equal ["{id}--{slug}/", "index.json", ".gitkeep", ".obsidian/"], allowed
+    assert_equal({ ".sessions/" => "remove", ".tmp/" => "remove", "work_graph.db" => "remove_empty", ".enola/" => "remove" }, repairs)
+  end
+
+  def test_each_kind_of_amendment_has_its_reason
+    reasons = %i[rename move remove revision link].map { |kind| Plastic::Layout.amendment_reason(kind) }
+
+    assert(reasons.all? { |reason| reason.is_a?(String) && !reason.empty? })
+    assert_raises(KeyError) { Plastic::Layout.amendment_reason(:polish) }
+  end
+
+  def test_a_layout_without_a_reason_for_a_kind_of_amendment_is_a_problem
+    data = Marshal.load(Marshal.dump(Plastic::Layout.data))
+    data["amendments"].delete("link")
+
+    assert_equal ["the amendments have no reason for link"], Plastic::Layout::Problems.new(data).to_a
+  end
+
+  def test_a_store_folder_leftover_with_an_unknown_repair_is_a_problem
+    data = Marshal.load(Marshal.dump(Plastic::Layout.data))
+    data["store_folder"]["legacy"].first["repair"] = "burn"
+
+    assert_equal ["store folder entry .sessions/ has the unknown repair burn"], Plastic::Layout::Problems.new(data).to_a
+  end
+
+  def test_the_old_intent_file_is_renamed_to_intent_md
+    assert_equal "intent.md", Plastic::Layout.destination("12--old-name.md")
+  end
+
+  def test_a_lock_file_is_old_machine_state_only_at_the_top_of_the_folder
+    assert_equal [true, false], [Plastic::Layout.machine?("watch.lock"), Plastic::Layout.machine?("resources/app/Gemfile.lock")]
   end
 
   def with_legacy(**fields)
