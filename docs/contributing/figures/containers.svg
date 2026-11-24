@@ -24,7 +24,7 @@
 <rect class="box" x="330" y="44" width="260" height="94" rx="8"/><rect x="330" y="44" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
 <text class="t" x="346" y="68">active/bin/plastic</text><text class="s" x="346" y="85">[program]</text>
 <text class="s" x="346" y="105">Ruby. One command, plastic,</text>
-<text class="s" x="346" y="120">and the three hooks.</text>
+<text class="s" x="346" y="120">and the five hooks.</text>
 <rect class="box" x="660" y="44" width="220" height="94" rx="8"/><rect x="660" y="44" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
 <text class="t" x="676" y="68">releases/VERSION/</text><text class="s" x="676" y="85">[folder]</text>
 <text class="s" x="676" y="105">One folder for each release;</text>
