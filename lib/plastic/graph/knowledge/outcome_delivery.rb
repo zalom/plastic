@@ -50,7 +50,7 @@ module Plastic
         end
 
         # The command that writes the line of `label` in its form.
-        def note(label) = "plastic intent note #{@intent_id} '#{OutcomeForm.note_text(label)}' --kind #{label}"
+        def note(label) = OutcomeForm.note_commands(label, @intent_id)
 
         private
 

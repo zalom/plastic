@@ -87,7 +87,7 @@ module Plastic
             end
 
             def self.pull_request_problems(check, intent_id)
-              check.verification.pull_request? ? [] : ["Record the pull request with plastic intent note #{intent_id} '<link or number>' --kind 'Pull request'."]
+              check.verification.pull_request? ? [] : ["Record the pull request with #{Plastic::Graph::Knowledge::OutcomeForm.note_commands("Pull request", intent_id)}."]
             end
 
             def self.ready_for_approval?(context) = context.requirements.empty? && context.judged

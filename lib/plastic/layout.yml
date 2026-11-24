@@ -49,8 +49,8 @@ files:
         aliases: [Constraint]
   outcome:
     name: outcome.md
-    purpose: What was delivered, with one delivery line under Verification, and the notes and reports of the intent.
-    required: [done]
+    purpose: What was delivered, or why the work was dropped, with its delivery line or its abandon reason under Verification, and the notes and reports of the intent.
+    required: [done, abandoned]
     writer: plastic intent outcome and plastic intent note
     headings: [Verification, Notes, Reports]
   graph:

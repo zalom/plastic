@@ -20,6 +20,7 @@ module Plastic
           "Committed" => "Committed: <branch> at <commit>",
           "Delivered" => "Delivered: resources/output/<path> because <reason>",
           "Approved" => "Approved: <person> on <YYYY-MM-DD>",
+          "Pull request" => "Pull request: <link or number>",
           "Abandoned" => ["Abandoned: superseded by intent <id>", "Abandoned: dropped because <reason>"]
         }.freeze
         PLACEHOLDER = /<(?:branch|base|commit or pull request|commit|path|reason|person|YYYY-MM-DD|id)>/
@@ -33,8 +34,11 @@ module Plastic
         # Every form of the line, quoted and joined by or.
         def self.shown_forms(label) = Array(SHOWN.fetch(label)).map { |form| "'#{form}'" }.join(" or ")
 
-        # The text of a note that writes the line, the form without its label.
-        def self.note_text(label) = shown(label).delete_prefix("#{label}: ")
+        # The commands that write the line of `label` in each of its forms, joined by or.
+        def self.note_commands(label, intent_id)
+          kind = label.include?(" ") ? "'#{label}'" : label
+          Array(SHOWN.fetch(label)).map { |form| "plastic intent note #{intent_id} '#{form.delete_prefix("#{label}: ")}' --kind #{kind}" }.join(" or ")
+        end
 
         # The path a Delivered line in its form names, read without its code marks, else nil.
         def self.delivered_path(value) = value[FORMS.fetch("Delivered"), 1]

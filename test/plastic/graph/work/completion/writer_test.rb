@@ -60,7 +60,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
 
     error = assert_raises(Plastic::Invalid) { writer.close("1") }
 
-    assert_match(/\AWrite the done criteria in spec.md/, error.message)
+    assert_match(/\AWrite the done criteria with plastic intent spec 1 --from FILE/, error.message)
     assert_nil structure.completions("1").first
   end
 

@@ -39,7 +39,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     files(spec: "# Spec\n")
     done_node
 
-    assert_equal ["Write the done criteria in spec.md and run plastic store sync up."], check.problems
+    assert_equal ["Write the done criteria with plastic intent spec 1 --from FILE."], check.problems
   end
 
   def test_open_decisions_ask_for_the_owner

@@ -77,7 +77,7 @@ class GraphWriterTest < Plastic::TestCase
   def abandoned_intent
     opened { |graphs| graphs.work.write_intent(title: "Alpha") }
     opened { |graphs| graphs.work.print_intent("1") }
-    opened { |graphs| graphs.work.note_intent(graphs.retrieval.intent("1"), "Report", "why it ends") }
+    opened { |graphs| graphs.work.note_intent(graphs.retrieval.intent("1"), "Abandoned", "dropped because it ends") }
     opened { |graphs| graphs.work.abandon_intent("1") }
   end
 

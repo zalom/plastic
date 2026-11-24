@@ -11,7 +11,7 @@ class RetrievalDerivedIndexTest < Plastic::TestCase
   def passages = graphs.databases.fetch(:store).row("SELECT count(*) AS n FROM document_passages").fetch("n")
 
   def end_intent
-    graphs.work.note_intent(graphs.retrieval.intent("1"), "Report", "why it ends")
+    graphs.work.note_intent(graphs.retrieval.intent("1"), "Abandoned", "dropped because it ends")
     graphs.work.abandon_intent("1")
   end
 

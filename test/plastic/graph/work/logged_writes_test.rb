@@ -50,7 +50,7 @@ class WorkLoggedWritesTest < Plastic::TestCase
 
   def test_abandoning_appends_an_abandoned_line
     intent
-    work.note_intent(work_intent, "Report", "why it ends")
+    work.note_intent(work_intent, "Abandoned", "dropped because it ends")
     work.abandon_intent("1")
 
     assert_equal %w[opened noted abandoned], kinds

@@ -43,6 +43,8 @@ module Plastic
 
         def approved? = positive?("Approved")
 
+        def abandoned? = positive?("Abandoned")
+
         def reverted? = recorded?("Reverted")
 
         # Each bullet joined with the indented lines that wrap it, so a long delivery line reads whole.
