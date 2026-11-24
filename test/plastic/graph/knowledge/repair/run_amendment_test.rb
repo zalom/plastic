@@ -78,7 +78,7 @@ class RepairRunAmendmentTest < Plastic::TestCase
     close("done")
     repair
 
-    assert_equal 2, File.read(work_log).lines.grep(/ amended spec\.md sha256:\h+ spec\.md: link /).size
+    assert_equal 2, File.read(work_log).lines.grep(/ amended spec\.md sha256:\h+ old="[^"]+" new="[^"]+" spec\.md: link /).size
   end
 
   def test_after_the_repair_a_sync_up_has_nothing_pending_and_reads_a_hand_line

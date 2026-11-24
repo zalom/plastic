@@ -12,6 +12,11 @@ module Plastic
         class LinkRewrite
           Result = Data.define(:text, :unresolved, :changed)
 
+          # One link the rewrite changed: the link as it was and the link it is now.
+          Change = Data.define(:was, :now) do
+            def to_s = "#{was} -> #{now}"
+          end
+
           LINK = /(\]\(|(?:href|src)=")([^)"\s]+)/
           EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|/|#|\?)}i
 
@@ -36,7 +41,7 @@ module Plastic
 
           def relinked(prefix, link, path, unresolved, changed)
             now = target(link, path, unresolved)
-            changed << "#{link} -> #{now}" unless now == link
+            changed << Change.new(link, now) unless now == link
             "#{prefix}#{now}"
           end
 
