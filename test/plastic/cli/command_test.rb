@@ -36,6 +36,15 @@ class CommandTest < Plastic::TestCase
     end
   end
 
+  class NoRenewal < Plastic::CLI::Command
+    renews_no_claims
+
+    def call
+      graphs.work.define_singleton_method(:renew_claims) { |_session| raise "a renewal wrote to the work database" }
+      output.row("title:", "kept")
+    end
+  end
+
   def run_tool(*argv, tool: Title, env: {})
     out = StringIO.new
     err = StringIO.new
@@ -154,5 +163,9 @@ class CommandTest < Plastic::TestCase
 
   def test_a_call_in_a_store_with_no_work_database_renews_nothing
     assert_equal 0, run_tool(tool: Idle, env: { "PLASTIC_SESSION" => "s-1" }).code
+  end
+
+  def test_a_command_that_renews_no_claims_leaves_the_work_database_alone_with_a_session_set
+    assert_equal CommandHelper::Result.new("title:  kept\n", "", 0), run_tool(tool: NoRenewal, env: { "PLASTIC_SESSION" => "s-1" })
   end
 end

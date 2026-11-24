@@ -66,4 +66,30 @@ class RuntimeBundleTest < Minitest::Test
       assert_equal [0, "bundle loaded\n", ""], [status.exitstatus, out, err]
     end
   end
+
+  def test_the_runtime_gemfile_names_irb_in_the_console_group
+    gemfile = File.read(File.join(REPO, "runtime", "Gemfile"))
+
+    assert_match(/^group :console do\n  gem "irb", "~> 1\.19"\nend$/, gemfile)
+  end
+
+  def test_the_development_gemfile_names_irb
+    assert_match(/^gem "irb", "~> 1\.19"$/, File.read(File.join(REPO, "Gemfile")))
+  end
+
+  def test_the_runtime_lock_pins_the_development_irb
+    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    development = File.read(File.join(REPO, "Gemfile.lock"))
+    version = development[/^    irb \(([^)]+)\)/, 1]
+
+    assert_includes runtime, "    irb (#{version})"
+  end
+
+  def test_the_standalone_bundle_loads_irb_without_rubygems
+    skip "no standalone bundle is built in this checkout" unless File.file?(File.join(REPO, "runtime", "bundle", "bundler", "setup.rb"))
+
+    out, err, status = ChildProcess.capture3({}, RbConfig.ruby, "--disable-gems", "-r", File.join(REPO, "runtime", "bundle", "bundler", "setup.rb"), "-e", "require 'irb'; print IRB::VERSION")
+
+    assert_equal [0, "", true], [status.exitstatus, err, out.match?(/\A1\.\d+/)]
+  end
 end

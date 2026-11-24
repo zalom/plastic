@@ -133,4 +133,8 @@ class KeepsNoCommandRunTest < Minitest::Test
       assert_predicate klass, :keeps_no_command_run?, "#{klass} keeps no command run"
     end
   end
+
+  def test_a_command_declares_that_it_renews_no_claims
+    assert_equal [false, true], [tool.renews_no_claims?, tool { renews_no_claims }.renews_no_claims?]
+  end
 end
