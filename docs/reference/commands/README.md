@@ -55,13 +55,6 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic project new`](project-new/README.md) | Register a project and leave its store ready for intent new |
 | [`plastic project links`](project-links/README.md) | List the links that name an intent or a ruling this store lacks |
 
-## sync
-
-| Command | What it does |
-| --- | --- |
-| [`plastic sync up`](sync-up/README.md) | Read the files changed by hand into rows |
-| [`plastic sync down`](sync-down/README.md) | Write the rows that changed into files |
-
 ## session
 
 | Command | What it does |
@@ -77,22 +70,19 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic config get`](config-get/README.md) | Print the value of one setting |
 | [`plastic config set`](config-set/README.md) | Write one setting to the settings rows, globally or for one harness |
 
-## backup
+## store
 
 | Command | What it does |
 | --- | --- |
-| [`plastic backup`](backup/README.md) | Copy one store's databases into a new backup folder |
-| [`plastic backup list`](backup-list/README.md) | List one store's backups with status and goal, flagging a missing or changed file |
-| [`plastic backup purge`](backup-purge/README.md) | Delete one store's backups; give one of --all, --failed, --interrupted or --older-than |
-| [`plastic backup restore`](backup-restore/README.md) | Replace one store's databases with those of a done backup |
-
-## migration
-
-| Command | What it does |
-| --- | --- |
-| [`plastic migration list`](migration-list/README.md) | Print the ledger rows of one store and what a down would undo now |
-| [`plastic migration down`](migration-down/README.md) | Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup |
-| [`plastic migration purge`](migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
+| [`plastic store backup`](store-backup/README.md) | Copy one store's databases into a new backup folder |
+| [`plastic store backup list`](store-backup-list/README.md) | List one store's backups with status and goal, flagging a missing or changed file |
+| [`plastic store backup purge`](store-backup-purge/README.md) | Delete one store's backups; give one of --all, --failed, --interrupted or --older-than |
+| [`plastic store backup restore`](store-backup-restore/README.md) | Replace one store's databases with those of a done backup |
+| [`plastic store migration list`](store-migration-list/README.md) | Print the ledger rows of one store and what a down would undo now |
+| [`plastic store migration down`](store-migration-down/README.md) | Put back the rows the newest migration of one store kept in legacy.db and remove its version, after a backup |
+| [`plastic store migration purge`](store-migration-purge/README.md) | Remove the rows one migration of a store kept in legacy.db, so a down can no longer undo it |
+| [`plastic store sync up`](store-sync-up/README.md) | Read the files changed by hand into rows |
+| [`plastic store sync down`](store-sync-down/README.md) | Write the rows that changed into files |
 
 ## resources
 

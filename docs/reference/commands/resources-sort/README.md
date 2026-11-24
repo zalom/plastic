@@ -3,13 +3,11 @@
 Move one store's files into the resources layout and rewrite their links.
 
 ```sh
-plastic resources sort --store SLUG --store SLUG [--dry-run]
+plastic resources sort [--dry-run]
 ```
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
-| `--store SLUG` | the registered project whose backups the call works on |  |
-| `--store SLUG` | the registered project whose resources the call sorts |  |
 | `--dry-run` | list the moves, the links that would change, the links left as they are and the amendments of closed intents, and move nothing | `false` |
 
 ## The workflows of one call
@@ -33,6 +31,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The files move to resources/output, resources/references or resources/tmp, and the links that point at them are rewritten | the store folder | goes with the store |
 | Each link rewritten in a root note of a done or abandoned intent gets an amended work log line, printed to its work.log | the work graph database, in the store folder | stays on this machine |
 
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
 The command is `Plastic::Commands::Resources::Sort`, in [`commands/resources/sort.rb`](../../../../lib/plastic/commands/resources/sort.rb).
