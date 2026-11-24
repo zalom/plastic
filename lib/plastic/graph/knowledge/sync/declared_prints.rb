@@ -14,6 +14,12 @@ module Plastic
           # The print of a core file that no row holds.
           UNROWED = ->(path) { Prints::Print.new(path, nil, nil) }
 
+          # `prints` of the intent folder `dir`, and the print of nothing for each core file they leave out.
+          def self.with_unrowed(dir, prints)
+            printed = prints.map(&:path)
+            [*prints, *Layout.core_names.map { |name| "#{dir}/#{name}" }.reject { |path| printed.include?(path) }.map(&UNROWED)]
+          end
+
           def initialize(retrieval, kinds, facts)
             @retrieval = retrieval
             @kinds = kinds
@@ -31,12 +37,7 @@ module Plastic
           def intent_prints
             intent_id = @facts[:intent_id] || @facts[:id]
             row = intent_id && @kinds.include?(:intent) && @retrieval.intent(intent_id)
-            row ? with_unrowed(row.dir, Prints.of_intent(@retrieval, row)) : []
-          end
-
-          def with_unrowed(dir, prints)
-            printed = prints.map(&:path)
-            [*prints, *Layout.core_names.map { |name| "#{dir}/#{name}" }.reject { |path| printed.include?(path) }.map(&UNROWED)]
+            row ? self.class.with_unrowed(row.dir, Prints.of_intent(@retrieval, row)) : []
           end
         end
       end
