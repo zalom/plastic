@@ -17,8 +17,10 @@
 # it into work.log lines, `skip` leaves machine state alone, and `report` reads nothing and names the
 # file in the sync's output. `repair` says what `plastic intent repair` does with it, and `to` where it goes.
 #
-# Each change that a repair makes to a done or abandoned intent writes one `amended` line in its work.log, with
-# the reason that `amendments` gives for the kind of change.
+# A repair of a done or abandoned intent writes one `amended` line in its work.log for the renames, moves and
+# removals of its folder, each kind with the reason that `amendments` gives, and one line for each link it
+# rewrites, whose row keeps the old and the new link. The files of an old actions/ folder move as one change, and an
+# empty .gitkeep placeholder is removed, not moved.
 version: 1
 
 folder:
@@ -133,7 +135,7 @@ legacy:
     sync: legacy_rows
     repair: move
     to: resources/references/actions/
-    why: The action files of an older release.
+    why: The action files of an older release. The folder moves as one change, and an empty .gitkeep in it is removed.
   - name: savepoint.md
     match: [savepoint.md]
     sync: lines

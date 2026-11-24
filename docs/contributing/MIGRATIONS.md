@@ -278,6 +278,13 @@ writes no value, so it has no switch, and a driver row it finds keeps no agent, 
 own agent renews. It is in `ALONE`, and its down, `DriverAgentColumn` in `REBUILDS`, drops the column
 again; the backup that the down takes first holds any agent a driver row had.
 
+Migration `20261124210000` adds the nullable columns `old_text` and `new_text` to `work_log` in
+`work_graph.db`: the exact old and new link of the `amended` line that `plastic intent repair` writes
+for a link it rewrites. The printed line of work.log quotes both after the hash, so a sync up reads
+them back. It writes no value, so it has no switch, and a line it finds keeps neither. It is in
+`ALONE`, and its down, `WorkLogTextColumns` in `REBUILDS`, drops the columns again; the backup that
+the down takes first holds any text a line had.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down

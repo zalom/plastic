@@ -12,6 +12,7 @@ class IntentRepairCommandTest < Plastic::TestCase
   fixtures :alpha_synced
 
   OTHER = "store/2--beta"
+  BETA_MOVE = "moved plan.md to resources/references/plan.md (#{Plastic::Layout.amendment_reason(:move)})".freeze
 
   def setup
     super
@@ -42,15 +43,15 @@ class IntentRepairCommandTest < Plastic::TestCase
   def test_the_dry_run_names_the_moves_the_removals_and_the_store_leftovers
     out = repair("--all", "--dry-run").out
 
-    assert_includes out, "preview: remove #{INTENT}/delivery.lock"
-    assert_includes out, "preview: move #{OTHER}/plan.md -> #{OTHER}/resources/references/plan.md"
+    assert_match(/^preview: would repair #{INTENT}: .*removed delivery\.lock /, out)
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
     assert_includes out, "preview: remove store/.sessions/"
   end
 
   def test_the_dry_run_of_one_intent_names_its_changes_and_no_store_leftover
     out = repair("2", "--dry-run").out
 
-    assert_includes out, "preview: move #{OTHER}/plan.md -> #{OTHER}/resources/references/plan.md"
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
     refute_includes out, "store/.sessions/"
   end
 

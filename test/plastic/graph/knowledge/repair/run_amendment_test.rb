@@ -78,7 +78,7 @@ class RepairRunAmendmentTest < Plastic::TestCase
     close("done")
     repair
 
-    assert_equal 2, File.read(work_log).lines.grep(/ amended spec\.md sha256:\h+ spec\.md: link /).size
+    assert_equal 2, File.read(work_log).lines.grep(/ amended spec\.md sha256:\h+ old="[^"]+" new="[^"]+" spec\.md: link /).size
   end
 
   def test_after_the_repair_a_sync_up_has_nothing_pending_and_reads_a_hand_line
@@ -117,5 +117,41 @@ class RepairRunAmendmentTest < Plastic::TestCase
     assert_equal ["preview: would amend #{INTENT}/spec.md: link reviews/r1.md -> resources/tmp/reviews/r1.md; #{REASON}",
       "preview: would amend #{INTENT}/spec.md: link resources/notes.md -> resources/tmp/notes.md; #{REASON}"], plan.amendments.map(&:preview)
     assert_equal [before, []], [files_without_databases, amended]
+  end
+
+  def fields = store_database.rows("SELECT old_text, new_text FROM work_log WHERE kind = 'amended' AND text LIKE '%: link %' ORDER BY position").map(&:values)
+
+  FIELDS = [%w[reviews/r1.md resources/tmp/reviews/r1.md], %w[resources/notes.md resources/tmp/notes.md]].freeze
+
+  def test_the_row_of_a_link_change_holds_the_old_and_the_new_link_as_fields
+    close("done")
+    repair
+
+    assert_equal FIELDS, fields
+  end
+
+  def test_the_old_and_the_new_link_stay_when_a_sync_up_reads_the_work_log_back
+    close("done")
+    repair
+    File.write(work_log, "#{File.read(work_log)}- 2026-11-20T09:00:00+01:00 - - - noted - - a hand line\n")
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
+
+    assert_equal FIELDS, fields
+  end
+
+  def test_the_structural_changes_of_a_done_intent_are_one_amended_line
+    close("done")
+    repair
+    lines = store_database.rows("SELECT path, text FROM work_log WHERE kind = 'amended' AND text NOT LIKE '%: link %'").map(&:values)
+
+    assert_equal [1, ""], [lines.size, lines.first.first]
+  end
+
+  def test_an_empty_gitkeep_in_an_old_actions_folder_is_removed
+    write("#{INTENT}/actions/.gitkeep", "")
+    repair
+
+    assert_equal [false, false], [File.exist?(File.join(store_root, INTENT, "actions/.gitkeep")),
+      File.exist?(File.join(store_root, INTENT, "resources/references/actions/.gitkeep"))]
   end
 end

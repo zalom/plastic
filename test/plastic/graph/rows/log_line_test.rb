@@ -48,4 +48,20 @@ class WorkLogLineTest < Plastic::TestCase
 
     assert_equal "loose words", LogLine.parse(printed).fetch(:text)
   end
+
+  def test_a_line_with_an_old_and_a_new_text_prints_them_quoted_after_the_hash
+    line = row(kind: "amended", path: "spec.md", sha256: SHA, old_text: "a.md", new_text: "b \"c\".md", text: "spec.md: link a.md -> b.md")
+
+    assert_equal "- #{AT} - - - amended spec.md sha256:#{SHA} old=\"a.md\" new=\"b \\\"c\\\".md\" spec.md: link a.md -> b.md", line.line
+  end
+
+  def test_the_old_and_the_new_text_read_back_exactly
+    line = row(kind: "amended", old_text: "x\n  y", new_text: "", text: "the change")
+
+    assert_equal ["x\n  y", "", "the change"], LogLine.parse(line.line).values_at(:old_text, :new_text, :text)
+  end
+
+  def test_a_line_with_no_old_and_new_text_reads_back_with_none
+    assert_equal [nil, nil], LogLine.parse(row(text: "Spec written").line).values_at(:old_text, :new_text)
+  end
 end

@@ -139,7 +139,7 @@ module LayoutDocs
     <<~TEXT
       ## Amendments
 
-      `plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Each change writes one `amended` line in the intent's work.log with the reason for its kind.
+      `plastic intent repair` changes only the structure of a done or abandoned intent, never its work. Its renames, moves and removals share one `amended` line for each intent folder, each kind with its reason, and each link it rewrites gets one line of its own, whose row keeps the old and the new link.
 
       | Change | Reason |
       | --- | --- |
