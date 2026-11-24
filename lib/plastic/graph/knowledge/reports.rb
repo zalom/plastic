@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../../layout"
+
 module Plastic
   module Graph
     module Knowledge
@@ -8,7 +10,7 @@ module Plastic
       # mandatory name is a path inside resources/output/reports/; a recorded path is a path inside the intent
       # folder. The recorded reports load on the first question, from the store bound with `recorded_from`.
       class Reports
-        FOLDER = "resources/output/reports/"
+        FOLDER = Layout.resource(:reports)
         RECORDED = "SELECT intent_id, path FROM work_log WHERE kind = 'reported'"
         NOTHING = -> { [] }
         PARTS = ["", ".", ".."].freeze

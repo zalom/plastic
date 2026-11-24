@@ -442,10 +442,10 @@ class SyncUpSearchTest < Plastic::TestCase
 
   def test_a_search_finds_a_new_file_right_after_the_sync_up
     sync
-    write("store/2--beta/findings.md", "# Findings\n\nThe zanzibar route is the fastest.\n")
+    write("store/2--beta/resources/output/files/findings.md", "# Findings\n\nThe zanzibar route is the fastest.\n")
     sync
 
-    assert_equal ["findings.md"], found("zanzibar")
+    assert_equal ["resources%2Foutput%2Ffiles%2Ffindings.md"], found("zanzibar")
   end
 
   def test_a_search_finds_the_new_words_of_a_changed_file_and_not_the_old_ones

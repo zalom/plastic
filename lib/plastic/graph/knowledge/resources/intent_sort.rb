@@ -54,7 +54,7 @@ module Plastic
           def changed = results.flat_map { |linked| linked.changed_in(@dir) }
 
           # The links the sort rewrites in the core files, the notes at the root of the intent folder.
-          def amendments = results.select { |linked| SyncSelection.root_note?(linked.rel) }.flat_map { |linked| linked.amendments(intent_id, @dir) }
+          def amendments = results.select { |linked| Layout.core?(linked.rel) }.flat_map { |linked| linked.amendments(intent_id, @dir) }
 
           # The store paths that a recorded or mandatory report of this intent links to.
           def listed_targets
@@ -73,7 +73,7 @@ module Plastic
           def unasked_destination(rel)
             return unless @reports && Knowledge::Reports.report?(rel) && !Classification.machine?(rel) && !listed?(rel)
 
-            "resources/tmp/#{rel.delete_prefix(Knowledge::Reports::FOLDER)}"
+            "#{Layout.resource(:tmp)}#{rel.delete_prefix(Knowledge::Reports::FOLDER)}"
           end
 
           def intent_id = SyncSelection.intent_of(@dir)

@@ -5,6 +5,7 @@ require_relative "work_check"
 require_relative "../../knowledge/spec"
 require_relative "../../knowledge/outcome"
 require_relative "../../rows/node"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -20,7 +21,7 @@ module Plastic
 
           def criteria = spec.criteria_by_key
 
-          def outcome = @retrieval.documents(@intent_id).find { |document| document.path == "outcome.md" }
+          def outcome = @retrieval.documents(@intent_id).find { |document| document.path == Layout.name(:outcome) }
 
           def problems = record_problems + verification_problems
 

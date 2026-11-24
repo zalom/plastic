@@ -73,7 +73,16 @@ module Plastic
 
     # Whether a sync up reads `rel` as an older layout's file: the old intent file, the plan, the checklist,
     # the action files and an old savepoint.md.
-    def self.legacy_read?(rel) = KINDS_READ.include?(legacy_for(rel)&.sync)
+    def self.legacy_read?(rel) = KINDS_READ.include?(legacy_sync(rel))
+
+    # The sync word of the legacy entry that names `rel`, or nil.
+    def self.legacy_sync(rel) = legacy_for(rel)&.sync
+
+    # Whether a sync up reads `rel` into rows or documents: a core file or an older layout's file it still reads.
+    def self.read?(rel) = core?(rel) || legacy_read?(rel)
+
+    # The folder that holds the output folders, with a closing slash.
+    def self.output_root = "#{File.dirname(resource(:files).chomp("/"))}/"
 
     # Whether `rel` is machine state a sync never reads and a sort never moves.
     def self.machine?(rel) = legacy_for(rel)&.sync == "skip" || File.basename(rel).match?(Regexp.new(data.fetch("machine").fetch("swept")))

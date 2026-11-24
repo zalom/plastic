@@ -4,6 +4,7 @@ require "forwardable"
 require_relative "outcome_form"
 require_relative "outcome_delivery"
 require_relative "outcome_bullets"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -24,7 +25,7 @@ module Plastic
         def_delegators :@delivery, :merged?, :committed?
 
         def initialize(retrieval, intent_id, folder: nil)
-          @lines = retrieval.fetch(intent_id, "outcome.md")&.body.to_s.lines.map(&:chomp)
+          @lines = retrieval.fetch(intent_id, Layout.name(:outcome))&.body.to_s.lines.map(&:chomp)
           @headings = @lines.map { |line| line.match(HEADING) }
           @delivery = OutcomeDelivery.new(self, folder&.path(retrieval.intent(intent_id).dir))
         end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../../../layout"
+
 module Plastic
   module Graph
     module Knowledge
@@ -7,7 +9,7 @@ module Plastic
         # The savepoint.md files an older release printed. A sync down removes each one that
         # still holds the bytes that release printed, and names each one a person changed.
         class OldSavepoints
-          FILE = "savepoint.md"
+          FILE = Layout.legacy.find { |entry| entry.sync == "lines" }.name
           REASONS = { edited: "changed by hand; plastic sync up reads it into work.log", unprinted: "never printed by this home" }.freeze
 
           attr_reader :removable, :kept
