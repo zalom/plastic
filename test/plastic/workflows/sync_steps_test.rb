@@ -116,14 +116,14 @@ class SyncStepsFilesTest < Plastic::TestCase
   include SyncStepsHelper
 
   ROWLESS = "roadmaps/old.md: roadmaps/old.md is in an older form that this release does not read; " \
-            "the home that holds the rows prints the file again with plastic sync down, and the file is then copied here again"
+            "the home that holds the rows prints the file again with plastic store sync down, and the file is then copied here again"
 
   def test_an_unreadable_graph_file_is_listed_and_stops_the_sync_with_the_overwrite
     files = { "store/1--alpha/graph.json" => "junk" }
     error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files })
 
-    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json"
-    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", error.next_command
+    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic store sync down --overwrite store/1--alpha/graph.json"
+    assert_equal "plastic store sync down --overwrite store/1--alpha/graph.json", error.next_command
   end
 
   def test_a_file_this_home_holds_no_rows_for_is_listed_with_no_command_to_run_here
@@ -145,7 +145,7 @@ class SyncStepsFilesTest < Plastic::TestCase
     files = { "roadmaps/old.md" => "older", "store/1--alpha/graph.json" => "junk" }
     error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files, rowless_files: %w[roadmaps/old.md] })
 
-    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", error.next_command
+    assert_equal "plastic store sync down --overwrite store/1--alpha/graph.json", error.next_command
     assert_includes error.message, "roadmaps/old.md: older; the home that holds the rows prints the file again"
   end
 
@@ -153,8 +153,8 @@ class SyncStepsFilesTest < Plastic::TestCase
     files = { "store/1--alpha/graph.json" => "junk", "store/2--beta/graph.json" => "junk too" }
     error, _printed, _calls = stop_sync(Plastic::Workflows::Code::Sync::Up, Plastic::Failed, plan: { unreadable_files: files })
 
-    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json\n"
-    assert_includes error.message, "store/2--beta/graph.json: junk too; run plastic sync down --overwrite store/2--beta/graph.json"
+    assert_includes error.message, "store/1--alpha/graph.json: junk; run plastic store sync down --overwrite store/1--alpha/graph.json\n"
+    assert_includes error.message, "store/2--beta/graph.json: junk too; run plastic store sync down --overwrite store/2--beta/graph.json"
     refute_includes error.message, "with the command below"
   end
 
@@ -169,7 +169,7 @@ class SyncStepsFilesTest < Plastic::TestCase
   def test_the_plan_gate_words_of_sync_down_name_both_stops
     words = plan_gate_words(Plastic::Workflows::Code::Sync::Down)
 
-    assert_includes words, "finds the old index file of the store and needs plastic sync up first"
+    assert_includes words, "finds the old index file of the store and needs plastic store sync up first"
     assert_includes words, "an overwrite path names no file and no rows"
   end
 end

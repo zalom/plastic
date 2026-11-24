@@ -21,7 +21,7 @@ module SyncSecondHomeAcceptance
 
   def self.same?(state)
     with_two_homes do |first, second|
-      second.command!("sync", "up")
+      second.command!("store", "sync", "up")
       sql = QUERIES.fetch(state)
       rows = query(first, sql)
       (rows.any? && rows == query(second, sql)) ? "equal" : "different"

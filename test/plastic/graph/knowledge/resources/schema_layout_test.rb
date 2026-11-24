@@ -22,7 +22,7 @@ class SchemaLayoutTest < Plastic::TestCase
 
   def store_folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
 
-  def sort = plastic("resources", "sort", "--store", "global", table: Plastic::CLI::TABLE)
+  def sort = plastic("resources", "sort", "--project", "global", table: Plastic::CLI::TABLE)
 
   def test_the_sort_plan_moves_nothing_for_the_schema_file
     assert_empty moves.map(&:to_s).grep(/schemas/)

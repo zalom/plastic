@@ -61,7 +61,7 @@ class ConfigStoreTest < Plastic::TestCase
     File.write(path, "x: 1\n")
     error = assert_raises(Plastic::Config::HandEdited) { store.set("global", "statusline", true) }
 
-    refute_includes error.message, "sync up"
+    refute_includes error.message, "store sync up"
   end
 
   def test_the_first_print_copies_a_config_file_to_backups_first

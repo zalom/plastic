@@ -30,11 +30,11 @@ module Plastic
       def refusal(path, reason)
         return unreadable_refusal(path, reason) if reason
 
-        raise Failed.new(Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it", source: "print, files")
+        raise Failed.new(Graph::Prints.hand_edit_line(path), next_command: "plastic store sync up", because: "a file changed by hand is read into rows before a call prints it", source: "print, files")
       end
 
       def unreadable_refusal(path, reason)
-        raise Failed.new(Graph::Prints.unreadable_line(path, reason), next_command: "plastic sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again", source: "print, files")
+        raise Failed.new(Graph::Prints.unreadable_line(path, reason), next_command: "plastic store sync down --overwrite #{path}", because: "sync up cannot read the file, and its rows print it again", source: "print, files")
       end
 
       def walk(command_run, ctx)

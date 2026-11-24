@@ -23,11 +23,11 @@ module Plastic
 
           def self.event(row) = [Plastic.local(row.fetch("at")), *row.values_at("event", "version")].push(Migration.counted(JSON.parse(row.fetch("moved")))).join("  ")
 
-          def self.store(context) = Plastic::Graph::LegacyStore.new(context.scope.plastic_home, context.store)
+          def self.store(context) = Plastic::Graph::LegacyStore.new(context.scope.plastic_home, context.project)
 
           def self.version_line(context)
             number = Plastic::Graph::SchemaState.of_file(store(context).knowledge_file, :store).number
-            "store: #{context.store} is at migration #{number}"
+            "store: #{context.project} is at migration #{number}"
           end
 
           def self.legacy_lines(kept, slug)
@@ -37,14 +37,14 @@ module Plastic
           end
 
           def self.history_lines(context)
-            slug = context.store
+            slug = context.project
             rows = ledger(context).of(slug)
             rows.empty? ? ["no migration of #{slug} is in the ledger"] : rows.map { |row| event(row) }
           end
 
           # A migration that kept nothing in legacy.db has no entry in `kept`, so its down puts back no rows.
           def self.down_line(context, kept)
-            down = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.store, context.now)
+            down = Plastic::Graph::MigrationDown.new(context.scope.plastic_home, context.project, context.now)
             refusal = down.refusal
             return "down: #{refusal}" if refusal
 
@@ -61,7 +61,7 @@ module Plastic
 
           read "print what the store holds and the ledger" do |context|
             kept = kept(context)
-            [version_line(context), *legacy_lines(kept, context.store), *history_lines(context), down_line(context, kept)].each { |line| context.print(line) }
+            [version_line(context), *legacy_lines(kept, context.project), *history_lines(context), down_line(context, kept)].each { |line| context.print(line) }
           end
 
           outcome :done, offers: nil, because: "the list only reads; a down is the person's call"

@@ -8,7 +8,7 @@ class CommandReferencePageFilesTest < Minitest::Test
   FOLDER = "docs/reference/commands"
   SECTIONS = ["## The workflows of one call", "## The events of one call, step by step", "## What one call changes", "## What the agent workflow steps print"].freeze
 
-  GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine."
+  GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. The database files themselves stay on this machine."
 
   def files_of(words) = CommandReference::PageFiles.new(page(words), "#{FOLDER}/#{page(words).slug}").to_a.to_h { |path, text| [File.basename(path), text] }
 

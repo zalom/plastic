@@ -90,5 +90,5 @@
 <text class="al" x="165" y="533" text-anchor="middle">printed</text>
 <path class="flow" d="M 445.0 472 L 445.0 528 L 706.0 528 L 706.0 585" marker-end="url(#containers-arrow)"/>
 <text class="al" x="576" y="508" text-anchor="middle">printed from the rows;</text>
-<text class="al" x="576" y="521" text-anchor="middle">sync up reads edits back</text>
+<text class="al" x="576" y="521" text-anchor="middle">store sync up reads edits back</text>
 </svg>

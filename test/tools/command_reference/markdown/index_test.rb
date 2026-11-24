@@ -29,7 +29,7 @@ class CommandReferenceMarkdownIndexTest < Minitest::Test
     %w[install update rollback uninstall version doctor status next search].each { |word| assert_includes core, "`plastic #{word}`" }
   end
 
-  def test_backup_alone_is_in_the_backup_family
-    assert_includes text[/## backup.*?(?=\n## )/m], "`plastic backup`"
+  def test_store_backup_is_in_the_store_family
+    assert_includes text[/## store.*?(?=\n## )/m], "`plastic store backup`"
   end
 end

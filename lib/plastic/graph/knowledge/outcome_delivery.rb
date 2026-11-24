@@ -11,10 +11,10 @@ module Plastic
       class OutcomeDelivery
         LABELS = { "Merged" => :merged?, "Committed" => :committed?, "Delivered" => :files? }.freeze
         MISSING = "Add one delivery line to the Verification section of outcome.md: '%s' for a merge, '%s' for a direct commit, " \
-          "or '%s' for files that no version control holds. Then run plastic sync up."
+          "or '%s' for files that no version control holds. Then run plastic store sync up."
         NOT_IN_FORM = "outcome.md says '%s', which is not a delivery line in the form '%s'. "
         NOT_IN_FOLDER = "outcome.md says '%s', but the intent folder holds no %s. "
-        FIX = "Fix that line or put the delivered files in place, then run plastic sync up."
+        FIX = "Fix that line or put the delivered files in place, then run plastic store sync up."
 
         def initialize(outcome, intent_folder)
           @outcome = outcome

@@ -93,7 +93,7 @@ class KernelCommand
     copied(home, :alpha) do |kernel|
       kernel.command!("intent", "new", "Alpha")
       kernel.write("store/1--alpha/spec.md", "# Spec\n")
-      kernel.command!("sync", "up")
+      kernel.command!("store", "sync", "up")
     end
   end
 

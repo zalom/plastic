@@ -50,7 +50,7 @@ module Plastic
 
             def self.outcomes_of(direction)
               outcome :done, if: DRY_RUN, offers: "%{original_command}", because: "the preview wrote only to a disposable copy"
-              outcome :continue, offers: "plastic sync #{direction}", because: "apply the requested sync"
+              outcome :continue, offers: "plastic store sync #{direction}", because: "apply the requested sync"
             end
 
             def self.real_gates(direction)
@@ -71,7 +71,7 @@ module Plastic
             def self.readable_gates
               gate SyncWords::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
               gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
-                offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
+                offers: "plastic store sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
               gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :rowless_read?) },
                 because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
             end

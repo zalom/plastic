@@ -36,7 +36,7 @@ module Plastic
         count.zero? ? Check.ok(label, "every file is in the resources layout") : finding("#{count} files are outside the resources layout")
       end
 
-      def finding(text) = Check.finding(label, text, "plastic resources sort --store #{@slug}")
+      def finding(text) = Check.finding(label, text, "plastic resources sort --project #{@slug}")
 
       def label = "resources #{@slug}:"
     end

@@ -259,7 +259,7 @@ class IntentEndMergeTest < Plastic::TestCase
     out = finish.out
 
     assert_match(/only when the owner asked/i, out)
-    assert_match(/plastic sync up/, out)
+    assert_match(/plastic store sync up/, out)
   end
 
   def test_a_negative_merge_record_is_named_by_the_handoff

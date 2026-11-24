@@ -23,7 +23,7 @@ module Plastic
                 "Add '- Delivered: resources/output/<path> because <reason>' only for work that no version control holds: " \
                 "put a report of the work in %{intent_folder}/resources/output/reports and record it with " \
                 "plastic intent report %{intent_id} PATH, put other files in %{intent_folder}/resources/output/files, " \
-                "and name them in the line. Then run plastic sync up and plastic intent end %{intent_id} again. Plastic runs no version control command; it records what you write."
+                "and name them in the line. Then run plastic store sync up and plastic intent end %{intent_id} again. Plastic runs no version control command; it records what you write."
 
             outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}",
               because: "the agent records the delivery in outcome.md"

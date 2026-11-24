@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- A `store` namespace holds the commands that work on one store, and the old names are gone with no alias. `plastic backup` is `plastic store backup`, and `backup list`, `backup purge` and `backup restore` are `store backup list`, `store backup purge` and `store backup restore`. `plastic migration list`, `migration down` and `migration purge` are `store migration list`, `store migration down` and `store migration purge`. `plastic sync up` and `plastic sync down` are `plastic store sync up` and `plastic store sync down`. Every store command names the store with `--project SLUG`, and the `--store` switch is gone, also from `plastic resources sort`. Scripts, hooks and notes that call an old name must change; the `next:` lines, help and reference pages carry the new names.
+
 ## 3.0.0-beta.22
 
 - `plastic console` loads the irb of the Ruby installation through RubyGems when a session opens, and the runtime bundle carries no irb. Release 3.0.0-beta.21 put `irb` in the runtime Gemfile, and `plastic update` runs the installer of the installed copy, which has no retry, so an update failed on a machine with no C compiler. The runtime Gemfile and lock hold what they held before beta.21, and the installer retry is gone. `--eval` loads no irb. A Ruby without irb gets one line, with `gem install irb`, and exit 1.

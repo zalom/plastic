@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/commands/sync/up"
-require_relative "../../../lib/plastic/commands/sync/down"
+require_relative "../../../lib/plastic/commands/store/sync/up"
+require_relative "../../../lib/plastic/commands/store/sync/down"
 
 class SyncOptionsTest < Plastic::TestCase
   MERGE = { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }.freeze
@@ -18,21 +18,21 @@ class SyncOptionsTest < Plastic::TestCase
   end
 
   def test_sync_up_says_that_overwrite_reads_files_into_rows
-    assert_equal [expected(:up), %i[work knowledge retrieval]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
+    assert_equal [expected(:up), %i[work knowledge retrieval]], [options_of(Plastic::Commands::Store::Sync::Up), Plastic::Commands::Store::Sync::Up.writes]
   end
 
   def test_sync_down_says_that_overwrite_prints_rows_over_files
-    assert_equal [expected(:down), %i[work knowledge retrieval]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
+    assert_equal [expected(:down), %i[work knowledge retrieval]], [options_of(Plastic::Commands::Store::Sync::Down), Plastic::Commands::Store::Sync::Down.writes]
   end
 
   def test_each_direction_runs_its_own_workflow
-    assert_equal [["sync up", "Read the files changed by hand into rows", %i[code_preview_sync code_sync_up]],
-      ["sync down", "Write the rows that changed into files", %i[code_preview_sync_down code_sync_down]]],
-      [Plastic::Commands::Sync::Up, Plastic::Commands::Sync::Down].map { |command| [command.tool_name, Plastic::CLI::TABLE.dig(command.tool_name, 1), command.chain.keys] }
+    assert_equal [["store sync up", "Read the files changed by hand into rows", %i[code_preview_sync code_sync_up]],
+      ["store sync down", "Write the rows that changed into files", %i[code_preview_sync_down code_sync_down]]],
+      [Plastic::Commands::Store::Sync::Up, Plastic::Commands::Store::Sync::Down].map { |command| [command.tool_name, Plastic::CLI::TABLE.dig(command.tool_name, 1), command.chain.keys] }
   end
 
   def test_sync_down_accepts_a_read_only_preview
-    result = plastic("sync", "down", "--dry-run", table: Plastic::CLI::TABLE)
+    result = plastic("store", "sync", "down", "--dry-run", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code, [result.out, result.err].inspect
     assert_includes result.out, "preview"
@@ -43,7 +43,7 @@ class SyncOptionsTest < Plastic::TestCase
     with_home do |home|
       assert_equal 0, call_in(home, "intent", "new", "Preview target").code
       before = snapshot(home)
-      result = call_in(home, "sync", "down", "--dry-run")
+      result = call_in(home, "store", "sync", "down", "--dry-run")
 
       assert_equal 0, result.code, [result.out, result.err].inspect
       assert_equal before, snapshot(home)
@@ -51,6 +51,6 @@ class SyncOptionsTest < Plastic::TestCase
   end
 
   def test_both_sync_chains_pass_verify
-    assert_equal [true, true], [Plastic::Commands::Sync::Up.verify, Plastic::Commands::Sync::Down.verify]
+    assert_equal [true, true], [Plastic::Commands::Store::Sync::Up.verify, Plastic::Commands::Store::Sync::Down.verify]
   end
 end

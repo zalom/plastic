@@ -8,7 +8,7 @@ class IntentUnlinkCaseTest < Plastic::TestCase
   def test_unlinking_prints_the_removed_link_and_offers_sync_down
     ran("intent new Alpha", "intent new Beta", "intent link 1 cites 2")
 
-    assert_case line("intent unlink 1 cites 2"), code: 0, out: ["link: 1 cites 2 removed", "next: plastic sync down"]
+    assert_case line("intent unlink 1 cites 2"), code: 0, out: ["link: 1 cites 2 removed", "next: plastic store sync down"]
   end
 
   def test_unlinking_a_link_that_does_not_exist_exits_1_and_names_it

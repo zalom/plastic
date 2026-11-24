@@ -25,7 +25,7 @@ module Plastic
         intent = open_intent
         write("#{intent.dir}/spec.md", keyed_spec(keys))
         write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered and verified.\n\n## Verification\n#{records}") if records
-        cli("sync", "up")
+        cli("store", "sync", "up")
         intent
       end
 

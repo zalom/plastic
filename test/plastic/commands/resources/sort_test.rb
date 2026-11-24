@@ -14,7 +14,7 @@ class ResourcesSortCommandTest < Plastic::TestCase
     write_old_layout
   end
 
-  def sort(*args) = plastic("resources", "sort", "--store", "global", *args, table: Plastic::CLI::TABLE)
+  def sort(*args) = plastic("resources", "sort", "--project", "global", *args, table: Plastic::CLI::TABLE)
 
   def test_the_preview_lists_the_links_that_would_change_and_the_links_left_alone
     out = sort("--dry-run").out
