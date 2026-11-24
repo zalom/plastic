@@ -18,8 +18,7 @@ module Plastic
       KEEPS = %w[20261119000000 20261121090000 20261123120000 20261124090000].freeze
       # The tables a version drops, kept whole before its SQL runs.
       WHOLE = { "20261119000000" => %w[document_revisions],
-                "20261123120000" => %w[roadmaps batches roadmap_items roadmap_edges roadmap_log],
-                "20261124090000" => %w[roadmaps batches roadmap_items roadmap_edges roadmap_log] }.freeze
+                "20261123120000" => RoadmapTables::NAMES }.freeze
       # The versions that remove from legacy.db rows an earlier version kept, rows a down rebuilds or no sync reads.
       TRIMS = %w[20261119190000].freeze
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
@@ -54,16 +53,14 @@ module Plastic
 
       # Whether a down can leave `version` with nothing in legacy.db: it keeps only when a value changed or a table was there.
       # (Migration 20261123120000 keeps its tables only when the store has them, and its down then takes its links off.)
-      def self.kept_when_present?(version) = VALUES.include?(version) || version == RoadmapTables::VERSION || version == "20261123120000"
+      def self.kept_when_present?(version) = VALUES.include?(version) || RoadmapTables::WHEN_PRESENT.include?(version)
 
       # Runs just before the SQL of `version`.
       def call(version)
         @kept[version] = Hash.new(0)
-        WHOLE.fetch(version, []).each { |table| rows(version, table) if keepable?(version, table) }
+        WHOLE.fetch(version, []).each { |table| rows(version, table) }
+        RoadmapTables.keep(self, @connection) if version == RoadmapTables::VERSION
       end
-
-      # Whether the table of WHOLE is kept: always, but for the version of RoadmapTables, which keeps only a table that holds a row.
-      def keepable?(version, table) = version != RoadmapTables::VERSION || LegacyTable.new(@connection, table, version).rows?
 
       # Keeps the rows of `table` that the `where` text selects, or all of them, for the migration `version`.
       def rows(version, table, where = nil, values = [])
