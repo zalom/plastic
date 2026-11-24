@@ -33,6 +33,7 @@ outer one. With neither, the global store answers.
 | ------- | ------ |
 | `plastic status` | The work of every store, by group. |
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
+| `plastic graph lapsed [--stores a,b]` | Each intent in agent delivery whose driver claim or node claim lapsed, with the node, the agent, the session and the last renewal, and the command that restarts the first. It renews no claim. |
 | `plastic next` | The next action in one line, with the rule behind it on the `because:` line. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
 | `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress with the best passages of the retrieval graph for each (at most 3 intents and 2 passages each, on `context:` lines), the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |

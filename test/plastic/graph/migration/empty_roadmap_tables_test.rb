@@ -43,7 +43,7 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
   end
 
   # The mistaken rows cleanup and the leftover work tables migration are the newest and remove their versions alone, so their downs come first.
-  def down(home) = 3.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
+  def down(home) = 4.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
 
   def test_a_new_store_has_no_roadmap_table
     home = fresh_home

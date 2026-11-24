@@ -45,6 +45,12 @@ when it failed. You write nothing else to Plastic. Every other case follows the 
 5. Report (see `## Completion Report`); the main session applies the risk rule and may
    dispatch a reviewer whose fixes come back to you.
 
+**Checks run in the foreground.** A helper never ends its turn to wait on a background job or a monitor notice. The notice may never
+reach it, and its claim lapses while it waits. It runs each check in the foreground and reads the result itself:
+each changed file's test, the gate and the suite. When one run would pass the time limit of the tool,
+it splits a long suite into its layers, such as the unit layer, the end-to-end layer and the gate, and
+runs each layer in its own foreground call.
+
 ## Completion Report
 
 END your turn with a structured completion report as your final message, per

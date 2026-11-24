@@ -138,4 +138,10 @@ class WorkDriverWriterTest < Plastic::TestCase
 
     assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the claim lapsed"], driver_lines
   end
+
+  def test_the_claim_records_no_mode_or_the_mode_it_names_and_a_retake_records_the_new_one
+    modes = [nil, "guided", "auto"].each_with_index.map { |mode, minute| at(minute) && drive(**{ mode: }.compact) && driver_row["mode"] }
+
+    assert_equal [nil, "guided", "auto"], modes
+  end
 end
