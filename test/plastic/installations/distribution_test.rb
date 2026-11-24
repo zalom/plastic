@@ -72,4 +72,27 @@ class DistributionTest < Plastic::TestCase
 
     refute_path_exists cache
   end
+  def status_line = File.join(plastic, "hooks", "statusline")
+
+  def test_with_the_status_line_off_the_home_gets_no_status_line_script
+    distribute
+
+    assert_equal [false, true], [File.exist?(status_line), File.exist?(File.join(plastic, "hooks", "session-start"))]
+  end
+
+  def test_with_the_status_line_on_the_home_gets_the_status_line_script
+    config_with("global:\n  statusline: true\n")
+    distribute
+
+    assert_path_exists status_line
+  end
+
+  def test_an_update_with_the_status_line_off_removes_the_copy_an_earlier_install_left
+    config_with("global:\n  statusline: true\n")
+    distribute
+    config_with("global:\n  statusline: false\n")
+
+    assert_includes distribute(:update), "  Core files synced (v2.0.3), 1 stale file(s) pruned\n"
+    refute_path_exists status_line
+  end
 end
