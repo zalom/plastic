@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "change"
+require_relative "missing_files"
 require_relative "removal"
 require_relative "revisions"
 require_relative "../../knowledge/resources/sort_plan"
@@ -12,12 +13,13 @@ module Plastic
       module Repair
         # What a repair of the intent folders of one store folder would do, read from the folder: the files that move or are
         # renamed where the layout names, the links that follow them, the files it removes, the entries of each old
-        # revisions.md, and the `amended` lines. It writes nothing. The scope names the folders of `dirs`, every folder when
-        # it is nil, never the folders of `held`, and the ids of the done and abandoned intents in `closed`. A closed intent
-        # gets one amended line for each change; each revision entry is an amended line of any intent.
+        # revisions.md, the `amended` lines, and the files the layout requires of a closed intent that its folder lacks. It
+        # writes nothing. The scope names the folders of `dirs`, every folder when it is nil, never the folders of `held`,
+        # the ids of the done and abandoned intents in `closed`, and their statuses by id in `states`. A closed intent gets
+        # one amended line for each change; each revision entry is an amended line of any intent.
         class Plan
-          Scope = Data.define(:dirs, :closed, :held) do
-            def initialize(dirs: nil, closed: Set.new, held: Set.new) = super
+          Scope = Data.define(:dirs, :closed, :held, :states) do
+            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}) = super
           end
 
           UNREADABLE = "holds no revision entry the repair can read, or other text before its first one; " \
@@ -42,23 +44,30 @@ module Plastic
           # One amended line for each entry of each revisions.md, with its own time; refused when a file cannot be read.
           def revisions = (@revisions ||= revision_files.flat_map { |path| revision_lines(path) })
 
-          def amendments = [*closed_changes, *revisions, *sort.amendments]
+          def amendments = (@amendments ||= [*closed_changes, *revisions, *sort.amendments])
 
           def empty? = moves.empty? && removals.empty? && revision_files.empty?
 
+          # The files a closed intent of the scope lacks; a file a move of the repair brings counts as there.
+          def missing = (@missing ||= MissingFiles.new(@folder, @scope.states, dirs:, arriving: moves.map(&:to)))
+
           def preview
-            [*moves.map { |move| move_preview(move) }, *removals.map(&:preview), *revision_files.map { |path| "preview: remove #{path}" },
-              *sort.changed.map { |link| "preview: link would change #{link}" }, *amendments.map(&:preview),
-              *sort.unresolved.map { |link| "preview: link left as it is #{link}" }]
+            [*file_previews, *sort.changed.map { |link| "preview: link would change #{link}" }, *amendments.map(&:preview),
+              *listed.map { |line| "preview: #{line}" }]
           end
 
           # The lines a repair that moved `count` files prints.
           def report(count)
             ["repaired: #{count} files moved, #{removals.size + revision_files.size} removed", *sort.unasked,
-              *sort.changed.map { |link| "link changed #{link}" }, *amendments.map(&:line), *sort.unresolved.map { |link| "link left as it is #{link}" }]
+              *sort.changed.map { |link| "link changed #{link}" }, *amendments.map(&:line), *listed]
           end
 
           private
+
+          def file_previews = [*moves.map { |move| move_preview(move) }, *removals.map(&:preview), *revision_files.map { |path| "preview: remove #{path}" }]
+
+          # What the repair leaves as it is and lists: the links it cannot follow and the files a closed intent lacks.
+          def listed = [*sort.unresolved.map { |link| "link left as it is #{link}" }, *missing.lines]
 
           def sort
             @sort ||= Resources::SortPlan.new(@folder, reports: @reports, closed: @scope.closed, only: @scope.dirs, held: @scope.held)
