@@ -85,6 +85,9 @@ class ConsoleCommandTest < Plastic::TestCase
     Plastic::Console::IrbSession.send(:define_method, :load_irb, saved)
   end
 
+  def test_help_says_where_irb_comes_from
+    assert_includes console("--help").out, "IRB is the one of the Ruby installation; when the Ruby has none, add it with `gem install irb`."
+  end
   def test_the_interactive_console_reads_its_input_and_prints_the_class_of_a_name
     result = console(input: "work.class\nexit\n")
 
