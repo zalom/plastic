@@ -26,6 +26,13 @@ class RuntimeBundleTest < Minitest::Test
     assert_includes runtime, "    sqlite3 (#{version}-x86_64-linux-gnu)"
   end
 
+  def test_the_runtime_lock_still_lists_the_precompiled_sqlite3_of_every_platform
+    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    platforms = %w[aarch64-linux-gnu arm64-darwin x86_64-darwin x86_64-linux-gnu]
+
+    assert_equal platforms, platforms.select { |platform| runtime.include?("    sqlite3 (2.9.6-#{platform})") }
+  end
+
   def test_the_runtime_lock_pins_the_development_tty_prompt
     runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
     development = File.read(File.join(REPO, "Gemfile.lock"))

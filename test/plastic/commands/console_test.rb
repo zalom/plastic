@@ -81,6 +81,13 @@ class ConsoleCommandTest < Plastic::TestCase
     assert_equal [before, true], [digests, $stdout.equal?(stdout)]
   end
 
+  def test_the_interactive_console_starts_no_outside_process_and_leaves_no_pager_or_history
+    result = refusing_processes { console(input: "work.class\nexit\n") }
+
+    assert_equal [0, nil, false], [result.code, IRB.conf[:SAVE_HISTORY], IRB.conf[:USE_PAGER]]
+    assert_includes refusing_processes { console(input: "system(%q(true))\nexit\n") }.out, "the console started an outside process"
+  end
+
   def test_a_write_through_each_name_fails_as_read_only_and_exits_one
     codes = NAMES.map { |name| console("--eval", "#{name}.execute('CREATE TABLE probe (id INTEGER)')") }
 
@@ -111,6 +118,17 @@ class ConsoleCommandTest < Plastic::TestCase
   end
 
   private
+
+  # Runs the block with every way to start an outside process made to raise, then puts each back.
+  def refusing_processes
+    refuse = ->(*) { raise "the console started an outside process" }
+    targets = [[Process.singleton_class, :spawn], [IO.singleton_class, :popen], [Kernel.singleton_class, :system], [Kernel.singleton_class, :`], [Kernel, :system], [Kernel, :`]]
+    saved = targets.map { |owner, name| [owner, name, owner.instance_method(name)] }
+    targets.each { |owner, name| owner.send(:define_method, name, &refuse) }
+    yield
+  ensure
+    saved&.each { |owner, name, original| owner.send(:define_method, name, original) }
+  end
 
   def digests
     Dir.glob("**/*", File::FNM_DOTMATCH, base: @home).select { |path| File.file?(File.join(@home, path)) }
