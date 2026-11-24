@@ -233,8 +233,11 @@ and says what is wrong there: the files outside the layout, the retired files an
 `revisions.md`. The retired entries of the store folder, such as `.sessions/`, get one
 `layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
 NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
-person: its repair says to move it out of the store folder by hand. A `revisions.md` that the repair
-cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
+person: its repair says to move it out of the store folder by hand. An entry at the root of a
+store, beside `store/`, that the layout does not name, such as a `REVIEWS.md` a person left there,
+gets a `layout NAME ENTRY:` row whose repair says to move it out of the store by hand. The entries
+the layout names there are listed in [the store folder section of the intent folder page](../help/intent-folder.md#the-store-folder). A
+`revisions.md` that the repair cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
 file that the layout requires in its state, such as `outcome.md`, gets a `layout NAME ID--SLUG:` row
 that names the files and has no repair, so the doctor lists it and does not fail on it.
 
@@ -322,11 +325,13 @@ entry of an old `revisions.md` into an `amended` line with the date of the entry
 file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
 and `.tmp/`, and names each entry that holds data and leaves it.
 
-A done or abandoned intent changes in its structure only, never in its work. Its folder gets one
+A done or abandoned intent keeps its work. The repair changes its structure, and inside its files
+it changes only a relative link that points at a file the repair moved. Its folder gets one
 `amended` line on the intent's work log that lists every rename, move and removal, each kind with
 its reason. The files of an old `actions/` folder move as one change, and an empty `.gitkeep`
-placeholder is removed, not moved. Each link the repair rewrites gets an `amended` line of its own,
-whose row keeps the exact old and new link in the fields `old_text` and `new_text`. An intent that
+placeholder is removed, not moved. A link the repair rewrites, in a done intent as in an open one,
+is an amendment of its own: it gets an `amended` line whose row keeps the exact old and new link in
+the fields `old_text` and `new_text`. An intent that
 a driver claim or a live node claim holds is refused with exit 3, and `--all` repairs the other
 intents first. Both the run and `--dry-run` print one line for each intent folder, the links that
 change, the other `amended` lines and the totals: the intent folders and their changes by kind,

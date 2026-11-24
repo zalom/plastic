@@ -100,6 +100,11 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">Renew the claim.</text>
+<path d="M 424 164 L 480 164" class="wire-refusal"/>
+<path d="M 472 159 L 480 164 L 472 169 Z" class="head"/>
+<rect x="480" y="141" width="330" height="46" rx="6" class="stop-refusal"/>
+<text x="492" y="159" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="177" class="t" text-anchor="start">Node &lt;id&gt; is held by &lt;holder&gt;.</text>
 <path d="M 64 192 L 64 218" class="wire"/>
 <path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
 <rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>

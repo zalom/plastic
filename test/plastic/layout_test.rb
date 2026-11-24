@@ -85,6 +85,12 @@ class LayoutTest < Plastic::TestCase
     assert_equal "keep", Plastic::Layout.store_root_legacy.find { |entry| entry.name == "originals/" }.repair
   end
 
+  def test_the_store_root_names_the_files_older_releases_wrote_there_and_keeps_them
+    repairs = Plastic::Layout.store_root_legacy.to_h { |entry| [entry.name, entry.repair] }
+
+    assert_equal %w[keep keep], repairs.values_at("project.yml", "AGENTS.md")
+  end
+
   def test_the_store_folder_lists_what_it_may_hold_and_each_leftover_with_its_repair
     allowed = Plastic::Layout.store_folder_allowed.map(&:name)
     repairs = Plastic::Layout.store_folder_legacy.to_h { |entry| [entry.name, entry.repair] }

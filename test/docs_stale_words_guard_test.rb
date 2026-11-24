@@ -11,7 +11,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   OWNERS = %w[docs/contributing/ARCHITECTURE.md docs/reference/harness-adapters.md].freeze
   LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
-  STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with|update --(?:beta|alpha|stable)|next --why|graph show \S+ --dry-run|project new \S+ --path/
+  STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with|update --(?:beta|alpha|stable)|next --why|graph show \S+ --dry-run|project new \S+ --path|plastic sync (?:up|down)|(?<![\w-])--store(?![\w-])/
   LAYOUT_PAGE = "docs/help/intent-folder.md"
   PUBLISHED = PAGES + Dir["{INSTALL,SECURITY,CONTRIBUTING,AGENTS,PLASTIC}.md", "agents/*.md", base: ROOT]
   SCRIPTS = %w[lib/ install-release].freeze
@@ -123,12 +123,12 @@ class DocsStaleWordsGuardTest < Minitest::Test
   end
 
   def test_the_detector_catches_an_option_a_command_does_not_have
-    text = "plastic update --beta, plastic update --channel beta, plastic next --why, plastic graph show 12 --dry-run, plastic project new app --path /x"
+    text = "plastic update --beta, plastic update --channel beta, plastic next --why, plastic graph show 12 --dry-run, plastic project new app --path /x, plastic sync up, plastic doctor --store global"
 
-    assert_equal ["update --beta", "next --why", "graph show 12 --dry-run", "project new app --path"], stale_words(text)
+    assert_equal ["update --beta", "next --why", "graph show 12 --dry-run", "project new app --path", "plastic sync up", "--store"], stale_words(text)
   end
 
   def test_the_detector_leaves_current_text_alone
-    assert_empty stale_words("plastic doctor --store global; plastic intent end 12; no next line")
+    assert_empty stale_words("plastic store sync up --stores a,b; plastic doctor --harness codex; plastic intent end 12 --project app; no next line")
   end
 end
