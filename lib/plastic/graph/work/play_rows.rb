@@ -16,7 +16,7 @@ module Plastic
 
         def rows
           intents = @retrieval.intents
-          [*IntentRows.new(intents, @slug).rows, *Retrieval::WorkContext.new(@retrieval, intents).rows]
+          [*IntentRows.new(intents, @slug, @retrieval).rows, *Retrieval::WorkContext.new(@retrieval, intents).rows]
         end
       end
     end

@@ -3,6 +3,7 @@
 require "forwardable"
 require_relative "outcome_form"
 require_relative "outcome_delivery"
+require_relative "outcome_bullets"
 
 module Plastic
   module Graph
@@ -16,7 +17,6 @@ module Plastic
         extend Forwardable
 
         HEADING = /\A(#+)\s*(.*?)\s*\z/
-        BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
 
         def_delegator :@delivery, :recorded?, :delivery_recorded?
         def_delegator :@delivery, :rejection, :delivery_rejection
@@ -44,7 +44,8 @@ module Plastic
 
         def reverted? = recorded?("Reverted")
 
-        def verification = section.filter_map { |line| line[BULLET, 1]&.delete("*")&.strip }
+        # Each bullet joined with the indented lines that wrap it, so a long delivery line reads whole.
+        def verification = OutcomeBullets.new(section).to_a.map { |bullet| bullet.delete("*").strip }
 
         # The values written after `label:` under Verification, in order.
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
