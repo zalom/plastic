@@ -273,7 +273,7 @@ up. A link that named no file before the move is left as it is. A loose Markdown
 to `resources/tmp/`, and a file directly under `resources/output/` of another type moves to
 `files/`. A file in `resources/output/reports/` that is neither recorded nor mandatory is named and
 moved to `resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays
-where it is. The repair removes the retired files, such as an old lock or `graph.md`. It turns each
+where it is. The repair removes the retired files that the layout names, such as an old lock. It turns each
 entry of an old `revisions.md` into an `amended` line with the date of the entry, then removes the
 file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
 and `.tmp/`, and names each entry that holds data and leaves it.
