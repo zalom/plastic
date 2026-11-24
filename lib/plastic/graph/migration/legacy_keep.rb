@@ -27,9 +27,8 @@ module Plastic
       ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000 20261123130000 20261123154000 20261123170000 20261124150000].freeze
       # What each version that drops data says the data is. `owner`: the owner's own data, kept in legacy.db with an undo.
       # `mistake`: data an agent created by mistake, deleted with no copy and no undo, since legacy.db keeps only the
-      # owner's data (the owner ruled this on 24 November 2026). `rebuilt`: nothing of the owner's is lost, since the data
-      # moved into a new table or column, a sync up reads it back from the files, or there was none (Jev's ruling D2 of
-      # intent 539). A test fails when a migration that drops data is missing here.
+      # owner's data. `rebuilt`: nothing of the owner's is lost, since the data moved into a new table or column, a sync
+      # up reads it back from the files, or there was none. A test fails when a migration that drops data is missing here.
       KINDS = { "20261117000000" => :rebuilt, "20261119000000" => :mistake, "20261119180000" => :rebuilt, "20261119190000" => :mistake,
                 "20261121090000" => :owner, "20261123100000" => :rebuilt, "20261123120000" => :owner, "20261123170000" => :rebuilt,
                 "20261124090000" => :owner, "20261124120000" => :owner, "20261124150000" => :mistake }.freeze
