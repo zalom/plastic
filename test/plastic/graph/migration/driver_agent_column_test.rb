@@ -29,10 +29,6 @@ class GraphDriverAgentColumnTest < Plastic::TestCase
     assert_includes fresh_columns, "agent"
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, DRIVER_AGENT
-  end
-
   def test_the_migration_adds_the_column_and_leaves_the_layout_of_a_new_store
     home = previous_home
     before = columns(home)

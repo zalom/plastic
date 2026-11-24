@@ -26,7 +26,7 @@ class GraphMistakenRowsTest < Plastic::TestCase
     "PRAGMA auto_vacuum = INCREMENTAL;\nCREATE TABLE #{MISTAKEN}(sha256 TEXT, body TEXT);\n#{rows}\n#{owner}"
   end
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none).call.tap { forget(home) }
 
   def test_the_migration_deletes_the_mistaken_table_and_keeps_the_owners_data
     home = kept_home
@@ -72,9 +72,5 @@ class GraphMistakenRowsTest < Plastic::TestCase
     undone = 5.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }.last
 
     assert_equal [CLEANUP, {}, false, [OWNER]], [undone.version, undone.moved, recorded(home).include?(CLEANUP), legacy_tables(home)]
-  end
-
-  def test_the_migration_needs_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, CLEANUP
   end
 end

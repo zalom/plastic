@@ -76,7 +76,17 @@ module PreviousStore
   def migrated_previous_home = previous_home.tap { |home| migrate_store(home) }
 
   def migrate_store(home, now: MIGRATED_AT)
-    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
+    Plastic::Graph::SchemaRunner.new(home:, now:, selection: Plastic::Graph::Knowledge::SyncSelection.none).call.tap { forget(home) }
+  end
+
+  # Runs the migrations of the store but the versions `skipped`, which stay pending after the run, as in a store of
+  # an earlier release that shipped without them.
+  def migrate_without(home, skipped, now: MIGRATED_AT)
+    path = alpha_file(home, "knowledge_graph.db")
+    SQLite3::Database.open(path) { |database| skipped.each { |version| database.execute("INSERT INTO schema_migrations (version) VALUES (?)", [version]) } }
+    migrate_store(home, now:).tap do
+      SQLite3::Database.open(path) { |database| skipped.each { |version| database.execute("DELETE FROM schema_migrations WHERE version = ?", [version]) } }
+    end
   end
 
   # Undoes the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.

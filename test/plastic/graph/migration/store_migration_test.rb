@@ -15,7 +15,7 @@ module StoreMigrationRuns
   NOW = Time.utc(2026, 1, 1)
   SELECTION = Plastic::Graph::Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [])
 
-  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
+  def migrate(home) = Runner.new(home:, now: NOW, selection: SELECTION).call
 
   def migrated_home(**options) = beta_2_home(**options).tap { |home| migrate(home) }
 
@@ -197,7 +197,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home
     plant(home, trigger)
     before = [state(home), rows_digest(home)]
-    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call
+    report = Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call
     [home, before, report]
   end
 
@@ -221,7 +221,7 @@ class StoreMigrationFailureTest < Plastic::TestCase
     home = beta_2_home(older: true)
     before = beta_2_files(home)
 
-    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)).call }
+    error = assert_raises(Plastic::Graph::OutOfStep) { Runner.new(home:, now: NOW, selection: StoreMigrationRuns::SELECTION).call }
 
     assert_includes error.message, "beta.2"
     assert_equal before, beta_2_files(home)
@@ -391,7 +391,7 @@ class StoreMigrationCompactionTest < Plastic::TestCase
   FULL_DISK = ->(_home, _slug) { raise SQLite3::FullException, "database or disk is full" }
   FAILED = "compact: alpha was not compacted (database or disk is full); run plastic update to try again"
 
-  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, run: Plastic::Graph::StoreMigration::Run.new(selection: SELECTION, released: Plastic::Graph::MIGRATIONS.held(:store)), compaction:)
+  def migration(home, compaction: Plastic::Graph::StoreCompaction) = Plastic::Graph::StoreMigration.new(home, "alpha", NOW, run: Plastic::Graph::StoreMigration::Run.new(selection: SELECTION), compaction:)
 
   def vacuum_modes(home) = FILES.map { |name| SQLite3::Database.open(store_path(home, name)) { |database| database.get_first_value("PRAGMA auto_vacuum") } }
 
@@ -454,7 +454,7 @@ class StoreMigrationCreatedFilesTest < Plastic::TestCase
     super
   end
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released: Plastic::Graph::MigrationList::HELD.keys).call
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none).call
 
   def test_after_a_migration_commits_a_later_removal_of_the_files_the_process_made_keeps_legacy_db
     home = previous_home_with_times
@@ -494,23 +494,14 @@ class StoreMigrationLegacyRollbackTest < Plastic::TestCase
   end
 end
 
-class StoreMigrationSwitchTest < Plastic::TestCase
+class StoreMigrationDropTest < Plastic::TestCase
   include PreviousStore
-
-  def migrate(home, released) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call.tap { forget(home) }
 
   def revisions_table(home) = alpha_rows(home, "knowledge_graph.db", "SELECT name FROM sqlite_master WHERE name = 'document_revisions'").flatten
 
-  def test_while_the_switch_is_off_a_store_runs_only_the_report_migration_keeps_its_table_and_makes_no_legacy_db
+  def test_a_store_of_the_previous_release_runs_the_drop_with_no_switch_and_deletes_the_table_with_no_copy
     home = previous_home
-    report = migrate(home, [])
-
-    assert_equal [["alpha"], false, ["document_revisions"], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
-  end
-
-  def test_once_the_switch_is_on_the_store_runs_the_drop_and_deletes_the_table_with_no_copy
-    home = previous_home
-    report = migrate(home, Plastic::Graph::MigrationList::HELD.keys)
+    report = migrate_store(home)
 
     assert_equal [["alpha"], true, [], false], [report.migrated, recorded(home).include?(DROP), revisions_table(home), File.exist?(alpha_file(home, "legacy.db"))]
   end
@@ -527,7 +518,7 @@ class ReportRowsMigrationTest < Plastic::TestCase
 
   def selection = Knowledge::SyncSelection.new(types: %w[md html], references: false, asked: [], reports: Knowledge::Reports.new(mandatory: %w[summary.md]))
 
-  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection:, released: Plastic::Graph::MigrationList::HELD.keys).call.tap { forget(home) }
+  def migrate(home) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection:).call.tap { forget(home) }
 
   # A store the previous release synced: every report read into rows, as the sync read them by type.
   def synced_home

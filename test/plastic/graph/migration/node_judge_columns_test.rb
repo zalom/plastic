@@ -34,10 +34,6 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
     assert_empty GONE.map(&:to_sym) & Plastic::Graph::Work::Node.members
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, NODES
-  end
-
   def test_the_migration_drops_the_two_columns_and_leaves_the_layout_of_a_new_store
     home = previous_home
     before = columns(home)
