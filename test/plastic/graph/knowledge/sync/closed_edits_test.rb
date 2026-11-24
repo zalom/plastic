@@ -20,7 +20,7 @@ class KnowledgeSyncClosedEditsTest < Plastic::TestCase
     @intent
   end
 
-  def edits(*names) = ClosedEdits.new(retrieval).call(names.map { |name| "#{@intent.dir}/#{name}" })
+  def edits(*names) = ClosedEdits.new(folder, retrieval, store_graphs.databases.fetch(:store)).call(names.map { |name| "#{@intent.dir}/#{name}" })
 
   def test_the_spec_and_the_outcome_of_a_closed_intent_are_each_named_with_the_reason
     abandoned
@@ -28,6 +28,18 @@ class KnowledgeSyncClosedEditsTest < Plastic::TestCase
 
     assert_equal({ "#{@intent.dir}/spec.md" => format(reason, "spec.md"), "#{@intent.dir}/outcome.md" => format(reason, "outcome.md") },
       edits("spec.md", "outcome.md"))
+  end
+
+  def test_a_spec_the_resource_sort_amended_is_not_named
+    abandoned
+    text = "# Spec\n\nSee resources/tmp/notes.md.\n"
+    write("#{@intent.dir}/spec.md", text)
+    store_graphs.databases.fetch(:store).transaction do |batch|
+      batch.put(:work_log, { intent_id: "1", position: 99, at: EARLY, kind: "amended", path: "spec.md",
+                             sha256: Digest::SHA256.hexdigest(text), text: "a link moved", origin_id: "o-1", session_id: "s-1" })
+    end
+
+    assert_empty edits("spec.md")
   end
 
   def test_the_spec_of_an_open_intent_is_not_named

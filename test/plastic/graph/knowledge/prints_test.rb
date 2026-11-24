@@ -407,7 +407,7 @@ class PrintTriggerTest < Plastic::TestCase
 
   def test_abandon_rewrites_the_index_to_show_the_intent_abandoned
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n")
     cli("store", "sync", "up")
     cli("intent", "abandon", "1")
 

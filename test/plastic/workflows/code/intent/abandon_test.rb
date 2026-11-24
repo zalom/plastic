@@ -10,7 +10,7 @@ class AbandonIntentTest < Plastic::TestCase
 
   def test_an_intent_with_an_outcome_is_abandoned_and_named
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n")
     sync_up
 
     outcome, context = abandon
@@ -21,7 +21,7 @@ class AbandonIntentTest < Plastic::TestCase
 
   def test_a_stale_done_fact_still_abandons
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n")
     sync_up
 
     run_workflow(Plastic::Workflows::Code::Intent::Abandon, graphs: session_graphs, intent_id: "1", abandon_ended: true)
@@ -37,7 +37,7 @@ class AbandonIntentTest < Plastic::TestCase
 
   def test_an_abandon_with_no_supersedes_link_is_cancelled
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n")
     sync_up
     abandon
 

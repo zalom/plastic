@@ -20,6 +20,8 @@ module WorkflowNameTable
     code_note_intent: "Code::Intent::Note",
     code_report_intent: "Code::Intent::Report",
     code_show_spec: "Code::Intent::Spec",
+    code_write_spec: "Code::Intent::Spec::Write",
+    code_write_outcome: "Code::Intent::Outcome",
     code_approve_intent: "Code::Intent::Approve",
     code_prepare_judge: "Code::Intent::Judge",
     code_prepare_verdict: "Code::Intent::Verdict::Prepare",
@@ -113,7 +115,7 @@ end
 module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
-    Code::Intent::Abandon Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
+    Code::Intent::Abandon Code::Intent::Spec Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
     Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
   ].freeze
 end
@@ -132,8 +134,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_four_keys_in_order
-    assert_equal 94, MAPPING.size
+  def test_the_registry_holds_the_ninety_six_keys_in_order
+    assert_equal 96, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 
@@ -155,7 +157,7 @@ class WorkflowNamesTest < Minitest::Test
 
   def prefixes(path) = path.split("::").each_index.map { |index| path.split("::").first(index + 1).join("::") }
 
-  def test_the_seventeen_parents_are_the_paths_that_hold_other_workflows
+  def test_the_eighteen_parents_are_the_paths_that_hold_other_workflows
     held = MAPPING.values.flat_map { |path| prefixes(path) }
     parents = MAPPING.values.select { |path| held.any? { |prefix| prefix.start_with?("#{path}::") } }
 
