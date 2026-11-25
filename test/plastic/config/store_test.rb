@@ -66,7 +66,7 @@ class ConfigStoreTest < Plastic::TestCase
 
   def test_the_first_print_copies_a_config_file_to_backups_first
     File.write(path, "global:\n  screens: false\n")
-    store.print_once
+    store.print_current
     copies = Dir.glob(File.join(@plastic_home, "backups", "config-*.yml"))
 
     assert_equal ["global:\n  screens: false\n"], copies.map { |copy| File.read(copy) }
@@ -74,7 +74,7 @@ class ConfigStoreTest < Plastic::TestCase
 
   def test_a_config_file_that_does_not_parse_is_kept_and_one_line_is_returned
     File.write(path, "global: [unclosed\n")
-    answer = store.print_once
+    answer = store.print_current
 
     assert_equal ["global: [unclosed\n", true], [File.read(path), answer.start_with?("config.yml could not be read (")]
     assert_match(/\); fix it and run plastic update\z/, answer)
@@ -84,34 +84,53 @@ class ConfigStoreTest < Plastic::TestCase
   def test_a_config_file_that_is_a_bare_date_is_kept
     File.write(path, "2026-11-17\n")
 
-    assert_match(/could not be read/, store.print_once)
+    assert_match(/could not be read/, store.print_current)
     assert_equal "2026-11-17\n", File.read(path)
   end
 
   def test_a_config_file_that_is_a_list_is_kept_and_named_as_not_a_mapping
     File.write(path, "- a\n- b\n")
 
-    assert_equal "config.yml could not be read (it is not a mapping); fix it and run plastic update", store.print_once
+    assert_equal "config.yml could not be read (it is not a mapping); fix it and run plastic update", store.print_current
     assert_equal "- a\n- b\n", File.read(path)
   end
 
-  def test_print_once_names_a_file_edited_by_hand_after_the_print
+  def test_print_current_names_a_file_edited_by_hand_after_the_print
     store.set("global", "screens", false)
     File.write(path, "global:\n  screens: true\n")
 
-    assert_equal "#{path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", store.print_once
+    assert_equal "#{path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", store.print_current
   end
 
-  def test_print_once_of_an_untouched_printed_file_says_nothing
+  def test_print_current_of_an_untouched_printed_file_says_nothing
     store.set("global", "screens", false)
 
-    assert_nil store.print_once
+    assert_nil store.print_current
+  end
+
+  def delete_rows(sql, **values) = Plastic::Graph::Database.open_local(@plastic_home).fetch(:local).transaction { |batch| batch.add(sql, **values) }
+
+  def test_print_current_prints_again_when_the_rows_changed_under_an_untouched_print
+    store.set("global", "screens", false)
+    store.set("global", "statusline", true)
+    delete_rows('DELETE FROM "settings" WHERE "key" = :key', key: "screens")
+
+    assert_equal [nil, { "statusline" => true }], [store.print_current, YAML.safe_load_file(path).fetch("global")]
+  end
+
+  def test_print_current_keeps_a_hand_edited_file_when_the_rows_changed
+    store.set("global", "screens", false)
+    File.write(path, "global:\n  screens: true\n")
+    delete_rows('DELETE FROM "settings"')
+
+    assert_equal ["#{path} changed since it was printed from the settings; move it aside, then run plastic config set KEY VALUE to print it again", "global:\n  screens: true\n"],
+      [store.print_current, File.read(path)]
   end
 
   def test_the_problem_is_the_same_line_the_doctor_reports
     store.set("global", "screens", false)
     File.write(path, "x: 1\n")
 
-    assert_equal store.print_once, store.problem
+    assert_equal store.print_current, store.problem
   end
 end

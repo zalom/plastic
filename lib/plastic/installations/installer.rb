@@ -80,7 +80,7 @@ module Plastic
 
       def print_config
         HomeIgnore.new(plastic_home).apply
-        line = package.settings.store.print_once
+        line = package.settings.store.print_current
         puts "   #{line}" if line
       end
 

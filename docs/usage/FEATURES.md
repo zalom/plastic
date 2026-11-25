@@ -180,7 +180,8 @@ off by default.
 
 `plastic update` drops the `document_revisions` table of each store, and a later migration
 deletes the copy the drop kept, since the table was a mistake. No setting holds these migrations
-back: every store runs them, and a clean install records them as run.
+back: every store runs them, and a clean install records them as run. The update also removes the
+retired setting `migrate.drop_document_revisions` from the settings rows and from `config.yml`.
 
 ## Chat history
 

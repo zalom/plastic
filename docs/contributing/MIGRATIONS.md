@@ -93,7 +93,9 @@ a store migration may share a version.
   table or column, the code builds it again from the owner's data, such as a report row that the
   next sync up reads back from the files, or there was none. The home migration `20261117000000`
   drops the tables `backups` and `locks` as rebuilt data: the backup folders are the record of
-  each backup, and the node claims of each store say who holds what. A store migration of rebuilt
+  each backup, and the node claims of each store say who holds what. The home migration
+  `20261125090000` deletes the settings rows of the retired setting `migrate.drop_document_revisions`
+  as rebuilt data: no command reads it. A store migration of rebuilt
   data keeps nothing, and its down removes the version alone.
 
 Only the owner's data is kept. When a migration removes a mistake, it does not keep the rows
@@ -233,8 +235,10 @@ because it is built from `schema.rb`.
 Migration `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` once
 waited behind the switch `migrate.drop_document_revisions`. The owner ruled on 24 November 2026
 that changes ship clean, so the switch and the code that held a migration back are gone, and the
-three run for every store in the next `plastic update`. A config file that set the switch keeps a
-key that no command reads, and `plastic config get` names it as an unknown key.
+three run for every store in the next `plastic update`. The same update removes the retired key:
+the home migration `20261125090000` deletes its settings rows in every scope, and the update then
+prints `config.yml` again from the rows, so the file no longer holds it. A `config.yml` changed by
+hand is kept as it is and named, as at any other print.
 
 Before the ruling of 24 November 2026, a migration that changed stored data waited behind a
 switch, with two exceptions. Migration `20261121090000`, which writes every stored
