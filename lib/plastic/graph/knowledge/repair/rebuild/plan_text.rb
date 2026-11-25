@@ -21,8 +21,8 @@ module Plastic
             end
 
             def approach
-              lines = section("Approach")&.map(&:strip)&.reject(&:empty?)
-              lines&.join(" ") unless lines.to_a.empty?
+              lines = (section("Approach") || []).map(&:strip).reject(&:empty?)
+              lines.join(" ") unless lines.empty?
             end
 
             def decisions = items((section("Decisions") || []).select { |line| line.match?(/\A\s*[-*]\s/) || line.match?(/\A\s+\S/) }, bullet: true).map(&:first)
