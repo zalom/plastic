@@ -20,7 +20,7 @@ module Plastic
 
         def add_ruling(intent_id:, **fields)
           @log.recorded do
-            @writers.rulings.add_ruling(intent_id:, **fields).tap { |ruling| ruling && @log.line(intent_id, "ruled", "#{ruling.id} #{ruling.text}") }
+            @writers.rulings.add_ruling(intent_id:, **fields).tap { |ruling| ruling && @log.line(intent_id, "ruled", "#{ruling.id}: #{ruling.text}") }
           end
         end
 

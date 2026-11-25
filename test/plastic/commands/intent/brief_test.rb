@@ -9,8 +9,8 @@ class IntentBriefCaseTest < Plastic::TestCase
   def test_the_brief_after_a_full_pass_of_the_work_graph_shows_the_rulings_and_the_ready_node
     work_graph_pass
 
-    assert_case line("intent brief 1"), code: 0, out: ["ruling: D1 Flowbite styles every delivery (superseded)",
-      "ruling: D2 Direct mode only", "ready: n2 build it"]
+    assert_case line("intent brief 1"), code: 0, out: ["D1: Flowbite styles every delivery",
+      "D1.1: Direct mode only", "ready: n2 build it"]
   end
 
   MAIN_SESSION = ["main session: record each ruling with plastic intent rule 1 TEXT",
@@ -38,7 +38,7 @@ class IntentBriefCaseTest < Plastic::TestCase
 
     assert_case line("intent brief 1"), code: 0, out: ["goal: Alpha",
       'spec: store/1--alpha/spec.md; the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text',
-      "criterion: [tests-pass] the CLI ships", "ruling: D1 ship the CLI first", "ready: n1 Build", *MAIN_SESSION,
+      "criterion: [tests-pass] the CLI ships", "D1: ship the CLI first", "ready: n1 Build", *MAIN_SESSION,
       "next: plastic node claim 1 n1 --agent NAME"]
   end
 
@@ -59,7 +59,7 @@ class IntentBriefTest < Plastic::TestCase
     intent = open_intent
     write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
     plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
-    plastic("intent", "rule", intent.intent_id, "Direct mode only", "--supersedes", "D1", table: Plastic::CLI::TABLE)
+    plastic("intent", "rule", intent.intent_id, "Direct mode only", "--adds", "D1", table: Plastic::CLI::TABLE)
     plastic("node", "add", intent.intent_id, "do the thing", "--criterion", "ships", table: Plastic::CLI::TABLE)
     intent
   end
@@ -90,14 +90,10 @@ class IntentBriefTest < Plastic::TestCase
     refute_includes result.out, "goal: Alpha"
   end
 
-  def test_marks_the_superseded_ruling_and_keeps_the_other_plain
+  def test_lists_each_addition_under_its_decision
     intent = briefed_intent
 
-    result = call(intent.intent_id)
-
-    assert_includes result.out, "ruling: D1 Flowbite styles every delivery (superseded)"
-    assert_includes result.out, "ruling: D2 Direct mode only"
-    refute_includes result.out, "ruling: D2 Direct mode only (superseded)"
+    assert_includes call(intent.intent_id).out, "D1: Flowbite styles every delivery\nD1.1: Direct mode only\n"
   end
 
   def test_names_the_ready_node_and_the_command_usage

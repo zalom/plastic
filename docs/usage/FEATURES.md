@@ -79,7 +79,7 @@ line and under `result.overdue`, for the driver to check on its worker; Plastic 
 
 | Command | Result |
 | ------- | ------ |
-| `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on), printed with its text. A text that begins with its own number, such as `D3: TEXT`, is stored without it. `--supersedes RULING_ID` links it to the ruling it replaces. |
+| `plastic intent rule ID "TEXT"` | The next owner decision, numbered in order (`D1`, `D2` and on) and printed as `D3: TEXT`. A text that begins with its own number, such as `D3: TEXT`, is stored without it. `--adds D3` writes the next addition to it, `D3.1` and on. `--rewrites D3` replaces its text and removes its additions; the work log keeps the old text. No number is used twice. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
 | `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Note: TEXT`. `--kind Note` (the default), `Review`, `Commit` or `Report` names the line. `--kind Merged`, `Committed`, `Delivered`, `Pull request`, `Approved`, `Reverted` or `Abandoned` writes the line under `## Verification` instead, and a line not in its form fails with exit 1. The kind is matched in any case. |
 | `plastic intent spec ID --from FILE` | The whole spec.md, written from the file as its new revision. A file that lacks a section of the layout fails with exit 1 and names it, and a closed intent refuses with exit 3. |

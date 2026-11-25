@@ -7,15 +7,17 @@ gives one command's options, and `plastic help tools` covers RTK and Enola.
 the work stopped and what runs next, across several projects with `--stores a,b`. When a
 person says "continue", run it. `plastic next` prints that one action.
 
-Before re-deriving a decision, run `plastic search TERMS`.
+Before re-deriving a decision, run `plastic search TERMS`. `plastic intent rule ID TEXT` records
+one as `D1: text`, `--adds D1` writes `D1.1`, and `--rewrites D1` replaces it and drops its
+additions. `--supersedes` is gone.
 
 When a person says "Load project X" or "Load projects X, Y, Z", run `plastic project load`
-with those projects, do what its `then:` line says, and run it again to refresh. The next work
+with them, do what its `then:` line says, and run it again to refresh. The next work
 waits for the person's ask.
 
 A command ends with a `next:` line naming what to run now, and a `because:` line
-giving the rule that chose it. Run it unless asked otherwise. With nothing to run
-next, a call prints no `next:` line and still prints `because:`.
+giving the rule that chose it. Run it unless asked. With nothing to run,
+a call prints only `because:`.
 
 `--json` gives any command's result as data, except the installer commands and `plastic hook`.
 
@@ -39,13 +41,12 @@ Sync up names any other file: `plastic help intent-folder`.
 In guided work the owner's word to deliver is the go-ahead, and the agent records it with
 `plastic intent approve`. `plastic intent auto ID` hands the What, Why and How to agents, who
 run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it.
-`plastic intent start ID` starts an intent for guided work, `plastic intent auto ID` for agent
-delivery. `plastic intent park ID REASON` parks started work with the reason it waits.
-When the owner says auto, background agents run the delivery from the first step. The main
-session stays open as the orchestrator: it dispatches, records and reports, never blocks, and
-runs `plastic graph lapsed` on a timer to restart the helper it names.
+`plastic intent start ID` starts guided work. `plastic intent park ID REASON` parks started
+work with the reason it waits. When the owner says auto, background agents deliver from the
+first step, and the main session orchestrates: it dispatches, records and reports, never
+blocks, and runs `plastic graph lapsed` on a timer to restart the helper it names.
 
-Agents run every command, from opening an intent to closing it, without asking. A person
+Agents run every command without asking. A person
 is in the loop for decisions and the direction of the work only. Exit codes: 0 succeeded,
 1 failed, 2 called wrongly, 3 refused. Exit code 3 is such a decision: report what was
 refused, stop, and never retry with a different flag.

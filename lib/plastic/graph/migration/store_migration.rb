@@ -16,6 +16,8 @@ require_relative "mistaken_rows"
 require_relative "records_newer"
 require_relative "report_rows"
 require_relative "roadmap_needs"
+require_relative "placeholder_rulings"
+require_relative "ruling_merges"
 require_relative "ruling_own_ids"
 require_relative "store_age"
 require_relative "store_compaction"
@@ -34,7 +36,8 @@ module Plastic
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup, "20261119180000" => ReportRows, "20261119190000" => LegacyTrim,
                      "20261120090000" => LegacyPages, "20261121090000" => UtcTimes,
-                     "20261123120000" => RoadmapNeeds, "20261124150000" => MistakenRows, "20261124233000" => RulingOwnIds }.freeze
+                     "20261123120000" => RoadmapNeeds, "20261124150000" => MistakenRows, "20261124233000" => RulingOwnIds,
+                     "20261125100000" => PlaceholderRulings, "20261125110000" => RulingMerges }.freeze
 
       # What the settings of the machine choose for a run: the sync `selection`.
       Run = Data.define(:selection)

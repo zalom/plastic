@@ -6,7 +6,7 @@ require "fileutils"
 require_relative "../../lib/plastic/graph/migration/migration_down"
 
 # A throwaway home whose registered store alpha the previous release wrote: it records every version before the drop
-# of document_revisions, holds a row there, and keeps in sqlar a file that only its row holds. `migrated_previous_home`
+# of document_revisions, holds a row there, has the column supersedes on its rulings, and keeps in sqlar a file that only its row holds. `migrated_previous_home`
 # runs the migrations on it, which keep the earlier revision in legacy.db and print the file back.
 module PreviousStore
   DROP = "20261119000000"
@@ -27,6 +27,8 @@ module PreviousStore
   DRIVER_AGENT = "20261124200000"
   WORK_LOG_TEXT = "20261124210000"
   OWN_IDS = "20261124233000"
+  PLACEHOLDERS = "20261125100000"
+  MERGES = "20261125110000"
   OWNER_TIME = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('91', 'o', '91--a', 'A', 'open', '2026-10-05', '2026-10-05T10:00:00+02:00')"
   OWNER_KEPT = "changed_values_#{UTC}"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
@@ -46,11 +48,18 @@ module PreviousStore
     File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{Dir.mktmpdir}\n")
     Plastic::Graph.create(home:, store: "alpha")
     forget(home)
-    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
-      database.execute_batch(REVISIONS)
-      database.execute("DELETE FROM schema_migrations WHERE version IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES, DRIVER_MODE, DRIVER_AGENT, WORK_LOG_TEXT, OWN_IDS])
-    end
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| PreviousStore.older_knowledge(database) }
     older_work_layout(home)
+  end
+
+  NEWER = [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES, DRIVER_MODE, DRIVER_AGENT,
+    WORK_LOG_TEXT, OWN_IDS, PLACEHOLDERS, MERGES].freeze
+
+  # The knowledge file of the previous release: a row of document_revisions, none of the newer versions, and the column supersedes on its rulings.
+  def self.older_knowledge(database)
+    database.execute_batch(REVISIONS)
+    database.execute("DELETE FROM schema_migrations WHERE version IN (#{(["?"] * NEWER.size).join(", ")})", NEWER)
+    database.execute("ALTER TABLE rulings ADD COLUMN supersedes TEXT")
   end
 
   # The work file as the release before the column migrations wrote it: no run usage columns, the node columns judge and verdict, no node deadline, the node input column in place of the table node_inputs, and no driver mode, no driver agent and no old and new text on a work log line.
@@ -89,14 +98,14 @@ module PreviousStore
     end
   end
 
-  # Undoes the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
-  def back_to_drop(home) = home.tap { 17.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  # Undoes the merge migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
+  def back_to_drop(home) = home.tap { 19.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # Undoes the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
-  def without_usage(home) = home.tap { 13.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  # Undoes the merge migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
+  def without_usage(home) = home.tap { 15.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # Undoes the newest migrations of a store that ran only some, which keep nothing in a store of the previous release, so the next down undoes the one before them.
-  def utc_down(home) = home.tap { 14.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
+  def utc_down(home) = home.tap { 16.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # A migrated store whose node inputs migration, deadline migration, driver migration, node columns migration, run usage migration, time migration, page migration, trim and report migration went down, so the drop is the newest migration it records.
   def migrated_previous_home_with_times = previous_home_with_times.tap { |home| migrate_store(home) }
