@@ -3,6 +3,7 @@
 require "fileutils"
 require_relative "plan"
 require_relative "rebuild/legacy_rows"
+require_relative "rebuild/empty_folders"
 require_relative "../reports"
 require_relative "../../knowledge/resources/row_moves"
 
@@ -92,10 +93,14 @@ module Plastic
           # The old files and each revisions.md, whose entries are amended lines by now, go with their rows.
           def remove(plan)
             removals = [*plan.removals, *plan.revision_files.map { |path| Removal.new(path) }]
-            Rebuild::LegacyRows.new(@folder.root, @graphs.databases.fetch(:store)).keep(removals)
+            keep_rows(removals)
             rows.drop(removals)
             removals.each { |removal| gone(removal.path) }
+            Rebuild::EmptyFolders.new(@folder).sweep(plan.repaired_dirs)
           end
+
+          # The rows of the files the repair removes go to legacy.db before they leave the knowledge graph.
+          def keep_rows(removals) = Rebuild::LegacyRows.new(@folder.root, @graphs.databases.fetch(:store)).keep(removals)
 
           # Deletes the file, and the folders it leaves empty inside the intent folder.
           def gone(path)

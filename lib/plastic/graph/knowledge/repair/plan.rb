@@ -50,6 +50,9 @@ module Plastic
           # The old intent folders whose plan, checklist and action files give records.
           def rebuilds = rebuilding.intents
 
+          # The intent folders the repair works on.
+          def repaired_dirs = dirs
+
           def revision_files = (@revision_files ||= legacy_files("amend"))
 
           # One amended line for each entry of each revisions.md, with its own time; refused when a file cannot be read.

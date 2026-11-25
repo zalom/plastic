@@ -132,6 +132,7 @@ legacy:
     repair: rebuild
     why: The checklist of an older release; a repair takes its steps and session log into nodes and work log lines and removes it.
   - name: actions/
+    role: actions
     match: ["actions/**/*"]
     sync: legacy_rows
     repair: rebuild
