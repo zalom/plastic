@@ -17,9 +17,13 @@ Write the spec in a file of your own, such as one in the intent's `resources/tmp
 with `plastic intent spec ID --from FILE`. The command writes `spec.md` and refuses a text that
 lacks one of the four sections. Run it again with the whole new text each time the spec changes.
 
-Record each owner decision with `plastic intent rule ID "TEXT"`. When a new
-ruling replaces an older one, name it with `--supersedes RULING_ID`, and the
-older ruling stays on record with the link that marks it superseded.
+Record each owner decision with `plastic intent rule ID "TEXT"`. It takes the next
+whole number and prints the decision the way a person writes it, such as `D3: TEXT`.
+A decision that keeps the core of an earlier one and adds to it takes `--adds D3`,
+which writes `D3.1`, then `D3.2`. A decision that changes the core takes
+`--rewrites D3`: it replaces the text of `D3` and removes its additions, and the
+work log keeps the old text. No number is used twice. In prose, name a set of
+decisions the way a person does: "decisions `D1`, `D2` and `D4` to `D7` cover one thing".
 When the grilling changes the goal itself, rewrite it with `plastic intent
 revise ID "LINE" --why "TEXT"`; the old What and Why stay as a revision.
 
