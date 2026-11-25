@@ -3,6 +3,16 @@
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/graph/knowledge/archive/entries"
 
+# Stands in for File.lchmod, which only some platforms have, and records what it is asked.
+module RecordedLchmod
+  class << self
+    attr_accessor :calls
+  end
+
+  def lchmod(mode, *paths) = RecordedLchmod.calls ? (RecordedLchmod.calls << [mode, paths]).size : super
+end
+File.singleton_class.prepend(RecordedLchmod)
+
 class KnowledgeArchiveEntriesTest < Plastic::TestCase
   Entries = Plastic::Graph::Knowledge::Archive::Entries
   TreeError = Plastic::Graph::Knowledge::Archive::Tree::Error
@@ -42,6 +52,33 @@ class KnowledgeArchiveEntriesTest < Plastic::TestCase
     Entries.build(@stage, [row("", "directory", nil, 0o755), row("note", "link", "INDEX.md", 0o700)])
 
     assert_equal 0o700, File.lstat(File.join(@stage, "note")).mode & 0o7777
+  end
+
+  def lchmod_calls
+    RecordedLchmod.calls = []
+    yield
+    RecordedLchmod.calls
+  ensure
+    RecordedLchmod.calls = nil
+  end
+
+  def a_link
+    FileUtils.mkdir_p(@stage)
+    File.join(@stage, "note").tap { |path| File.symlink("INDEX.md", path) }
+  end
+
+  def test_a_link_whose_mode_differs_from_the_saved_one_is_changed_with_lchmod_on_any_platform
+    target = a_link
+    calls = lchmod_calls { Entries.chmod(target, row("note", "link", "INDEX.md", 0o700)) }
+
+    assert_equal [[0o700, [target]]], calls
+  end
+
+  def test_a_link_whose_mode_equals_the_saved_one_is_left_alone_on_any_platform
+    target = a_link
+    calls = lchmod_calls { Entries.chmod(target, row("note", "link", "INDEX.md", File.lstat(target).mode & 0o7777)) }
+
+    assert_empty calls
   end
 
   def test_a_stored_file_carries_its_intent_and_keeps_its_bytes_as_a_blob
