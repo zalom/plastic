@@ -33,6 +33,19 @@ class RepairRunRebuildTest < Plastic::TestCase
     def rebuild_intents(_rebuilds) = raise(IOError, "locked")
   end
 
+  # A rebuild whose log lines cannot be read, after its node and packet are written.
+  class BrokenRebuild
+    Draft = Data.define(:title, :state, :packet, :findings, :reason)
+
+    def dir = "store/1--alpha"
+
+    def intent_id = "1"
+
+    def nodes = [Draft.new(title: "Step", state: "open", packet: "A brief.", findings: nil, reason: nil)]
+
+    def lines = raise(IOError, "unreadable")
+  end
+
   def setup
     super
     write_old_layout
@@ -114,6 +127,12 @@ class RepairRunRebuildTest < Plastic::TestCase
     failing = graphs.with(work: FailingWork.new(graphs.work))
 
     assert_raises(IOError) { Plastic::Graph::Knowledge::Repair::Run.new(folder, failing).call }
+    assert_equal before, [files_without_databases, nodes]
+  end
+  def test_a_rebuild_that_fails_after_its_packet_removes_the_packet_and_the_rows
+    before = [files_without_databases, nodes]
+
+    assert_raises(IOError) { store_graphs.work.rebuild_intents([BrokenRebuild.new]) }
     assert_equal before, [files_without_databases, nodes]
   end
 end
