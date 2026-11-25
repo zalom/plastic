@@ -29,7 +29,7 @@ module Plastic
 
             def self.lines(context)
               leftovers = Repair.leftovers(context)
-              [*plan(context).preview, *leftovers&.preview, *leftovers&.left&.map { |line| "preview: #{line}" }]
+              [*plan(context).preview, *leftovers.flat_map(&:preview), *leftovers.flat_map(&:left).map { |line| "preview: #{line}" }]
             end
 
             read "find the folders a claim holds" do |context|

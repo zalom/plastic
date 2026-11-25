@@ -189,7 +189,7 @@ machine:
   swept: '\A\.DS_Store\z'
 
 store_root:
-  purpose: What a store folder, stores/SLUG/, may hold beside its intent folders.
+  purpose: What a store folder, stores/SLUG/, may hold beside its intent folders. `plastic intent repair --all` removes each old entry marked remove.
   allowed:
     - name: store/
       purpose: The intent folders, store/index.json, and an empty .gitkeep in a store with no intent.
