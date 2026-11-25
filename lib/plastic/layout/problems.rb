@@ -5,11 +5,11 @@ module Plastic
     # What is wrong with a layout file, all at once: a missing key, an unknown state or an unknown sync word.
     class Problems
       SYNCS = %w[document legacy_rows lines skip report].freeze
-      REPAIRS = %w[rename amend remove move].freeze
+      REPAIRS = %w[rename amend remove move rebuild].freeze
       FILE_KEYS = %w[name purpose required writer].freeze
       LEGACY_KEYS = %w[name match sync repair why].freeze
       STORE_FOLDER_REPAIRS = %w[remove remove_empty].freeze
-      AMENDMENTS = %w[rename move remove revision link].freeze
+      AMENDMENTS = %w[rename move remove revision link rebuild].freeze
       TOP = %w[version folder states files resources legacy machine store_root store_folder amendments].freeze
 
       def initialize(data)

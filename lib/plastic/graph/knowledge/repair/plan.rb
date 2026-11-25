@@ -4,6 +4,7 @@ require_relative "change"
 require_relative "folder_changes"
 require_relative "missing_files"
 require_relative "removal"
+require_relative "rebuild/folders"
 require_relative "revisions"
 require_relative "totals"
 require_relative "../../knowledge/resources/sort_plan"
@@ -22,8 +23,8 @@ module Plastic
         # is an amended line of any intent. An empty .gitkeep placeholder is removed, not moved. The links left as they
         # are print only as a count unless `links_left` asks for each one.
         class Plan
-          Scope = Data.define(:dirs, :closed, :held, :states) do
-            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}) = super
+          Scope = Data.define(:dirs, :closed, :held, :states, :ruled) do
+            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}, ruled: ->(_id) { "" }) = super
           end
 
           PLACEHOLDER = ".gitkeep"
@@ -43,9 +44,12 @@ module Plastic
           def rewrites = sort.rewrites
 
           # The old files the layout removes, and each empty placeholder.
-          def removals = (@removals ||= [*legacy_files("remove"), *placeholders].sort.map { |path| Removal.new(path) })
+          def removals = (@removals ||= [*legacy_files("remove"), *rebuilding.paths, *placeholders].sort.map { |path| Removal.new(path) })
 
           # The old revisions.md files, each removed once its entries are amended lines.
+          # The old intent folders whose plan, checklist and action files give records.
+          def rebuilds = rebuilding.intents
+
           def revision_files = (@revision_files ||= legacy_files("amend"))
 
           # One amended line for each entry of each revisions.md, with its own time; refused when a file cannot be read.
@@ -62,6 +66,7 @@ module Plastic
           # lists, then its totals.
           def preview
             [*folders.map { |folder| folder_line(folder, "preview: would amend", "preview: would repair") },
+              *rebuilds.map { |rebuild| "preview: would rebuild #{rebuild.dir}: #{rebuild.summary}" },
               *sort.changed.map { |link| "preview: link would change #{link}" }, *noted.map(&:preview),
               *listed.map { |line| "preview: #{line}" }, *summary("preview: ")]
           end
@@ -69,6 +74,7 @@ module Plastic
           # The lines a repair prints: its totals, then the lines of the preview as done.
           def report
             [*summary("repaired: "), *folders.map { |folder| folder_line(folder, "amended", "repaired") }, *sort.unasked,
+              *rebuilds.map { |rebuild| "rebuilt #{rebuild.dir}: #{rebuild.summary}" },
               *sort.changed.map { |link| "link changed #{link}" }, *noted.map(&:line), *listed]
           end
 
@@ -84,6 +90,8 @@ module Plastic
           def sort
             @sort ||= Resources::SortPlan.new(@folder, reports: @reports, closed: @scope.closed, only: @scope.dirs, held: @scope.held)
           end
+
+          def rebuilding = (@rebuilding ||= Rebuild::Folders.new(@folder, legacy_files("rebuild"), states: @scope.states, ruled: @scope.ruled))
 
           def dirs = (@dirs ||= (@scope.dirs || @folder.intent_dirs) - @scope.held.to_a)
 
@@ -113,7 +121,14 @@ module Plastic
 
           def folder(dir)
             renamed, moved = moves.select { |move| move.dir == dir }.partition { |move| renamed?(move) }
-            FolderChanges.new(dir, renamed:, moved:, removed: gone.select { |removal| removal.dir == dir }.map(&:inside))
+            rebuilt, removed = gone_in(dir)
+            FolderChanges.new(dir, renamed:, moved:, removed:, rebuilt:)
+          end
+
+          # The files the repair removes from one folder: first the rebuilt ones, then the others.
+          def gone_in(dir)
+            rebuilt, removed = gone.select { |removal| removal.dir == dir }.partition { |removal| rebuilding.paths.include?(removal.path) }
+            [rebuilt, removed].map { |removals| removals.map(&:inside) }
           end
 
           # Every file the repair removes: the old files, the placeholders and each revisions.md.

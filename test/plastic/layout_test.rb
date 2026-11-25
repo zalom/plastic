@@ -121,7 +121,9 @@ class LayoutTest < Plastic::TestCase
   end
 
   def test_a_file_that_moves_to_a_folder_keeps_its_name
-    assert_equal "resources/references/plan.md", Plastic::Layout.destination("plan.md")
+    entry = Plastic::Layout::LegacyEntry.new(name: "x.md", match: ["x.md"], sync: "skip", repair: "move", to: "resources/tmp/", why: "w")
+
+    assert_equal "resources/tmp/x.md", entry.destination("x.md")
   end
 end
 

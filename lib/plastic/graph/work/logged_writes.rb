@@ -5,6 +5,7 @@ require_relative "log_writer"
 require_relative "logged_intents"
 require_relative "logged_nodes"
 require_relative "logged_records"
+require_relative "logged_rebuilds"
 require_relative "round_grant"
 require_relative "gap_handover"
 
@@ -21,6 +22,7 @@ module Plastic
           :unarchive_intent, :revise_intent
         def_delegators :@records, :add_ruling, :add_verdict, :note_intent, :write_document, :amend_intents, :report_intent, :reporter,
           :unreport_intent, :unreporter
+        def_delegators :@rebuilds, :rebuild_intents
         def_delegators :@nodes, :add_node, :claim_node, :record_run, :record_cost, :add_edge, :remove_edge, :drive_intent, :driver_problem, :driven?, :renew_claims,
           :renew_node, :release_claims, :release_driver, *LoggedNodes::NODE_KINDS.keys
 
@@ -29,6 +31,7 @@ module Plastic
           @intents = LoggedIntents.new(writers, log)
           @records = LoggedRecords.new(writers, log)
           @nodes = LoggedNodes.new(writers, log)
+          @rebuilds = LoggedRebuilds.new(writers, log)
           @log = log
         end
 

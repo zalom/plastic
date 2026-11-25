@@ -5,6 +5,7 @@ require_relative "plan_text"
 require_relative "brief"
 require_relative "generated"
 require_relative "steps"
+require_relative "../../sync_selection"
 
 module Plastic
   module Graph
@@ -27,6 +28,15 @@ module Plastic
 
             attr_reader :dir
 
+            def intent_id = SyncSelection.intent_of(dir)
+
+            # What the rebuild gives, in words: the nodes, packets, findings, work log lines and rulings.
+            def summary
+              counts = [[nodes.size, "node", "nodes"], [nodes.count(&:packet), "packet", "packets"], [nodes.count(&:findings), "finding", "findings"],
+                [lines.size, "work log line", "work log lines"], [rulings.size, "ruling", "rulings"]]
+              counts.map { |count, one, many| "#{count} #{(count == 1) ? one : many}" }.join(", ")
+            end
+
             def nodes = Steps.new(items, briefs, @status).call
 
             def lines = rows.map { |row| Line.new(at: "#{row.date}T00:00:00Z", text: "Session log of #{row.date}: #{[row.items, row.notes].reject(&:empty?).join(". ")}") }
@@ -38,9 +48,9 @@ module Plastic
 
             private
 
-            def checklist = (@checklist ||= Checklist.new(@files.fetch("checklist.md", "")))
+            def checklist = (@checklist ||= Checklist.new(@files.fetch(Layout.legacy_name(:checklist), "")))
 
-            def plan = (@plan ||= PlanText.new(@files.fetch("plan.md", "")))
+            def plan = (@plan ||= PlanText.new(@files.fetch(Layout.legacy_name(:plan), "")))
 
             def items = checklist.items.empty? ? plan.steps : checklist.items
 

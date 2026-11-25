@@ -74,10 +74,15 @@ class RepairRunRebuildTest < Plastic::TestCase
     assert_equal [], %w[plan.md checklist.md actions/ACTION_1.md actions/.gitkeep actions].select { |rel| File.exist?(path(rel)) }
   end
 
+  def keep_row(rel)
+    store_database.transaction { |batch| batch.put(:legacy_intents_data, { intent_id: "1", path: rel, body: "old #{rel}", updated_at: STAMP }) }
+  end
+
   def test_the_rows_of_the_files_go_to_legacy_db
+    %w[plan.md checklist.md].each { |rel| keep_row(rel) }
     repair
 
-    assert_equal [], row_paths("documents").grep(/\A(plan|checklist)\.md\z|\Aactions\//)
+    assert_equal [%w[checklist.md plan.md], []], [legacy_paths, store_database.rows("SELECT path FROM legacy_intents_data").map { |row| row.fetch("path") }]
   end
 
   def test_a_closed_intent_gets_an_amended_line_for_the_rebuild

@@ -20,7 +20,7 @@ class RepairTotalsTest < Plastic::TestCase
   end
 
   def test_the_changes_of_each_kind_are_summed_across_the_folders
-    folders = [Folder.new({ rename: 1, move: 1, remove: 0 }), Folder.new({ rename: 0, move: 2, remove: 1 })]
+    folders = [Folder.new({ rename: 1, move: 1, remove: 0, rebuild: 0 }), Folder.new({ rename: 0, move: 2, remove: 1, rebuild: 0 })]
 
     assert_equal "2 intent folders, 5 changes (1 rename, 3 moves, 1 removal); 2 links left as they are", totals(folders:, listed: true).to_s
   end

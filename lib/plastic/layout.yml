@@ -19,8 +19,9 @@
 #
 # A repair of a done or abandoned intent writes one `amended` line in its work.log for the renames, moves and
 # removals of its folder, each kind with the reason that `amendments` gives, and one line for each link it
-# rewrites, whose row keeps the old and the new link. The files of an old actions/ folder move as one change, and an
-# empty .gitkeep placeholder is removed, not moved.
+# rewrites, whose row keeps the old and the new link. The plan, the checklist and the action files of an old intent are
+# rebuilt as records, then removed, as one change; the rows that held them stay in legacy.db. An empty .gitkeep
+# placeholder is removed, not moved.
 version: 1
 
 folder:
@@ -119,23 +120,22 @@ legacy:
     repair: remove
     why: graph.json holds the steps of the intent, and the removal is recorded as an amendment.
   - name: plan.md
+    role: plan
     match: [plan.md]
     sync: legacy_rows
-    repair: move
-    to: resources/references/
-    why: The plan of an older release; graph.json holds the plan now.
+    repair: rebuild
+    why: The plan of an older release; a repair takes its steps, approach and decisions into records and removes it.
   - name: checklist.md
+    role: checklist
     match: [checklist.md]
     sync: legacy_rows
-    repair: move
-    to: resources/references/
-    why: The checklist of an older release; the nodes of graph.json hold it now.
+    repair: rebuild
+    why: The checklist of an older release; a repair takes its steps and session log into nodes and work log lines and removes it.
   - name: actions/
     match: ["actions/**/*"]
     sync: legacy_rows
-    repair: move
-    to: resources/references/actions/
-    why: The action files of an older release. The folder moves as one change, and an empty .gitkeep in it is removed.
+    repair: rebuild
+    why: The action files of an older release; a repair takes each brief into the packet of its node and each result into findings, and removes the folder.
   - name: savepoint.md
     match: [savepoint.md]
     sync: lines
@@ -254,4 +254,5 @@ amendments:
   remove: a newer record holds what this file held
   revision: an entry of the old revisions.md, with its own date
   link: the repair moved the file this link names
+  rebuild: the repair took the data of the old plan, checklist and action files into records
   report: plastic intent unreport took out a report recorded by mistake

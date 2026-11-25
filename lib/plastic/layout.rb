@@ -72,6 +72,9 @@ module Plastic
 
     def self.legacy = data.fetch("legacy").map { |entry| LegacyEntry.from(entry) }
 
+    # The name of the older layout's file that has `role`, such as :plan or :checklist.
+    def self.legacy_name(role) = legacy.find { |entry| entry.role == role }.name
+
     # The legacy entry that names `rel`, a path inside the intent folder, or nil.
     def self.legacy_for(rel) = legacy.find { |entry| entry.match?(rel) }
 
