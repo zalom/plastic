@@ -3,10 +3,10 @@
 require_relative "../../../test_helper"
 require_relative "../../../test_helpers/previous_store"
 
-# Migration 20261125110000 folds each ruling that replaced another into the decision it replaced: the oldest ruling of
+# Migration 20261125110000 merges each ruling that replaced another into the decision it replaced: the oldest ruling of
 # each chain of supersedes links keeps its number and takes the text, the time and the session of the newest, the newer
 # rulings and their supersedes links go, and the column supersedes is dropped. Its down adds the column back empty.
-class GraphRulingFoldsTest < Plastic::TestCase
+class GraphRulingMergesTest < Plastic::TestCase
   include BackupHomes
   include PreviousStore
 
@@ -65,22 +65,22 @@ class GraphRulingFoldsTest < Plastic::TestCase
     assert_equal [true, fresh_columns, true], [before.include?("supersedes"), columns(home), recorded(home).include?(VERSION)]
   end
 
-  def test_the_migration_names_what_it_folded_and_the_sync_down_to_run
+  def test_the_migration_names_what_it_merged_and_the_sync_down_to_run
     report = migrate_store(seeded)
 
-    assert_includes report.notes, "migrate: alpha folded 3 rulings that replaced another into the 2 decisions they replaced; " \
+    assert_includes report.notes, "migrate: alpha merged 3 rulings that replaced another into the 2 decisions they replaced; " \
                                   "run plastic store sync down --project alpha so the index of the store drops their links"
   end
 
   def test_the_note_counts_one_ruling_and_one_decision_in_the_singular
     report = migrate_store(seeded(rulings: RULINGS.first(2), links: LINKS.first(1)))
 
-    assert_includes report.notes, "migrate: alpha folded 1 ruling that replaced another into the 1 decision it replaced; " \
+    assert_includes report.notes, "migrate: alpha merged 1 ruling that replaced another into the 1 decision it replaced; " \
                                   "run plastic store sync down --project alpha so the index of the store drops its link"
   end
 
   def test_a_store_with_no_ruling_that_replaced_another_says_nothing
-    assert_empty migrate_store(previous_home).notes.grep(/folded/)
+    assert_empty migrate_store(previous_home).notes.grep(/merged/)
   end
 
   def test_the_migration_keeps_no_copy_in_legacy_db

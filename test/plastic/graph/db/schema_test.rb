@@ -12,7 +12,8 @@ class DbSchemaTest < Plastic::TestCase
   SCHEMA_PATH = File.join(KERNEL, "plastic/graph/db/schema.rb")
   BUILDER_PATH = File.join(KERNEL, "plastic/graph/db/schema_file.rb")
 
-  # The DDL of every table that existed before the schema file, pinned from origin/alpha; the nodes hash is the DDL after migration 20261123170000 dropped input.
+  # The DDL of every table that existed before the schema file, pinned from origin/alpha; the nodes hash is the DDL after migration 20261123170000 dropped input,
+  # and the rulings hash is the DDL after migration 20261125110000 dropped supersedes.
   OLD_DDL = {
     sessions: "e1985f7782ebab6170830332214f9e453966fb2b6b5ce8d461e9b8733e3a316e",
     intents: "087d62f348bbab4a8c81a648f644b44dcccfbaf8d327f473eade388452429c4d",
@@ -21,7 +22,7 @@ class DbSchemaTest < Plastic::TestCase
     nodes: "1ee3f595b74480e529ef1916c165caf9f6a3a16105b82f5c7aa08fe6a8e5d65d",
     edges: "32f8c35b13eefe9dc0ac2a13ddd61bbc8d31a276f188fc7039bb777d8c98be8a",
     documents: "b3bc6a8702f6306941d4d4431ae0f0e5ce00ff89c958a424513698865c2d481f",
-    rulings: "b532c782f8edbf04043bf12e22054dd2f1d57f585dc7438b437f2d60d73e33f8",
+    rulings: "cbca79af74a5b1167b039629a7e92ea5afde331710a98e3bdddef8466f4a659e",
     links: "1403ac943dc60477e4ad8e0dbd95027029fe8ae233064ca39a4a6540859e7c69",
     archives: "1063eeec2b8c6c26d12bb3b369574b04a85a42c45093c5c945acc35f969f9070",
     archive_entries: "74ef9ff34717e62ae6a900425e78d716a3b96bb3dd62a0a36da57dd0896c7c8e",

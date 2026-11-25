@@ -1,0 +1,3 @@
+-- Agents wrote rulings whose whole text is three dots, placeholders with no decision in them.
+-- The data step of this version deletes each one and every link that names it, with no copy and no undo, since they were
+-- a mistake; its down removes the version alone. No table of the live store changes.

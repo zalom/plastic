@@ -46,7 +46,7 @@ class GraphDriverModeColumnTest < Plastic::TestCase
 
   def test_a_down_drops_the_column_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
-    # The driver agent, work log text, ruling own id, placeholder and fold migrations are newer, so their downs come first.
+    # The driver agent, work log text, ruling own id, placeholder and merge migrations are newer, so their downs come first.
     undone = 6.times.map { down(home) }.last
 
     assert_equal [DRIVER_MODE, {}, false, false], [undone.version, undone.moved, columns(home).include?("mode"), recorded(home).include?(DRIVER_MODE)]

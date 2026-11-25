@@ -67,7 +67,7 @@ class GraphPlaceholderRulingsTest < Plastic::TestCase
 
   def test_a_down_removes_the_version_alone_and_the_placeholders_stay_deleted
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
-    # The fold migration is newer, so its down comes first.
+    # The merge migration is newer, so its down comes first.
     undone = 2.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }.last
 
     assert_equal [VERSION, {}, false, 3], [undone.version, undone.moved, recorded(home).include?(VERSION), rulings(home).size]

@@ -6,7 +6,7 @@ module Plastic
       class Ruling
         # The numbers the decisions of one intent have held: the ids of its rulings and the ids its ruled work log lines
         # begin with. No number is used twice, so a new decision takes the whole number after the highest one held, and an
-        # addition the number after the highest addition of its decision held, even when a fold or a rewrite removed it.
+        # addition the number after the highest addition of its decision held, even when a merge or a rewrite removed it.
         class Numbers
           ID = /\AD(\d+)(?:\.(\d+))?(?![.\w])/
           WHOLE = /\AD\d+\z/

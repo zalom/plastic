@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_25_090000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_25_110000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -177,7 +177,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
 
   create_table :rulings, key: %i[intent_id id origin_id] do |t|
     t.kept :intent_id, :id, :text
-    t.text :supersedes, :at, :session_id
+    t.text :at, :session_id
     t.kept :origin_id
   end
 

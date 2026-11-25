@@ -20,7 +20,7 @@ class GraphWorkLogTextColumnsTest < Plastic::TestCase
     previous_home.tap { |home| SQLite3::Database.open(alpha_file(home, "work_graph.db")) { |database| database.execute(ROW) } }
   end
 
-  # The ruling own id, placeholder and fold migrations are newer, so their downs come first.
+  # The ruling own id, placeholder and merge migrations are newer, so their downs come first.
   def down(home) = 4.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
 
   def fresh_columns

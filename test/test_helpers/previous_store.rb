@@ -28,7 +28,7 @@ module PreviousStore
   WORK_LOG_TEXT = "20261124210000"
   OWN_IDS = "20261124233000"
   PLACEHOLDERS = "20261125100000"
-  FOLDS = "20261125110000"
+  MERGES = "20261125110000"
   OWNER_TIME = "INSERT INTO intents (intent_id, origin_id, slug, title, status, opened_at, updated_at) VALUES ('91', 'o', '91--a', 'A', 'open', '2026-10-05', '2026-10-05T10:00:00+02:00')"
   OWNER_KEPT = "changed_values_#{UTC}"
   USAGE_COLUMNS = %w[harness worker_session usage_note model input_tokens output_tokens cache_read_tokens cache_write_tokens cost_usd].freeze
@@ -53,7 +53,7 @@ module PreviousStore
   end
 
   NEWER = [DROP, REPORTS, TRIM, PAGES, UTC, USAGE, NODES, NEEDS, DRIVERS, DEADLINE, INPUTS, EMPTY_ROADMAPS, LEFTOVERS, MISTAKES, DRIVER_MODE, DRIVER_AGENT,
-    WORK_LOG_TEXT, OWN_IDS, PLACEHOLDERS, FOLDS].freeze
+    WORK_LOG_TEXT, OWN_IDS, PLACEHOLDERS, MERGES].freeze
 
   # The knowledge file of the previous release: a row of document_revisions, none of the newer versions, and the column supersedes on its rulings.
   def self.older_knowledge(database)
@@ -98,10 +98,10 @@ module PreviousStore
     end
   end
 
-  # Undoes the fold migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
+  # Undoes the merge migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration, the run usage migration, the time migration, the page migration, the trim and the report migration, so the next down undoes the drop.
   def back_to_drop(home) = home.tap { 19.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
-  # Undoes the fold migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
+  # Undoes the merge migration, the placeholder migration, the ruling own id migration, the work log text migration, the driver agent migration, the driver mode migration, the leftover work tables migration, the empty roadmap tables migration, the node inputs migration, the deadline migration, the driver migration, the roadmap migration, the node columns migration and the run usage migration, which remove their versions alone, so the next down undoes the one before them.
   def without_usage(home) = home.tap { 15.times { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call } }
 
   # Undoes the newest migrations of a store that ran only some, which keep nothing in a store of the previous release, so the next down undoes the one before them.
