@@ -60,7 +60,7 @@ module Plastic
         intent
       end
 
-      # Reads every changed file of the store into its rows, as plastic sync up does.
+      # Reads every changed file of the store into its rows, as plastic store sync up does.
       def sync_up
         work = store_graphs.work
         work.sync_apply(work.sync_plan(:up, {}))

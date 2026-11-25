@@ -26,7 +26,7 @@ class PrintsTest < Plastic::TestCase
   end
 
   def test_the_hand_edit_line_names_the_path_and_the_command_to_run
-    assert_equal "store/index.json changed since its last print on this home, by hand or in a copy from another home; run plastic sync up first to read it into rows",
+    assert_equal "store/index.json changed since its last print on this home, by hand or in a copy from another home; run plastic store sync up first to read it into rows",
       Plastic::Graph::Prints.hand_edit_line("store/index.json")
   end
 
@@ -407,8 +407,8 @@ class PrintTriggerTest < Plastic::TestCase
 
   def test_abandon_rewrites_the_index_to_show_the_intent_abandoned
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Reverted: nothing delivered\n")
-    cli("sync", "up")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n\n## Verification\n- Abandoned: dropped because the need went away\n- Reverted: nothing delivered\n")
+    cli("store", "sync", "up")
     cli("intent", "abandon", "1")
 
     assert_equal "abandoned", listed("1").fetch("status")

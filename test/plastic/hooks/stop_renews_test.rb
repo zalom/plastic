@@ -74,3 +74,41 @@ class StopRenewsDriverTest < Plastic::TestCase
     assert_equal "2026-11-23T08:00:00Z", seen_at
   end
 end
+
+# In agent delivery the stop hook renews only the claims of the agent whose turn ends: the session's own agent, or the
+# agent PLASTIC_AGENT names.
+class StopRenewsAgentTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 24, 8, 0, 0)
+  CLAIMED = "2026-11-24T08:00:00Z"
+  RENEWED = "2026-11-24T08:10:00Z"
+
+  def setup
+    super
+    open_intent
+    work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1", clock: Clock.new(START)).work
+    work.activate_intent("1")
+    work.drive_intent(intent_id: "1", by: "s-1", mode: "auto")
+    work.add_node(intent_id: "1", title: "Build", criterion: "it works")
+    work.claim_node(intent_id: "1", id: "n1", by: "s-1", agent: "tester")
+  end
+
+  def stop(env)
+    plastic("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => "s-1" }.merge(env), table: Plastic::CLI::TABLE, clock: Clock.new(START + 600))
+  end
+
+  def seen = [store_graphs.databases.fetch(:store).row("SELECT seen_at FROM drivers WHERE intent_id = '1'")["seen_at"], retrieval.node("1", "n1").seen_at]
+
+  def test_the_turn_of_the_session_agent_renews_its_driver_claim_and_leaves_the_claim_of_a_helper
+    stop({})
+
+    assert_equal [RENEWED, CLAIMED], seen
+  end
+
+  def test_the_turn_of_a_helper_renews_its_node_claim_and_leaves_the_driver_claim
+    stop({ "PLASTIC_AGENT" => "tester" })
+
+    assert_equal [CLAIMED, RENEWED], seen
+  end
+end

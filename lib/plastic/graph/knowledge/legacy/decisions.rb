@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "decision_bullets"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -14,7 +15,7 @@ module Plastic
 
           def self.read_one(dir, originals)
             name = File.basename(dir)
-            main, spec = ["#{name}.md", "spec.md"].map { |file| text_of(originals["#{dir}/#{file}"]) }
+            main, spec = ["#{name}.md", Layout.name(:spec)].map { |file| text_of(originals["#{dir}/#{file}"]) }
             bullets = [spec, main].map { |text| DecisionBullets.call(text) }.find(&:any?) || []
             { intent_id: name.split("--").first, rulings: assign_ruling_ids(bullets),
               source: front_matter_refs(main, "sources"), chain: front_matter_refs(main, "chain") }

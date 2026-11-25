@@ -20,6 +20,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The session row of the call is opened or kept | the local database, in the home folder | stays on this machine |
 | The current and the global store take a backup when the newest is older than 12 hours. With backup.daily on, every store takes its start-of-day backup on the first call of the day | the backups folder, in the store folder | stays on this machine |
 
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
 The command is `Plastic::Hooks::Start`, in [`hooks/start.rb`](../../../../lib/plastic/hooks/start.rb).

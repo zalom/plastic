@@ -7,8 +7,15 @@ module Plastic
   module Graph
     module Knowledge
       class Sync
-        # The printed files a person edited, for the prints a command declares. A path with no row to print is left alone.
+        # The printed files a person edited, for the prints a command declares. A core file that no row holds is edited
+        # when it is on disk; no rows print it again, so it gets no reason and sync up says why it cannot read it.
         class HandEdits
+          # The paths of the `edited` prints whose rows print them again: not a core file that no row holds, nor an index
+          # this home never printed.
+          def self.reprintable(edited, printed)
+            edited.select(&:sha256).map(&:path).reject { |path| path == StoreFolder::INDEX && !printed[path] }
+          end
+
           def initialize(retrieval, folder, databases, prints)
             @retrieval = retrieval
             @folder = folder
@@ -19,9 +26,9 @@ module Plastic
           # Each hand edited path with the reason sync up cannot read it, or nil when it can or when sync up prints it again.
           def call
             printed = @retrieval.stored.printed
-            edited = @prints.select { |print| hand_edited?(print, printed) }.map(&:path)
-            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| path == StoreFolder::INDEX && !printed[path] })
-            edited.to_h { |path| [path, unreadable[path]] }
+            edited = @prints.select { |print| hand_edited?(print, printed) }
+            unreadable = Readability.new(@folder, @retrieval, @databases).call(self.class.reprintable(edited, printed))
+            edited.map(&:path).to_h { |path| [path, unreadable[path]] }
           end
 
           private

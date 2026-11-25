@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../../layout"
+
 module Plastic
   module Graph
     module Knowledge
@@ -13,12 +15,13 @@ module Plastic
           def to_pair = [key, text]
         end
 
-        DONE = /\A#+\s*(Done criteria|Acceptance Criteria|Acceptance)\s*\z/i
-        OPEN = /\A#+\s*(Open Questions|Open decisions)\s*\z/i
-        GOAL = /\A#+\s*Goals?\s*\z/i
+        HEADINGS = Layout.file(:spec).headings.to_h { |heading| [heading.name, heading.pattern] }.freeze
+        DONE = HEADINGS.fetch("Done criteria")
+        OPEN = HEADINGS.fetch("Open decisions")
+        GOAL = HEADINGS.fetch("Goal")
 
         def initialize(retrieval, intent_id)
-          document = retrieval.documents(intent_id).find { |candidate| candidate.path == "spec.md" }
+          document = retrieval.documents(intent_id).find { |candidate| candidate.path == Layout.name(:spec) }
           @lines = document ? document.body.lines.map(&:chomp) : []
           @present = [document].any?
         end

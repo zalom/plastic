@@ -31,7 +31,7 @@ module Plastic
 
           gate "a backup is missing or changed; see above", stops: :failure, pass: ->(context) { !context.flagged }
 
-          outcome :done, offers: "plastic backup --store %{store}", because: "every backup with a row is on disk and unchanged"
+          outcome :done, offers: "plastic store backup --project %{project}", because: "every backup with a row is on disk and unchanged"
         end
       end
     end

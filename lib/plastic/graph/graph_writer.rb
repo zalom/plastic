@@ -29,11 +29,13 @@ module Plastic
       def_delegator "@logged.reporter", :problem, :report_problem
       def_delegator "@logged.reporter", :state, :report_state
       def_delegator "@logged.reporter", :restate, :restate_report
+      def_delegator "@logged.unreporter", :problem, :unreport_problem
       def_delegators :@logged, :close_intent, :abandon_intent, :park_intent, :approve_intent, :add_ruling, :add_verdict,
-        :revise_intent, :note_intent, :report_intent, :amend_intents, :add_node, :claim_node, :record_run, :record_cost, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
-        :remove_node, :add_edge, :remove_edge, :drive_intent, :driver_problem, :renew_claims, :release_claims, :release_driver
+        :revise_intent, :note_intent, :write_document, :report_intent, :unreport_intent, :amend_intents, :add_node, :claim_node, :record_run, :record_cost, :done_node, :fail_node, :ask_node, :impede_node, :resolve_node, :release_node,
+        :remove_node, :add_edge, :remove_edge, :drive_intent, :driver_problem, :driven?, :renew_claims, :renew_node, :release_claims, :release_driver
       def_delegators "@writers.verdicts", :rounds_left?
       def_delegator "@logged.grants", :write, :grant_round
+      def_delegator "@logged.handovers", :write, :hand_over
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal

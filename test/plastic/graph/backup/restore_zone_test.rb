@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../lib/plastic/commands/backup/restore"
+require_relative "../../../../lib/plastic/commands/store/backup/restore"
 require_relative "../../../../lib/plastic/commands/intent/show"
 
 # A store built on a machine in Tokyo and restored from its backup on a machine in New York.
@@ -28,7 +28,7 @@ class BackupRestoreZoneTest < Plastic::TestCase
 
   def restored_in_new_york
     built_in_tokyo.tap do |home|
-      restore_call(home, "--store", "alpha", "--latest")
+      restore_call(home, "--project", "alpha", "--latest")
       write(home, "Later", LATER, NEW_YORK)
     end
   end

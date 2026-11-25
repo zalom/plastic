@@ -6,6 +6,7 @@ require_relative "../graph/settings_database"
 require_relative "../graph/backup/purger"
 require_relative "../graph/knowledge/sync_selection"
 require_relative "../graph/knowledge/sync_settings"
+require_relative "../store_lock"
 
 module Plastic
   # The one place that joins the settings to the graphs: the settings read and
@@ -18,8 +19,6 @@ module Plastic
       def store = Wiring.store(home, clock:)
 
       def selection = Wiring.selection_of(config)
-
-      def released = Wiring.released_of(config)
     end
 
     REMOVE_AFTER_IMPORT = %w[migrate remove_after_import].freeze
@@ -40,9 +39,6 @@ module Plastic
         reports: Graph::Knowledge::Reports.new(mandatory: Graph::Knowledge::Reports.named(settings.value("reports.mandatory"))))
     end
 
-    # The held migrations whose switch the settings turn on, such as migrate.drop_document_revisions.
-    def self.released_of(settings) = Graph::MigrationList::HELD.select { |_version, key| settings.flag(key.split("."), default: false) }.keys
-
     def self.sync(home) = Graph::Knowledge::SyncSettings.new(selection: selection(home), remove_after_import: config(home).flag(REMOVE_AFTER_IMPORT, default: false))
 
     # Whether the home keeps 24 hours of backups, with a start-of-day and an end-of-day backup of every store.
@@ -50,6 +46,17 @@ module Plastic
 
     # How long a store keeps its backups: one day under the daily backups, else three days.
     def self.backup_retention(home) = daily_backups?(home) ? Graph::Backup::Purger::DAILY_RETENTION : Graph::Backup::Purger::RETENTION
+
+    # The lock of one store, which waits lock_wait seconds for another holder.
+    def self.store_lock(home, slug) = StoreLock.new(StoreLock.path(home, slug), wait: lock_wait)
+
+    class << self
+      # The seam through which a test shortens the wait; nil gives back the shipped wait.
+      attr_writer :lock_wait
+
+      # The seconds a call waits for a store lock that another call holds: StoreLock::WAIT unless a test set it.
+      def lock_wait = @lock_wait || StoreLock::WAIT
+    end
 
     def self.graphs(home:, store:, session: nil, clock: Time) = Graph.open(home:, store:, session:, clock:, sync: sync(home))
 

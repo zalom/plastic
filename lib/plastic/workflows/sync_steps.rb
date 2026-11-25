@@ -46,7 +46,7 @@ module Plastic
         context[:unreadable_rowless] = (keys & rowless).first
       end
 
-      def self.fix_of(path, rowless) = rowless.include?(path) ? SyncWords::REPRINTED_ELSEWHERE : "run plastic sync down --overwrite #{path}"
+      def self.fix_of(path, rowless) = rowless.include?(path) ? SyncWords::REPRINTED_ELSEWHERE : "run plastic store sync down --overwrite #{path}"
 
       # The lines of the apply, and the files it found no row would take: a new plan names them.
       def self.apply(context, direction)
@@ -106,7 +106,7 @@ module Plastic
       def up_gates
         gate SyncWords::UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?)
         gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:files_read?),
-          offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
+          offers: "plastic store sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
         gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:rowless_read?),
           because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
       end

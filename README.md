@@ -38,7 +38,7 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | You want to | What Plastic does |
 |-------------|-------------------|
 | Start from a rough idea | Creates one intent with an id and a slug: its rows and its folder |
-| Keep the reasons | Appends each ruling to the Insights section of the intent file |
+| Keep the reasons | Records each ruling as a row and a line of the work log |
 | Plan the work | Holds the plan as a graph of nodes, and names the nodes ready to claim |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
 | Hand work to agents | Prints the brief an agent starts from, and records each node's report |
@@ -153,7 +153,7 @@ An intent moves through the phases below: the go-ahead, the nodes, the judge, th
   You or your agent              plastic                     ~/.plastic/stores/SLUG/store
   -----------------              -------                     ----------------------------
   plastic intent new "..."  -->  creates the intent     -->  12--slug/intent.md
-  plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/intent.md
+  plastic intent rule 12    -->  records a ruling       -->  a rulings row and a work.log line
   plastic next              -->  names the next step    -->  graph.json, printed from the node rows
   plastic intent end 12     -->  closes the intent      -->  outcome.md, store/index.json
 

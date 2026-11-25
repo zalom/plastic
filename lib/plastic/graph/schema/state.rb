@@ -30,16 +30,14 @@ module Plastic
 
       def self.kind_of(key) = KINDS.fetch(key)
 
-      def self.of_file(path, kind, migrations: MIGRATIONS, released: [])
-        SQLite3::Database.open(path, readonly: true) { |database| new(database, kind, migrations:, released:).call }
+      def self.of_file(path, kind, migrations: MIGRATIONS)
+        SQLite3::Database.open(path, readonly: true) { |database| new(database, kind, migrations:).call }
       end
 
-      # `released` names the held versions whose switch is on; a held version stays out of the pending ones until then.
-      def initialize(connection, kind, migrations: MIGRATIONS, released: [])
+      def initialize(connection, kind, migrations: MIGRATIONS)
         @connection = connection
         @kind = kind
         @migrations = migrations
-        @released = released
       end
 
       def call
@@ -51,9 +49,6 @@ module Plastic
 
       def known = @migrations.versions(@kind)
 
-      # The known versions a run may apply: every one but a held version whose switch is off.
-      def runnable = known - (@migrations.held(@kind) - @released)
-
       def recorded_versions
         @connection.get_first_value(RECORDED).to_s.split
       rescue SQLite3::SQLException => error
@@ -62,7 +57,7 @@ module Plastic
 
       def from_table(recorded)
         unknown = recorded - known
-        pending = runnable - recorded
+        pending = known - recorded
         name = if unknown.any? then :ahead
         elsif pending.any? then :behind
         else :current
@@ -73,14 +68,14 @@ module Plastic
       def from_stamp(stamp)
         return alpha if stamp == MigrationList::ALPHA_STAMP
         return Reading.new(name: :ahead, pending: [], unknown: ["user_version #{stamp}"], adopted: [], number: stamp) unless stamp.zero?
-        return Reading.new(name: :empty, pending: runnable, unknown: [], adopted: [], number: 0) if @connection.get_first_value(TABLES).zero?
+        return Reading.new(name: :empty, pending: known, unknown: [], adopted: [], number: 0) if @connection.get_first_value(TABLES).zero?
 
-        Reading.new(name: :behind, pending: runnable, unknown: [], adopted: [], number: 0)
+        Reading.new(name: :behind, pending: known, unknown: [], adopted: [], number: 0)
       end
 
       def alpha
         baseline = @migrations.baseline(@kind)
-        Reading.new(name: :behind, pending: runnable - [baseline], unknown: [], adopted: [baseline], number: baseline.to_i)
+        Reading.new(name: :behind, pending: known - [baseline], unknown: [], adopted: [baseline], number: baseline.to_i)
       end
     end
   end

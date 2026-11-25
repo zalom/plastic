@@ -37,7 +37,8 @@ you do none of these.
 **A node a driver hands you.** When a driver hands you a node of an intent with its ids, this is the one case where you run Plastic
 commands that write, and only these four: `plastic node claim` for that node, `plastic node renew ID NODE` while
 it runs, then `plastic node done ID NODE TEXT --output PATH` when it is finished, or `plastic node fail ID NODE TEXT`
-when it failed. You write nothing else to Plastic. Every other case follows the rule above.
+when it failed. Set `PLASTIC_AGENT` to the name you claim with `--agent` for every `plastic`
+command, so your commands renew your claim. You write nothing else to Plastic. Every other case follows the rule above.
 
 ## How You Work
 

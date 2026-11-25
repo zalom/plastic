@@ -33,4 +33,27 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
 
     assert_equal({ "#{intent.dir}/intent.md" => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
+
+  def test_a_core_file_that_no_row_holds_is_a_hand_edit
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nBy hand.\n")
+
+    assert_equal({ "#{intent.dir}/outcome.md" => nil }, hand_edited([:intent], { intent_id: "1" }))
+  end
+
+  def test_a_core_file_that_no_row_holds_and_sync_up_cannot_read_has_no_reason
+    intent = open_intent
+    path = "#{intent.dir}/context.json"
+    write(path, "not json\n")
+    reason = Plastic::Graph::Knowledge::Sync::Readability.new(folder, retrieval, store_graphs.databases).call([path])
+
+    assert_equal [true, { path => nil }], [reason.key?(path), hand_edited([:intent], { intent_id: "1" })]
+  end
+
+  def test_a_file_outside_the_core_files_that_no_row_holds_is_no_hand_edit
+    intent = open_intent
+    write("#{intent.dir}/resources/output/reports/page.html", "<p>page</p>\n")
+
+    assert_equal({}, hand_edited([:intent], { intent_id: "1" }))
+  end
 end

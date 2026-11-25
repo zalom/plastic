@@ -70,6 +70,10 @@ class KnowledgeSyncSelectionTest < Plastic::TestCase
     assert_equal [true] * 6, %w[spec.md outcome.md graph.json context.json work.log actions/1.json].map { |rel| selected.read?(rel) }
   end
 
+  def test_a_markdown_file_at_the_top_of_the_folder_is_not_a_note
+    assert_equal [false, false], %w[notes.md findings.md].map { |rel| selection(types: %w[md]).read?(rel) }
+  end
+
   def test_a_file_in_no_resources_folder_is_not_read
     assert_equal [false, false], %w[reviews/one.md notes/shot.png].map { |rel| selection.read?(rel) }
   end

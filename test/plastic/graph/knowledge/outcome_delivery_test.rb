@@ -12,7 +12,7 @@ class KnowledgeOutcomeDeliveryLinesTest < Plastic::TestCase
 
   def intent_folder = File.join(@home, "intent").tap { |dir| FileUtils.mkdir_p(File.join(dir, "resources/output/files")) }
 
-  def delivery(lines, folder: intent_folder) = Plastic::Graph::Knowledge::OutcomeDelivery.new(Lines.new(lines), folder)
+  def delivery(lines, folder: intent_folder) = Plastic::Graph::Knowledge::OutcomeDelivery.new(Lines.new(lines), folder, "7")
 
   def test_delivered_files_without_a_known_intent_folder_do_not_count
     refute_predicate delivery({ "Delivered" => ["#{RESUME} because x"] }, folder: nil), :recorded?
@@ -30,14 +30,15 @@ class KnowledgeOutcomeDeliveryLinesTest < Plastic::TestCase
     read = delivery({})
 
     assert_equal [false, ""], [read.recorded?, read.finding]
-    assert_includes read.message, "Committed: <branch> at <commit>"
+    assert_includes read.message, "plastic intent note 7 '<branch> at <commit>' --kind Committed for a direct commit"
   end
 
   def test_a_line_out_of_form_is_named_with_its_form_and_the_fix
     message = delivery({ "Merged" => ["no"] }).message
 
     assert_equal "outcome.md says 'Merged: no', which is not a delivery line in the form 'Merged: <branch> into <base> at <commit or pull request>'. " \
-      "Fix that line or put the delivered files in place, then run plastic sync up.", message
+      "Record a line in its form with plastic intent note 7 '<branch> into <base> at <commit or pull request>' --kind Merged, " \
+      "or put the delivered files in place.", message
   end
 
   def test_a_delivered_path_that_is_not_there_is_named

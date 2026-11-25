@@ -37,6 +37,15 @@ class InstallationTest < Plastic::TestCase
     Plastic::Workflows::Installation.capture { installation.install_agents(selected: [key]) }
   end
 
+  def test_an_install_removes_the_retired_session_files_from_plastic_tmp
+    leftover = File.join(@home, "chosen", "plastic-abc--def.json")
+    FileUtils.mkdir_p(File.dirname(leftover))
+    File.write(leftover, "{")
+    Plastic::Workflows::Installation.capture { installation(env: { "PLASTIC_TMP" => File.join(@home, "chosen") }).install_agents(selected: []) }
+
+    refute_path_exists leftover
+  end
+
   def test_an_install_into_a_registered_harness_writes_its_record
     claude_folder
     installed_into("claude")

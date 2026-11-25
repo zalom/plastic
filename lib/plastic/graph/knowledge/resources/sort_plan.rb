@@ -10,18 +10,25 @@ module Plastic
         # What sorting one store folder into the resources layout would do: the moves, the files whose links
         # change and the links it leaves. It reads the folder and writes nothing. Given the store's `reports`, it also moves
         # each report that is neither recorded nor mandatory to resources/tmp/ and names it. Each link it rewrites in a core
-        # file of an intent of `closed`, the ids of the done and abandoned intents, is an amendment.
+        # file of an intent of `closed`, the ids of the done and abandoned intents, is an amendment. Only the files of the
+        # intent folders of `only` move, of every folder when it is nil. The links of every folder but the ones of `held`
+        # follow them, and a held folder is never read.
         class SortPlan
           UNASKED = "neither recorded nor mandatory"
 
           # The ids of the done and abandoned intents of `retrieval`.
           def self.closed(retrieval) = retrieval.intents.select(&:closed?).to_set(&:intent_id)
 
-          def initialize(folder, reports: nil, closed: Set.new)
+          def initialize(folder, reports: nil, closed: Set.new, only: nil, held: Set.new)
             @folder = folder
             @reports = reports
             @closed = closed
+            @only = only
+            @held = held
           end
+
+          # Whether the files of the intent folder `dir` move.
+          def moving?(dir) = @only.nil? || @only.include?(dir)
 
           # Refused when a target holds other bytes than the file that would move onto it.
           def moves = (@moves ||= intents.flat_map(&:moves).tap { |all| refuse_conflict(all) })
@@ -63,7 +70,7 @@ module Plastic
             raise Refused, conflicting.refusal if conflicting
           end
 
-          def intents = (@intents ||= @folder.intent_dirs.map { |dir| IntentSort.new(@folder, dir, self, @reports) })
+          def intents = (@intents ||= (@folder.intent_dirs - @held.to_a).map { |dir| IntentSort.new(@folder, dir, self, @reports) })
         end
       end
     end

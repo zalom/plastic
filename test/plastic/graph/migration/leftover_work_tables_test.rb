@@ -61,17 +61,14 @@ class GraphLeftoverWorkTablesTest < Plastic::TestCase
     end
   end
 
-  def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
+  # The mistaken rows cleanup is the newest and removes its version alone, so its down comes first.
+  def down(home) = 6.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
 
   def test_a_new_store_has_none_of_the_ten_tables_in_the_work_database
     home = fresh_home
     Plastic::Graph::Database::ConnectionPool.release(home)
 
     assert_empty work_tables(home) & TABLES
-  end
-
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, LEFTOVERS
   end
 
   def test_a_store_with_the_ten_empty_tables_migrates_to_none_and_records_the_version

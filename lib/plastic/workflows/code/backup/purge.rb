@@ -38,11 +38,11 @@ module Plastic
           end
 
           read "say what was deleted" do |context|
-            context.purged.each { |name| context.print("purged: #{context.store}/#{name}") }
+            context.purged.each { |name| context.print("purged: #{context.project}/#{name}") }
             context.print("purged: nothing") if context.purged.empty?
           end
 
-          outcome :done, offers: "plastic backup list --store %{store}", because: "the backups named above are gone"
+          outcome :done, offers: "plastic store backup list --project %{project}", because: "the backups named above are gone"
         end
       end
     end

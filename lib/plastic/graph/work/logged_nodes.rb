@@ -21,16 +21,23 @@ module Plastic
         # Why the session may not drive the intent, or nil when it may.
         def driver_problem(intent_id, session) = @drivers.problem(intent_id, session)
 
+        # Whether a live driver claim holds the intent, the calling session's own included.
+        def driven?(intent_id) = @drivers.held?(intent_id)
+
         # Makes `by` the driver of the intent, or finds it held. Returns [status, holder]; a change of driver leaves one work log line.
-        def drive_intent(intent_id:, by:, take_over: nil)
+        def drive_intent(intent_id:, by:, take_over: nil, mode: nil, agent: nil)
           @log.recorded do
-            status, holder, line = @drivers.claim(intent_id:, by:, take_over:)
+            status, holder, line = @drivers.claim(intent_id:, by:, take_over:, mode:, agent:)
             @log.line(intent_id, "driver", line) if line
             [status, holder]
           end
         end
 
-        def renew_claims(session) = @log.recorded { [@writers.nodes.renew_claims(session), @drivers.renew(session)] }
+        # Renews the claims of one agent of the session: an empty agent is the session's own.
+        def renew_claims(session, agent: "") = @log.recorded { [@writers.nodes.renew_claims(session, agent:), @drivers.renew(session, agent:)] }
+
+        # Renews the claim of one agent of the session on one node, and no other claim, and says whether it renewed one.
+        def renew_node(intent_id:, id:, by:, agent: "") = @log.recorded { @writers.nodes.renew_node(intent_id:, id:, by:, agent:) }
 
         # The session ended: its node claims and its driver claims go at once.
         def release_claims(session) = @log.recorded { [@release.call(session), @drivers.release(session)] }

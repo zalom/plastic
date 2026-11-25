@@ -19,7 +19,10 @@ module Plastic
       code_revise_intent: "Code::Intent::Revise",
       code_note_intent: "Code::Intent::Note",
       code_report_intent: "Code::Intent::Report",
+      code_unreport_intent: "Code::Intent::Unreport",
       code_show_spec: "Code::Intent::Spec",
+      code_write_spec: "Code::Intent::Spec::Write",
+      code_write_outcome: "Code::Intent::Outcome",
       code_approve_intent: "Code::Intent::Approve",
       code_prepare_judge: "Code::Intent::Judge",
       code_prepare_verdict: "Code::Intent::Verdict::Prepare",
@@ -65,6 +68,9 @@ module Plastic
       # Archive: taking an intent off the checkout and printing it back.
       code_archive_intent: "Code::Intent::Archive",
       code_unarchive_intent: "Code::Intent::Unarchive",
+      # Repair: the folder layout applied to old intent folders.
+      code_preview_repair_intent: "Code::Intent::Repair::Preview",
+      code_repair_intent: "Code::Intent::Repair",
       # Backups: one folder per backup of one store, with purge and restore.
       code_preview_backup: "Code::Backup::Preview",
       code_backup: "Code::Backup",
@@ -79,6 +85,7 @@ module Plastic
       code_migration_list: "Code::Migration::List",
       # Projects: the list of registered projects.
       code_resume_graph: "Code::Graph::Resume",
+      code_lapsed_graph: "Code::Graph::Lapsed",
       code_load_projects: "Code::Project::Load",
       code_list_projects: "Code::Project::List",
       code_list_chat: "Code::Chat::List",
@@ -115,15 +122,14 @@ module Plastic
       code_impede_node: "Code::Node::Impede",
       code_resolve_node: "Code::Node::Resolve",
 
-      # Resources: the sort of an intent folder into the resources layout.
-      code_preview_sort_resources: "Code::Resources::Sort::Preview",
-      code_sort_resources: "Code::Resources::Sort",
-
       # Statuses: parking started work with its reason.
       code_park_intent: "Code::Intent::Park",
 
       # Review rounds: the owner grants one extra round.
-      code_grant_round: "Code::Intent::Grant"
+      code_grant_round: "Code::Intent::Grant",
+
+      # The owner hands the last gap of an intent whose rounds are used to a follow-up intent.
+      code_hand_over_gap: "Code::Intent::Handover"
     }.freeze
   end
 end

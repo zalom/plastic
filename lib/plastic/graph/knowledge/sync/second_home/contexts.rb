@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../reader/context_file"
+require_relative "../../../../layout"
 
 module Plastic
   module Graph
@@ -24,7 +25,7 @@ module Plastic
 
             def files
               @folder.intent_dirs.filter_map do |dir|
-                path = "#{dir}/context.json"
+                path = File.join(dir, Layout.name(:context))
                 id = File.basename(dir).split("--").first
                 [path, id] if @known.include?(id) && readable_dir?(dir) && @folder.exist?(path) && unheld?(id)
               end

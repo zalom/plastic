@@ -25,6 +25,14 @@ module Plastic
 
         CLAIMED_SQL = "SELECT * FROM nodes WHERE origin_id = :origin AND state = 'claimed' ORDER BY intent_id, #{NODE_ORDER}"
 
+        # The driver claims taken by plastic intent auto, of intents still in progress, with the title of each.
+        AGENT_DRIVERS_SQL = <<~SQL
+          SELECT drivers.intent_id, intents.title, drivers.session_id, drivers.claimed_at, drivers.seen_at, drivers.agent
+          FROM drivers JOIN intents ON intents.intent_id = drivers.intent_id AND intents.origin_id = drivers.origin_id
+          WHERE drivers.origin_id = :origin AND drivers.mode = 'auto' AND intents.status = 'in_progress'
+          ORDER BY CAST(drivers.intent_id AS INTEGER), drivers.intent_id
+        SQL
+
         LINKS_SQL = 'SELECT * FROM links WHERE origin_id = :origin AND (from_ref = :ref OR to_ref = :ref) ORDER BY "at"'
 
         def initialize(databases, origin:)
@@ -39,6 +47,9 @@ module Plastic
         end
 
         def claimed_nodes = @databases.fetch(:store).rows(CLAIMED_SQL, origin: origin_id).map { |row| Node.from_h(row) }
+
+        # The driver rows of the intents in agent delivery: one hash each, with the intent title.
+        def agent_drivers = @databases.fetch(:store).rows(AGENT_DRIVERS_SQL, origin: origin_id)
 
         def node(intent_id, id) = nodes(intent_id).find { |node| node.id == id }
 

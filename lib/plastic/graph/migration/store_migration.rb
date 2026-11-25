@@ -9,11 +9,14 @@ require_relative "../schema/state"
 require_relative "kept_files_cleanup"
 require_relative "legacy_keep"
 require_relative "legacy_pages"
+require_relative "legacy_table"
 require_relative "legacy_trim"
 require_relative "migration_reason"
+require_relative "mistaken_rows"
 require_relative "records_newer"
 require_relative "report_rows"
 require_relative "roadmap_needs"
+require_relative "ruling_own_ids"
 require_relative "store_age"
 require_relative "store_compaction"
 require_relative "utc_times"
@@ -31,18 +34,16 @@ module Plastic
       # The data steps by the version they belong to. Each runs once, while its version is pending.
       DATA_STEPS = { "20261119000000" => KeptFilesCleanup, "20261119180000" => ReportRows, "20261119190000" => LegacyTrim,
                      "20261120090000" => LegacyPages, "20261121090000" => UtcTimes,
-                     "20261123120000" => RoadmapNeeds }.freeze
+                     "20261123120000" => RoadmapNeeds, "20261124150000" => MistakenRows, "20261124233000" => RulingOwnIds }.freeze
 
-      # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
-      # their switch, which the run applies.
-      Run = Data.define(:selection, :released)
+      # What the settings of the machine choose for a run: the sync `selection`.
+      Run = Data.define(:selection)
 
       def initialize(home, slug, now, run:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
         @selection = run.selection
-        @released = run.released
         @notes = []
         @ledger = []
         @compaction = compaction
@@ -51,7 +52,7 @@ module Plastic
       attr_reader :notes, :ledger
 
       def call
-        newer = RecordsNewer.read(knowledge_file, :store, released: @released)
+        newer = RecordsNewer.read(knowledge_file, :store)
         return newer if newer
 
         return compacted(:current) unless behind?
@@ -67,7 +68,7 @@ module Plastic
 
       def root = File.join(@home, "stores", @slug)
 
-      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))])
 
       def knowledge_file = File.join(root, Schema.file(:knowledge))
 
@@ -94,10 +95,9 @@ module Plastic
 
       # The data steps run in the transaction of the migration, after the schema steps, so the baseline has made sqlar.
       def run_migration
-        data = DATA_STEPS.select { |version, _step| pending?(version) }
         attach = attachments
         migrating = Database::ConnectionPool.for(knowledge_file, attach:)
-        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
+        migrate_and_rewrite(migrating, attach)
         settle_legacy(attach.key?(:legacy) && kept_nothing?(migrating))
       rescue SQLite3::Exception, Database::Error, SystemCallError
         release
@@ -105,7 +105,18 @@ module Plastic
         raise
       end
 
+      def migrate_and_rewrite(migrating, attach)
+        data = DATA_STEPS.select { |version, _step| pending?(version) }
+        with_references(migrating) { migrating.atomically { migrate_rows(migrating, data) } }
+        rewrite_legacy(migrating, data, attach)
+      end
+
       def legacy_file = File.join(root, LegacyKeep::FILE)
+
+      # Writes legacy.db anew once a mistaken copy is deleted, since a deleted row stays in its freed page until then.
+      def rewrite_legacy(migrating, data, attach)
+        migrating.execute("VACUUM #{LegacyTable::SCHEMA}") if attach.key?(:legacy) && data.keys.intersect?(MistakenRows::VERSIONS)
+      end
 
       def kept_nothing?(migrating) = migrating.get_first_value("SELECT count(*) FROM legacy.sqlite_master").zero?
 
@@ -122,13 +133,13 @@ module Plastic
 
       def migrate_rows(migrating, data)
         keep = LegacyKeep.new(migrating)
-        SchemaMigrator.new(migrating, :store, before: keep, released: @released).call
+        SchemaMigrator.new(migrating, :store, before: keep).call
         data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
         @ledger = keep.entries
       end
 
       # Every store version when the knowledge file is missing, else the versions it lacks.
-      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store, released: @released).pending : MIGRATIONS.versions(:store) - (MIGRATIONS.held(:store) - @released)
+      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store).pending : MIGRATIONS.versions(:store)
 
       def pending?(version) = pending.include?(version)
 

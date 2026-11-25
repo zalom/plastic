@@ -18,9 +18,18 @@ class PrepareAbandonTest < Plastic::TestCase
     assert_equal :reverting, prepare.first
   end
 
-  def test_an_open_intent_with_no_node_and_no_reverted_line_is_abandoned
-    open_intent
+  def test_an_open_intent_with_no_node_and_no_reverted_line_is_abandoned_once_its_outcome_gives_the_reason
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Abandoned: dropped because the need went away\n")
+    sync_up
 
     assert_equal :abandoning, prepare.first
+  end
+
+  def test_an_open_intent_with_no_node_and_no_outcome_fails_naming_the_summary_and_the_reason
+    open_intent
+
+    error = assert_raises(Plastic::Failed) { prepare }
+    assert_equal [true, true], ["plastic intent outcome 1 --from FILE", "--kind Abandoned"].map { |part| error.message.include?(part) }
   end
 end

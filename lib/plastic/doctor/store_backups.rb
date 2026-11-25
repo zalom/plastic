@@ -22,14 +22,14 @@ module Plastic
         newest = @folders.latest
         label = "backups #{@slug}:"
         failed = failed_check
-        return Check.finding(label, failed, "plastic backup --store #{@slug}") if failed
+        return Check.finding(label, failed, "plastic store backup --project #{@slug}") if failed
 
         return Check.ok(label, "no backup yet") unless newest
 
         status = @folders.status(newest)
         return Check.ok(label, described(newest)) if status == "done"
 
-        Check.finding(label, "newest backup #{newest} is #{status}; its integrity check did not pass", "plastic backup --store #{@slug}")
+        Check.finding(label, "newest backup #{newest} is #{status}; its integrity check did not pass", "plastic store backup --project #{@slug}")
       end
 
       private

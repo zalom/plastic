@@ -8,11 +8,11 @@ class WorkflowStartIntentTest < Plastic::TestCase
 
   def start(session: "s-1", intent_id: "1")
     run_workflow(Plastic::Workflows::Code::Intent::Start, harness: scoped_harness(session:), graphs: session_graphs, intent_id:,
-      start_words: "intent start", take_over: "").first
+      start_words: "intent start", delivery: "guided", take_over: "").first
   end
 
   def start_with(graphs)
-    run_workflow(Plastic::Workflows::Code::Intent::Start, harness: scoped_harness(session: "s-1"), graphs:, intent_id: "1", start_words: "intent start", take_over: "")
+    run_workflow(Plastic::Workflows::Code::Intent::Start, harness: scoped_harness(session: "s-1"), graphs:, intent_id: "1", start_words: "intent start", delivery: "guided", take_over: "")
   end
 
   def approve(intent_id = "1") = plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)

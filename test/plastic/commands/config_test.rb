@@ -71,7 +71,7 @@ class ConfigCommandTest < Plastic::TestCase
     config("q")
     config("a", "--harness", "codex")
 
-    assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true, "drop_document_revisions" => true },
+    assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true },
                                 "sync" => { "references" => true }, "backup" => { "daily" => true } } }, saved["harnesses"])
   end
 

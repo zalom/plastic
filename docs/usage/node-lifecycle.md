@@ -62,9 +62,20 @@ together. A call without `--file` reads every changed file of the folder.
 
 ## How a claim stays live
 
-A claim names the session that holds the node. The session renews it, and a claim lapses after
-900 seconds without a renewal. The session renews its claims at every `plastic` command it runs,
-at the stop hook, and with `plastic node renew ID NODE`.
+A claim names the session that holds the node, and its run names the agent from `--agent`. A claim
+lapses after 900 seconds without a renewal. Each `plastic` command and the stop hook renew the claims
+of the agent that runs them: the name the environment variable `PLASTIC_AGENT` gives, or the
+session's own agent when it is not set. `plastic node renew ID NODE` renews that one node when the
+same agent holds it. Another agent of the session is refused with exit 3, and the claim stays as it
+was.
+
+- Helpers of one session share its session id, so each helper sets `PLASTIC_AGENT` to the name
+  it gave `--agent`. In an intent in agent delivery (`plastic intent auto`), a command renews only
+  the claims of its own agent, so the claim of a helper that stopped lapses even while the
+  orchestrator still runs commands. A command with no `PLASTIC_AGENT` renews the driver claim the
+  session's own agent took, and in guided work every claim of the session, as one agent holds them.
+- A claim whose `--agent` differs from a set `PLASTIC_AGENT` fails with exit 1 and claims nothing,
+  because no command of that agent would renew it.
 
 - Another session can take a lapsed claim with `plastic node claim`. The old run closes as
   `lapsed` and a new run opens.

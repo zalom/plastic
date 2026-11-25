@@ -11,8 +11,22 @@ When the driver is the open Claude Code or Codex session, `plastic install` writ
 `plastic-driver` for it, next to the planner, executor and retriever roles. The role tells the session to run
 the loop below: start one subagent or background worker for each ready node, of the role that fits
 the node's kind, and hand it the intent id and the node id. The driver picks the `--agent` name of each worker and hands it over with the ids. The worker claims its node, which
-prints the claim packet, and finishes it itself. The driver waits for the harness's notice that a worker ended, then reads
-`plastic graph ready ID --json` again; it does not poll in a loop.
+prints the claim packet, and finishes it itself. When the harness says a worker ended, the driver reads
+`plastic graph ready ID --json` again.
+
+A notice from the harness can fail to arrive, and a worker can stop without one. So while workers run, the
+driver also runs `plastic graph lapsed` on a timer, for example every five minutes. The command lists each
+intent in agent delivery whose driver claim or node claim lapsed, with the node, the agent, the session and
+the last renewal, and its `next:` line names the command that restarts the first. For a lapsed driver claim
+that is `plastic intent auto ID`. For a lapsed node claim it is `plastic node claim ID NODE --agent AGENT`: the
+driver starts a new worker with that agent name, and the new worker's claim takes the lapsed one. With
+nothing lapsed, the command prints no `next:` line. It reads the rows and renews no claim, so the session that
+runs it cannot hide a lapse. It takes `--stores a,b`, `--project` and `--json`. Only intents started with
+`plastic intent auto` are listed; guided work started with `plastic intent start` is not.
+
+Each worker, and the driver itself, runs every check in the foreground and reads the result itself. A worker
+never ends its turn to wait on a background job or a monitor notice. When one run would pass the time limit of
+the tool, it splits a long suite into its layers, such as the unit layer, the end-to-end layer and the gate.
 
 | Node kind | Worker |
 | --------- | ------ |
@@ -98,7 +112,7 @@ Checked with `claude --help` and `codex exec --help` on 22 November 2026:
 
 `plastic graph check ID` reports a schema file that names no live node. It prints a `hand edit:` line
 under each finding that no command repairs, a `repair:` line under each finding that one does, and no
-`next:` line when only hand-edit findings remain. `plastic resources sort` leaves the files of
+`next:` line when only hand-edit findings remain. `plastic intent repair` leaves the files of
 `resources/tmp/schemas/` where they are.
 
 ## Sessions and claims
@@ -107,7 +121,8 @@ under each finding that no command repairs, a `repair:` line under each finding 
   `PLASTIC_SESSION` is not set, Plastic uses the session of the harness, and then `terminal-` and the login
   at a terminal. Two drivers that share a name share a claim.
 - A claim lapses after 900 seconds without a renewal. When a driver hands out nodes, each worker
-  renews its own claim with `plastic node renew ID NODE`, for example every five minutes, while it runs.
+  sets `PLASTIC_AGENT` to its `--agent` name, so its commands renew its own claim and no other.
+  A worker on long work also renews with `plastic node renew ID NODE`, for example every five minutes.
 - A node added with `--deadline MINUTES` is overdue once its claim has run longer than that. `plastic graph
   ready ID --json` lists it under `result.overdue` with `id`, `title`, `claimed_by`, `claimed_minutes` and
   `deadline`. Plastic moves no node for it: the driver checks on the worker, and the owner decides

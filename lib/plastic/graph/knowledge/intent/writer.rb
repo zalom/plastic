@@ -76,7 +76,7 @@ module Plastic
           private
 
           def store_problem
-            "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?
+            "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic store sync up to import it first" if @folder.legacy?
           end
 
           def parent_problem(parent_id)

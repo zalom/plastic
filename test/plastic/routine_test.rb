@@ -114,15 +114,20 @@ class PrintsDeclarationTest < Minitest::Test
   NO_FILE = {
     "Session::Note" => "its rows are the session ledger, which no file holds",
     "Node::Renew" => "a renewal changes the time of a claim, which no printed file holds",
-    "Backup" => "a backup copies the databases, which no printed file holds",
-    "Backup::Purge" => "it removes backup records, which no printed file holds",
-    "Backup::Restore" => "it restores databases and hands the files to sync down",
-    "Sync::Up" => "sync prints through its own plan",
-    "Sync::Down" => "sync prints through its own plan",
-    "Resources::Sort" => "it moves the files itself, and no print writes them",
+    "Store::Backup" => "a backup copies the databases, which no printed file holds",
+    "Store::Backup::Purge" => "it removes backup records, which no printed file holds",
+    "Store::Backup::Restore" => "it restores databases and hands the files to sync down",
+    "Store::Sync::Up" => "sync prints through its own plan",
+    "Store::Sync::Down" => "sync prints through its own plan",
+    "Intent::Repair" => "it moves the files itself, and no print writes them",
     "Doctor" => "it rebuilds the search index, which no printed file holds",
     "Update" => "it rebuilds the search index while it compacts a store, which no printed file holds",
     "Install" => "it rebuilds the search index while it compacts a store, which no printed file holds"
+  }.freeze
+
+  INDEX_ONLY = {
+    "Intent::Archive" => "it takes the folder off the checkout, so the intent has no file left to print",
+    "Intent::Unarchive" => "it puts back the folder as it was archived and prints the work log line itself"
   }.freeze
 
   def routines
@@ -146,6 +151,39 @@ class PrintsDeclarationTest < Minitest::Test
 
   def test_the_named_exceptions_are_routines_that_write
     assert_empty NO_FILE.keys - writers.map { |klass| short(klass) }
+  end
+
+  # A call on one intent that writes the work graph leaves a work log line, which only the intent print writes to work.log.
+  def index_only_on_an_intent?(klass) = klass.subject&.first == :intent_id && klass.writes.include?(:work) && klass.prints == [:index]
+
+  def test_every_routine_on_one_intent_that_writes_the_work_graph_prints_the_intent_or_is_named
+    missing = writers.select { |klass| index_only_on_an_intent?(klass) && !INDEX_ONLY.key?(short(klass)) }.map { |klass| short(klass) }
+
+    assert_empty missing
+  end
+
+  def test_the_named_index_only_routines_print_only_the_index
+    assert_equal INDEX_ONLY.keys, writers.select { |klass| index_only_on_an_intent?(klass) && INDEX_ONLY.key?(short(klass)) }.map { |klass| short(klass) }
+  end
+
+  def test_the_detector_sees_an_intent_routine_that_prints_only_the_index
+    sample = Class.new(Plastic::Routine) do
+      intent_subject
+      writes :work
+      prints :index
+    end
+
+    assert index_only_on_an_intent?(sample)
+  end
+
+  def test_the_detector_leaves_an_intent_routine_that_prints_the_intent_alone
+    sample = Class.new(Plastic::Routine) do
+      intent_subject
+      writes :work
+      prints :intent
+    end
+
+    refute index_only_on_an_intent?(sample)
   end
 
   def test_prints_takes_only_intent_roadmap_and_index

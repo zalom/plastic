@@ -9,7 +9,7 @@ module Plastic
       class Abandon < Routine
         intent_subject
         writes :work, :retrieval
-        prints :index
+        prints :intent
         reads :knowledge
 
         workflow :code_prepare_abandon do

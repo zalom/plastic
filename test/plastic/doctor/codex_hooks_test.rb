@@ -43,7 +43,7 @@ class DoctorCodexHooksTest < Plastic::TestCase
   def test_malformed_groups_are_findings_instead_of_exceptions
     write(codex_hooks_path, JSON.generate("hooks" => { "Stop" => [nil, "bad", { "hooks" => [false] }] }))
 
-    assert_equal 4, checks.filter_map(&:repair).size
+    assert_equal 5, checks.filter_map(&:repair).size
   end
 
   def test_a_non_map_document_is_a_finding

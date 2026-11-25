@@ -14,6 +14,7 @@ module Plastic
       # How a call's environment names its session.
       class Environment
         PLASTIC_SESSION = "PLASTIC_SESSION"
+        PLASTIC_AGENT = "PLASTIC_AGENT"
 
         def self.current
           new(env: ENV, input: $stdin, out: $stdout, err: $stderr, home: Dir.home, directory: Dir.pwd, processes: Harnesses::Processes.current, clock: Time)
@@ -31,6 +32,10 @@ module Plastic
 
           Harnesses::Innermost.new(env:, processes:, plastic_home:).session || terminal_session
         end
+
+        # The agent that runs the call: PLASTIC_AGENT when it is set, else an empty text for the session's own agent.
+        # Helpers that share a session name themselves with it, so each renews only its own claims.
+        def agent = env[PLASTIC_AGENT].to_s.strip
 
         # The harness whose session variable names the session of the call, or an empty text when none does (PLASTIC_SESSION alone, a terminal).
         def harness_name = Harnesses.sessions(env).find { |_name, id| id == session }&.first.to_s

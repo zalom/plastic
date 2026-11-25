@@ -23,6 +23,7 @@ module Plastic
       },
       "graph" => {
         "graph check" => ["Commands::Graph::Check", "Find a done node with no findings, an isolated node, a retry cap, no done criterion, a need on a removed node, a loop, output that is not JSON or a schema file with no live node"],
+        "graph lapsed" => ["Commands::Graph::Lapsed", "List the agent deliveries whose claims lapsed and the command that restarts each"],
         "graph ready" => ["Commands::Graph::Ready", "List the nodes ready to claim"],
         "graph resume" => ["Commands::Graph::Resume", "Say where each named store's work stopped and what runs next"],
         "graph show" => ["Commands::Graph::Show", "Print every node, with the node it was found in, and every need of an intent"]
@@ -33,6 +34,7 @@ module Plastic
       "hook" => {
         "hook start" => ["Hooks::Start", "SessionStart: name the harness, open the session row, print the state the rows carry"],
         "hook prompt" => ["Hooks::Prompt", "UserPromptSubmit: record the prompt in the machine's chat history"],
+        "hook guard" => ["Hooks::Guard", "PreToolUse: refuse an agent write to a store's core files, a closed intent or a project's intent records"],
         "hook stop" => ["Hooks::Stop", "Stop: stamp the turn, renew claims, run the stop gate"],
         "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
       }

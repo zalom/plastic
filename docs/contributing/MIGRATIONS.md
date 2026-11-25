@@ -76,16 +76,55 @@ tables is the beta.2 layout, which the store and home baselines migrate. A `user
 is an alpha build that already has the baseline layout, so it gets the baseline row and no SQL
 runs. Any other `user_version` counts as newer than this code.
 
+## Say what kind of data a migration removes
+
+Each migration that drops a table or rows states which kind of data it removes. There are three
+kinds. `LegacyKeep::KINDS` in `lib/plastic/graph/migration/legacy_keep.rb` holds the statement of
+each store migration, and `HomeMigration::KINDS` in `lib/plastic/graph/migration/home_migration.rb`
+holds the statement of each home migration. The two lists are apart because a home migration and
+a store migration may share a version.
+
+- The owner's data is what a person made or chose: time values, roadmaps and roadmap links, the
+  text of a document they wrote. The migration keeps it in `legacy.db` and offers an undo.
+- A mistake is data that an agent created by error, such as a table a migration made that no
+  command should have made. The migration deletes it. No copy stays in `legacy.db`, no file or
+  free page holds its text, and `plastic store migration list` offers no undo for it.
+- Rebuilt data is data whose loss costs the owner nothing: the migration moved it into a new
+  table or column, the code builds it again from the owner's data, such as a report row that the
+  next sync up reads back from the files, or there was none. The home migration `20261117000000`
+  drops the tables `backups` and `locks` as rebuilt data: the backup folders are the record of
+  each backup, and the node claims of each store say who holds what. The home migration
+  `20261125090000` deletes the settings rows of the retired setting `migrate.drop_document_revisions`
+  as rebuilt data: no command reads it. A store migration of rebuilt
+  data keeps nothing, and its down removes the version alone.
+
+Only the owner's data is kept. When a migration removes a mistake, it does not keep the rows
+"just in case": a copy of a mistake is a second mistake, and it stays in every backup of
+`legacy.db`.
+
+`test/migration_data_kinds_guard_test.rb` reads each store and home migration file and each data
+step. It fails when a migration that drops a table or deletes rows does not state its kind in
+its `KINDS`.
+
+A mistake runs in its own migration. Migration `20261124150000` deletes what migration
+`20261119000000` kept of `document_revisions`: 40 rows across the stores, which an agent made by
+mistake. It drops the kept table, then rewrites `legacy.db` with `VACUUM` after the transaction
+commits, because SQLite leaves the text of a deleted row in a free page until then. A store that
+never ran `20261119000000` has nothing to delete, and a store with nothing else in `legacy.db`
+ends with no `legacy.db`. The migration has no switch: it removes only a mistake,
+and the owner's data stays where it was. A backup made before it still holds the rows, so delete
+an old backup to remove them for good.
+
 ## Keep what a migration removes
 
 A migration that removes data keeps it first in `legacy.db`, a fourth file in the store folder.
 The keep runs in the transaction of the migration, so the rows stay kept only when the migration
 commits.
 
-- Each kept table is named for the live table and the version, such as `document_revisions_20261119000000`.
+- Each kept table is named for the live table and the version, such as `changed_values_20261121090000`.
   It is made from the live table's own `CREATE TABLE` text, so it keeps the old shape.
 - `LegacyKeep::KEEPS` in `lib/plastic/graph/migration/legacy_keep.rb` lists the versions that
-  keep what they remove. `LegacyKeep::WHOLE` lists the tables such a version drops, kept whole
+  keep what they remove, the owner's data only. `LegacyKeep::WHOLE` lists the tables such a version drops, kept whole
   just before its SQL runs. A data step gets a `keep:` callable and keeps each row before it
   deletes it.
 - The store migration attaches `legacy.db` only while a version of `KEEPS` or `TRIMS` is pending,
@@ -95,16 +134,14 @@ commits.
 
 A migration whose removed rows a sync up reads back keeps nothing. `LegacyKeep::ALONE` lists
 such versions, and a down of one removes its version alone. Migration `20261119180000` drops the
-rows of every report that `reports.mandatory` does not name and is in `ALONE`: the files stay on
+rows of every report that `reports.mandatory` does not name and is in `ALONE`. Those rows are rebuilt data: the files stay on
 disk, and a report recorded later gets its rows back on the next sync up.
 
 A migration can also trim what an earlier migration kept. `LegacyKeep::TRIMS` lists such
-versions. Migration `20261119190000` trims what `20261119000000` kept to what a down needs: the
-earlier texts of the paths the sync reads. It drops each kept `sqlar` row, since each one has a
-verified copy on disk or in an archive, and each kept revision that a down rebuilds from the
-current documents or that no sync reads. Every store then holds the same legacy rows, whichever
-release ran the drop. It is in `ALONE` too: its down removes the version alone, and a down of
-`20261119000000` after it puts the trimmed keep back.
+versions. Migration `20261119190000` trims what `20261119000000` kept to what a down needs. Both
+removed a mistake, the `document_revisions` table, so migration `20261124150000` later deletes
+the keep they left, and a store that runs all three in one `plastic update` keeps nothing. The
+trim is in `ALONE`: its down removes the version alone.
 
 A trim leaves the pages it freed in `legacy.db`. `LegacyPages::VERSIONS` lists the versions
 that give the free pages of an existing `legacy.db` back to the disk, in the transaction of the
@@ -141,7 +178,7 @@ The home migration of the same version does the same for `plastic.db` and names 
 times too. `plastic.db` has no down. The way back is the copy that the home migration writes to
 `backups/plastic-<UTC timestamp>.db` before it runs.
 
-After `plastic update`, run `plastic sync down` so the printed files carry the UTC times too. A
+After `plastic update`, run `plastic store sync down` so the printed files carry the UTC times too. A
 sync up reads each time in the files into UTC, so a file an earlier release printed with an
 offset still gives UTC rows.
 
@@ -173,40 +210,38 @@ had the tables gets them empty from the down too. Opening a store with that old 
 tables again, and no later migration drops them, because the version is recorded and never runs again. The stop is
 to bring that checkout past commit 804fa952.
 
-Migration `20261124120000` drops ten leftover tables of `work_graph.db`: `savepoints`, `changes`, `intents`,
+Migration `20261124120000` drops 10 leftover tables of `work_graph.db`: `savepoints`, `changes`, `intents`,
 `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries` and `printed`. The same old
 checkout made them, local `alpha` at fdb2b9d3 of 13 November 2026, which opened the `plastic` store with no
 gate and made each table that its `schema.rb` declared for the work database and the store lacked; the
-current schema declares none of them there. All ten held no row when the migration was written. Seven of the
+current schema declares none of them there. All 10 held no row when the migration was written. Seven of the
 names and `printed` are live tables of `knowledge_graph.db` or `plastic.db`, so every statement names the
-`work` schema, `LegacyTable` finds these ten in `work` for this version only
+`work` schema, `LegacyTable` finds these 10 in `work` for this version only
 (`LeftoverWorkTables.home?`), and no live table is read, kept or dropped. The migration has no switch. It is
 in `KEEPS`, and `LeftoverWorkTables::VERSION` marks it as keeping a table only when it holds a row: a table
 that holds a row is kept whole in `legacy.db` as `<table>_20261124120000` before the drop, an empty table is
 kept nowhere, and a store with none of the tables only records the version. Its down, `LeftoverWorkTables`
-in `REBUILDS`, builds the ten tables again, empty and with the exact text of the old tables, and puts back
+in `REBUILDS`, builds the 10 tables again, empty and with the exact text of the old tables, and puts back
 each row that the migration kept. The stop is the same: bring that checkout past commit 804fa952.
 
-## Hold a migration behind a switch
+## Migrations ship with no switch
 
-A migration that changes stored data ships behind a config switch that is off by default, as
-`docs/release-lines.md` says, with one exception: the UTC migration named at the end of this
-section. `MigrationList::HELD` in
-`lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
-`20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
-behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`.
+A new migration ships clean, with no config switch: the owner ruled so on 24 November 2026, and
+`docs/release-lines.md` says so. The clean install and the update from the previous release that
+prove each beta and stable release run it, as that page says. Plastic has no way to hold a
+migration back: every store runs every migration it lacks, and a new store records every version,
+because it is built from `schema.rb`.
 
-- While the switch is off, a run leaves the held version out of the pending ones. A store that
-  lacks only that version is current, so every command opens it and `plastic update` leaves it.
-- A store that records a held version is current too. A new store records every version, held
-  or not, because it is built from `schema.rb`.
-- Once the switch is on, `plastic update` runs the held version as it runs any other. The runner
-  takes the released versions from `Wiring::Settings#released`.
+Migration `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` once
+waited behind the switch `migrate.drop_document_revisions`. The owner ruled on 24 November 2026
+that changes ship clean, so the switch and the code that held a migration back are gone, and the
+three run for every store in the next `plastic update`. The same update removes the retired key:
+the home migration `20261125090000` deletes its settings rows in every scope, and the update then
+prints `config.yml` again from the rows, so the file no longer holds it. A `config.yml` changed by
+hand is kept as it is and named, as at any other print.
 
-To hold a new migration, add its version and its switch to `HELD`, and add the switch to
-`lib/plastic/config/defaults.rb`, off.
-
-Two migrations are exceptions to this rule. Migration `20261121090000`, which writes every stored
+Before the ruling of 24 November 2026, a migration that changed stored data waited behind a
+switch, with two exceptions. Migration `20261121090000`, which writes every stored
 time in UTC, has no switch: the owner ruled on 22 November 2026 that it changes the text of a time
 and not the time it names, and the code that reads times expects UTC. Migration `20261123100000`,
 which drops the node columns `judge` and `verdict`, has no switch either: Jev chose that on
@@ -234,6 +269,40 @@ adds the column back, fills it from position 1 and drops the table; a node with 
 keeps only the first, and the backup that the down takes first holds the rest. A graph file that an
 earlier release printed with `input` on a node still reads: the sync reads it as a row at position 1.
 
+Migration `20261124173000` adds the nullable column `mode` to `drivers` in `work_graph.db`: `guided`
+when `plastic intent start` took the driver claim, `auto` when `plastic intent auto` took it.
+`plastic graph lapsed` reads it to list only the intents in agent delivery. It writes no value, so
+it has no switch, and a driver row it finds keeps no mode until its session drives again. It is in
+`ALONE`, and its down, `DriverModeColumn` in `REBUILDS`, drops the column again; the backup that the
+down takes first holds any mode a driver row had.
+
+Migration `20261124200000` adds the nullable column `agent` to `drivers` in `work_graph.db`: the
+name `PLASTIC_AGENT` gave when `plastic intent start` or `plastic intent auto` took the driver claim,
+or none when the session's own agent took it. In agent delivery only that agent renews the claim. It
+writes no value, so it has no switch, and a driver row it finds keeps no agent, which the session's
+own agent renews. It is in `ALONE`, and its down, `DriverAgentColumn` in `REBUILDS`, drops the column
+again; the backup that the down takes first holds any agent a driver row had.
+
+Migration `20261124210000` adds the nullable columns `old_text` and `new_text` to `work_log` in
+`work_graph.db`: the exact old and new link of the `amended` line that `plastic intent repair` writes
+for a link it rewrites. The printed line of work.log quotes both after the hash, so a sync up reads
+them back. It writes no value, so it has no switch, and a line it finds keeps neither. It is in
+`ALONE`, and its down, `WorkLogTextColumns` in `REBUILDS`, drops the columns again; the backup that
+the down takes first holds any text a line had.
+
+Migration `20261124233000` strips from each stored ruling the leading label of its own id, which
+agents typed into the text before `plastic intent rule` stripped it. A label is the id, or copies
+of it, followed by a colon, a period, any dash, or a space and then a capital letter, a backtick, a
+quote or a bracket. It uses the same function as the command, so an id that starts a range or a
+list stays: a range word, a list sign, a lowercase word or another ruling id after the id leaves the
+text alone. It strips the label from the
+`ruled` line of `work_log` that carries the ruling, too. The label was a mistake, so it keeps no
+copy and has no switch. It changes rows only and drops nothing, so it states no kind in `KINDS`. It
+is in `ALONE`: its down removes the version alone, the stripped text stays stripped, and the downs
+of the migrations before it stay reachable. After `plastic update`, run
+`plastic store sync down --project SLUG`, as its note says, so the printed work.log files carry
+the stripped lines.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down
@@ -252,9 +321,9 @@ transaction, so the ledger holds all of them or none.
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
-| `plastic migration down --store SLUG` | Backs the store up, puts the rows the newest migration the store records kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic migration list --store SLUG`. |
-| `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
+| `plastic store migration list --project SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
+| `plastic store migration down --project SLUG` | Backs the store up, puts the rows the newest migration the store records kept back into the live tables in their old shape, drops them from `legacy.db`, removes the version from the store and adds a `down` row to the ledger. It offers `plastic store migration list --project SLUG`. |
+| `plastic store migration purge VERSION --project SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept from `legacy.db`, gives their space back to the disk and adds a `purge` row to the ledger. After it, a down cannot undo that migration. |
 
 A down refuses with exit 3 and changes nothing in these cases:
 
@@ -266,10 +335,9 @@ A down refuses with exit 3 and changes nothing in these cases:
 
 A failed backup stops the down with exit 1 before it changes anything. After a down, the store
 has the layout of the release before the migration, and `plastic update` migrates it up again.
-In the same transaction, the down of migration `20261119000000` builds a `document_revisions` row
-for each current document that has none, from `documents` and `document_heads`. The release
-before it then finds every document in its search, its reads by revision and its integrity audit.
-A migration that needs such rows on its down adds its version to `MigrationDown::REBUILDS`.
+A migration that needs rows built from the current data on its down adds its version to
+`MigrationDown::REBUILDS`. The migration that dropped `document_revisions` is not one of them: it
+is a mistake, so it has no down.
 A down undoes only the newest migration the store records. A second down then undoes the one
 before it. To go back past a migration that kept nothing, restore a backup.
 

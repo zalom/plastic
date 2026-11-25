@@ -20,8 +20,7 @@ module Plastic
 
           # One line for each path read. A path the database refuses is left as it is and gets no line.
           def call(paths)
-            now = Plastic.timestamp(@retrieval.clock.now)
-            reads = paths.map { |path| reader.read(path, now) }
+            reads = reads_of(paths)
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)
@@ -29,8 +28,7 @@ module Plastic
           end
 
           def read_all(paths)
-            now = Plastic.timestamp(@retrieval.clock.now)
-            reads = paths.map { |path| reader.read(path, now) }
+            reads = reads_of(paths)
             commit(reads)
             reads
           rescue Database::Error, Invalid => error
@@ -44,8 +42,13 @@ module Plastic
 
           private
 
-          # The intents of the rows. store/index.json is never read for them: the folders are.
-          def reader = Reader.of(@folder, @retrieval)
+          # The reads of one call share one reader, so they hold one copy of the intent rows, whatever the count of paths.
+          # The intents come from the rows; store/index.json is never read for them.
+          def reads_of(paths)
+            now = Plastic.timestamp(@retrieval.clock.now)
+            reader = Reader.of(@folder, @retrieval)
+            paths.map { |path| reader.read(path, now) }
+          end
 
           # The reads commit together; when the reader or the database refuses them, each read gets its own transaction.
           def write(reads)

@@ -19,7 +19,7 @@ class NodeClaimRulesTest < Plastic::TestCase
 
   def write_constraints(*items)
     write("#{retrieval.intent("1").dir}/spec.md", "#{keyed_spec({ KEY => CRITERION })}\n## Constraints\n#{items.map { |item| "- #{item}\n" }.join}")
-    cli("sync", "up")
+    cli("store", "sync", "up")
   end
 
   def packet = JSON.parse(cli("node", "claim", "1", "n1", "--agent", "tester", "--json").out).dig("result", "packet")

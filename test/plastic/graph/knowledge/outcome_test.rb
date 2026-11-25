@@ -158,7 +158,7 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
     refused = ["PR #57 into alpha at 3f2a1b9", "pull request #57 into alpha at 3f2a1b9", "plastic/x into alpha via PR #57 at 3f2a1b9"]
     read = outcome("## Verification\n- Merged: #{refused.first}\n")
 
-    assert_equal [[false] * 3, true], [refused.map { |value| merged_value?(value) }, read.missing_records.first.include?("Merged: <branch> into <base> at <commit or pull request>")]
+    assert_equal [[false] * 3, true], [refused.map { |value| merged_value?(value) }, read.missing_records.first.include?("'<branch> into <base> at <commit or pull request>' --kind Merged")]
   end
 
   def test_an_approved_date_followed_by_a_time_counts
@@ -179,7 +179,7 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
     message = outcome("## Verification\n- Merged: N/A, merged by the owner at abc\n").missing_records.first
 
     assert_includes message, "Merged: N/A, merged by the owner at abc"
-    assert_includes message, "Merged: <branch> into <base> at <commit or pull request>"
+    assert_includes message, "'<branch> into <base> at <commit or pull request>' --kind Merged"
   end
 
   def test_a_value_out_of_form_is_named_with_its_label_and_a_value_in_form_or_an_absent_one_is_not
@@ -191,8 +191,8 @@ class KnowledgeOutcomeMessagesTest < Plastic::TestCase
   def test_the_missing_record_message_asks_for_one_of_the_three_delivery_lines_when_none_is_there
     message = outcome("## Verification\n- Tests pass\n").missing_records.first
 
-    ["Merged: <branch> into <base> at <commit or pull request>", "Committed: <branch> at <commit>",
-      "Delivered: resources/output/<path> because <reason>", "plastic sync up"].each { |part| assert_includes message, part }
+    ["'<branch> into <base> at <commit or pull request>' --kind Merged", "'<branch> at <commit>' --kind Committed",
+      "'resources/output/<path> because <reason>' --kind Delivered", "plastic intent note 1"].each { |part| assert_includes message, part }
   end
 
   def test_missing_pull_request_approval_and_revert_bullets_read_false
@@ -269,7 +269,7 @@ class KnowledgeOutcomeDeliveryTest < Plastic::TestCase
   def test_a_rejected_delivery_line_is_named_with_the_form_of_its_label
     read = outcome("## Verification\n- Committed: main at PR 57\n")
 
-    assert_equal ["Committed: main at PR 57", true], [read.delivery_rejection, read.missing_records.first.include?("Committed: <branch> at <commit>")]
+    assert_equal ["Committed: main at PR 57", true], [read.delivery_rejection, read.missing_records.first.include?("'<branch> at <commit>' --kind Committed")]
   end
 
   def test_a_bullet_wrapped_over_indented_lines_reads_whole

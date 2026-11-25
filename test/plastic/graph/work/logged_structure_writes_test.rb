@@ -52,7 +52,7 @@ class WorkLoggedStructureWritesTest < Plastic::TestCase
   def test_archiving_and_unarchiving_append_a_line_each
     intent
     work.print_intent("1")
-    work.note_intent(work_intent, "note", "why it ends")
+    work.note_intent(work_intent, "Abandoned", "dropped because it ends")
     work.abandon_intent("1")
     work.archive_intent("1")
     work.unarchive_intent("1")

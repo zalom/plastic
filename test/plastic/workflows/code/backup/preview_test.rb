@@ -7,7 +7,7 @@ class BackupPreviewWorkflowTest < Plastic::TestCase
 
   def test_a_dry_run_previews_the_folder_and_writes_nothing
     home = fresh_home
-    result = backup_call(home, "--store", "alpha", "--dry-run")
+    result = backup_call(home, "--project", "alpha", "--dry-run")
 
     assert_equal [0, 0], [result.code, folder_names(home).size], result.err
     assert_includes result.out, "preview: backup alpha/"

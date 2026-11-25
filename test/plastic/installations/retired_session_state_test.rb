@@ -14,6 +14,14 @@ class RetiredSessionStateTest < Plastic::TestCase
     File.join(session(name), "current")
   end
 
+  def test_the_folders_are_plastic_tmp_alone_when_it_is_set
+    assert_equal [File.join(@home, "chosen")], Retired.folders(File.join(@home, "chosen"))
+  end
+
+  def test_the_folders_are_the_temp_folder_of_the_system_and_tmp_when_plastic_tmp_is_empty
+    assert_equal [Dir.tmpdir, "/tmp"].uniq, Retired.folders("")
+  end
+
   def test_a_current_pointer_under_a_store_is_removed_and_counted
     file = leftover
 

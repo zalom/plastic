@@ -19,13 +19,16 @@ module Plastic
 
           def inside_to = Move.inside(to)
 
+          # The folder of the intent the file moves in, store/{id}--{slug}.
+          def dir = from.delete_suffix("/#{inside_from}")
+
           def row = [intent_id, inside_from, inside_to, from, to]
 
           def onto_same_bytes?(folder) = folder.exist?(to) && folder.digest(to) == folder.digest(from)
 
           def onto_other_bytes?(folder) = folder.exist?(to) && folder.digest(to) != folder.digest(from)
 
-          def refusal = "#{to} already holds other bytes than #{from}; move one of them away, then run plastic resources sort again"
+          def refusal = "#{to} already holds other bytes than #{from}; move one of them away, then run plastic intent repair again"
 
           def relocate(folder, rename)
             target = folder.path(to)

@@ -14,7 +14,7 @@ module Plastic
 
       def write_spec(intent, text)
         write("#{intent.dir}/spec.md", text)
-        plastic("sync", "up", table: Plastic::CLI::TABLE)
+        plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
       end
 
       def approve(intent_id = "1") = plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)

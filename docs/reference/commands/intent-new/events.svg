@@ -93,7 +93,7 @@
 <rect x="480" y="64" width="330" height="94" rx="6" class="stop-failure"/>
 <text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="492" y="100" class="t" text-anchor="start">The store is still in the old format and needs</text>
-<text x="492" y="116" class="t" text-anchor="start">plastic sync up first, the parent or the</text>
+<text x="492" y="116" class="t" text-anchor="start">plastic store sync up first, the parent or the</text>
 <text x="492" y="132" class="t" text-anchor="start">intent to link after is not in the store, or</text>
 <text x="492" y="148" class="t" text-anchor="start">the reference is not valid.</text>
 <path d="M 64 115 L 64 184" class="wire"/>

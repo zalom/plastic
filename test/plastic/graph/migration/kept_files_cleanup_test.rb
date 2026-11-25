@@ -215,7 +215,7 @@ class KeptFilesFolderTest < Plastic::TestCase
   RENAMED = "store/1--old-name/resources/tmp/scratch.md"
   GONE = "store/2--gone/resources/tmp/scratch.md"
 
-  def sync_up = plastic("sync", "up", "--project", "alpha", table: Plastic::CLI::TABLE)
+  def sync_up = plastic("store", "sync", "up", "--project", "alpha", table: Plastic::CLI::TABLE)
 
   def test_a_row_of_a_folder_no_intent_holds_stays_and_the_folder_is_not_made
     keep(RENAMED)

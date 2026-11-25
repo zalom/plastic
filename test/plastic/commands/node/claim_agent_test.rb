@@ -79,4 +79,15 @@ class NodeClaimAgentTest < Plastic::TestCase
 
     assert_match(/\Arun: n1 #1 agent a, claude-code session c-9, done; started \S+, ended \S+, length [^;]+; no Claude Code transcript for session c-9/, line)
   end
+
+  def test_a_claim_whose_agent_differs_from_plastic_agent_exits_1_and_writes_no_claim
+    result = claim("--agent", "a", env: { "PLASTIC_SESSION" => "s-1", "PLASTIC_AGENT" => "b" })
+
+    assert_equal [1, "", "plastic: node claim names agent a, but PLASTIC_AGENT names b; give one name to both\n", "open"],
+      [result.code, result.out, result.err, retrieval.node("1", "n1").state]
+  end
+
+  def test_a_claim_whose_agent_is_plastic_agent_is_claimed
+    assert_equal 0, claim("--agent", "a", env: { "PLASTIC_SESSION" => "s-1", "PLASTIC_AGENT" => "a" }).code
+  end
 end

@@ -41,6 +41,15 @@ module Plastic
             outcome(body, text, heading) if (body.lines.map(&:chomp) & stale).any?
           end
 
+          # The outcome with the line of this path taken out of its section, in either form of the setting, or nil when the
+          # section does not list it. A section left with no line goes with its heading.
+          def unlisted(body, heading)
+            listed = [line(""), line(MANDATORY)]
+            return unless body.lines.map(&:chomp).intersect?(listed)
+
+            OutcomeSection.for(body, heading).without(listed).then { |unlisted| unlisted unless unlisted == body }
+          end
+
           # Why the file cannot be recorded, or nil: the questions the sync asks of `selection` before it reads a file
           # into documents, and the resolved file stays inside the reports folder of the intent.
           def problem(selection, folder)

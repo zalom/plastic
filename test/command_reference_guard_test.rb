@@ -15,7 +15,7 @@ class CommandReferenceGuardTest < Minitest::Test
   def test_the_build_holds_every_command_page_and_the_index
     paths = CommandReferenceHelper.files.keys
 
-    assert_equal 78, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
+    assert_equal 83, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
     assert_includes paths, "docs/reference/commands/README.md"
     assert_empty paths.grep(%r{\Adocs/reference/dsl/})
   end
@@ -62,7 +62,7 @@ class CommandReferenceGuardTest < Minitest::Test
 
   def test_a_one_workflow_page_builds_no_workflows_figure
     refute_includes CommandReferenceHelper.files.keys, "docs/reference/commands/intent-new/workflows.svg"
-    assert_includes CommandReferenceHelper.files.keys, "docs/reference/commands/backup/workflows.svg"
+    assert_includes CommandReferenceHelper.files.keys, "docs/reference/commands/store-backup/workflows.svg"
   end
 
   def test_the_detector_reports_an_edited_text_and_a_missing_file_and_leaves_an_equal_one

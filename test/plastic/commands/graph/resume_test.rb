@@ -9,7 +9,7 @@ require_relative "../../../../lib/plastic/commands/node/claim"
 require_relative "../../../../lib/plastic/commands/node/done"
 require_relative "../../../../lib/plastic/commands/node/fail"
 require_relative "../../../../lib/plastic/commands/node/ask"
-require_relative "../../../../lib/plastic/commands/sync/up"
+require_relative "../../../../lib/plastic/commands/store/sync/up"
 
 # Calls and fixtures the graph resume tests share.
 module GraphResumeHelper
@@ -37,14 +37,14 @@ module GraphResumeHelper
 
   def clear_spec(slug, intent)
     store_folder(slug).write("#{intent.dir}/spec.md", CLEAR_SPEC)
-    plastic("sync", "up", "--project", slug, table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", "--project", slug, table: Plastic::CLI::TABLE)
     plastic("intent", "approve", intent.intent_id, "--project", slug, table: Plastic::CLI::TABLE)
   end
 
   def ready_intent(title = "Alpha")
     intent = open_intent(title)
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
     plastic("intent", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
@@ -314,14 +314,14 @@ class GraphResumeRebuildTest < Plastic::TestCase
     register("c")
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "c", "store", "1--first"))
 
-    assert_includes lines(call("--stores", "c")), "then: plastic sync up --project c"
+    assert_includes lines(call("--stores", "c")), "then: plastic store sync up --project c"
   end
 
   def test_sync_up_fails_on_an_intent_folder_with_no_intent_file_and_writes_no_row
     register("c")
     store_folder("c").write("store/1--first/spec.md", CLEAR_SPEC)
 
-    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
+    result = plastic("store", "sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
     assert_empty Plastic::Graph.create(home: @plastic_home, store: "c").retrieval.intents
@@ -332,7 +332,7 @@ class GraphResumeRebuildTest < Plastic::TestCase
     intent = store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
+    result = plastic("store", "sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
     assert_equal [intent.intent_id], Plastic::Graph.create(home: @plastic_home, store: "c").retrieval.intents.map(&:intent_id)
@@ -343,7 +343,7 @@ class GraphResumeRebuildTest < Plastic::TestCase
     store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    assert_includes lines(call("--stores", "c")), "then: plastic sync up --project c"
+    assert_includes lines(call("--stores", "c")), "then: plastic store sync up --project c"
   end
 
   def test_a_store_with_rows_missing_offers_sync_up_as_the_next_command
@@ -351,7 +351,7 @@ class GraphResumeRebuildTest < Plastic::TestCase
     store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    assert_equal "next: plastic sync up --project c", next_line(call("--stores", "c"))
+    assert_equal "next: plastic store sync up --project c", next_line(call("--stores", "c"))
   end
 
   def test_the_log_rows_print_the_line_of_a_write

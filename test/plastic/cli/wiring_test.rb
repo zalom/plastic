@@ -105,13 +105,19 @@ class WiringTest < Plastic::TestCase
     assert Plastic::Wiring.daily_backups?(@plastic_home)
   end
 
-  def test_a_home_with_no_setting_releases_no_held_migration
-    assert_empty Plastic::Wiring.settings(@plastic_home).released
+  def test_every_store_has_the_store_lock
+    assert_instance_of Plastic::StoreLock, Plastic::Wiring.store_lock(@plastic_home, "global")
   end
 
-  def test_the_switch_of_a_held_migration_releases_it
-    seed_config(@plastic_home, "global:\n  migrate:\n    drop_document_revisions: true\n")
+  def test_the_lock_waits_the_shipped_60_seconds
+    assert_equal [60, 60], [Plastic::StoreLock::WAIT, Plastic::Wiring.lock_wait]
+  end
 
-    assert_equal %w[20261119000000 20261119190000 20261120090000], Plastic::Wiring.settings(@plastic_home).released
+  def test_a_lock_wait_set_through_the_seam_replaces_the_shipped_wait
+    Plastic::Wiring.lock_wait = 0
+
+    assert_equal 0, Plastic::Wiring.lock_wait
+  ensure
+    Plastic::Wiring.lock_wait = nil
   end
 end
