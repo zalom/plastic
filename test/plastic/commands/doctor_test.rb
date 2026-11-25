@@ -61,7 +61,7 @@ class DoctorCommandTest < Plastic::TestCase
     result = doctor
 
     assert_equal 1, result.code
-    assert_match(/layout #{SLUG} 1--alpha:\s+outside the layout: plan\.md/, result.out)
+    assert_match(/layout #{SLUG} 1--alpha:\s+retired: plan\.md/, result.out)
     assert_includes result.out + result.err, "next: plastic intent repair --all --project #{SLUG}"
   end
 

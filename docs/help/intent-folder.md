@@ -46,9 +46,9 @@ Everything else the work makes or reads. The agent writes here and no core file.
 | `{id}--{slug}.md` | document | rename to `intent.md` | Older folders named the intent file after the folder. |
 | `revisions.md` | report | amend | Each entry becomes an amended line of work.log with its original date, and the file goes. |
 | `graph.md` | report | remove | graph.json holds the steps of the intent, and the removal is recorded as an amendment. |
-| `plan.md` | legacy rows | move to `resources/references/` | The plan of an older release; graph.json holds the plan now. |
-| `checklist.md` | legacy rows | move to `resources/references/` | The checklist of an older release; the nodes of graph.json hold it now. |
-| `actions/` | legacy rows | move to `resources/references/actions/` | The action files of an older release. The folder moves as one change, and an empty .gitkeep in it is removed. |
+| `plan.md` | legacy rows | rebuild | The plan of an older release; a repair takes its steps, approach and decisions into records and removes it. |
+| `checklist.md` | legacy rows | rebuild | The checklist of an older release; a repair takes its steps and session log into nodes and work log lines and removes it. |
+| `actions/` | legacy rows | rebuild | The action files of an older release; a repair takes each brief into the packet of its node and each result into findings, and removes the folder. |
 | `savepoint.md` | lines | remove | work.log holds its lines, and a sync down removes the file when it still holds the printed bytes. |
 | `handoff.md` | report | move to `resources/tmp/` | A note between two sessions, never a record. |
 | `*.lock` | skip | remove | Machine state of an older release's locks; claims are rows now. |
@@ -66,7 +66,7 @@ What a store folder, stores/SLUG/, may hold beside its intent folders.
 | Name | Status | Purpose or repair |
 | --- | --- | --- |
 | `store/` | allowed | The intent folders, store/index.json, and an empty .gitkeep in a store with no intent. |
-| `backups/` | allowed | Copies of the work and knowledge databases, one folder for each backup. |
+| `backups/` | allowed | Copies of the work and knowledge databases, one folder for each backup. A backup is a copy that no repair rewrites, so its rows stay as they were. |
 | `*.db` | allowed | The work, knowledge, retrieval and legacy databases, with their journal files. |
 | `.gitignore` | allowed | Lists the databases and the backups, so they are never versioned. |
 | `.enola/` | allowed | The snapshot folder of Enola, which a person or an agent runs beside Plastic. |
@@ -102,4 +102,5 @@ What the folder store/ of a store folder may hold beside its intent folders. `pl
 | remove | a newer record holds what this file held |
 | revision | an entry of the old revisions.md, with its own date |
 | link | the repair moved the file this link names |
+| rebuild | the repair took the data of the old plan, checklist and action files into records |
 | report | plastic intent unreport took out a report recorded by mistake |

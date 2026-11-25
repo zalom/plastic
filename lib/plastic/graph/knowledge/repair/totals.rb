@@ -39,7 +39,7 @@ module Plastic
 
         # The words of each kind of structural change, for one and for more.
         Totals::ADDED = ->(_, one, other) { one + other }
-        Totals::KINDS = { rename: %w[rename renames], move: %w[move moves], remove: %w[removal removals] }.freeze
+        Totals::KINDS = { rename: %w[rename renames], move: %w[move moves], remove: %w[removal removals], rebuild: %w[rebuild rebuilds] }.freeze
       end
     end
   end

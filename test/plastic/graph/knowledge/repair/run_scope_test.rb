@@ -33,14 +33,14 @@ class RepairRunScopeTest < Plastic::TestCase
   def test_a_repair_of_one_folder_leaves_the_other_folders_as_they_are
     repair(dirs: [INTENT])
 
-    assert_equal [true, true], [at("#{INTENT}/resources/references/plan.md"), at("#{OTHER}/plan.md")]
+    assert_equal [false, true], [at("#{INTENT}/plan.md"), at("#{OTHER}/plan.md")]
   end
 
   def test_a_held_folder_is_left_as_it_is
     before = intent_files
     repair(held: Set[INTENT])
 
-    assert_equal [before, true], [intent_files, at("#{OTHER}/resources/references/plan.md")]
+    assert_equal [before, false], [intent_files, at("#{OTHER}/plan.md")]
   end
 
   def test_the_old_lock_and_graph_md_go_with_their_rows
@@ -76,7 +76,7 @@ class RepairRunScopeTest < Plastic::TestCase
     folder = amended.map(&:last).grep(/\Amoved /)
 
     assert_equal 1, folder.size
-    assert_includes folder.first, "moved plan.md to resources/references/plan.md, "
+    assert_includes folder.first, "rebuilt plan.md (#{Plastic::Layout.amendment_reason(:rebuild)})"
     assert_includes folder.first, "; removed delivery.lock (#{Plastic::Layout.amendment_reason(:remove)})"
   end
 

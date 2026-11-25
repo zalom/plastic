@@ -2,6 +2,8 @@
 
 require "fileutils"
 require_relative "plan"
+require_relative "rebuild/legacy_rows"
+require_relative "rebuild/empty_folders"
 require_relative "../reports"
 require_relative "../../knowledge/resources/row_moves"
 
@@ -42,23 +44,27 @@ module Plastic
           # Moves the files, merges those already at their target, rewrites the links and writes the amended lines.
           def change(plan)
             merges, moves = plan.moves.partition { |move| move.onto_same_bytes?(@folder) }
-            apply(moves, merges, plan.rewrites, plan.amendments)
+            apply(moves, merges, plan.rewrites, plan.amendments, plan.rebuilds)
           end
 
           def rows = Resources::RowMoves.new(@graphs.databases.fetch(:store))
 
           def repair_plan
             retrieval = @graphs.retrieval
-            Plan.new(@folder, reports: @reports, closed: Resources::SortPlan.closed(retrieval), states: MissingFiles.states(retrieval.intents), **@plan)
+            Plan.new(@folder, reports: @reports, ruled: ruled(retrieval), closed: Resources::SortPlan.closed(retrieval), states: MissingFiles.states(retrieval.intents), **@plan)
           end
 
-          def apply(moves, merges, rewrites, amendments)
+          # The text of the rulings of an intent, by its id.
+          def ruled(retrieval) = ->(id) { retrieval.rulings(id).map(&:text).join("\n") }
+
+          def apply(moves, merges, rewrites, amendments, rebuilds)
             rows.call(moves)
             guarded(moves, rewrites) do
               relocate(moves)
               merge(merges)
               rewrites.each { |rewrite| @folder.write(rewrite.path, rewrite.text) }
               work.amend_intents(amendments)
+              work.rebuild_intents(rebuilds)
             end
           end
 
@@ -87,8 +93,23 @@ module Plastic
           # The old files and each revisions.md, whose entries are amended lines by now, go with their rows.
           def remove(plan)
             removals = [*plan.removals, *plan.revision_files.map { |path| Removal.new(path) }]
+            keep_rows(removals)
             rows.drop(removals)
-            removals.each { |removal| @folder.delete(removal.path) }
+            removals.each { |removal| gone(removal.path) }
+            Rebuild::EmptyFolders.new(@folder).sweep(plan.repaired_dirs)
+          end
+
+          # The rows of the files the repair removes go to legacy.db before they leave the knowledge graph.
+          def keep_rows(removals) = Rebuild::LegacyRows.new(@folder.root, @graphs.databases.fetch(:store)).keep(removals)
+
+          # Deletes the file, and the folders it leaves empty inside the intent folder.
+          def gone(path)
+            @folder.delete(path)
+            dir = File.dirname(path)
+            while dir.count("/") > 1 && Dir.empty?(@folder.path(dir))
+              Dir.rmdir(@folder.path(dir))
+              dir = File.dirname(dir)
+            end
           end
 
           def work = @graphs.work

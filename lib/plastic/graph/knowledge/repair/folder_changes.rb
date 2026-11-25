@@ -12,14 +12,14 @@ module Plastic
         # `amended` line. The files of an old actions/ folder move as one change, named by the folder they land in.
         class FolderChanges
           WHOLE = "actions/"
-          VERBS = { rename: "renamed", move: "moved", remove: "removed" }.freeze
+          VERBS = { rename: "renamed", move: "moved", remove: "removed", rebuild: "rebuilt" }.freeze
 
           attr_reader :dir
 
           # `renamed` and `moved` hold moves, `removed` the paths inside the folder of the files that go.
-          def initialize(dir, renamed:, moved:, removed:)
+          def initialize(dir, renamed:, moved:, removed:, rebuilt: [])
             @dir = dir
-            @changes = { rename: renamed.map { |move| pair(move) }, move: moved.map { |move| pair(move) }.uniq, remove: removed }.transform_values(&:sort)
+            @changes = { rename: renamed.map { |move| pair(move) }, move: moved.map { |move| pair(move) }.uniq, remove: removed, rebuild: rebuilt }.transform_values(&:sort)
           end
 
           # The number of changes of each kind.

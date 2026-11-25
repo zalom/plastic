@@ -12,7 +12,7 @@ class IntentRepairCommandTest < Plastic::TestCase
   fixtures :alpha_synced
 
   OTHER = "store/2--beta"
-  BETA_MOVE = "moved plan.md to resources/references/plan.md (#{Plastic::Layout.amendment_reason(:move)})".freeze
+  BETA_REBUILD = "rebuilt plan.md (#{Plastic::Layout.amendment_reason(:rebuild)})".freeze
 
   def setup
     super
@@ -44,14 +44,14 @@ class IntentRepairCommandTest < Plastic::TestCase
     out = repair("--all", "--dry-run").out
 
     assert_match(/^preview: would repair #{INTENT}: .*removed delivery\.lock /, out)
-    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_REBUILD}"
     assert_includes out, "preview: remove store/.sessions/"
   end
 
   def test_the_dry_run_of_one_intent_names_its_changes_and_no_store_leftover
     out = repair("2", "--dry-run").out
 
-    assert_includes out, "preview: would repair #{OTHER}: #{BETA_MOVE}"
+    assert_includes out, "preview: would repair #{OTHER}: #{BETA_REBUILD}"
     refute_includes out, "store/.sessions/"
   end
 
@@ -81,7 +81,7 @@ class IntentRepairCommandTest < Plastic::TestCase
     result = repair("1")
 
     assert_equal [0, true, true], [result.code, at("#{OTHER}/plan.md"), File.directory?(File.join(store_root, "store/.sessions"))]
-    assert at("#{INTENT}/resources/references/plan.md")
+    refute at("#{INTENT}/plan.md")
   end
 
   def test_an_intent_a_live_driver_holds_is_refused_and_nothing_moves
@@ -97,7 +97,7 @@ class IntentRepairCommandTest < Plastic::TestCase
     claim_node(Plastic.timestamp(Time.now))
     result = repair("--all")
 
-    assert_equal [3, true, true], [result.code, at("#{INTENT}/plan.md"), at("#{OTHER}/resources/references/plan.md")]
+    assert_equal [3, true, false], [result.code, at("#{INTENT}/plan.md"), at("#{OTHER}/plan.md")]
     assert_includes result.err, "held #{INTENT}"
   end
 
@@ -110,7 +110,7 @@ class IntentRepairCommandTest < Plastic::TestCase
   def test_a_lapsed_node_claim_holds_nothing
     claim_node(Plastic.timestamp(Time.now - (20 * 60)))
 
-    assert_equal [0, true], [repair("1").code, at("#{INTENT}/resources/references/plan.md")]
+    assert_equal [0, false], [repair("1").code, at("#{INTENT}/plan.md")]
   end
 
   def test_all_removes_the_store_leftovers

@@ -25,7 +25,7 @@ module RepairPlanFolder
     super
     @folder = Plastic::Graph::Knowledge::StoreFolder.new(File.join(@home, "folder"))
     FILES.each { |rel, text| @folder.write("#{OLD}/#{rel}", text) }
-    @folder.write("#{OTHER}/spec.md", "# Other\n\n[old plan](../7--old/plan.md)\n")
+    @folder.write("#{OTHER}/spec.md", "# Other\n\n[old review](../7--old/review.rb)\n")
   end
 
   def plan(**options) = Plan.new(@folder, zone: "+00:00", **options)
@@ -43,12 +43,11 @@ class RepairPlanTest < Plastic::TestCase
   include RepairPlanFolder
 
   def test_the_old_intent_file_is_renamed_and_the_old_files_move_where_the_layout_names
-    assert_equal [%w[7--old.md intent.md], %w[actions/a1.md resources/references/actions/a1.md], %w[checklist.md resources/references/checklist.md],
-      %w[plan.md resources/references/plan.md], %w[review.rb resources/tmp/review.rb]], moves
+    assert_equal [%w[7--old.md intent.md], %w[review.rb resources/tmp/review.rb]], moves
   end
 
-  def test_graph_md_and_the_lock_files_are_removed
-    assert_equal %W[#{OLD}/delivery.write.lock #{OLD}/graph.md], plan.removals.map(&:path).sort
+  def test_graph_md_the_lock_files_and_the_rebuilt_files_are_removed
+    assert_equal %W[actions/a1.md checklist.md delivery.write.lock graph.md plan.md].map { |rel| "#{OLD}/#{rel}" }, plan.removals.map(&:path).sort
   end
 
   def test_each_revision_becomes_an_amended_line_and_the_file_is_removed
@@ -64,24 +63,17 @@ class RepairPlanTest < Plastic::TestCase
   end
 
   def test_a_closed_intent_gets_one_amended_line_for_its_structural_changes_and_one_for_each_link_and_revision
-    assert_equal [1, 1 + 3 + 1], [structural.size, closed_texts.size]
+    assert_equal [1, 1 + 2 + 1], [structural.size, closed_texts.size]
   end
 
   def test_the_one_line_of_a_folder_lists_each_rename_move_and_removal_with_its_reason
-    assert_equal ["renamed 7--old.md to intent.md (#{reason(:rename)}); moved actions/ to resources/references/actions/, checklist.md to " \
-                  "resources/references/checklist.md, plan.md to resources/references/plan.md, review.rb to resources/tmp/review.rb (#{reason(:move)}); " \
-                  "removed delivery.write.lock, graph.md, revisions.md (#{reason(:remove)})"], structural.map(&:text)
+    assert_equal ["renamed 7--old.md to intent.md (#{reason(:rename)}); moved review.rb to resources/tmp/review.rb (#{reason(:move)}); " \
+                  "removed delivery.write.lock, graph.md, revisions.md (#{reason(:remove)}); " \
+                  "rebuilt actions/a1.md, checklist.md, plan.md (#{reason(:rebuild)})"], structural.map(&:text)
   end
 
   def test_the_line_of_a_folder_has_the_time_of_the_repair_and_names_no_file
     assert_equal [["7", "", nil]], structural.map { |line| [line.intent_id, line.path, line.at] }
-  end
-
-  def test_an_old_actions_folder_moves_as_one_change_whatever_it_holds
-    @folder.write("#{OLD}/actions/a2.md", "# A2\n")
-    @folder.write("#{OLD}/actions/deep/a3.md", "# A3\n")
-
-    assert_equal ["actions/ to"], structural.first.text.scan(%r{actions/\S* to})
   end
 
   def test_an_empty_gitkeep_is_removed_and_not_moved
@@ -89,13 +81,7 @@ class RepairPlanTest < Plastic::TestCase
     found = plan(closed: Set["7"])
 
     assert_equal [false, true], [found.moves.map(&:inside_from).include?("actions/.gitkeep"), found.removals.map(&:inside).include?("actions/.gitkeep")]
-    assert_includes structural(found).first.text, "removed actions/.gitkeep, delivery.write.lock"
-  end
-
-  def test_a_gitkeep_that_holds_text_moves_as_any_file
-    @folder.write("#{OLD}/actions/.gitkeep", "keep\n")
-
-    assert_includes plan.moves.map(&:inside_from), "actions/.gitkeep"
+    assert_includes structural(found).first.text, "rebuilt actions/.gitkeep, actions/a1.md, checklist.md, plan.md"
   end
 
   def test_an_actions_folder_that_held_only_an_empty_gitkeep_is_a_removal_alone
@@ -106,15 +92,14 @@ class RepairPlanTest < Plastic::TestCase
   end
 
   def test_each_link_rewritten_in_a_core_file_of_a_closed_intent_gives_its_reason
-    assert_equal ["intent.md: link plan.md -> resources/references/plan.md; #{reason(:link)}", "spec.md: link 7--old.md -> intent.md; #{reason(:link)}"],
-      closed_texts.grep(/: link (plan\.md|7--old\.md) /).sort
+    assert_equal ["spec.md: link 7--old.md -> intent.md; #{reason(:link)}"], closed_texts.grep(/: link (plan\.md|7--old\.md) /).sort
   end
 
   def test_a_link_in_another_closed_intent_to_a_moved_file_is_rewritten_and_amended
     found = plan(closed: Set["8"])
 
-    assert_equal "# Other\n\n[old plan](../7--old/resources/references/plan.md)\n", found.rewrites.find { |rewrite| rewrite.path == "#{OTHER}/spec.md" }.text
-    assert_equal ["spec.md: link ../7--old/plan.md -> ../7--old/resources/references/plan.md; #{Plastic::Layout.amendment_reason(:link)}"],
+    assert_equal "# Other\n\n[old review](../7--old/resources/tmp/review.rb)\n", found.rewrites.find { |rewrite| rewrite.path == "#{OTHER}/spec.md" }.text
+    assert_equal ["spec.md: link ../7--old/review.rb -> ../7--old/resources/tmp/review.rb; #{Plastic::Layout.amendment_reason(:link)}"],
       found.amendments.select { |line| line.intent_id == "8" }.map(&:text)
   end
 
@@ -127,7 +112,7 @@ class RepairPlanTest < Plastic::TestCase
   def test_a_repair_of_one_intent_still_amends_the_link_a_closed_neighbor_has_to_a_moved_file
     found = plan(dirs: [OLD], closed: Set["8"])
 
-    assert_equal ["spec.md: link ../7--old/plan.md -> ../7--old/resources/references/plan.md; #{Plastic::Layout.amendment_reason(:link)}"],
+    assert_equal ["spec.md: link ../7--old/review.rb -> ../7--old/resources/tmp/review.rb; #{Plastic::Layout.amendment_reason(:link)}"],
       found.amendments.select { |line| line.intent_id == "8" }.map(&:text)
   end
 
@@ -165,7 +150,7 @@ class RepairPlanPreviewTest < Plastic::TestCase
   def test_the_preview_counts_the_folders_and_the_changes_apart
     @folder.write("#{OLD}/spec.md", "# Spec\n\n[gone](missing.md) [the intent](7--old.md)\n")
 
-    assert_equal "preview: 1 intent folder, 8 changes (1 rename, 4 moves, 3 removals); 3 links changed; 4 amended lines; " \
+    assert_equal "preview: 1 intent folder, 8 changes (1 rename, 1 move, 3 removals, 3 rebuilds); 2 links changed; 3 amended lines; " \
                  "1 link left as it is, which --links-left lists", plan(closed: Set["7"]).preview.last
   end
 

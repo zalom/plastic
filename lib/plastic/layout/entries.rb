@@ -25,10 +25,12 @@ module Plastic
     ResourceFolder = Data.define(:role, :path, :purpose, :sync)
 
     # A file or folder of an older layout: how a sync treats it, what a repair does with it and where it goes.
-    LegacyEntry = Data.define(:name, :match, :sync, :repair, :to, :why) do
+    LegacyEntry = Data.define(:name, :match, :sync, :repair, :to, :why, :role) do
+      def initialize(role: nil, **fields) = super
+
       def self.from(data)
         new(name: data.fetch("name"), match: data.fetch("match"), sync: data.fetch("sync"), repair: data.fetch("repair"),
-          to: data["to"], why: data.fetch("why"))
+          to: data["to"], why: data.fetch("why"), role: data["role"]&.to_sym)
       end
 
       def match?(rel) = match.any? { |glob| File.fnmatch?(glob, rel, File::FNM_PATHNAME | File::FNM_DOTMATCH | File::FNM_EXTGLOB) }
