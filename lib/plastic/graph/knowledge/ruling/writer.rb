@@ -9,11 +9,22 @@ module Plastic
     module Knowledge
       class Ruling
         # Writes one intent's rulings: the next D id, and the `supersedes` link
-        # when the call names an older ruling. A text that begins with a copy of
+        # when the call names an older ruling. A text that begins with a label of
         # its own id, such as "D3: Ship it", is stored without it.
         class Writer
-          # The text without the leading copies of `id`, each with the space, colon, period or dash after it.
-          def self.own_text(text, id) = text.sub(/\A(?:#{Regexp.escape(id)}\b[\s:.-]+(?=\S))+/, "")
+          # A label of `id`: copies of the id with spaces between, then a colon, a period before a space or any dash,
+          # or a space before a capital letter, a backtick, a quote or a bracket. A list sign or another id after it,
+          # or a range word, which is lowercase, leaves the text alone, such as "D1 through D8 are binding".
+          def self.label(id)
+            own = Regexp.escape(id)
+            /\A(?:#{own}\s+)*#{own}(?:\s*(?::|\.(?=\s)|[-–—])\s*|\s+(?=[A-Z`"'(\[]))(?=\S)(?![-–—.:,\/])(?!(?!#{own}\b)D\d)/
+          end
+
+          # The text without its leading labels of `id`.
+          def self.own_text(text, id)
+            stripped = text.sub(label(id), "")
+            (stripped == text) ? text : own_text(stripped, id)
+          end
 
           def initialize(databases, retrieval, clock:, session: nil)
             @databases = databases

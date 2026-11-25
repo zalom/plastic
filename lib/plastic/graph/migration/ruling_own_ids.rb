@@ -4,8 +4,8 @@ require_relative "../knowledge/ruling/writer"
 
 module Plastic
   module Graph
-    # Strips from each stored ruling the leading copies of its own id that an agent typed into the text, such as
-    # "D3: Ship it", the way plastic intent rule strips them from a new ruling, and from the ruled line of the work log
+    # Strips from each stored ruling the leading label of its own id that an agent typed into the text, such as
+    # "D3: Ship it", the way plastic intent rule strips it from a new ruling, and from the ruled line of the work log
     # that carries the ruling as "D3 D3: Ship it". The label was an agent's mistake, so it keeps no copy in legacy.db, and its
     # down removes the version alone. Rows are the truth: a sync down prints the stripped lines into the work.log files.
     # Docs: docs/contributing/MIGRATIONS.md.
