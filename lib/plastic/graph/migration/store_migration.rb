@@ -36,16 +36,14 @@ module Plastic
                      "20261120090000" => LegacyPages, "20261121090000" => UtcTimes,
                      "20261123120000" => RoadmapNeeds, "20261124150000" => MistakenRows, "20261124233000" => RulingOwnIds }.freeze
 
-      # What the settings of the machine choose for a run: the sync `selection`, and the held versions `released` by
-      # their switch, which the run applies.
-      Run = Data.define(:selection, :released)
+      # What the settings of the machine choose for a run: the sync `selection`.
+      Run = Data.define(:selection)
 
       def initialize(home, slug, now, run:, compaction: StoreCompaction)
         @home = home
         @slug = slug
         @now = now
         @selection = run.selection
-        @released = run.released
         @notes = []
         @ledger = []
         @compaction = compaction
@@ -54,7 +52,7 @@ module Plastic
       attr_reader :notes, :ledger
 
       def call
-        newer = RecordsNewer.read(knowledge_file, :store, released: @released)
+        newer = RecordsNewer.read(knowledge_file, :store)
         return newer if newer
 
         return compacted(:current) unless behind?
@@ -70,7 +68,7 @@ module Plastic
 
       def root = File.join(@home, "stores", @slug)
 
-      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))], released: @released)
+      def behind? = SchemaGate.behind?(knowledge_file, [File.join(root, Schema.file(:work))])
 
       def knowledge_file = File.join(root, Schema.file(:knowledge))
 
@@ -135,13 +133,13 @@ module Plastic
 
       def migrate_rows(migrating, data)
         keep = LegacyKeep.new(migrating)
-        SchemaMigrator.new(migrating, :store, before: keep, released: @released).call
+        SchemaMigrator.new(migrating, :store, before: keep).call
         data.each { |version, step| step.new(migrating, root, @selection, keep: keep.at(version)).call.line(@slug)&.then { |line| @notes << line } }
         @ledger = keep.entries
       end
 
       # Every store version when the knowledge file is missing, else the versions it lacks.
-      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store, released: @released).pending : MIGRATIONS.versions(:store) - (MIGRATIONS.held(:store) - @released)
+      def pending = File.file?(knowledge_file) ? SchemaState.of_file(knowledge_file, :store).pending : MIGRATIONS.versions(:store)
 
       def pending?(version) = pending.include?(version)
 

@@ -25,7 +25,7 @@ module Plastic
             installation = Installation.of(context)
             context[:from] = installation.installed_version || ReleaseUpdate.of(context).active_version
             context[:to] = context.dry_run ? target(context, installation) : installation.version
-            context[:unreleased] = Plastic::Graph::RecordsNewer.describe(Plastic::Graph::RecordsNewer.in_home(context.scope.plastic_home, released: context.settings.released)) if context.dry_run
+            context[:unreleased] = Plastic::Graph::RecordsNewer.describe(Plastic::Graph::RecordsNewer.in_home(context.scope.plastic_home)) if context.dry_run
           end
 
           gate "Plastic is not installed under this home; run plastic install first", stops: :refusal,

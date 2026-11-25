@@ -39,12 +39,12 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 
-  def test_the_up_row_of_a_migration_names_the_rows_it_kept_in_legacy_db_by_table
+  def test_the_up_row_of_the_drop_names_the_rows_it_kept_in_legacy_db_by_table_and_the_trim_removes_them
     home = old_home
     run_runner(home)
     moved = ledger(home).find { |row| row.first(2) == ["alpha", DROP] }[4]
 
-    assert_equal kept_counts(home), JSON.parse(moved).sort.to_h
+    assert_equal [{ "sqlar" => 2 }, {}], [JSON.parse(moved).sort.to_h, kept_counts(home)]
   end
 
   def test_a_run_on_current_stores_adds_no_row_to_the_ledger
