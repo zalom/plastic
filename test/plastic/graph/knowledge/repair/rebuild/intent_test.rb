@@ -77,7 +77,7 @@ class RebuildIntentTest < Minitest::Test
   end
 
   def test_a_placeholder_gives_no_record
-    files = { "checklist.md" => "<!-- plastic:placeholder -->\n- [ ] x\n", "plan.md" => "<!-- plastic:placeholder -->\n" }
+    files = { "checklist.md" => "<!-- plastic:placeholder -->\n- [ ] ...\n", "plan.md" => "<!-- plastic:placeholder -->\n" }
     rebuild = rebuild("future", files)
 
     assert_equal [[], [], []], [rebuild.nodes, rebuild.lines, rebuild.rulings]
@@ -95,5 +95,17 @@ class RebuildIntentTest < Minitest::Test
     files = { "checklist.md" => "- [x] ACTION_1 - first\n", "actions/ACTION_1.md" => table }
 
     assert_equal table, rebuild("done", files).nodes.first.findings
+  end
+
+  def test_an_intent_that_has_graph_nodes_gets_no_node_but_keeps_its_lines_and_rulings
+    graphed = Intent.new("store/7--x", FILES, status: "done", held: "", graphed: true)
+
+    assert_equal [[], 1, 3], [graphed.nodes, graphed.lines.size, graphed.rulings.size]
+  end
+
+  def test_a_log_row_with_text_after_its_date_keeps_the_text_in_its_line
+    files = { "checklist.md" => "## Session Log\n| Date | Items | Notes |\n|--|--|--|\n| 2026-07-11 (fix round 1) | a | b |\n" }
+
+    assert_equal "Session log of 2026-07-11 (fix round 1): a. b", rebuild("done", files).lines.first.text
   end
 end

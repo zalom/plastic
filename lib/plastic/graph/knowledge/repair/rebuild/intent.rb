@@ -19,11 +19,12 @@ module Plastic
           class Intent
             Line = Data.define(:at, :text)
 
-            def initialize(dir, files, status:, held: "")
+            def initialize(dir, files, status:, held: "", graphed: false)
               @dir = dir
               @files = files.reject { |_, text| Generated.call(text) }
               @status = status
               @held = held
+              @graphed = graphed
             end
 
             attr_reader :dir
@@ -37,9 +38,10 @@ module Plastic
               counts.map { |count, one, many| "#{count} #{(count == 1) ? one : many}" }.join(", ")
             end
 
-            def nodes = Steps.new(items, briefs, @status).call
+            # An intent that already has graph nodes keeps them; its old steps and briefs give none.
+            def nodes = @graphed ? [] : Steps.new(items, briefs, @status).call
 
-            def lines = rows.map { |row| Line.new(at: "#{row.date}T00:00:00Z", text: "Session log of #{row.date}: #{[row.items, row.notes].reject(&:empty?).join(". ")}") }
+            def lines = rows.map { |row| Line.new(at: "#{row.date}T00:00:00Z", text: "Session log of #{[row.date, row.label].reject(&:empty?).join(" ")}: #{[row.items, row.notes].reject(&:empty?).join(". ")}") }
 
             def rulings = [approach, *decisions.reject { |text| held?(text) }].compact
 

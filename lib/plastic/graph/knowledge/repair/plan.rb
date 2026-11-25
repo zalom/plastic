@@ -23,8 +23,8 @@ module Plastic
         # is an amended line of any intent. An empty .gitkeep placeholder is removed, not moved. The links left as they
         # are print only as a count unless `links_left` asks for each one.
         class Plan
-          Scope = Data.define(:dirs, :closed, :held, :states, :ruled) do
-            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}, ruled: ->(_id) { "" }) = super
+          Scope = Data.define(:dirs, :closed, :held, :states, :ruled, :graphed) do
+            def initialize(dirs: nil, closed: Set.new, held: Set.new, states: {}, ruled: ->(_id) { "" }, graphed: Set.new) = super
           end
 
           PLACEHOLDER = ".gitkeep"
@@ -94,7 +94,7 @@ module Plastic
             @sort ||= Resources::SortPlan.new(@folder, reports: @reports, closed: @scope.closed, only: @scope.dirs, held: @scope.held)
           end
 
-          def rebuilding = (@rebuilding ||= Rebuild::Folders.new(@folder, legacy_files("rebuild"), states: @scope.states, ruled: @scope.ruled))
+          def rebuilding = (@rebuilding ||= Rebuild::Folders.new(@folder, legacy_files("rebuild"), states: @scope.states, ruled: @scope.ruled, graphed: @scope.graphed))
 
           def dirs = (@dirs ||= (@scope.dirs || @folder.intent_dirs) - @scope.held.to_a)
 

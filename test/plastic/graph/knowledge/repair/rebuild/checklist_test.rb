@@ -46,4 +46,10 @@ class RebuildChecklistTest < Minitest::Test
   def test_a_checklist_with_no_item_gives_none
     assert_empty Checklist.new("# Checklist\n\nNothing yet.\n").items
   end
+
+  def test_text_after_the_date_in_the_date_cell_stays_with_the_row
+    rows = Plastic::Graph::Knowledge::Repair::Rebuild::Checklist.new("| 2026-07-11 (fix round 1) | ACTION_1 | ok |\n| 2026-07-12 23:18 UTC | x | y |\n| 2026-07-13 | z | |\n").log_rows
+
+    assert_equal [["2026-07-11", "(fix round 1)"], ["2026-07-12", "23:18 UTC"], ["2026-07-13", ""]], rows.map { |row| [row.date, row.label] }
+  end
 end

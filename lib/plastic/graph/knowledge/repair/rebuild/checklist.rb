@@ -8,10 +8,10 @@ module Plastic
           # An old checklist.md: its step lines, each a title and a tick, and the dated rows of its session log table.
           class Checklist
             Item = Data.define(:title, :done)
-            Row = Data.define(:date, :items, :notes)
+            Row = Data.define(:date, :label, :items, :notes)
 
             ITEM = /\A\s*[-*] \[(?<tick>[ xX])\]\s*(?<title>.*)\z/
-            ROW = /\A\|\s*(?<date>\d{4}-\d{2}-\d{2})\s*\|(?<rest>.*)\z/
+            ROW = /\A\|\s*(?<date>\d{4}-\d{2}-\d{2})(?<label>[^|]*)\|(?<rest>.*)\z/
 
             def initialize(text)
               @text = text
@@ -46,7 +46,7 @@ module Plastic
             def row(line)
               match = ROW.match(line) or return
               items, notes = match[:rest].sub(/\|\s*\z/, "").split("|", 2)
-              Row.new(date: match[:date], items: items.to_s.strip, notes: notes.to_s.strip)
+              Row.new(date: match[:date], label: match[:label].strip, items: items.to_s.strip, notes: notes.to_s.strip)
             end
           end
         end
