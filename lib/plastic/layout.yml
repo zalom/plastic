@@ -193,7 +193,7 @@ store_root:
     - name: store/
       purpose: The intent folders, store/index.json, and an empty .gitkeep in a store with no intent.
     - name: backups/
-      purpose: Copies of the work and knowledge databases, one folder for each backup.
+      purpose: Copies of the work and knowledge databases, one folder for each backup. A backup is a copy that no repair rewrites, so its rows stay as they were.
     - name: "*.db"
       purpose: The work, knowledge, retrieval and legacy databases, with their journal files.
     - name: .gitignore

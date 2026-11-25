@@ -157,3 +157,18 @@ class LayoutProblemsTest < Plastic::TestCase
     assert_equal ["legacy entry x moves with no target"], with_legacy(repair: "move")
   end
 end
+
+# A backup is a copy: the layout says no repair rewrites it, and the repair never opens a backups folder.
+class LayoutBackupsTest < Plastic::TestCase
+  def test_the_layout_says_a_backup_is_never_rewritten
+    backups = Plastic::Layout.store_root_allowed.find { |entry| entry.name == "backups/" }
+
+    assert_match(/no repair rewrites/, backups.purpose)
+  end
+
+  def test_no_repair_code_opens_a_backups_folder
+    sources = Dir[File.expand_path("../../lib/plastic/graph/knowledge/repair/**/*.rb", __dir__)]
+
+    assert_empty sources.select { |path| File.read(path).match?(/backups/) }
+  end
+end

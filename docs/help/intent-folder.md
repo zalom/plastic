@@ -66,7 +66,7 @@ What a store folder, stores/SLUG/, may hold beside its intent folders.
 | Name | Status | Purpose or repair |
 | --- | --- | --- |
 | `store/` | allowed | The intent folders, store/index.json, and an empty .gitkeep in a store with no intent. |
-| `backups/` | allowed | Copies of the work and knowledge databases, one folder for each backup. |
+| `backups/` | allowed | Copies of the work and knowledge databases, one folder for each backup. A backup is a copy that no repair rewrites, so its rows stay as they were. |
 | `*.db` | allowed | The work, knowledge, retrieval and legacy databases, with their journal files. |
 | `.gitignore` | allowed | Lists the databases and the backups, so they are never versioned. |
 | `.enola/` | allowed | The snapshot folder of Enola, which a person or an agent runs beside Plastic. |
