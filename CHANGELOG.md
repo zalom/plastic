@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+## 3.0.0-beta.24
+
 - A decision reads as a person writes it, following the owner's ruling of 25 November 2026. `plastic intent rule`, `intent show`, `intent brief` and the node packet print each one as its own line, `D1: text`, with no `ruling:` key before it, and the work log writes a new ruled line the same way; the lines already in it keep their form. `plastic intent rule ID TEXT --adds D1` writes an addition that keeps the core of a decision, `D1.1` and on. `--rewrites D1` replaces the text of a decision whose core changes and removes its additions, and the work log keeps the old text. No number is used twice: a new decision follows the highest number the rulings and the work log name, and an addition follows the highest addition. `--adds` and `--rewrites` name a whole decision and exclude each other. The option `--supersedes` is gone, with no alias.
 - Store migration `20261125100000` deletes each ruling whose whole text is three dots, a placeholder of an old spec template that the legacy import took as a ruling, with every link that names it. It keeps no copy, and its down removes the version alone. Store migration `20261125110000` merges each ruling that replaced another into the decision it replaced: the oldest ruling of each chain keeps its number and takes the text of the newest, the newer rulings and their links go, and the work log keeps every older text. It drops the column `supersedes` of `rulings`, and its down adds the column back empty. After `plastic update`, run `plastic store sync down --project SLUG` so `store/index.json` drops the deleted links.
 
