@@ -53,7 +53,7 @@ class RebuildIntentTest < Minitest::Test
   end
 
   def test_the_plan_gives_the_steps_only_when_the_checklist_lists_none
-    nodes = rebuild("done", "plan.md" => PLAN, "checklist.md" => "# Checklist\n").nodes
+    nodes = rebuild("done", { "plan.md" => PLAN, "checklist.md" => "# Checklist\n" }).nodes
 
     assert_equal [["Not used.", "abandoned"]], nodes.map { |node| [node.title, node.state] }
   end
@@ -85,7 +85,7 @@ class RebuildIntentTest < Minitest::Test
 
   def test_an_evidence_file_that_names_no_step_is_a_node_of_its_own_with_findings
     table = "# Resume restoration\n\n| Requirement | Evidence | Result |\n| --- | --- | --- |\n| a | b | c |\n"
-    node = rebuild("done", "actions/01-restoration.md" => table).nodes.first
+    node = rebuild("done", { "actions/01-restoration.md" => table }).nodes.first
 
     assert_equal ["Resume restoration", "done", table, nil], [node.title, node.state, node.findings, node.packet]
   end

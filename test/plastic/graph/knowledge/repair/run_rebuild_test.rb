@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "delegate"
 require "sqlite3"
 require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/graph/knowledge/repair/run"
@@ -26,6 +27,11 @@ class RepairRunRebuildTest < Plastic::TestCase
   def nodes = store_database.rows("SELECT id, title, state FROM nodes WHERE intent_id = '1' ORDER BY id").map(&:values)
 
   def legacy_paths = SQLite3::Database.new(File.join(store_root, "legacy.db")).execute("SELECT path FROM legacy_intents_data ORDER BY path").flatten
+
+  # A work graph that cannot write the rebuilt records, as a locked database fails.
+  class FailingWork < SimpleDelegator
+    def rebuild_intents(_rebuilds) = raise(IOError, "locked")
+  end
 
   def setup
     super
@@ -100,7 +106,7 @@ class RepairRunRebuildTest < Plastic::TestCase
   def test_a_failed_write_leaves_files_and_rows_as_they_were
     before = [files_without_databases, nodes]
     graphs = store_graphs
-    failing = graphs.with(work: Struct.new(:work) { def method_missing(name, ...) = (name == :rebuild_intents) ? raise(IOError, "locked") : work.public_send(name, ...) }.new(graphs.work))
+    failing = graphs.with(work: FailingWork.new(graphs.work))
 
     assert_raises(IOError) { Plastic::Graph::Knowledge::Repair::Run.new(folder, failing).call }
     assert_equal before, [files_without_databases, nodes]
