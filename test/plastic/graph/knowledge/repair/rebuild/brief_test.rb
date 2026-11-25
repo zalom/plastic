@@ -36,4 +36,11 @@ class RebuildBriefTest < Minitest::Test
   def test_an_empty_result_section_has_no_result
     assert_nil Brief.new("ACTION_1.md", "# t\n\n## Result\n\n## Notes\nx\n").result
   end
+
+  def test_an_evidence_and_result_table_with_any_first_column_is_evidence
+    heads = ["| Evidence | Result |", "| Check | Evidence | Result |", "| Requirement | Evidence | Result |"]
+
+    assert heads.all? { |head| Brief.new("x.md", "# t\n\n#{head}\n| --- | --- |\n| a | b |\n").evidence? }
+    refute_predicate Brief.new("x.md", "# t\n\nThe evidence and result are below.\n"), :evidence?
+  end
 end

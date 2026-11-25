@@ -136,4 +136,12 @@ class RepairRunRebuildTest < Plastic::TestCase
     assert_raises(IOError) { store_graphs.work.rebuild_intents([BrokenRebuild.new]) }
     assert_equal before, [files_without_databases, nodes]
   end
+
+  def test_an_intent_with_graph_nodes_gets_no_node_from_its_old_files_but_its_log_lines
+    store_database.transaction { |batch| batch.put(:nodes, { intent_id: "1", id: "n1", title: "Real", state: "done", updated_at: STAMP }) }
+    repair
+
+    assert_equal [[["n1", "Real", "done"]], 1], [nodes, store_database.rows("SELECT 1 FROM work_log WHERE kind = 'noted' AND text LIKE 'Session log of 2026-07-02%'").size]
+    assert_equal [], %w[plan.md checklist.md actions/ACTION_1.md].select { |rel| File.exist?(path(rel)) }
+  end
 end

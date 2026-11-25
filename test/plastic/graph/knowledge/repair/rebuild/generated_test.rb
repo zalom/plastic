@@ -22,4 +22,8 @@ class RebuildGeneratedTest < Minitest::Test
   def test_a_plan_with_words_is_not_generated
     refute Generated.call("# Plan\n\n1. Search.\n")
   end
+
+  def test_a_marker_quoted_below_the_top_does_not_make_a_filled_file_generated
+    refute Generated.call("# Plan\n\nReal work.\n\nThe stub says `<!-- plastic:placeholder -->` and `backfilled from the record by end-intent`.\n")
+  end
 end

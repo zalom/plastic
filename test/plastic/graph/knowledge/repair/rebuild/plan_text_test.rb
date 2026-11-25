@@ -56,4 +56,11 @@ class RebuildPlanTextTest < Minitest::Test
   def test_an_indented_line_before_any_item_is_dropped
     assert_equal ["a"], PlanText.new("# Plan\n\n## Steps\n   stray\n1. a\n").steps.map(&:title)
   end
+
+  def test_a_template_quoted_in_a_code_block_gives_no_step_decision_or_approach
+    text = "# Plan\n\n## Steps\n1. Real step\n\n```\n## Steps\n1. Step 1 — ...\n2. Step 2 — ...\n```\n\n## Approach\nGo.\n\n```\n## Decisions\n- quoted\n```\n"
+    plan = Plastic::Graph::Knowledge::Repair::Rebuild::PlanText.new(text)
+
+    assert_equal [["Real step"], "Go.", []], [plan.steps.map(&:title), plan.approach, plan.decisions]
+  end
 end
