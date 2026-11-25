@@ -20,6 +20,7 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/knowledge/prints.rb
     plastic/graph/knowledge/prints/contents.rb
     plastic/graph/knowledge/resources/row_moves.rb
+    plastic/graph/knowledge/repair/rebuild/legacy_rows.rb
     plastic/graph/source.rb
     plastic/graph/retrieval/store_read.rb
     plastic/graph/migration/utc_times.rb
