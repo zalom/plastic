@@ -33,6 +33,14 @@ class KnowledgeArchiveSnapshotTest < Plastic::TestCase
     assert_equal ["archive snapshot verification failed", []], [error.message, stages]
   end
 
+  def test_restoring_over_no_tree_publishes_the_saved_one_and_leaves_no_stage
+    save(@entries)
+    FileUtils.remove_entry(@root)
+    @snapshot.restore(@root)
+
+    assert_equal [@entries, []], [Plastic::Graph::Knowledge::Archive::Tree.read(@root), stages]
+  end
+
   def test_restoring_an_intent_with_no_snapshot_refuses
     error = assert_raises(TreeError) { @snapshot.restore(@root) }
 
