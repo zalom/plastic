@@ -15,6 +15,8 @@ module Plastic
 
           sets :intent, :problem, :id, :written, :removed
 
+          forget_stop :problem, :id, :written
+
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
           end
