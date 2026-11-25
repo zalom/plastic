@@ -49,8 +49,11 @@ module Plastic
         @rows.record_print(FILE, text, Plastic.timestamp(@clock.now))
       end
 
-      def print_once
-        return problem if @rows.printed(FILE)
+      # Prints config.yml so it matches the rows. The first print imports the file into rows first. A later call prints
+      # again only when the file is still the recorded print and the rows changed under it, as after a home migration
+      # that removes a retired setting; a file changed by hand is kept and named.
+      def print_current
+        return problem || reprint if @rows.printed(FILE)
 
         reason = unreadable
         return format(UNREADABLE, reason) if reason
@@ -70,6 +73,11 @@ module Plastic
       end
 
       private
+
+      def reprint
+        print unless File.file?(path) && File.read(path) == document
+        nil
+      end
 
       def path = File.join(@home, FILE)
 

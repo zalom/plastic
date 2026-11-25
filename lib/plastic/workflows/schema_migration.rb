@@ -16,7 +16,7 @@ module Plastic
       end
 
       def self.import_config(context)
-        line = context.settings.store.print_once
+        line = context.settings.store.print_current
         context.print(line) if line
       end
     end
