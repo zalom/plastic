@@ -11,7 +11,6 @@ module ResourcesHomes
     "resources/data.csv" => "resources/output/files/data.csv",
     "references/ref.md" => "resources/references/ref.md",
     "review.rb" => "resources/tmp/review.rb",
-    "plan.md" => "resources/references/plan.md",
     "runner-step.last" => "resources/tmp/runner-step.last"
   }.freeze
   OLD_FILES = {
@@ -22,7 +21,7 @@ module ResourcesHomes
     "references/ref.md" => "# Ref\n",
     "review.rb" => "puts 1\n",
     "runner-step.last" => "step\n",
-    "plan.md" => "# Plan\n",
+    "plan.md" => "# Plan\n\n## Steps\n1. Do it.\n",
     "delivery.lock" => "pid\n"
   }.freeze
   HELD = %w[reviews/r1.md resources/notes.md references/ref.md].freeze
