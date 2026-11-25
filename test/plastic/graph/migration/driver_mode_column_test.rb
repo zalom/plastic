@@ -29,10 +29,6 @@ class GraphDriverModeColumnTest < Plastic::TestCase
     assert_includes fresh_columns, "mode"
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, DRIVER_MODE
-  end
-
   def test_the_migration_adds_the_column_and_leaves_the_layout_of_a_new_store
     home = previous_home
     before = columns(home)

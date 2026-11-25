@@ -15,7 +15,7 @@ module Plastic
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },
         "search" => { "source_projects" => "" },
-        "migrate" => { "remove_after_import" => false, "drop_document_revisions" => false },
+        "migrate" => { "remove_after_import" => false },
         "sync" => { "types" => SyncTypes::DEFAULT, "references" => false, "asked" => [] },
         "reports" => { "mandatory" => [] },
         "advisor" => { "enabled" => true },

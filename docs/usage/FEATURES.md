@@ -178,11 +178,9 @@ newest backup, and `plastic store backup list` and `plastic store backup restore
 find the backups as they are. Plastic runs no background process for this, and `backup.daily` is
 off by default.
 
-`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
-table of each store. While it is off, `plastic update` leaves that table in place. Turn it on with
-`plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each store
-loses the table, and a later migration deletes the copy the drop kept, since the table was a mistake.
-The switch is off by default.
+`plastic update` drops the `document_revisions` table of each store, and a later migration
+deletes the copy the drop kept, since the table was a mistake. No setting holds these migrations
+back: every store runs them, and a clean install records them as run.
 
 ## Chat history
 
@@ -252,9 +250,8 @@ that names the files and has no repair, so the doctor lists it and does not fail
 
 A migration that removes the owner's data keeps it in `legacy.db` in the store folder, in the same
 transaction. A migration that removes what an agent made by mistake deletes it and keeps no copy and offers no undo. The ledger in `plastic.db` records each migration that runs on a
-store. The migration that drops `document_revisions`, and the one that trims what it kept in
-`legacy.db`, run only once `migrate.drop_document_revisions` is on; the switch is off by
-default.
+store. Every migration runs for every store, with no switch, including the one that drops
+`document_revisions` and the one that trims what it kept in `legacy.db`.
 
 | Command | What it does |
 | ------- | ------------ |

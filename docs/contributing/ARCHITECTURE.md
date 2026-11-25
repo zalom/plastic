@@ -435,9 +435,8 @@ waited runs nothing. The pending migrations run in ascending order, and every on
 its row commit in one transaction, so a failure leaves the database as it was backed up.
 A migration that removes data keeps it in `legacy.db` in the same transaction, and the ledger in
 `plastic.db` records each migration that runs on a store. `plastic store migration down` undoes the
-newest migration the store records from those rows. A migration ships with no config switch, as the owner ruled on 24 November 2026. Only the
-three migrations held from before that ruling still wait behind one,
-`migrate.drop_document_revisions`, which is off by default. `docs/contributing/MIGRATIONS.md`
+newest migration the store records from those rows. A migration ships with no config switch, as the owner ruled on 24 November 2026, and no
+migration can be held back: every store runs each one it lacks. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,

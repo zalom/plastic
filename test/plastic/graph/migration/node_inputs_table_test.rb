@@ -39,10 +39,6 @@ class GraphNodeInputsTableTest < Plastic::TestCase
     assert_equal [%w[intent_id node_id origin_id path position], false], [fresh_columns("node_inputs").sort, fresh_columns.include?("input")]
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, INPUTS
-  end
-
   def test_the_migration_drops_the_column_and_leaves_the_layout_of_a_new_store
     home = previous_home
     before = columns(home)

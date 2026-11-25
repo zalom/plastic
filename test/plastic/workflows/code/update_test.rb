@@ -10,7 +10,7 @@ class UpdatePlasticTest < Plastic::TestCase
   include ConfigHomes
 
   # The store versions an update applies while every switch is off.
-  RUNNABLE = Plastic::Graph::MIGRATIONS.versions(:store) - Plastic::Graph::MIGRATIONS.held(:store)
+  RUNNABLE = Plastic::Graph::MIGRATIONS.versions(:store)
 
   def update(env: {}, **options)
     facts = { channel: nil }.merge(options)

@@ -90,7 +90,7 @@ release.
 
 Every beta and every stable release passes two installs in a throwaway home before the push that
 publishes it: a clean install in an empty home, and an update from the previous release with that
-release's own installer. Both must pass. An alpha release needs neither.
+release's own installer. Both must pass.
 
 Set each variable from a literal path, never from `$HOME` in the same line. Build the release
 files from the release branch first:

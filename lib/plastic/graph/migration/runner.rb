@@ -41,13 +41,12 @@ module Plastic
       end
 
       # `only` names one store to migrate; the home database is checked either way. `selection` is the sync selection of
-      # the machine, which says which kept files a store keeps. `released` names the held migrations whose switch is on
-      # in the settings of the home.
-      def initialize(home:, now:, selection:, only: nil, released: [])
+      # the machine, which says which kept files a store keeps.
+      def initialize(home:, now:, selection:, only: nil)
         @home = home
         @only = only
         @now = now
-        @run = StoreMigration::Run.new(selection:, released:)
+        @run = StoreMigration::Run.new(selection:)
       end
 
       def call

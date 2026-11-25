@@ -10,7 +10,7 @@ class GraphLegacyPagesTest < Plastic::TestCase
   PAGES = "20261120090000"
   ALL = [DROP, TRIM, PAGES].freeze
 
-  def migrate(home, released) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call.tap { forget(home) }
+  def migrate(home) = migrate_store(home)
 
   def pages(home) = %w[page_count freelist_count].map { |pragma| alpha_rows(home, "legacy.db", "PRAGMA #{pragma}").flatten.first }
 
@@ -25,7 +25,7 @@ class GraphLegacyPagesTest < Plastic::TestCase
   # A store that ran the drop and the trim as release 3.0.0-beta.5 shipped them, which left the freed pages in legacy.db: the owner's time rows stay in it, and a table that was dropped leaves free pages.
   def trimmed_home
     previous_home_with_times.tap do |home|
-      migrate(home, [DROP, TRIM])
+      migrate_without(home, [PAGES])
       SQLite3::Database.open(alpha_file(home, "legacy.db")) { |database| database.execute_batch(JUNK) }
     end
   end
@@ -37,15 +37,15 @@ class GraphLegacyPagesTest < Plastic::TestCase
   def test_the_migration_gives_every_free_page_of_legacy_db_back_and_says_how_many
     home = trimmed_home
     free = pages(home).last
-    report = migrate(home, ALL)
+    report = migrate(home)
 
     assert_equal [0, true], [pages(home).last, recorded(home).include?(PAGES)]
     assert_includes report.notes, "migrate: alpha gave #{free} free pages of legacy.db back to the disk"
   end
 
   def test_a_store_that_ran_the_trim_before_ends_the_same_as_one_that_runs_all_three_together
-    apart = trimmed_home.tap { |home| migrate(home, ALL) }
-    together = previous_home_with_times.tap { |home| migrate(home, ALL) }
+    apart = trimmed_home.tap { |home| migrate(home) }
+    together = previous_home_with_times.tap { |home| migrate(home) }
 
     assert_equal [pages(apart), contents(apart)], [pages(together), contents(together)]
   end
@@ -61,21 +61,13 @@ class GraphLegacyPagesTest < Plastic::TestCase
     Plastic::Graph.create(home:, store: "alpha")
     forget(home)
     SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [PAGES]) }
-    migrate(home, ALL)
+    migrate(home)
 
     assert_equal [false, true], [File.exist?(alpha_file(home, "legacy.db")), recorded(home).include?(PAGES)]
   end
 
-  def test_while_the_switch_is_off_the_migration_stays_held_with_the_trim
-    home = trimmed_home
-    free = pages(home)
-    migrate(home, [])
-
-    assert_equal [false, free], [recorded(home).include?(PAGES), pages(home)]
-  end
-
   def test_the_migration_goes_down_by_removing_its_version_alone
-    home = utc_down(trimmed_home.tap { |trimmed| migrate(trimmed, ALL) })
+    home = utc_down(trimmed_home.tap { |trimmed| migrate(trimmed) })
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

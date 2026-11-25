@@ -52,10 +52,6 @@ class GraphEmptyRoadmapTablesTest < Plastic::TestCase
     assert_empty work_tables(home) & TABLES
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, EMPTY
-  end
-
   def test_an_old_store_with_the_five_empty_tables_migrates_to_none
     home = remade
     migrate_store(home)

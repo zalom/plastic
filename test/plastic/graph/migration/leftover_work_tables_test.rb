@@ -71,10 +71,6 @@ class GraphLeftoverWorkTablesTest < Plastic::TestCase
     assert_empty work_tables(home) & TABLES
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, LEFTOVERS
-  end
-
   def test_a_store_with_the_ten_empty_tables_migrates_to_none_and_records_the_version
     home = remade
     migrate_store(home)

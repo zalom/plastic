@@ -90,8 +90,4 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
 
     assert_equal [VERSION, {}, false, 0], [undone.version, undone.moved, recorded(home).include?(VERSION), own_id_left(home)]
   end
-
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, VERSION
-  end
 end

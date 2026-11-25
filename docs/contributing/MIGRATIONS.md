@@ -109,7 +109,7 @@ A mistake runs in its own migration. Migration `20261124150000` deletes what mig
 mistake. It drops the kept table, then rewrites `legacy.db` with `VACUUM` after the transaction
 commits, because SQLite leaves the text of a deleted row in a free page until then. A store that
 never ran `20261119000000` has nothing to delete, and a store with nothing else in `legacy.db`
-ends with no `legacy.db`. The migration is not held behind a switch: it removes only a mistake,
+ends with no `legacy.db`. The migration has no switch: it removes only a mistake,
 and the owner's data stays where it was. A backup made before it still holds the rows, so delete
 an old backup to remove them for good.
 
@@ -226,20 +226,15 @@ each row that the migration kept. The stop is the same: bring that checkout past
 
 A new migration ships clean, with no config switch: the owner ruled so on 24 November 2026, and
 `docs/release-lines.md` says so. The clean install and the update from the previous release that
-prove each beta and stable release run it, as that page says. Do not add a version to `HELD`.
+prove each beta and stable release run it, as that page says. Plastic has no way to hold a
+migration back: every store runs every migration it lacks, and a new store records every version,
+because it is built from `schema.rb`.
 
-Three migrations from before that ruling still wait behind a switch. `MigrationList::HELD` in
-`lib/plastic/graph/schema/migration_list.rb` maps each held version to its switch. Migration
-`20261119000000`, its trim `20261119190000` and the page migration `20261120090000` are held
-behind `migrate.drop_document_revisions`, so the three run in the same `plastic update`. The
-cleanup `20261124150000` is not held: it removes a mistake only.
-
-- While the switch is off, a run leaves the held version out of the pending ones. A store that
-  lacks only that version is current, so every command opens it and `plastic update` leaves it.
-- A store that records a held version is current too. A new store records every version, held
-  or not, because it is built from `schema.rb`.
-- Once the switch is on, `plastic update` runs the held version as it runs any other. The runner
-  takes the released versions from `Wiring::Settings#released`.
+Migration `20261119000000`, its trim `20261119190000` and the page migration `20261120090000` once
+waited behind the switch `migrate.drop_document_revisions`. The owner ruled on 24 November 2026
+that changes ship clean, so the switch and the code that held a migration back are gone, and the
+three run for every store in the next `plastic update`. A config file that set the switch keeps a
+key that no command reads, and `plastic config get` names it as an unknown key.
 
 Before the ruling of 24 November 2026, a migration that changed stored data waited behind a
 switch, with two exceptions. Migration `20261121090000`, which writes every stored
