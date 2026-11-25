@@ -28,7 +28,7 @@ module Plastic
 
         # The lines of the text answer: each ruling, each constraint, then what was left out.
         def lines
-          [*rulings.map { |ruling| "ruling: #{ruling.fetch("id")} #{ruling.fetch("text")}" },
+          [*rulings.map { |ruling| "#{ruling.fetch("id")}: #{ruling.fetch("text")}" },
             *constraints.map { |text| "constraint: #{text}" },
             *omitted.map { |kind, count| "omitted: #{count} #{kind}; plastic intent brief #{@intent_id} lists them all" }]
         end

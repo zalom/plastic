@@ -54,7 +54,8 @@ module Plastic
 
       def self.rulings(rulings) = Plastic::Graph::Knowledge::RulingOrder.sorted(rulings).map { |ruling| ruling_line(ruling) }
 
-      def self.ruling_line(ruling) = "ruling: #{ruling.id} #{ruling.text}"
+      # One decision as a person writes it: D1: text, or D1.1: text for an addition.
+      def self.ruling_line(ruling) = "#{ruling.id}: #{ruling.text}"
 
       # Words as a person lists them: D1, D1.2 and D1.3.
       def self.joined(words) = [words[0...-1].join(", "), words.last].reject(&:empty?).join(" and ")
