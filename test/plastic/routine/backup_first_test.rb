@@ -21,15 +21,15 @@ class RoutineBackupFirstTest < Plastic::TestCase
   end
 
   def test_sync_up_takes_a_backup_first
-    assert_equal [nil, "sync up"], first_backup_reason(%w[sync up --project alpha])
+    assert_equal [nil, "store sync up"], first_backup_reason(%w[store sync up --project alpha])
   end
 
   def test_sync_down_takes_a_backup_first
-    assert_equal [nil, "sync down"], first_backup_reason(%w[sync down --project alpha])
+    assert_equal [nil, "store sync down"], first_backup_reason(%w[store sync down --project alpha])
   end
 
   def test_backup_restore_takes_a_backup_first
-    assert_includes first_backup_reason(%w[backup restore --store alpha --latest]), "backup restore"
+    assert_includes first_backup_reason(%w[store backup restore --project alpha --latest]), "store backup restore"
   end
 
   def test_intent_end_takes_a_backup_first
@@ -39,7 +39,7 @@ class RoutineBackupFirstTest < Plastic::TestCase
   def test_a_call_inside_twelve_hours_of_the_newest_backup_takes_none
     home = stale_home
     add_intent(home)
-    clocked_call(home, "sync", "up", "--project", "alpha", at: ELEVEN_HOURS_LATER)
+    clocked_call(home, "store", "sync", "up", "--project", "alpha", at: ELEVEN_HOURS_LATER)
 
     assert_equal [nil], backup_reasons(home)
   end
@@ -49,7 +49,7 @@ class RoutineBackupFirstTest < Plastic::TestCase
     add_intent(home)
     Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
     File.write(store_file(home, "work_graph"), "not a database")
-    result = clocked_call(home, "sync", "up", "--project", "alpha")
+    result = clocked_call(home, "store", "sync", "up", "--project", "alpha")
 
     assert_match(/^backup: alpha was not backed up \(.*work_graph\.db.*\); the call goes on$/, result.out + result.err)
   end
@@ -72,7 +72,7 @@ class RoutineBackupFirstRetentionTest < Plastic::TestCase
 
   def old_backup_kept?(daily:)
     home = retention_home(daily:)
-    clocked_call(home, "sync", "up", "--project", "alpha", at: LUNCHTIME)
+    clocked_call(home, "store", "sync", "up", "--project", "alpha", at: LUNCHTIME)
     folder_names(home).include?(stamp(OLD_BACKUP))
   end
 

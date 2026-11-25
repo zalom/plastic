@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_24_120000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_25_090000) do
   create_table :command_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -83,16 +83,17 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.real :cost_usd
   end
 
-  # The live driver of an intent: the session that acts on it, as `claimed_by` names the session that holds a node. `seen_at` is its last renewal.
+  # The live driver of an intent: the session that acts on it, as `claimed_by` names the session that holds a node. `seen_at` is its last renewal, `agent` the agent that took it.
   create_table :drivers, key: %i[intent_id origin_id] do |t|
     t.kept :intent_id, :origin_id, :session_id
-    t.text :claimed_at, :seen_at
+    t.text :claimed_at, :seen_at, :mode, :agent
   end
 
   create_table :edges, key: %i[intent_id from to kind origin_id] do |t|
     t.kept :intent_id, :from, :to, :kind, :origin_id
   end
 
+  # One line of an intent's work log. `old_text` and `new_text` hold the exact old and new text of an amended change to the text inside a file.
   create_table :work_log, key: %i[intent_id position origin_id] do |t|
     t.kept :intent_id
     t.number :position
@@ -102,6 +103,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11
     t.kept :kind
     t.blank :path, :sha256, :text
     t.kept :origin_id
+    t.text :old_text, :new_text
   end
 
   create_table :completions, key: %i[intent_id origin_id] do |t|

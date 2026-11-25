@@ -2,6 +2,7 @@
 
 require_relative "legacy_path"
 require_relative "reports"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -13,9 +14,8 @@ module Plastic
       # report of its intent, references/ only when its setting is on, and tmp/
       # never. `rel` is the path inside the intent folder.
       class SyncSelection
-        NOTES = %w[graph.json context.json work.log].freeze
-        REFERENCES = "resources/references/"
-        OUTPUT = %w[resources/output/reports/ resources/output/files/].freeze
+        REFERENCES = Layout.resource(:references)
+        OUTPUT = Layout.output_folders
         INTENT_FILE = %r{\Astore/(?<intent_id>[^/]*?)--[^/]*/(?<rel>.+)\z}
 
         def self.none = new(types: [], references: false, asked: [])
@@ -25,9 +25,7 @@ module Plastic
 
         def self.output?(rel) = OUTPUT.any? { |folder| rel.start_with?(folder) }
 
-        def self.root_note?(rel) = !rel.include?("/") && type_of(rel) == "md"
-
-        def self.note?(rel) = root_note?(rel) || NOTES.include?(rel) || LegacyPath.legacy?(rel)
+        def self.note?(rel) = Layout.read?(rel)
 
         def self.type_of(rel) = File.extname(rel).delete_prefix(".").downcase
 

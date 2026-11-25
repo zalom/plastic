@@ -75,7 +75,7 @@ module Plastic
           raise(error_for(message), message) if message
 
           names = verified(timestamp, held)
-          safety = Publisher.new(@target, now: @now, reason: "backup restore").call
+          safety = Publisher.new(@target, now: @now, reason: "store backup restore").call
           swap(names.map { |name| replacement(name, timestamp) })
           safety.fetch(:name).split("/").last
         end

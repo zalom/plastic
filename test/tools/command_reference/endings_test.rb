@@ -60,7 +60,7 @@ class CommandReferenceEndingsTest < Minitest::Test
   end
 
   def test_a_module_call_raise_is_an_exit_2_row_on_the_module_file
-    usage = exit_rows("backup restore", 2).select { |ending| ending.file.end_with?("cli/backup_store.rb") }
+    usage = exit_rows("store backup restore", 2).select { |ending| ending.file.end_with?("cli/one_store.rb") }
 
     refute_empty usage
     assert(usage.all? { |ending| source_line(ending.file, ending.line).include?("raise") })
@@ -85,17 +85,17 @@ class CommandReferenceEndingsTest < Minitest::Test
     end
   end
 
-  def raise_texts(words) = page(words).endings.select { |ending| ending.kind == :raise && ending.file.end_with?("backup_store.rb") }.map { |ending| source_line(ending.file, ending.line) }
+  def raise_texts(words) = page(words).endings.select { |ending| ending.kind == :raise && ending.file.end_with?("one_store.rb") }.map { |ending| source_line(ending.file, ending.line) }
 
   def test_a_backup_command_lists_only_the_raises_its_call_can_reach
-    texts = raise_texts("backup list")
+    texts = raise_texts("store backup list")
 
     refute_empty texts
     assert(texts.none? { |text| text.include?("give") || text.include?("error.message") })
   end
 
   def test_a_backup_command_with_a_check_call_lists_the_raises_that_check_reaches
-    %w[backup\ restore backup\ purge].each do |words|
+    ["store backup restore", "store backup purge"].each do |words|
       texts = raise_texts(words)
 
       assert_includes texts.join("\n"), "give", words
@@ -104,10 +104,10 @@ class CommandReferenceEndingsTest < Minitest::Test
   end
 
   def test_the_own_check_call_of_a_backup_command_is_part_of_its_own_call
-    check = page("backup restore").own_call.check
+    check = page("store backup restore").own_call.check
 
-    assert_equal "lib/plastic/commands/backup/restore.rb", check.file
+    assert_equal "lib/plastic/commands/store/backup/restore.rb", check.file
     assert_includes check.code.join("\n"), "one_of"
-    assert_nil page("backup list").own_call.check
+    assert_nil page("store backup list").own_call.check
   end
 end

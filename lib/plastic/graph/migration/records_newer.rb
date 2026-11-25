@@ -9,16 +9,16 @@ module Plastic
     # code, so the run leaves it as it is and names the versions. Reading it opens the file read only.
     RecordsNewer = Data.define(:versions) do
       # The answer for the file at `path`, or nil when the file is missing or its versions are all known.
-      def self.read(path, kind, released: [])
+      def self.read(path, kind)
         return unless File.file?(path)
 
-        reading = SchemaState.of_file(path, kind, released:)
+        reading = SchemaState.of_file(path, kind)
         new(reading.unknown) if reading.ahead?
       end
 
       # Each database of the home that records unknown versions, by store slug or "home", read only.
-      def self.in_home(home, released: [])
-        found = Dir.glob(File.join(home, "stores", "*", Schema.file(:knowledge))).to_h { |file| [File.basename(File.dirname(file)), read(file, :store, released:)] }
+      def self.in_home(home)
+        found = Dir.glob(File.join(home, "stores", "*", Schema.file(:knowledge))).to_h { |file| [File.basename(File.dirname(file)), read(file, :store)] }
         found["home"] = read(File.join(home, "plastic.db"), :home)
         found.compact.transform_values(&:versions)
       end

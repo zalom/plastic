@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require "tmpdir"
 require_relative "../config/upgrade"
 require_relative "home_ignore"
 require_relative "../installations"
@@ -52,7 +51,7 @@ module Plastic
 
       def newer? = ReleaseFeed.newer?(version, installed_version)
 
-      def core_files = CoreFiles.new(package_root).call
+      def core_files = CoreFiles.new(package_root, status_line: package.choices.statusline?).call
 
       def install_agents(selected:, statusline: nil, already_registered: [])
         kind = installed? ? :update : :install
@@ -81,7 +80,7 @@ module Plastic
 
       def print_config
         HomeIgnore.new(plastic_home).apply
-        line = package.settings.store.print_once
+        line = package.settings.store.print_current
         puts "   #{line}" if line
       end
 
@@ -94,7 +93,7 @@ module Plastic
       end
 
       def migrate_databases
-        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now, selection: package.settings.selection, released: package.settings.released).call.lines.each { |line| puts "   #{line}" }
+        Graph::SchemaRunner.new(home: plastic_home, now: package.clock.now, selection: package.settings.selection).call.lines.each { |line| puts "   #{line}" }
       end
 
       def report_config_upgrade

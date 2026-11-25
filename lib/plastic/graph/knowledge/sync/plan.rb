@@ -10,6 +10,7 @@ require_relative "readability"
 require_relative "second_home"
 require_relative "old_savepoints"
 require_relative "unread_rows"
+require_relative "strays"
 
 module Plastic
   module Graph
@@ -19,9 +20,9 @@ module Plastic
         # store whose INDEX.md waits to be imported, `problem` a call that
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
-        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason. `new_types` are the file types a sync up skips and has not told about yet. `unread` holds the rows of the paths the sync no longer reads.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints, :new_types, :unread) do
-          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, new_types: [], unread: UnreadRows.none, **fields) = super
+        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason. `new_types` are the file types a sync up skips and has not told about yet. `unread` holds the rows of the paths the sync no longer reads. `strays` holds the files the layout does not allow, which a sync names and leaves alone.
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home, :old_savepoints, :new_types, :unread, :strays) do
+          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, old_savepoints: OldSavepoints.none, new_types: [], unread: UnreadRows.none, strays: Strays.none, **fields) = super
         end
 
         # Each entry's action, and what the sync writes.
@@ -35,7 +36,7 @@ module Plastic
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
 
-          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
+          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic store sync up to import it first"
 
           def direction = resolution.direction
 

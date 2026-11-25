@@ -10,7 +10,8 @@ module ResourcesHomes
     "resources/notes.md" => "resources/tmp/notes.md",
     "resources/data.csv" => "resources/output/files/data.csv",
     "references/ref.md" => "resources/references/ref.md",
-    "review.rb" => "resources/output/files/review.rb",
+    "review.rb" => "resources/tmp/review.rb",
+    "plan.md" => "resources/references/plan.md",
     "runner-step.last" => "resources/tmp/runner-step.last"
   }.freeze
   OLD_FILES = {

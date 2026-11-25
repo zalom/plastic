@@ -35,7 +35,7 @@ class NextTest < Plastic::TestCase
 
   def write_spec(intent, text)
     write("#{intent.dir}/spec.md", text)
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
   end
 
   def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n")
@@ -167,7 +167,7 @@ class NextWithoutGoAheadTest < Plastic::TestCase
   def test_a_spec_without_a_go_ahead_asks_the_owner_and_offers_no_command
     intent = open_intent
     write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n")
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
     result = plastic("next", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 0, out: "1. Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve 1.\nbecause: the owner must give the go-ahead for intent 1\n"
@@ -189,7 +189,7 @@ class NoNextNoneTest < Plastic::TestCase
   def test_a_hand_off_with_no_command_prints_no_next_line_and_says_why
     intent = open_intent
     write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [done] ships\n")
-    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("store", "sync", "up", table: Plastic::CLI::TABLE)
     result = plastic("next", table: Plastic::CLI::TABLE)
 
     assert_equal [0, []], [result.code, next_lines(result)]

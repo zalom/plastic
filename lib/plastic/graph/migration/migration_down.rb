@@ -4,13 +4,15 @@ require_relative "../database"
 require_relative "../backup/writer"
 require_relative "../schema/migration_list"
 require_relative "../schema/state"
+require_relative "driver_agent_column"
+require_relative "work_log_text_columns"
+require_relative "driver_mode_column"
 require_relative "leftover_work_tables"
 require_relative "legacy_keep"
 require_relative "legacy_store"
 require_relative "legacy_table"
 require_relative "migration_ledger"
 require_relative "migration_reason"
-require_relative "revision_rows"
 require_relative "node_deadline_column"
 require_relative "node_inputs_column"
 require_relative "node_judge_columns"
@@ -42,9 +44,10 @@ module Plastic
       Undone = Data.define(:version, :moved, :built, :removed, :backup, :ledger_gap)
 
       # The versions whose down builds rows the older code expects, beside the rows it puts back.
-      REBUILDS = { "20261119000000" => RevisionRows, "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
+      REBUILDS = { "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
                    "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables,
-                   "20261124120000" => LeftoverWorkTables }.freeze
+                   "20261124120000" => LeftoverWorkTables, "20261124173000" => DriverModeColumn,
+                   "20261124200000" => DriverAgentColumn, "20261124210000" => WorkLogTextColumns }.freeze
       # The versions whose down takes off the links the migration wrote, and answers how many.
       REMOVALS = { "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }
@@ -122,7 +125,7 @@ module Plastic
       end
 
       def backed_up
-        Backup::Writer.new(@store.root, @slug, now: @now, reason: "migration down").call.fetch(:name)
+        Backup::Writer.new(@store.root, @slug, now: @now, reason: "store migration down").call.fetch(:name)
       rescue Backup::Writer::Error, SQLite3::Exception, SystemCallError => error
         raise BackupFailed, "the backup of #{@slug} failed (#{MigrationReason.of(error)}), so the down changed nothing"
       end

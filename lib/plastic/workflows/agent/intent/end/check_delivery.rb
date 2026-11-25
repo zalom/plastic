@@ -13,17 +13,17 @@ module Plastic
           class CheckDelivery < AgentWorkflow
             summary "Has the agent record how the work of the intent was delivered."
             step "record the delivery", done: ->(context) { context.delivery_recorded },
-              say: "%{delivery_found}Record the delivery of intent %{intent_id} under ## Verification in %{intent_folder}/outcome.md with one line. " \
+              say: "%{delivery_found}Record the delivery of intent %{intent_id} under ## Verification in %{intent_folder}/outcome.md with one plastic intent note line. " \
                 "For code, use version control, such as Git, as the project's AGENTS.md or CLAUDE.md defines it, " \
                 "or as the project's history shows when neither does: " \
                 "merge the pull request of intent %{intent_id} into the intent's base, " \
                 "and leave it open only when the owner asked. %{template_found}" \
-                "Then add '- Merged: <branch> into <base> at <commit or pull request>', or '- Committed: <branch> at <commit>' " \
-                "when the project commits straight to its branch. " \
-                "Add '- Delivered: resources/output/<path> because <reason>' only for work that no version control holds: " \
+                "Then run plastic intent note %{intent_id} '<branch> into <base> at <commit or pull request>' --kind Merged, " \
+                "or plastic intent note %{intent_id} '<branch> at <commit>' --kind Committed when the project commits straight to its branch. " \
+                "Run plastic intent note %{intent_id} 'resources/output/<path> because <reason>' --kind Delivered only for work that no version control holds: " \
                 "put a report of the work in %{intent_folder}/resources/output/reports and record it with " \
                 "plastic intent report %{intent_id} PATH, put other files in %{intent_folder}/resources/output/files, " \
-                "and name them in the line. Then run plastic sync up and plastic intent end %{intent_id} again. Plastic runs no version control command; it records what you write."
+                "and name them in the line. Then run plastic intent end %{intent_id} again. Plastic runs no version control command; it records what you write."
 
             outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}",
               because: "the agent records the delivery in outcome.md"

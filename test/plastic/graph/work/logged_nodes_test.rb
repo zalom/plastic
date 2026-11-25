@@ -21,7 +21,9 @@ class WorkLoggedNodesTest < Plastic::TestCase
 
   def dir = retrieval.intent("1").dir
 
-  def heads = store_database.rows("SELECT path, sha256 FROM document_heads WHERE path = 'findings.md'")
+  def heads = store_database.rows("SELECT path, sha256 FROM document_heads WHERE path = 'outcome.md' AND sha256 = '#{Digest::SHA256.hexdigest(FINDINGS)}'")
+
+  def head_shas = store_database.rows("SELECT sha256 FROM document_heads WHERE path = \x27outcome.md\x27").map { |row| row.fetch("sha256") }
 
   def kinds = retrieval.structure.work_log("1").map(&:kind)
 
@@ -36,23 +38,23 @@ class WorkLoggedNodesTest < Plastic::TestCase
   end
 
   def test_done_node_writes_node_run_document_and_log_in_one_transaction
-    write("#{dir}/findings.md", FINDINGS)
+    write("#{dir}/outcome.md", FINDINGS)
     finish
 
     assert_equal ["done", true, 1], [state, run_ended?, kinds.count("done")]
-    assert_equal [{ "path" => "findings.md", "sha256" => Digest::SHA256.hexdigest(FINDINGS) }], heads
+    assert_equal [{ "path" => "outcome.md", "sha256" => Digest::SHA256.hexdigest(FINDINGS) }], heads
   end
 
   def test_the_files_the_node_read_are_printed_from_the_rows_after_the_move
-    write("#{dir}/findings.md", FINDINGS)
+    write("#{dir}/outcome.md", FINDINGS)
     work.done_node(intent_id: "1", id: "n1", by: "delivery", findings: "ok", files: [])
 
-    assert_equal FINDINGS, folder.read("#{dir}/findings.md")
-    assert_equal Digest::SHA256.hexdigest(FINDINGS), retrieval.stored.printed.fetch("#{dir}/findings.md")
+    assert_equal FINDINGS, folder.read("#{dir}/outcome.md")
+    assert_equal Digest::SHA256.hexdigest(FINDINGS), retrieval.stored.printed.fetch("#{dir}/outcome.md")
   end
 
   def test_a_failing_read_rolls_back_the_node_move
-    write("#{dir}/findings.md", FINDINGS)
+    write("#{dir}/outcome.md", FINDINGS)
     refuse_new_heads
     before = kinds
 
@@ -66,7 +68,7 @@ class WorkLoggedNodesTest < Plastic::TestCase
   def move_a_new_node(move, number)
     cli("node", "add", "1", "More", "--criterion", KEY)
     cli("node", "claim", "1", "n#{number}", "--agent", "tester")
-    write("#{dir}/findings.md", "# #{move}\n")
+    write("#{dir}/outcome.md", "# #{move}\n")
     work.public_send(move, intent_id: "1", id: "n#{number}", by: "delivery", files: [], **MOVES.fetch(move).first)
   end
 
@@ -74,19 +76,19 @@ class WorkLoggedNodesTest < Plastic::TestCase
     MOVES.each_with_index do |(move, (_fields, expected)), index|
       move_a_new_node(move, index + 2)
 
-      assert_equal [expected, Digest::SHA256.hexdigest("# #{move}\n")], [retrieval.node("1", "n#{index + 2}").state, heads.first.fetch("sha256")], move.to_s
+      assert_equal [expected, true], [retrieval.node("1", "n#{index + 2}").state, head_shas.include?(Digest::SHA256.hexdigest("# #{move}\n"))], move.to_s
     end
   end
 
   def test_a_move_another_session_holds_reads_no_file
-    write("#{dir}/findings.md", FINDINGS)
+    write("#{dir}/outcome.md", FINDINGS)
 
     assert_nil work.done_node(intent_id: "1", id: "n1", by: "someone-else", findings: "ok", files: [])
     assert_empty heads
   end
 
   def test_a_move_with_no_files_option_reads_every_changed_file
-    write("#{dir}/findings.md", FINDINGS)
+    write("#{dir}/outcome.md", FINDINGS)
     work.done_node(intent_id: "1", id: "n1", by: "delivery", findings: "ok")
 
     assert_equal 1, heads.size

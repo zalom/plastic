@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+require_relative "../../layout"
+
 module Plastic
   module Graph
     module Knowledge
       class NewTypes
-        OUTPUT = "resources/output/**/*"
+        OUTPUT = "#{Layout.output_root}**/*"
 
         def initialize(folder)
           @folder = folder

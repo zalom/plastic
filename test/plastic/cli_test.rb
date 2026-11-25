@@ -210,37 +210,37 @@ class BinCallTest < Plastic::TestCase
   def test_bin_call_help_for_a_command_returns_its_exact_json_usage_without_a_home
     home, environment = absent_home_environment(env: {})
 
-    code = Plastic::CLI.bin_call(%w[help sync down --json], environment:, table: Plastic::CLI::TABLE)
+    code = Plastic::CLI.bin_call(%w[help store sync down --json], environment:, table: Plastic::CLI::TABLE)
     document = JSON.parse(environment.out.string)
 
     assert_equal 0, code
-    assert_equal "plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]", document.dig("result", "output")&.first
+    assert_equal "plastic store sync down [--overwrite [PATH]] [--merge] [--dry-run]", document.dig("result", "output")&.first
     refute_path_exists home
   end
 
   def test_bin_call_command_help_returns_its_exact_json_usage_before_scope_resolution
     home, environment = absent_home_environment
 
-    code = Plastic::CLI.bin_call(%w[sync down --help --json --project missing], environment:, table: Plastic::CLI::TABLE)
+    code = Plastic::CLI.bin_call(%w[store sync down --help --json --project missing], environment:, table: Plastic::CLI::TABLE)
     document = JSON.parse(environment.out.string)
 
     assert_equal 0, code
-    assert_equal "plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]", document.dig("result", "output")&.first
+    assert_equal "plastic store sync down [--overwrite [PATH]] [--merge] [--dry-run]", document.dig("result", "output")&.first
     assert_equal ["", false], [environment.err.string, File.exist?(home)]
   end
 
   def test_bin_call_command_help_keeps_text_help_usable
-    call = plastic_bin("sync", "down", "--help", table: Plastic::CLI::TABLE)
+    call = plastic_bin("store", "sync", "down", "--help", table: Plastic::CLI::TABLE)
 
     assert_equal 0, call.code
-    assert_equal "plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]", call.out.lines.first&.chomp
+    assert_equal "plastic store sync down [--overwrite [PATH]] [--merge] [--dry-run]", call.out.lines.first&.chomp
   end
 
   def test_bin_call_help_for_a_command_keeps_text_help_usable
-    call = plastic_bin("help", "sync", "down", table: Plastic::CLI::TABLE)
+    call = plastic_bin("help", "store", "sync", "down", table: Plastic::CLI::TABLE)
 
     assert_equal 0, call.code
-    assert_equal "plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]", call.out.lines.first&.chomp
+    assert_equal "plastic store sync down [--overwrite [PATH]] [--merge] [--dry-run]", call.out.lines.first&.chomp
   end
 
   def test_help_with_a_topic_name_prints_that_chapter

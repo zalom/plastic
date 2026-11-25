@@ -5,9 +5,9 @@ require_relative "../../../test_helper"
 class KnowledgeReportsTest < Plastic::TestCase
   REPORT = "resources/output/reports/page.html"
 
-  def log_line(intent_id, kind, path)
+  def log_line(intent_id, kind, path, position: 1)
     store_database.transaction do |batch|
-      batch.put(:work_log, { intent_id:, position: 1, at: STAMP, phase: "", node: "", session_id: "s", kind:, path:, sha256: "", text: "asked" })
+      batch.put(:work_log, { intent_id:, position:, at: STAMP, phase: "", node: "", session_id: "s", kind:, path:, sha256: "", text: "asked" })
     end
   end
 
@@ -17,6 +17,23 @@ class KnowledgeReportsTest < Plastic::TestCase
     reports = Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database)
 
     assert_equal [true, false], [reports.listed?("1", REPORT), reports.listed?("2", REPORT)]
+  end
+
+  def test_a_removed_line_after_the_reported_line_takes_the_report_out
+    open_intent
+    log_line("1", "reported", REPORT)
+    log_line("1", "removed", REPORT, position: 2)
+
+    refute Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database).listed?("1", REPORT)
+  end
+
+  def test_a_report_recorded_again_after_its_removal_counts_again
+    open_intent
+    log_line("1", "reported", REPORT)
+    log_line("1", "removed", REPORT, position: 2)
+    log_line("1", "reported", REPORT, position: 3)
+
+    assert Plastic::Graph::Knowledge::Reports.none.recorded_from(store_database).listed?("1", REPORT)
   end
 
   def test_a_line_of_another_kind_records_no_report

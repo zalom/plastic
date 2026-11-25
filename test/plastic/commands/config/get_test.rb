@@ -56,4 +56,17 @@ class ConfigGetTest < Plastic::TestCase
   def test_a_harness_setting_without_a_harness_is_an_unknown_key
     assert_equal 2, get("agents.models.plastic-executor").code
   end
+
+  def test_the_removed_setting_sync_lock_is_an_unknown_key
+    assert_case line("config get sync.lock"), code: 2, err: "plastic: no setting sync.lock; plastic config list names them\nplastic config get KEY [--harness NAME]\n"
+  end
+
+  def test_the_removed_setting_migrate_drop_document_revisions_is_an_unknown_key
+    assert_case line("config get migrate.drop_document_revisions"), code: 2,
+      err: "plastic: no setting migrate.drop_document_revisions; plastic config list names them\nplastic config get KEY [--harness NAME]\n"
+  end
+
+  def test_the_removed_setting_sync_lock_wait_is_an_unknown_key
+    assert_case line("config get sync.lock_wait"), code: 2, err: "plastic: no setting sync.lock_wait; plastic config list names them\nplastic config get KEY [--harness NAME]\n"
+  end
 end

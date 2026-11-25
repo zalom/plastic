@@ -12,9 +12,8 @@ class SchemaStateTest < Plastic::TestCase
   LATER = "20270101000000"
   ALL = Plastic::Graph::MIGRATIONS.versions(:store)
   NEWEST = ALL.last
-  # The drop held behind the switch migrate.drop_document_revisions, and every version that switch holds.
-  HELD = "20261119000000"
-  RELEASED = Plastic::Graph::MigrationList::HELD.keys
+  # The drop of document_revisions, which once waited for a switch.
+  DROP = "20261119000000"
 
   # Counts the statements a reader sends, so a test can tell how many queries a check takes.
   class Counting < SimpleDelegator
@@ -49,7 +48,7 @@ class SchemaStateTest < Plastic::TestCase
 
   def longer = Plastic::Graph::MIGRATIONS.with(SchemaMigration.new(kind: :store, version: LATER, path: "/nowhere.sql"))
 
-  def state(migrations: Plastic::Graph::MIGRATIONS, released: RELEASED) = SchemaState.new(@database, :store, migrations:, released:).call
+  def state(migrations: Plastic::Graph::MIGRATIONS) = SchemaState.new(@database, :store, migrations:).call
 
   def summary(reading) = [reading.name, reading.pending, reading.unknown, reading.number]
 
@@ -82,28 +81,16 @@ class SchemaStateTest < Plastic::TestCase
     assert_equal [:behind, [LATER], [], NEWEST.to_i], summary(state(migrations: longer))
   end
 
-  def test_a_file_that_lacks_only_a_held_version_reads_current_while_the_switch_of_that_version_is_off
-    record_versions(@path, ALL - [HELD])
+  def test_a_file_that_lacks_only_the_drop_of_document_revisions_reads_behind_with_the_drop_pending
+    record_versions(@path, ALL - [DROP])
 
-    assert_equal [:current, [], []], summary(state(released: [])).first(3)
+    assert_equal [:behind, [DROP], []], summary(state).first(3)
   end
 
-  def test_a_file_that_lacks_a_held_version_reads_behind_once_the_switch_of_that_version_is_on
-    record_versions(@path, ALL - [HELD])
-
-    assert_equal [:behind, [HELD], []], summary(state(released: [HELD])).first(3)
-  end
-
-  def test_a_file_that_records_a_held_version_reads_current_while_the_switch_is_off
-    record_versions(@path, ALL)
-
-    assert_equal [:current, [], []], summary(state(released: [])).first(3)
-  end
-
-  def test_a_beta_2_file_leaves_a_held_version_out_of_its_pending_versions_while_the_switch_is_off
+  def test_a_beta_2_file_has_every_version_pending
     with_tables(0)
 
-    assert_equal ALL - RELEASED, state(released: []).pending
+    assert_equal ALL, state.pending
   end
 
   def test_a_file_that_records_an_unknown_version_reads_ahead_and_names_it

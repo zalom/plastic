@@ -9,9 +9,12 @@ disposition `delivered`, and `plastic intent abandon` sets it to `abandoned` wit
 disposition `cancelled`, or `superseded` when another intent supersedes it. `store/index.json`
 prints every intent's status and disposition from those rows.
 
-`outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. The
-delivered path writes it with the result and its Verification lines; the abandoned path writes
-why the intent is dropped and, for an intent that started, a `Reverted:` line.
+`outcome.md` is required when an intent is done or abandoned, and the layout file says so.
+`plastic intent outcome ID --from FILE` writes its summary, and `plastic intent note ID TEXT --kind
+KIND` adds each line under Verification. The delivered path writes the result and its delivery line.
+An abandoned intent writes why it is dropped, with an `Abandoned:` line, and one that started also
+writes a `Reverted:` line. A guard hook refuses an agent write to outcome.md, so these commands are
+the way to write it.
 
 `plastic intent end ID` takes no options. It closes the intent when the rows allow it:
 every live node done, every criterion covered, an accepted verdict at or after the newest live
@@ -26,8 +29,9 @@ The completion row holds the judge `verdict` and the evidence built from the row
 criterion key with its done nodes and their findings. The close,
 prints the intent files, and hands the agent the steps that stop the processes and agents the
 intent started. `plastic intent abandon ID` closes an intent that will not ship, once
-outcome.md says why. An intent that started also needs a `Reverted:` bullet; a future or open
-intent with no node has nothing to revert. It writes no completion row.
+outcome.md holds its summary and an `Abandoned:` bullet, which `plastic intent note ID TEXT
+--kind Abandoned` writes. An intent that started also needs a `Reverted:` bullet first; a future
+or open intent with no node has nothing to revert. It writes no completion row.
 
 Once the intent is closed, it takes no more rulings, nodes or verdicts: a done intent is never
 moved back to active.
@@ -44,7 +48,8 @@ with `plastic intent note ID TEXT --kind Commit`, a line under Notes in `outcome
 ## Store the delivered work
 
 `plastic intent end` closes an intent once outcome.md records how its work was delivered. The
-Verification section holds one of three delivery lines:
+Verification section holds one of three delivery lines, each written with `plastic intent note ID TEXT
+--kind KIND`, where the kind is `Merged`, `Committed` or `Delivered`:
 
 | Line | Records | Also needs |
 | --- | --- | --- |
@@ -83,7 +88,7 @@ to `resources/references`.
 
 A line counts only when it is filled in: one that starts with a denying word such as `no`,
 `pending` or `n/a`, or still holds a placeholder such as `<commit>`, is refused, and the handoff
-names it. Run `plastic sync up` after editing outcome.md, then `plastic intent end ID` again.
+names it. Write the line again with `plastic intent note`, then run `plastic intent end ID` again.
 
 ## The pull request description
 

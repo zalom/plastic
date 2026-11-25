@@ -55,9 +55,4 @@ class MigrationListTest < Plastic::TestCase
 
     assert_equal [true, true, false, false], [0, 20_261_117_000_000, 20_991_231_000_000, 99].map { |number| list.known_number?(:store, number) }
   end
-
-  def test_the_held_migrations_of_a_kind_are_the_drop_of_document_revisions_its_trim_and_its_pages_behind_one_switch
-    assert_equal [%w[20261119000000 20261119190000 20261120090000], %w[migrate.drop_document_revisions]],
-      [Plastic::Graph::MIGRATIONS.held(:store), Plastic::Graph::MigrationList::HELD.values.uniq]
-  end
 end

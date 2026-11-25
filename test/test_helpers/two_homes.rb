@@ -17,7 +17,7 @@ module TwoHomes
   def first_home(kernel)
     kernel.command!("intent", "new", "Prove the resume")
     kernel.write("#{DIR}/spec.md", SPEC)
-    kernel.command!("sync", "up")
+    kernel.command!("store", "sync", "up")
     add_two_nodes(kernel)
     kernel.command!("intent", "approve", "1")
     kernel.command!("intent", "start", "1")

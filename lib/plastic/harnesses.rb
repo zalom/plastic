@@ -7,7 +7,11 @@ module Plastic
   # The harnesses Plastic ships support for, in the order detection tries
   # them. See docs/reference/harness-adapters.md.
   module Harnesses
-    EVENTS = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "Stop" => "hook stop", "SessionEnd" => "hook end" }.freeze
+    EVENTS = { "SessionStart" => "hook start", "UserPromptSubmit" => "hook prompt", "PreToolUse" => "hook guard", "Stop" => "hook stop",
+               "SessionEnd" => "hook end" }.freeze
+
+    # The tools an event's hook runs for, where the event names tools; every other event matches every tool.
+    MATCHERS = { "PreToolUse" => "Bash|Write|Edit|MultiEdit|NotebookEdit|apply_patch" }.freeze
 
     REGISTRY = [
       Harness.new(name: "claude-code", session_variables: %w[CLAUDE_CODE_SESSION_ID], transcript: "/\\.claude/projects/",
@@ -21,6 +25,8 @@ module Plastic
     ].freeze
 
     def self.all = REGISTRY
+
+    def self.matcher(event) = MATCHERS.fetch(event, "")
 
     def self.names = REGISTRY.map(&:name)
 

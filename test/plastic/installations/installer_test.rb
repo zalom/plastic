@@ -120,7 +120,7 @@ class InstallerTest < Plastic::TestCase
 
   def test_the_install_prints_the_line_the_store_of_the_settings_reports
     out, = capture_io do
-      Installations::Installer.new(Installations::Package.new(shipped, plastic, "2.0.3", FakeSettings.new(print_once: "config.yml printed from the settings")), agents: agent_configs, tmp_dirs: []).install_agents(selected: [])
+      Installations::Installer.new(Installations::Package.new(shipped, plastic, "2.0.3", FakeSettings.new(print_current: "config.yml printed from the settings")), agents: agent_configs, tmp_dirs: []).install_agents(selected: [])
     end
 
     assert_includes out, "   config.yml printed from the settings"

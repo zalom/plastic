@@ -15,7 +15,7 @@ module Plastic
     class Distribution
       LAUNCHER_FOLDERS = %w[hooks bin exe].freeze
 
-      def initialize(package, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
+      def initialize(package, tmp_dirs: RetiredSessionState.folders(nil))
         @package = package
         @home = package.home
         @tmp_dirs = tmp_dirs
@@ -45,7 +45,7 @@ module Plastic
         FileUtils.chmod(0o755, launchers)
       end
 
-      def files = CoreFiles.new(@package.root).call
+      def files = CoreFiles.new(@package.root, status_line: @package.choices.statusline?).call
 
       def place(path)
         source = File.join(@package.root, path)

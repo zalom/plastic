@@ -14,7 +14,8 @@ intent id and a node id, with the agent name to claim under. Your claim packet i
 ## How you work
 
 1. Claim your node: `plastic node claim ID NODE --agent NAME --project PROJECT`. The answer
-   carries the packet: the question, the needs and the schema when one exists.
+   carries the packet: the question, the needs and the schema when one exists. Set
+   `PLASTIC_AGENT` to that NAME for every `plastic` command, so your commands renew your claim.
 2. Read and search only. Use Read, Grep and Glob, and Bash for read-only commands such as
    `plastic search`, `git log` or `git show`. Change no project file, run no write command of
    Plastic other than your own claim, renew and finish, and run no command that changes git state.

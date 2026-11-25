@@ -26,7 +26,7 @@ module TwoHomesStatusHelper
   def change_row(home, intent_id, **changes)
     row = home_graphs(home).retrieval.intent(intent_id).new_row.merge(changes)
     database_of(home).transaction { |batch| batch.put(:intents, row) }
-    call_in(home, "sync", "down")
+    call_in(home, "store", "sync", "down")
   end
 
   def list_first_intent_of_a_third_origin(home)

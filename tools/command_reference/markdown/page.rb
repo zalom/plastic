@@ -4,7 +4,7 @@ module CommandReference
   module Markdown
     # The README of one command: what it is, its two drawings, what it changes and what its agent steps print.
     class Page
-      GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. " \
+      GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. " \
         "The database files themselves stay on this machine."
 
       def initialize(page, base: "../../../../")

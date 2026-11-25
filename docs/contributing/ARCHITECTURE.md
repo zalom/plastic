@@ -33,7 +33,7 @@ Everything it keeps lives under the Plastic home.
 | `stores/SLUG/` | One store for each project, plus the global store. |
 | `stores/SLUG/backups/` | Copies of the work and knowledge databases, one folder for each backup. |
 | `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
-| `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `work.log`, `outcome.md` and `context.json`, printed from the rows. |
+| `store/ID--slug/` | An intent folder, as `lib/plastic/layout.yml` lists it: `intent.md`, `spec.md`, `outcome.md`, `graph.json`, `work.log`, `context.json` and `resources/`. The page `docs/help/intent-folder.md` has the rest. |
 
 A store keeps its rows in three SQLite databases: work, knowledge and retrieval. A fourth, `legacy.db`, keeps what a migration removed. The store folder's `.gitignore` lists them,
 so they are never versioned. The files printed from them are.
@@ -43,7 +43,7 @@ so they are never versioned. The files printed from them are.
 | `work_graph.db` | `nodes`, `node_inputs`, `edges`, `work_log`, `runs`, `drivers` |
 | `knowledge_graph.db` | `intents`, `clusters`, `completions`, `approvals`, `verdicts`, `archives`, `archive_entries`, `documents`, `legacy_intents_data`, `document_heads`, `rulings`, `links`, `retrieval_contexts`, `retrieval_discoveries` and `sqlar`, the intent files that the sync rules of the machine read |
 | `retrieval_graph.db` | `document_passages`, `document_fts`; derived from the knowledge rows and outside the backups; the commands the table below names keep it current, and `plastic doctor` rebuilds it |
-| `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`, and the old text of each value a migration rewrote, in `changed_values_VERSION`; made by the first migration that keeps rows or values, and read only by `plastic migration down` and `plastic migration purge` |
+| `legacy.db` | The rows a migration removed, in tables named for the live table and the version, such as `sqlar_20261119000000`, and the old text of each value a migration rewrote, in `changed_values_VERSION`; made by the first migration that keeps rows or values, and read only by `plastic store migration down` and `plastic store migration purge` |
 
 The `printed` table, in `plastic.db` and in `knowledge_graph.db`, keeps the hash of every file printed from the rows,
 as of the last print. No table logs the history of a row.
@@ -96,6 +96,7 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `CommandRun` | `lib/plastic/command_run.rb` | One call of one tool on one subject, kept as a row of `plastic.db`. |
 | `CLI::Hook` | `lib/plastic/cli/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap`, `Hooks::StopGate` | `lib/plastic/hooks/` | The text `hook start` prints and the decision whether `hook stop` blocks a stop. |
+| `Hooks::GuardVerdict`, `Hooks::ShellWrites`, `Hooks::ShellFolder` | `lib/plastic/hooks/` | Whether `hook guard` refuses a tool call, and why: the paths a file tool, a patch or the write forms of a shell command name, each relative path read from the folder its `cd` words move to, checked against the store layout, the intents of `store/index.json` and the project records of `lib/plastic/layout.yml`. |
 | `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
 | `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. `Installations::HookEntries` holds the hook entries the installer writes for Claude Code and Codex. |
 | `Config`, `Config::Rows`, `Config::Store` | `lib/plastic/config.rb`, `lib/plastic/config/` | The settings read in layers from the `settings` rows: the shipped defaults, the `global` rows, then the rows of the harness. `Store` writes one row and prints `config.yml` from the rows, and refuses a file changed by hand since the print. |
@@ -139,8 +140,8 @@ database and writes only when `repair` or `reindex` rebuilds the derived search 
 | Graph | Database | What it holds | Written by | Read by |
 | ----- | -------- | ------------- | ---------- | ------- |
 | Work graph | `work_graph.db` | What is being built: nodes and the edges between them, the work log and runs. | `Graph::GraphWriter` | `plastic next`, `plastic intent show` |
-| Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic intent spec`, `plastic intent brief` |
-| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic sync up`, `plastic sync down`, `plastic intent new`, `plastic intent note`, `plastic intent report`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic resources sort`, `plastic backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
+| Knowledge graph | `knowledge_graph.db` | What is known: the current text of each document, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic store sync up` | `plastic intent spec`, `plastic intent brief` |
+| Retrieval graph | `retrieval_graph.db` | What is found: the passages and the search index over the documents, ranked by BM25. It gives context to the work. | Rebuilt from the knowledge graph by `plastic store sync up`, `plastic store sync down`, `plastic intent new`, `plastic intent spec`, `plastic intent outcome`, `plastic intent note`, `plastic intent report`, `plastic intent unreport`, `plastic intent revise`, `plastic intent end`, `plastic intent abandon`, `plastic intent archive`, `plastic intent unarchive`, `plastic intent repair`, `plastic store backup restore`, `plastic doctor`, `plastic update` and `plastic install` | `plastic search`, `plastic document get`, `plastic document batch`, `plastic intent discover`, `plastic intent context` and `plastic project load` |
 
 `plastic update` and `plastic install` rebuild a store's search index at one point only: when their migration step compacts that store, which happens once for each store, while a file of it is not on incremental auto vacuum. A call that finds every store compacted leaves the index as it is.
 
@@ -181,7 +182,7 @@ text that Plastic prints in the planning hand-off.
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
 | Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. When a run ends, `Harnesses::RunRecord` reads the model, tokens and cost of the worker from the harness's own local record into the run, and never fails the move. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
-| Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
+| Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic store sync up` reads into the rows. The agent merges; the owner approves when review is on. |
 | Close | `plastic intent end` | The completion row, and the release of the intent's driver claim. |
 | Park | `plastic intent park` | The parked status and its reason, while the intent is in progress. |
 
@@ -189,11 +190,12 @@ text that Plastic prints in the planning hand-off.
 
 `plastic intent start ID` and `plastic intent auto ID` set the intent in progress and print its worktree.
 They end on `plastic intent spec ID` for an open decision, no done criterion, or a missing go-ahead.
-They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of the session renew it. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it.
+They record the session as the driver of the intent, one row of `drivers`. The driver claim lapses after 900 seconds without a renewal, as a node claim does, and `hook stop` and each command of its agent renew it. The row keeps the `agent` that took it, from the environment variable `PLASTIC_AGENT`, or none for the session's own agent. While another session's claim is live, the call refuses with exit 3 and names the driver; `--take-over REASON` takes it on the owner's word, and the work log keeps the old and the new driver. `plastic intent end` releases the claim of the closed intent in the step that closes it and prints the session that held it. The row keeps the `mode` of the delivery: `guided` from `plastic intent start`, `auto` from `plastic intent auto`. `plastic graph lapsed` reads the rows of mode `auto` and lists each lapsed driver claim and each lapsed node claim of those intents, with the command that restarts the first. It renews no claim, so the session that runs it on a timer cannot hide a lapse.
 `plastic node claim` requires `--agent NAME` (exit 2 without it) and refuses with exit 3 an intent that is not in progress, one
 without the go-ahead, and a node that is blocked, held or capped. A node claim names the session that
-holds the node and lapses after 900 seconds without a renewal; each command of the session and
-`hook stop` renew it. Plastic computes the path
+holds the node and lapses after 900 seconds without a renewal; each command and `hook stop` of the
+agent on its open run renew it. Helpers of one session share its id and tell themselves apart with
+`PLASTIC_AGENT`; with none set, a command renews the session's own claims in guided work. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
@@ -286,7 +288,9 @@ order, and later hooks read it from the session row.
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
 | Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints a first line that names `plastic project load` in a project and `plastic next` in the global store, the open intents, the previous session, the intent in progress with its last work log lines, and the note; the compact print adds `note: TEXT` before the `next:` line. |
-| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its node and driver claims, and runs the stop gate with the settings of the harness the session row names. |
+| A prompt | `plastic hook prompt` | Records the prompt in the chat history of `plastic.db`. |
+| Before a tool that can write | `plastic hook guard` | Denies an agent write to a core file of a store, any file of a closed intent, a folder no intent owns or an intent record in a project folder that `project_records` of the layout names, with the harness's deny decision and the reason. Only `resources/` of an open intent is open. It prints nothing for any other call. |
+| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews the node and driver claims of the agent `PLASTIC_AGENT` names, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason, and releases the node claims and the driver claims of the session. |
 | Every other event | Nothing | No hook runs. |
 | Message display (Claude Code) | The screens launcher | Paints the screens when the setting `screens` (set with `plastic config set KEY VALUE`) turns them on. |
@@ -310,6 +314,15 @@ A plain sync with a conflict writes nothing, exits 3 and lists every conflict. W
 `--overwrite PATH`, the file at that path takes the side of the command: `sync up` keeps the
 file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
 `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
+
+A command commits its rows first and prints its files after. A sync up that reads the hashes
+between those two steps finds the file and the rows both changed, and reports a false conflict
+over an intent another session is working on. So every call that prints files,
+both syncs and `plastic intent repair` always hold one store lock from the hand-edit check through the
+print, so no sync sees a command halfway. The lock is an exclusive file lock on
+`~/.plastic/locks/SLUG.lock`, outside the store folder. A second call waits up to 60 seconds,
+then fails with exit 1 and names the lock file. A dry run takes no lock, and the
+operating system frees the lock when its holder ends. No setting turns the lock off.
 
 A sync reads only the files that `Graph::Knowledge::SyncSelection` selects. Other files stay on
 disk and get no rows.
@@ -335,10 +348,26 @@ Its rows stay, and nothing on disk is removed.
 A change row in `changes` holds the table, the key, the operation, the time and the origin of a
 write, never a copy of the row.
 
-`plastic sync up` reads every intent folder of a store. A folder with no row gives a row built
+`plastic store sync up` reads every intent folder of a store. A folder with no row gives a row built
 from its intent file. A folder that cannot give a row is named with its reason, and the call
-exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
+exits 1. A hand edit of the `spec.md` or the `outcome.md` of a done or abandoned intent fails the sync up with
+exit 1, and `Graph::Knowledge::Sync::ClosedEdits` names it; a file whose hash matches an `amended` line of the work
+log passes. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
 whole chain against a temporary copy of the store and prints what the call would change.
+
+### The layout of an intent folder
+
+`lib/plastic/layout.yml` is the one place that names the files and folders of an intent folder, and
+`Plastic::Layout` (`lib/plastic/layout.rb`) serves it. Each core file has a purpose, the states that
+require it (open, done, abandoned) and a writer, and `intent.md`, `spec.md` and `outcome.md` have
+front matter and headings. The `legacy` entries name each file of an older layout, what a sync does
+with it and what a repair does. The `store_root` entries list what a store folder may hold, and `project_records` names the folders of a project
+tree that once held intent records, which the guard hook refuses. The sync,
+the repair, the readers, the completion check and the new-intent file take their names from it,
+and `test/layout_names_guard_test.rb` fails when code outside the layout names a core file or a
+resources folder. `Strays` in `lib/plastic/graph/knowledge/sync/strays.rb` names every file that the layout does not allow. `ruby bin/layout-docs`
+builds the intent folder section of `PLASTIC.md` and `docs/help/intent-folder.md` from the layout file,
+and `test/layout_docs_test.rb` fails when either differs.
 
 ## Links, archive and backup
 
@@ -350,14 +379,15 @@ when every intent it needs is done or abandoned. `plastic next`, `plastic graph 
 | ------- | ------------ |
 | `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
 | `plastic intent archive ID` | Saves the whole intent folder in `knowledge_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent repair (ID \| --all)` | Applies the layout to old intent folders: renames and moves files where the layout says, removes retired files, and turns each entry of an old `revisions.md` into an `amended` line. A done or abandoned intent gets one `amended` line for the renames, moves and removals of its folder, and one for each link it rewrites, which keeps the exact old and new link. An old `actions/` folder moves as one change, and an empty `.gitkeep` is removed. An intent that a driver or a live node claim holds is refused. `--dry-run` prints one line for each intent folder and the totals, and writes nothing; `--links-left` lists each link left as it is. |
 | `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
-| `plastic backup --store SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
-| `plastic backup list --store SLUG` | Lists the backups of a store. |
-| `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
-| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live, and it refuses a finished backup that holds no database file, before the safety backup; `--latest` passes over such a backup. |
+| `plastic store backup --project SLUG` | Copies the work and knowledge databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
+| `plastic store backup list --project SLUG` | Lists the backups of a store. |
+| `plastic store backup purge --project SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
+| `plastic store backup restore --project SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a node claim is live, and it refuses a finished backup that holds no database file, before the safety backup; `--latest` passes over such a backup. |
 
 A restore never syncs by itself, because a sync can undo it. It ends with
-`next: plastic sync down --project STORE`, which writes the files from the restored rows.
+`next: plastic store sync down --project STORE`, which writes the files from the restored rows.
 A backup copies only databases that pass the quick check, goes into the git-ignored
 `backups/`, records the schema version in `status.yml`, and skips an unchanged store. It claims its
 folder before the live check, so a second session that finds a claim younger than five
@@ -377,7 +407,7 @@ backup of today. A failure prints one line and the call goes on. A store whose s
 backup failed is tried once that day, and a failed copy leaves no folder. No
 backup holds `retrieval_graph.db`, which `plastic doctor` rebuilds. A backup copies `legacy.db` when the store has one. The writer records the
 verdict of each live check in `backups/last-check.yml`, and `plastic doctor` prints it beside
-each store's backup age; a failed check is a finding that names `plastic backup --store SLUG`.
+each store's backup age; a failed check is a finding that names `plastic store backup --project SLUG`.
 A backup at version 0 is checked against the tables of beta.2, and a backup at the newest
 version against the declared tables. A backup at an earlier known version passes on the quick
 check alone, and the migrations move it forward after a restore of the whole store. A version
@@ -398,18 +428,15 @@ records the migrations it has applied in a `schema_migrations` table with one `v
 | Ahead | A migration this code does not know, or another legacy stamp | Exits 3 and names the versions: the file is newer than this code. |
 
 The schema runner brings the home and each store to current from the install workflow,
-`plastic update` and `plastic backup restore`, after a backup: a store is backed up with the
+`plastic update` and `plastic store backup restore`, after a backup: a store is backed up with the
 writer, and the home database is copied with `VACUUM INTO` to `backups/local-<UTC time>.db`
 and checked first. The runner reads the state again under the write lock, so a runner that
 waited runs nothing. The pending migrations run in ascending order, and every one of them and
 its row commit in one transaction, so a failure leaves the database as it was backed up.
 A migration that removes data keeps it in `legacy.db` in the same transaction, and the ledger in
-`plastic.db` records each migration that runs on a store. `plastic migration down` undoes the
-newest migration the store records from those rows. A migration that changes stored data waits
-behind a config switch that is off by default, such as `migrate.drop_document_revisions`. The
-migration that writes every stored time in UTC, the migration that drops the node columns
-`judge` and `verdict`, the migration `20261123120000` that turns the roadmaps into needs links, and the migration `20261124120000` that drops ten leftover tables of the work database have no switch. The owner ruled so for the first on 22 November 2026; Jev chose it for the second on
-23 November 2026, following the owner's ruling for the roadmap migration. `docs/contributing/MIGRATIONS.md`
+`plastic.db` records each migration that runs on a store. `plastic store migration down` undoes the
+newest migration the store records from those rows. A migration ships with no config switch, as the owner ruled on 24 November 2026, and no
+migration can be held back: every store runs each one it lacks. `docs/contributing/MIGRATIONS.md`
 says how to add a migration and how a down works.
 
 `tools/store-proof` runs a command against copies of every real store under a job tmp folder,

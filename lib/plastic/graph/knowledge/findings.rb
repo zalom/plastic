@@ -68,7 +68,7 @@ module Plastic
           Finding.new("node #{node.id} has no edge", "plastic edge add #{@intent_id} #{node.id} TO")
         end
 
-        def hand_edit(edit) = "#{edit}, then run plastic sync up and plastic graph check #{@intent_id} again"
+        def hand_edit(edit) = "#{edit}, then run plastic store sync up and plastic graph check #{@intent_id} again"
 
         def touches?(node) = edges.any? { |edge| edge.touches?(node.id) }
 

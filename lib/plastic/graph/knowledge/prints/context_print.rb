@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "print"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -17,7 +18,7 @@ module Plastic
 
           data = { "intent" => id, "discovery" => readable(held.first),
                    "context" => readable(held.last) }
-          [Print.text("#{intent.dir}/context.json", "#{JSON.pretty_generate(data)}\n")]
+          [Print.text(File.join(intent.dir, Layout.name(:context)), "#{JSON.pretty_generate(data)}\n")]
         end
 
         def readable(row)

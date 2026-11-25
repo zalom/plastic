@@ -6,6 +6,7 @@ require_relative "report_file"
 require_relative "../reports"
 require_relative "../sync_selection"
 require_relative "../../evidence/writer"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -15,15 +16,17 @@ module Plastic
         # and its line under Reports in the outcome.
         # The `reported` work log line that holds the record is written by Work::LoggedWrites.
         class Reporter
-          FILE = "outcome.md"
+          FILE = Layout.name(:outcome)
           HEADING = "## Reports"
           MANDATORY = ReportFile::MANDATORY
-          LATEST = "SELECT sha256 FROM work_log WHERE kind = 'reported' AND intent_id = :intent_id AND path = :path " \
+          LATEST = "SELECT kind, sha256 FROM work_log WHERE kind IN ('reported', 'removed') AND intent_id = :intent_id AND path = :path " \
                    "ORDER BY position DESC LIMIT 1"
           # What the record of a report says about the file now: :new, :changed or :unchanged, and the sha256 of the file.
           State = Data.define(:kind, :sha256) do
-            # `latest` is the row of the latest `reported` line, or nil when there is none.
+            # `latest` is the row of the latest `reported` or `removed` line, or nil when there is none. A report whose
+            # latest line is `removed` is new again.
             def self.of(latest, digest)
+              latest = nil if latest&.fetch("kind") == "removed"
               kind = latest.nil? ? :new : :changed
               kind = :unchanged if latest&.fetch("sha256") == digest
               new(kind, digest)

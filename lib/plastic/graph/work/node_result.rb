@@ -2,6 +2,7 @@
 
 require_relative "../../errors"
 require_relative "../knowledge/legacy_path"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -9,7 +10,7 @@ module Plastic
       # The files of an intent folder that a node move reads as its result: the files named, or every file the sync
       # selection reads, that changed since they were last printed. The files the rows print are never a result.
       class NodeResult
-        PRINTED_BY_ROWS = %w[graph.json context.json work.log savepoint.md].freeze
+        PRINTED_BY_ROWS = [Layout.name(:graph), Layout.name(:context), Layout.name(:log)].freeze
 
         def initialize(folder, retrieval)
           @folder = folder

@@ -10,7 +10,8 @@ class GraphLegacyTrimTest < Plastic::TestCase
   NOW = Time.utc(2026, 11, 19, 13, 0, 0)
   REVISIONS = "SELECT sha256 FROM document_revisions_#{PreviousStore::DROP} ORDER BY sha256".freeze
 
-  def migrate(home, released) = Plastic::Graph::SchemaRunner.new(home:, now: MIGRATED_AT, selection: Plastic::Graph::Knowledge::SyncSelection.none, released:).call.tap { forget(home) }
+  # Runs every migration but the page migration, which came after the trim.
+  def migrate(home) = migrate_without(home, [PAGES])
 
   def contents(home) = legacy_tables(home).to_h { |table| [table, alpha_rows(home, "legacy.db", "SELECT * FROM \"#{table}\"").sort_by(&:inspect)] }
 
@@ -28,54 +29,49 @@ class GraphLegacyTrimTest < Plastic::TestCase
     end
   end
 
-  # A store that ran the drop as release 3.0.0-beta.4 shipped it, before the trim.
-  def dropped_home = previous_home_with_revisions.tap { |home| migrate(home, [DROP]) }
+  KEPT = <<~SQL
+    CREATE TABLE document_revisions_#{PreviousStore::DROP}("sha256" TEXT NOT NULL, "intent_id" TEXT NOT NULL, "path" TEXT NOT NULL, "body" TEXT NOT NULL, "created_at" TEXT NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("sha256", "intent_id", "path", "origin_id"));
+    INSERT INTO document_revisions_#{PreviousStore::DROP} VALUES ('sha', '1', 'intent.md', 'old text', 'then', 'origin');
+    INSERT INTO document_revisions_#{PreviousStore::DROP} VALUES ('cur', '1', 'intent.md', 'new text', 'now', 'origin');
+    INSERT INTO document_revisions_#{PreviousStore::DROP} VALUES ('tmp', '1', 'resources/tmp/x.md', 'scratch', 'now', 'origin');
+  SQL
 
-  def test_the_drop_keeps_every_revision_and_each_removed_sqlar_row_as_release_beta_4_did
-    home = dropped_home
-
-    assert_equal [["document_revisions_#{DROP}", "sqlar_#{DROP}"], %w[cur sha tmp], false],
-      [legacy_tables(home), kept_revisions(home), recorded(home).include?(TRIM)]
+  # A store that ran the drop as release 3.0.0-beta.4 shipped it, before the trim: its legacy.db holds the copy the drop kept then, and a current revision beside the earlier one. The cleanup that deletes the copy has run before the copy is put there, so the trim runs alone.
+  def dropped_home
+    previous_home.tap do |home|
+      migrate_without(home, [TRIM, PAGES])
+      SQLite3::Database.open(alpha_file(home, "legacy.db")) { |database| database.execute_batch(KEPT) }
+      SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) do |database|
+        database.execute("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', 'intent.md', 'new text', 'now', 'origin')")
+        database.execute("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES ('1', 'intent.md', 'cur', 'now', 'origin')")
+      end
+    end
   end
 
   def test_the_trim_leaves_only_the_earlier_texts_of_read_paths_and_no_sqlar_row
     home = dropped_home
-    migrate(home, [DROP, TRIM])
+    migrate(home)
 
     assert_equal [["document_revisions_#{DROP}"], %w[sha], true], [legacy_tables(home), kept_revisions(home), recorded(home).include?(TRIM)]
-  end
-
-  def test_a_store_that_runs_the_drop_and_the_trim_in_one_run_ends_the_same_as_one_that_ran_them_apart
-    apart = dropped_home.tap { |home| migrate(home, [DROP, TRIM]) }
-    together = previous_home_with_revisions.tap { |home| migrate(home, [DROP, TRIM]) }
-
-    assert_equal contents(apart), contents(together)
   end
 
   def test_the_trim_names_what_it_removed_from_legacy_db
     home = dropped_home
 
-    assert_includes migrate(home, [DROP, TRIM]).notes, "migrate: alpha trimmed 3 rows from legacy.db that a down rebuilds or that no sync reads"
+    assert_includes migrate(home).notes, "migrate: alpha trimmed 3 rows from legacy.db that a down rebuilds or that no sync reads"
   end
 
-  def test_while_the_switch_is_off_the_trim_stays_held_with_the_drop
-    home = previous_home_with_revisions
-    migrate(home, [])
-
-    assert_equal [false, false], [recorded(home).include?(DROP), recorded(home).include?(TRIM)]
-  end
-
-  def test_the_trim_of_a_store_whose_kept_rows_were_purged_removes_nothing
+  def test_a_store_that_runs_the_trim_and_the_cleanup_in_one_run_keeps_no_copy_of_the_revisions
     home = dropped_home
-    Plastic::Graph::MigrationPurge.new(home, "alpha", NOW).call(DROP)
-    forget(home)
-    report = migrate(home, [DROP, TRIM])
+    SQLite3::Database.open(alpha_file(home, "knowledge_graph.db")) { |database| database.execute("DELETE FROM schema_migrations WHERE version = ?", [MISTAKES]) }
+    migrate(home)
 
-    assert_equal [["alpha"], [], true], [report.migrated, legacy_tables(home), recorded(home).include?(TRIM)]
+    assert_equal [[], true, true], [legacy_tables(home), recorded(home).include?(TRIM), recorded(home).include?(MISTAKES)]
   end
 
   def test_the_trim_goes_down_by_removing_its_version_alone
-    home = utc_down(dropped_home.tap { |dropped| migrate(dropped, [DROP, TRIM]) })
+    home = utc_down(dropped_home.tap { |dropped| migrate_store(dropped) })
+    Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
     before = contents(home)
     undone = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 

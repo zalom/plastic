@@ -15,18 +15,20 @@ class RetrievalWritesGuardTest < Minitest::Test
 
   COMMANDS_OF = {
     "plastic/doctor/search_index.rb" => %w[Doctor],
-    "plastic/graph/backup/store_backups.rb" => %w[Backup::Restore],
-    "plastic/workflows/code/backup/restore.rb" => %w[Backup::Restore],
+    "plastic/graph/backup/store_backups.rb" => %w[Store::Backup::Restore],
+    "plastic/workflows/code/backup/restore.rb" => %w[Store::Backup::Restore],
     "plastic/graph/knowledge/archive/operation.rb" => %w[Intent::Archive Intent::Unarchive],
     "plastic/graph/knowledge/archive/snapshot_index.rb" => %w[Intent::Archive Intent::Unarchive],
-    "plastic/graph/knowledge/intent/noter.rb" => %w[Intent::Note],
+    "plastic/graph/knowledge/intent/document_writer.rb" => %w[Intent::Note Intent::Spec Intent::Outcome],
     "plastic/graph/knowledge/intent/reporter.rb" => %w[Intent::Report],
     "plastic/graph/knowledge/intent/reviser.rb" => %w[Intent::Revise],
+    "plastic/graph/knowledge/intent/unreporter.rb" => %w[Intent::Unreport],
     "plastic/graph/knowledge/intent/writer.rb" => %w[Intent::New],
-    "plastic/graph/knowledge/resources/sort.rb" => %w[Resources::Sort],
-    "plastic/graph/knowledge/sync.rb" => %w[Sync::Up Sync::Down],
+    "plastic/graph/knowledge/repair/run.rb" => %w[Intent::Repair],
+    "plastic/graph/knowledge/sync.rb" => %w[Store::Sync::Up Store::Sync::Down],
     "plastic/graph/migration/store_compaction.rb" => %w[Update Install],
-    "plastic/graph/work/completion/writer.rb" => %w[Intent::End Intent::Abandon]
+    "plastic/graph/work/completion/writer.rb" => %w[Intent::End Intent::Abandon],
+    "plastic/graph/work/logged_records.rb" => %w[Intent::Unreport]
   }.freeze
 
   def self.writing_files

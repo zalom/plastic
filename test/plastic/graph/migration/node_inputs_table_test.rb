@@ -26,7 +26,7 @@ class GraphNodeInputsTableTest < Plastic::TestCase
 
   # The leftover work tables migration and the empty roadmap tables migration are the newest, so their downs come first.
   def down(home)
-    3.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
+    8.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call }.last
   end
 
   def fresh_columns(table = "nodes")
@@ -37,10 +37,6 @@ class GraphNodeInputsTableTest < Plastic::TestCase
 
   def test_a_new_store_has_the_table_node_inputs_and_no_input_column_on_a_node
     assert_equal [%w[intent_id node_id origin_id path position], false], [fresh_columns("node_inputs").sort, fresh_columns.include?("input")]
-  end
-
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, INPUTS
   end
 
   def test_the_migration_drops_the_column_and_leaves_the_layout_of_a_new_store

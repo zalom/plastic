@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../../../graph/knowledge/intent/notes"
 
 module Plastic
   module Workflows
@@ -12,7 +13,7 @@ module Plastic
 
           CLOSED = %w[done abandoned].freeze
 
-          sets :intent, :status, :problem, :reference
+          sets :intent, :status, :note_kind, :problem, :reference
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
@@ -26,20 +27,21 @@ module Plastic
             pass: ->(context) { !CLOSED.include?(context.status) }
 
           read "check the note" do |context|
-            context[:problem] = context.work.note_problem(context.text)
+            context[:note_kind] = Plastic::Graph::Knowledge::Intent::Notes.kind(context.kind)
+            context[:problem] = context.work.note_problem(context.note_kind.label, context.text)
           end
 
           gate "%{problem}", stops: :failure,
-            words: "the note holds a line break",
+            words: "the note holds a line break, or a Verification line is not in its form",
             pass: ->(context) { context.problem.nil? }
 
           step "write the note", done: ->(context) { !context.reference.nil? },
-            changes: { knowledge: "The note is added to the notes of the intent" } do |context|
-            context[:reference] = context.work.note_intent(context.intent, context.kind, context.text)
+            changes: { knowledge: "The line is added to the Notes or the Verification section of the outcome" } do |context|
+            context[:reference] = context.work.note_intent(context.intent, context.note_kind.label, context.text)
           end
 
           read "say what was written" do |context|
-            context.print("#{context.kind.downcase}: #{context.text}")
+            context.print("#{context.note_kind.label.downcase}: #{context.text}")
           end
 
           outcome :done, offers: "plastic next", because: "the outcome holds the note"

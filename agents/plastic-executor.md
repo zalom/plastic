@@ -30,7 +30,8 @@ it hands you, writes the record and closes the intent; you do none of these.
 **A node a driver hands you.** When a driver hands you a node of an intent with its ids, this is the one case where you run Plastic
 commands that write, and only these four: `plastic node claim` for that node, `plastic node renew ID NODE` while
 it runs, then `plastic node done ID NODE TEXT --output PATH` when it is finished, or `plastic node fail ID NODE TEXT`
-when it failed. You write nothing else to Plastic. Every other case follows the rule above.
+when it failed. Set `PLASTIC_AGENT` to the name you claim with `--agent` for every `plastic`
+command, so your commands renew your claim. You write nothing else to Plastic. Every other case follows the rule above.
 
 ## How You Work
 
@@ -44,6 +45,12 @@ when it failed. You write nothing else to Plastic. Every other case follows the 
    pull request exists, fix the CI failures instead of running the suite again.
 5. Report (see `## Completion Report`); the main session applies the risk rule and may
    dispatch a reviewer whose fixes come back to you.
+
+**Checks run in the foreground.** A helper never ends its turn to wait on a background job or a monitor notice. The notice may never
+reach it, and its claim lapses while it waits. It runs each check in the foreground and reads the result itself:
+each changed file's test, the gate and the suite. When one run would pass the time limit of the tool,
+it splits a long suite into its layers, such as the unit layer, the end-to-end layer and the gate, and
+runs each layer in its own foreground call.
 
 ## Completion Report
 

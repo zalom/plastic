@@ -21,7 +21,7 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
   def down(home) = Plastic::Graph::MigrationDown.new(home, "alpha", NOW).call
 
   # The empty roadmap tables, node inputs, deadline and driver migrations are the newest, so four more downs come first.
-  def drivers_down(home) = 5.times { down(home) }
+  def drivers_down(home) = 10.times { down(home) }
 
   def test_a_new_store_has_no_judge_or_verdict_column_on_a_node
     home = fresh_home
@@ -32,10 +32,6 @@ class GraphNodeJudgeColumnsTest < Plastic::TestCase
 
   def test_a_node_row_has_no_judge_or_verdict_member
     assert_empty GONE.map(&:to_sym) & Plastic::Graph::Work::Node.members
-  end
-
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, NODES
   end
 
   def test_the_migration_drops_the_two_columns_and_leaves_the_layout_of_a_new_store

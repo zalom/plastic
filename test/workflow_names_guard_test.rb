@@ -19,7 +19,10 @@ module WorkflowNameTable
     code_revise_intent: "Code::Intent::Revise",
     code_note_intent: "Code::Intent::Note",
     code_report_intent: "Code::Intent::Report",
+    code_unreport_intent: "Code::Intent::Unreport",
     code_show_spec: "Code::Intent::Spec",
+    code_write_spec: "Code::Intent::Spec::Write",
+    code_write_outcome: "Code::Intent::Outcome",
     code_approve_intent: "Code::Intent::Approve",
     code_prepare_judge: "Code::Intent::Judge",
     code_prepare_verdict: "Code::Intent::Verdict::Prepare",
@@ -59,6 +62,8 @@ module WorkflowNameTable
     code_write_note: "Code::Session::Note",
     code_archive_intent: "Code::Intent::Archive",
     code_unarchive_intent: "Code::Intent::Unarchive",
+    code_preview_repair_intent: "Code::Intent::Repair::Preview",
+    code_repair_intent: "Code::Intent::Repair",
     code_preview_backup: "Code::Backup::Preview",
     code_backup: "Code::Backup",
     code_backup_list: "Code::Backup::List",
@@ -70,6 +75,7 @@ module WorkflowNameTable
     code_migration_purge: "Code::Migration::Purge",
     code_migration_list: "Code::Migration::List",
     code_resume_graph: "Code::Graph::Resume",
+    code_lapsed_graph: "Code::Graph::Lapsed",
     code_load_projects: "Code::Project::Load",
     code_list_projects: "Code::Project::List",
     code_list_chat: "Code::Chat::List",
@@ -102,10 +108,9 @@ module WorkflowNameTable
     code_ask_node: "Code::Node::Ask",
     code_impede_node: "Code::Node::Impede",
     code_resolve_node: "Code::Node::Resolve",
-    code_preview_sort_resources: "Code::Resources::Sort::Preview",
-    code_sort_resources: "Code::Resources::Sort",
     code_park_intent: "Code::Intent::Park",
-    code_grant_round: "Code::Intent::Grant"
+    code_grant_round: "Code::Intent::Grant",
+    code_hand_over_gap: "Code::Intent::Handover"
   }.freeze
 end
 
@@ -113,8 +118,8 @@ end
 module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
-    Code::Intent::Abandon Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
-    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Resources::Sort
+    Code::Intent::Abandon Code::Intent::Spec Agent::Intent::End Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
+    Code::Backup Code::Backup::Purge Code::Backup::Restore Code::Intent::Repair
   ].freeze
 end
 
@@ -132,8 +137,8 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic::Inflector.underscore(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_four_keys_in_order
-    assert_equal 94, MAPPING.size
+  def test_the_registry_holds_the_ninety_nine_keys_in_order
+    assert_equal 99, MAPPING.size
     assert_equal MAPPING.keys, registry.keys
   end
 
@@ -155,7 +160,7 @@ class WorkflowNamesTest < Minitest::Test
 
   def prefixes(path) = path.split("::").each_index.map { |index| path.split("::").first(index + 1).join("::") }
 
-  def test_the_seventeen_parents_are_the_paths_that_hold_other_workflows
+  def test_the_eighteen_parents_are_the_paths_that_hold_other_workflows
     held = MAPPING.values.flat_map { |path| prefixes(path) }
     parents = MAPPING.values.select { |path| held.any? { |prefix| prefix.start_with?("#{path}::") } }
 

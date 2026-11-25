@@ -29,10 +29,6 @@ class GraphNodeDeadlineColumnTest < Plastic::TestCase
     assert_includes fresh_columns, "deadline"
   end
 
-  def test_the_migration_has_no_switch
-    refute_includes Plastic::Graph::MigrationList::HELD.keys, DEADLINE
-  end
-
   def test_the_migration_adds_the_column_and_leaves_the_layout_of_a_new_store
     home = previous_home
     before = columns(home)
@@ -50,7 +46,7 @@ class GraphNodeDeadlineColumnTest < Plastic::TestCase
 
   def test_a_down_drops_the_column_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
-    3.times { down(home) }
+    8.times { down(home) }
     undone = down(home)
 
     assert_equal [DEADLINE, {}, false, false], [undone.version, undone.moved, columns(home).include?("deadline"), recorded(home).include?(DEADLINE)]

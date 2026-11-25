@@ -1,0 +1,3 @@
+-- Agents typed the id of a ruling into its text, such as "D3: Ship it", which plastic intent rule now strips.
+-- The data step of this version strips it from each stored ruling and from the ruled line of the work log, with no copy
+-- and no undo, since the label was a mistake; its down removes the version alone. No table of the live store changes.

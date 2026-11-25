@@ -5,6 +5,7 @@ require_relative "../../clock"
 require_relative "../record"
 require_relative "../intent_status"
 require_relative "luhmann_id"
+require_relative "../../layout"
 
 module Plastic
   module Graph
@@ -21,7 +22,7 @@ module Plastic
       class Intent
         include Record
 
-        FILE = "intent.md"
+        FILE = Layout.name(:intent)
         OPEN = %w[open in_progress].freeze
         UNSTARTED = %w[open future].freeze
         ARCHIVABLE = %w[done abandoned future].freeze
@@ -54,18 +55,18 @@ module Plastic
         # The named fields of an index entry, with its status in the stored word.
         def self.stored_fields(entry, names) = Plastic.utc_fields(names.to_h { |field| [field, entry[field.to_s]] }).merge(status: stored_state(entry["status"]))
 
-        def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
+        def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(Layout.slug_words).join("-")
 
         def segments = LuhmannId.segments(intent_id)
 
         # The intent's folder, relative to the store folder.
-        def dir = "store/#{intent_id}--#{slug}"
+        def dir = "store/#{Layout.folder_name(intent_id, slug)}"
 
         def file = FILE
 
         def closed_problem(takes) = ("intent #{intent_id} is #{status}; it takes no #{takes}" if closed?)
 
-        def key_among(paths) = [intent_id, paths.include?(file) ? file : "#{intent_id}--#{slug}.md"]
+        def key_among(paths) = [intent_id, paths.include?(file) ? file : "#{Layout.folder_name(intent_id, slug)}.md"]
 
         # The row a new intent writes; the database gives `id` and stamps `origin_id`.
         def new_row = to_h.except(:id, :origin_id)
@@ -75,10 +76,19 @@ module Plastic
 
         # The intent's own file: front matter, then the sections a person fills.
         def page(origin_id)
-          fields = { id: intent_id, intent: title, parent: parent_id, ref:, origin: origin_id, created: opened_at }.compact
-          front = fields.map { |name, value| "#{name}: #{JSON.generate(value)}" }
-          ["---", *front, "---", "", "# #{intent_id} - #{title}", "", "## Intent", "", title, "",
-            "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
+          ["---", *front_matter(origin_id), "---", "", "# #{intent_id} - #{title}", "", *sections].join("\n")
+        end
+
+        # The front matter lines, in the order the layout lists the fields; a field with no value is left out.
+        def front_matter(origin_id)
+          fields = { "id" => intent_id, "intent" => title, "parent" => parent_id, "ref" => ref, "origin" => origin_id, "created" => opened_at }
+          Layout.file(:intent).front_matter.filter_map { |name| "#{name}: #{JSON.generate(fields.fetch(name))}" unless fields.fetch(name).nil? }
+        end
+
+        # The sections a person fills, in the order the layout lists them; the first holds the title.
+        def sections
+          first, *rest = Layout.file(:intent).headings.map(&:name)
+          ["## #{first}", "", title, "", *rest.flat_map { |name| ["## #{name}", ""] }]
         end
 
         # The fields store/index.json lists, in order.

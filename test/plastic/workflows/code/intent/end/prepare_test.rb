@@ -165,7 +165,7 @@ class PrepareEndingRecordsTest < PrepareEndingFixture
     outcome, context = prepare
 
     assert_equal :agent_needed, outcome
-    assert_includes context.requirements.join(" "), "Pull request:"
+    assert_includes context.requirements.join(" "), "--kind 'Pull request'"
   end
 
   def test_with_review_required_a_pull_request_without_approval_is_a_refusal

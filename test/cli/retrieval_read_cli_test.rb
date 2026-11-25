@@ -13,7 +13,7 @@ class RetrievalReadCliTest < Minitest::Test
       File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{home}\n")
 
       assert_success run_cli(home, "intent", "new", "Backup target", "--project", "alpha")
-      backup = run_cli(home, "backup", "--store", "alpha")
+      backup = run_cli(home, "store", "backup", "--project", "alpha")
 
       assert_success backup
       assert_match(%r{backup: alpha/\d{14}, 2 databases}, backup.fetch(:out))

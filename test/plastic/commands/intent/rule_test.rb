@@ -17,10 +17,19 @@ class IntentRuleTest < Plastic::TestCase
 
     result = call("1", "Flowbite styles every delivery")
 
-    assert_call result, code: 0, err: "", out: ["ruling: D1", "next: plastic intent brief 1"]
+    assert_call result, code: 0, err: "", out: ["ruling: D1 Flowbite styles every delivery", "next: plastic intent brief 1"]
     store_database = store_graphs.databases.fetch(:store)
 
     assert_equal 1, store_database.row("SELECT COUNT(*) AS n FROM rulings").fetch("n")
+  end
+
+  def test_a_text_that_begins_with_its_own_id_is_stored_and_printed_without_it
+    open_intent
+
+    result = call("1", "D1 Flowbite styles every delivery")
+
+    assert_includes result.out, "ruling: D1 Flowbite styles every delivery\n"
+    assert_equal ["Flowbite styles every delivery"], store_graphs.retrieval.rulings("1").map(&:text)
   end
 
   def test_two_rulings_read_d1_and_d2

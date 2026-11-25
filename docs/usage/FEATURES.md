@@ -33,6 +33,7 @@ outer one. With neither, the global store answers.
 | ------- | ------ |
 | `plastic status` | The work of every store, by group. |
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
+| `plastic graph lapsed [--stores a,b]` | Each intent in agent delivery whose driver claim or node claim lapsed, with the node, the agent, the session and the last renewal, and the command that restarts the first. It renews no claim. |
 | `plastic next` | The next action in one line, with the rule behind it on the `because:` line. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
 | `plastic project load [SLUG...]` | A short digest of each named project, or of the call's own store: its store and repository paths, the `AGENTS.md` and `README.md` to read, the intents in progress with the best passages of the retrieval graph for each (at most 3 intents and 2 passages each, on `context:` lines), the count of open intents, the last 3 deliveries and, for a project with a repository, an architecture line that leaves to the agent whether the repository holds code. A `then:` line says what to check, start and keep, and no `next:` line follows, because the next work waits for the owner. A new session in a project is told to run it first. |
@@ -51,6 +52,7 @@ link. With no ready intent, both name the first active intent instead.
 | `plastic intent auto ID` | The same start, for agent delivery: the agents settle the What, Why and How, and run `plastic intent approve ID` themselves when the `because:` line of `plastic intent spec` names it. It takes the driver claim and `--take-over REASON` as `plastic intent start` does. |
 | `plastic intent park ID REASON` | Parks an intent in progress with the reason it waits. `plastic intent start ID` resumes it and keeps the reason. |
 | `plastic intent grant ID REASON --owner` | Grants one extra review round, on the owner's word, to an intent whose review rounds are used and not accepted. It writes one `granted` work log line with the reason; each line adds one round, and a call while a round is left is refused. Without `--owner` it exits 2 and writes nothing. |
+| `plastic intent handover ID FOLLOW_UP REASON --owner` | Hands the last gap of an intent whose review rounds are used and not accepted to the follow-up intent FOLLOW_UP, on the owner's word, so `plastic intent end ID` can close the intent as done with no revert. It writes one `handed_over` work log line that names the follow-up and the reason, and offers `plastic intent end ID`, or `plastic intent start ID` while the intent is parked. The end does not wait for the follow-up, and it still needs the recorded delivery. A later `plastic intent grant` ends the handover, so the end needs an accepted verdict again. A missing intent or follow-up fails with exit 1. A follow-up that is the intent itself or is abandoned, a round left, an accepted review and a second handover are refused with exit 3. Without `--owner` it exits 2 and writes nothing. |
 
 `plastic intent new` writes a future intent.
 `plastic intent start` and `plastic intent auto` run no version control command: they print the
@@ -59,7 +61,9 @@ the go-ahead that `plastic intent approve ID` writes is missing, and on `plastic
 otherwise. `plastic intent spec` offers `plastic intent brief ID` once the go-ahead exists. Before it,
 the spec offers no command: in guided work the owner gives the go-ahead, and in auto the agents record it. A node claim, taken with `plastic node claim ID NODE --agent NAME`, names the session that works a node and the agent that runs it; a claim without `--agent` exits 2. It
 refuses, with exit 3, an intent that is not in progress or without the go-ahead, and a node that
-is blocked, held or capped; it offers `plastic next` for a done or abandoned intent.
+is blocked, held or capped; it offers `plastic next` for a done or abandoned intent. A claim whose
+`--agent` differs from the environment variable `PLASTIC_AGENT` fails with exit 1, and each command
+renews only the claims of the agent `PLASTIC_AGENT` names.
 
 ## Drive a graph from any harness
 
@@ -75,9 +79,11 @@ line and under `result.overdue`, for the driver to check on its worker; Plastic 
 
 | Command | Result |
 | ------- | ------ |
-| `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
+| `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on), printed with its text. A text that begins with its own number, such as `D3: TEXT`, is stored without it. `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
-| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Report: TEXT`. `--kind Review`, `Commit` or `Report` (the default) names the line. |
+| `plastic intent note ID "TEXT"` | One line under `## Notes` in the intent's outcome.md, as `- Note: TEXT`. `--kind Note` (the default), `Review`, `Commit` or `Report` names the line. `--kind Merged`, `Committed`, `Delivered`, `Pull request`, `Approved`, `Reverted` or `Abandoned` writes the line under `## Verification` instead, and a line not in its form fails with exit 1. The kind is matched in any case. |
+| `plastic intent spec ID --from FILE` | The whole spec.md, written from the file as its new revision. A file that lacks a section of the layout fails with exit 1 and names it, and a closed intent refuses with exit 3. |
+| `plastic intent outcome ID --from FILE` | The summary of outcome.md, the text between its title and its first section, replaced by the file. The title and every section stay. A file that is empty or holds a heading fails with exit 1, and a closed intent refuses with exit 3. |
 
 `intent revise` writes the new What and Why into the intent file, and its work log line keeps
 the old What and Why. A done or abandoned intent refuses with
@@ -99,7 +105,7 @@ could not hold it safely.
 | `plastic intent archive (ID \| --older-than DATE) --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
 
-`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic sync down` or `plastic sync up`, and it offers no command.
+`plastic store sync up`, `plastic store sync down`, `plastic intent revise` and `plastic store backup` keep their own previews. `plastic store backup --live` prints each line of the backup's `backup.log` as it is written. `plastic store backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic store backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic store sync down` or `plastic store sync up`, and it offers no command.
 `plastic uninstall --dry-run` lists every path the uninstall would remove or change.
 
 ## Install into a harness
@@ -159,17 +165,23 @@ sync.types` command to include it. `plastic init` offers images and videos picke
 packets, plans and notes go to `resources/tmp`, and copies of outside material go to
 `resources/references`.
 
+Several sessions on one store could make `plastic store sync up` report a false conflict: a command
+of another session has written its rows and not yet printed its files. So every call that prints
+files, both syncs and `plastic intent repair` take turns on one lock of the store, always. A call
+waits up to 60 seconds for the lock, then stops with exit 1 and names the lock file. A dry run
+takes no lock.
+
 With `backup.daily` on, each store keeps 24 hours of backups instead of three days. The first
 Plastic command or hook of the day copies the databases of every store as the start-of-day backup,
 and each session end after it replaces the day's end-of-day backup. A store always keeps its
-newest backup, and `plastic backup list` and `plastic backup restore` take no daily backup, so they
+newest backup, and `plastic store backup list` and `plastic store backup restore` take no daily backup, so they
 find the backups as they are. Plastic runs no background process for this, and `backup.daily` is
 off by default.
 
-`migrate.drop_document_revisions` holds back the migration that drops the `document_revisions`
-table of each store. While it is off, `plastic update` leaves that table in place. Turn it on with
-`plastic config set migrate.drop_document_revisions true`, then run `plastic update`: each store
-keeps the table in its `legacy.db` before the drop. The switch is off by default.
+`plastic update` drops the `document_revisions` table of each store, and a later migration
+deletes the copy the drop kept, since the table was a mistake. No setting holds these migrations
+back: every store runs them, and a clean install records them as run. The update also removes the
+retired setting `migrate.drop_document_revisions` from the settings rows and from `config.yml`.
 
 ## Chat history
 
@@ -219,29 +231,81 @@ The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
 except for one repair: it rebuilds the search rows of a store that are out of step with the
 passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
-the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
+the `plastic store backup list --project NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
 
-The doctor also names each store with files outside the resources layout, as `resources NAME: N files
-are outside the resources layout`, with the repair `plastic resources sort --store NAME`.
+The doctor also gives one `layout NAME ID--SLUG:` row for each intent folder that breaks the layout,
+and says what is wrong there: the files outside the layout, the retired files and an old
+`revisions.md`. The retired entries of the store folder, such as `.sessions/`, get one
+`layout NAME store/:` row. Each of these rows names the repair `plastic intent repair --all --project
+NAME`, and the `next:` line names it too. An entry of the store folder that holds data is left to a
+person: its repair says to move it out of the store folder by hand. An entry at the root of a
+store, beside `store/`, that the layout does not name, such as a `REVIEWS.md` a person left there,
+gets a `layout NAME ENTRY:` row whose repair says to move it out of the store by hand. The entries
+the layout names there are listed in [the store folder section of the intent folder page](../help/intent-folder.md#the-store-folder). A
+`revisions.md` that the repair cannot read gets the same kind of repair by hand. A done or abandoned intent whose folder lacks a
+file that the layout requires in its state, such as `outcome.md`, gets a `layout NAME ID--SLUG:` row
+that names the files and has no repair, so the doctor lists it and does not fail on it.
 
 ## Undo a migration
 
-A migration that removes data keeps it in `legacy.db` in the store folder, in the same
-transaction, and the ledger in `plastic.db` records each migration that runs on a store. The
-migration that drops `document_revisions`, and the one that trims what it kept in `legacy.db` to
-what a down needs, run only once `migrate.drop_document_revisions` is on; the switch is off by
-default.
+A migration that removes the owner's data keeps it in `legacy.db` in the store folder, in the same
+transaction. A migration that removes what an agent made by mistake deletes it and keeps no copy and offers no undo. The ledger in `plastic.db` records each migration that runs on a
+store. Every migration runs for every store, with no switch, including the one that drops
+`document_revisions` and the one that trims what it kept in `legacy.db`.
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic migration list --store SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
-| `plastic migration down --store SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic migration list --store SLUG`. |
-| `plastic migration purge VERSION --store SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
+| `plastic store migration list --project SLUG` | Prints the newest version the store records, the rows its `legacy.db` holds, its ledger rows and what a down would undo now. The store answers for itself, and the ledger rows are its history. It changes nothing and offers no next command. |
+| `plastic store migration down --project SLUG` | Backs the store up and puts back the rows the newest migration kept, in their old shape, then offers `plastic store migration list --project SLUG`. |
+| `plastic store migration purge VERSION --project SLUG` | Takes a backup of the store when the newest is older than 12 hours, as other commands that can lose data do. Then it removes the rows one migration kept and gives their space back to the disk. After it, a down cannot undo that migration. |
 
 A down exits 3 and changes nothing when the store is not at the newest version, when the newest
 migration the store records kept nothing or its rows were purged, or when a row it would put back changed after
 the migration. `plastic update` migrates the store up again after a down.
+
+## Commands write the intent folder
+
+Commands write every core file of an intent folder. `plastic intent new` writes `intent.md`,
+`plastic intent spec ID --from FILE` writes `spec.md`, and `plastic intent outcome ID --from FILE`
+and `plastic intent note` write `outcome.md`. The other core files are printed from the rows.
+`plastic intent abandon ID` refuses with exit 1 until outcome.md holds its summary and an
+`Abandoned` line, and names the command that writes each. A started intent also needs its
+`Reverted` line first.
+
+A command that prints an intent's files refuses with exit 1, before it writes a row, when one of
+those files changed by hand since its last print, and offers `plastic store sync up` to read it
+first. A core file on disk that no row holds counts as changed by hand too, so a hand-written
+`outcome.md` that no sync has read is never built again from empty rows and overwritten.
+
+`plastic store sync up` fails with exit 1 on a hand edit of the `spec.md` or the `outcome.md` of a
+done or abandoned intent, and offers `plastic store sync down --overwrite PATH` to print the file
+from its rows again. A link that `plastic intent repair` rewrote in such a file, with its
+`amended` line on the work log, still syncs.
+
+The guard hook, `plastic hook guard`, runs before each tool call that can write in Claude Code
+and Codex. It denies the call, with a reason that names the command to run, when the call writes:
+
+- a core file of a store, such as `spec.md`, `store/index.json` or a database
+- any file of a done or abandoned intent
+- a file in an intent folder that no intent owns, such as a folder made by hand
+- an intent record under `docs/plans/` or `docs/specs/` in the project tree
+
+It reads the path of a file tool, the files of a patch, and the write forms of a shell command:
+a redirection, `tee`, `rm`, `mv`, `cp`, `touch`, `sed -i`, `dd of=` and an inline script. An inline
+script is the code an interpreter such as `ruby`, `python3`, `node`, `perl` or `bash` is given with
+`-e`, `-c` or `--eval`, on standard input or in a here-document; every word of such a command counts
+as a path it may write. A relative path is read from the folder that the `cd` words before it move
+to, and a `cd` inside a subshell, `( ... )`, ends with it. A read, such as `cat` or `grep`, passes.
+Only the `resources/` folder of an open intent is open to the agent. The guard is on for every
+install and has no setting.
+
+The guard reads the words of a command and runs nothing, so it cannot see:
+
+- what a program file opens, such as `ruby tool.rb` or `bin/build`
+- a path held in a variable other than `HOME` and `PLASTIC_HOME`, or built by the shell at run time
+- a `cd` to a variable, `cd -`, `pushd` and `popd`
+- a write by a command that another command starts, such as `xargs`, `find -exec` or `make`
 
 ## The resources layout
 
@@ -254,29 +318,52 @@ more types through the setting `sync.types`. In `resources/output/reports/` it r
 report that `plastic intent report ID PATH` recorded or that the setting `reports.mandatory`
 names; every other file there stays on disk with no row. Which work needs a report is the
 guidance of `plastic help completion-and-done`; the command records. Each recorded report gets
-one line under `## Reports` in outcome.md. When a sync up no longer reads a path, it removes the rows of that
-path. `resources/references/` is read only when its
+one line under `## Reports` in outcome.md. `plastic intent unreport ID PATH --reason TEXT` removes a
+report recorded by mistake: it drops the rows of the report, takes its line out of `## Reports`,
+and deletes the file, or moves it to `resources/tmp/` with `--to-tmp`. The work log keeps the
+`reported` line and gains a `removed` line with the reason, so the sync, the repair and the doctor
+no longer count the report. On a done or abandoned intent the removal also writes an `amended`
+line for the changed outcome, as a repair does, and `--dry-run` previews the removal. When a sync
+up no longer reads a path, it removes the rows of that path. `resources/references/` is read only when its
 setting is on, and `resources/tmp/` never. When a sync finds a type it does not read, it says
 so in one line and records the type once in `sync.asked`.
 
-`plastic resources sort --store SLUG` moves the files of a store from the old places into this
-layout. It moves the rows with the files, rewrites the relative links that point at a moved
-file, and runs a sync up. A link that named no file before the move is left as it is. Both the
-run and `--dry-run` list the links that change and the links left as they are; `--dry-run`
-also lists every move and changes nothing. A loose Markdown or HTML file moves to `resources/tmp/`, and a
-file directly under `resources/output/` of another type moves to `files/`. A file in
-`resources/output/reports/` that is neither recorded nor mandatory is named and moved to
-`resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays where
-it is. When the sort rewrites a link in a root note of a done or abandoned intent, it writes an
-`amended` line on that intent's work log with the file, the old link, the new link and the reason;
-the run lists each one, and `--dry-run` previews each one. A target that holds other bytes than
-the file that would move onto it stops the call with exit 3 and names the target. A second run
-finds nothing to move and says `sorted: nothing to move`.
+`plastic intent repair ID` applies this layout to the folder of one intent, and `plastic intent
+repair --all` applies it to every intent folder of the store and to the store folder. It renames
+a file that has an older name, and moves each other file to the folder the layout names. It moves
+the rows with the files, rewrites the relative links that point at a moved file, and runs a sync
+up. A link that named no file before the move is left as it is. A loose Markdown or HTML file moves
+to `resources/tmp/`, and a file directly under `resources/output/` of another type moves to
+`files/`. A file in `resources/output/reports/` that is neither recorded nor mandatory is named and
+moved to `resources/tmp/`. A file that a recorded or mandatory report of any intent links to stays
+where it is. The repair removes the retired files that the layout names, such as an old lock. It turns each
+entry of an old `revisions.md` into an `amended` line with the date of the entry, then removes the
+file. With `--all`, it also removes the retired entries of the store folder, such as `.sessions/`
+and `.tmp/`, and names each entry that holds data and leaves it.
+
+A done or abandoned intent keeps its work. The repair changes its structure, and inside its files
+it changes only a relative link that points at a file the repair moved. Its folder gets one
+`amended` line on the intent's work log that lists every rename, move and removal, each kind with
+its reason. The files of an old `actions/` folder move as one change, and an empty `.gitkeep`
+placeholder is removed, not moved. A link the repair rewrites, in a done intent as in an open one,
+is an amendment of its own: it gets an `amended` line whose row keeps the exact old and new link in
+the fields `old_text` and `new_text`. An intent that
+a driver claim or a live node claim holds is refused with exit 3, and `--all` repairs the other
+intents first. Both the run and `--dry-run` print one line for each intent folder, the links that
+change, the other `amended` lines and the totals: the intent folders and their changes by kind,
+counted apart, the links that change, the `amended` lines and the links left as they are. The run
+prints its totals first and `--dry-run` prints them last. The links left as they are print only as
+a count unless `--links-left` lists each one. `--dry-run` writes nothing. A target that holds other
+bytes than the file that would move onto it stops the call with exit 3 and names the
+target. Each done or abandoned intent whose folder lacks a file that the layout requires in its
+state, such as `outcome.md`, gets one `missing` line in the run and in `--dry-run`. The repair
+lists it only and writes no such file, since the work of a closed intent is not written again. A
+second run changes nothing: it says `repaired: nothing to change`, or lists the missing files again.
 
 ## Help that costs nothing
 
 `plastic help` reads one table and loads no command file. It prints the core commands first,
-then one heading for each family: intent, project, sync, session, config, backup, migration, resources,
+then one heading for each family: intent, project, sync, session, config, backup, migration,
 document, architecture, node, edge, graph, chat and hook. `plastic help FAMILY` lists one family, and
 `plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.

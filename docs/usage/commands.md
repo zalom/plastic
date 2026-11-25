@@ -7,6 +7,7 @@ This page lists the commands by task. [The command reference](../reference/comma
 plastic status                        # Active work in every store
 plastic graph resume                  # Where this project's work stopped and what runs next
 plastic graph resume --stores blog,shop  # The same, for several named projects
+plastic graph lapsed                  # The agent deliveries whose claims lapsed, and the restart command
 plastic next                          # The next action in one line
 ```
 
@@ -17,11 +18,17 @@ plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
 plastic intent start 12               # Set it in progress for guided work and print the code worktree
 plastic intent park 12 "TEXT"         # Park started work with the reason it waits
 plastic intent grant 12 "TEXT" --owner  # Grant one extra review round, on the owner's word, once the rounds are used
+plastic intent handover 12 13 "TEXT" --owner  # Hand the last gap to follow-up intent 13 with one handed_over work log line, on the owner's word, once the rounds are used, so intent 12 can end
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
-plastic intent rule 12 "TEXT"         # Record a ruling in Insights
+plastic intent spec 12 --from FILE    # Write spec.md from a file that holds every section
+plastic intent rule 12 "TEXT"         # Record a ruling, as a row and a work log line
 plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
-plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
+plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Note, Review, Commit or Report
+plastic intent note 12 "BRANCH into main at pull request 5" --kind Merged  # Add a delivery line under Verification
+plastic intent outcome 12 --from FILE  # Write the summary of outcome.md from a file
+plastic intent report 12 resources/output/reports/page.html  # Record a report so the sync reads it
+plastic intent unreport 12 resources/output/reports/page.html --reason "TEXT" --to-tmp  # Remove a report recorded by mistake and move its file to resources/tmp/
 plastic session note "TEXT"           # Write the one prose line of this session
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
@@ -79,22 +86,22 @@ plastic architecture refresh --project blog                      # Tell the agen
 
 ## Stores and databases
 ```bash
-plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
+plastic store sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
 plastic project list                  # The registered projects with their paths
 plastic project load blog shop        # A short digest of each project: paths, files to read, work in play with its passages, last deliveries
 plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
 plastic project links                 # List the links that name an intent or a ruling this store lacks
-plastic sync up --dry-run             # Show what would change
-plastic sync down                     # Write the store files from the databases
-plastic backup --store blog          # Copy the databases of one store (or --store global) into a UTC-named folder
-plastic backup --store blog --live   # The same, printing each line of backup.log as it is written
-plastic backup list --store blog     # Folder, start time, status and goal of each backup
-plastic backup purge --store blog --older-than 2026-09-01   # Delete older backups
-plastic backup purge --store blog --failed   # Delete the backups that failed
-plastic backup restore --store blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
-plastic migration list --store blog  # The store's version, its kept rows, its ledger, and what a down would undo
-plastic migration down --store blog  # Put back the rows the newest migration kept in legacy.db, after a backup
-plastic migration purge 20261119000000 --store blog   # Remove the rows one migration kept, so it can no longer be undone
+plastic store sync up --dry-run             # Show what would change
+plastic store sync down                     # Write the store files from the databases
+plastic store backup --project blog          # Copy the databases of one store (or --project global) into a UTC-named folder
+plastic store backup --project blog --live   # The same, printing each line of backup.log as it is written
+plastic store backup list --project blog     # Folder, start time, status and goal of each backup
+plastic store backup purge --project blog --older-than 2026-09-01   # Delete older backups
+plastic store backup purge --project blog --failed   # Delete the backups that failed
+plastic store backup restore --project blog --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
+plastic store migration list --project blog  # The store's version, its kept rows, its ledger, and what a down would undo
+plastic store migration down --project blog  # Put back the rows the newest migration kept in legacy.db, after a backup
+plastic store migration purge 20261119000000 --project blog   # Remove the rows one migration kept, so it can no longer be undone
 ```
 
 ## Product
@@ -130,12 +137,15 @@ The installer commands and `plastic hook EVENT` do not take `--json`.
 
 The installer registers hooks in your agent. At session start a hook loads the conventions
 and prints where the work stands, and `hook prompt` records each prompt in the machine's chat history.
+Before a tool writes, `hook guard` refuses an agent write to the core files of a store, to a closed
+intent, to an intent folder made by hand and to the intent records of a project.
 When a session stops or ends, a hook records it. Each hook
 calls the active release launcher under `~/.local/share/plastic`:
 
 ```bash
 plastic hook start      # SessionStart; the agent calls these, not you
 plastic hook prompt     # UserPromptSubmit
+plastic hook guard      # PreToolUse
 plastic hook stop       # Stop
 plastic hook end        # SessionEnd
 ```

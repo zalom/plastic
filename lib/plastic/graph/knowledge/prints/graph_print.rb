@@ -3,6 +3,7 @@
 require "digest"
 require "json"
 require_relative "print"
+require_relative "../../../layout"
 
 module Plastic
   module Graph
@@ -13,7 +14,7 @@ module Plastic
 
         def call(intent, rows)
           id = intent.intent_id
-          Print.text("#{intent.dir}/graph.json", text(id, parts(id, rows)))
+          Print.text(File.join(intent.dir, Layout.name(:graph)), text(id, parts(id, rows)))
         end
 
         def parts(id, rows)

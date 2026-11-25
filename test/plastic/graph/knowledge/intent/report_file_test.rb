@@ -20,6 +20,18 @@ class ReportFileTest < Minitest::Test
     assert_nil report.outcome("# Outcome\n\n## Reports\n\n- #{report.path}\n", "", "## Reports")
   end
 
+  def test_an_outcome_that_does_not_list_the_report_gives_no_unlisted_outcome
+    assert_nil report.unlisted("# Outcome\n\n## Reports\n\n- other.html\n", "## Reports")
+  end
+
+  def test_a_line_outside_the_section_stays_and_gives_no_unlisted_outcome
+    assert_nil report.unlisted("# Outcome\n\n## Notes\n\n- #{report.path}\n", "## Reports")
+  end
+
+  def test_the_unlisted_outcome_takes_out_the_mandatory_form_too
+    assert_equal "# Outcome\n", report.unlisted("# Outcome\n\n## Reports\n\n- #{report.path} (mandatory)\n", "## Reports")
+  end
+
   def test_the_line_of_the_other_form_is_replaced
     body = "# Outcome\n\n## Reports\n\n- #{report.path}\n"
 

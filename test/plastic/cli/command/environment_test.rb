@@ -48,4 +48,14 @@ class CommandEnvironmentTest < Plastic::TestCase
   def test_an_environment_made_without_processes_has_none
     assert_nil environment.processes.ancestors.first
   end
+
+  def agent(env) = environment(env: env).agent
+
+  def test_the_agent_of_a_call_is_its_plastic_agent_variable
+    assert_equal "tester", agent({ "PLASTIC_AGENT" => " tester " })
+  end
+
+  def test_a_call_with_no_plastic_agent_variable_names_no_agent
+    assert_equal "", agent({})
+  end
 end

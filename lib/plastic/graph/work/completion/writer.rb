@@ -22,10 +22,11 @@ module Plastic
             (intent.status == "done") ? raise(Invalid, "intent #{intent_id} is already done") : write_completion(intent_id)
           end
 
-          # An open, in progress, parked or future intent ends as abandoned, with no completion row.
+          # An open, in progress, parked or future intent ends as abandoned, with no completion row, once its outcome holds
+          # the summary and the abandon reason. A closed intent stays as it is.
           def abandon(intent_id)
             intent = @retrieval.intent(intent_id)
-            return if intent.status == "abandoned"
+            return if %w[done abandoned].include?(intent.status)
 
             write_abandon(intent_id)
             reindex(intent_id)

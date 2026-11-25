@@ -27,6 +27,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The node is marked done with its findings | the work graph database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+Goes with the store: the files of the store carry the change, and `plastic store sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
 The command is `Plastic::Commands::Node::Done`, in [`commands/node/done.rb`](../../../../lib/plastic/commands/node/done.rb).

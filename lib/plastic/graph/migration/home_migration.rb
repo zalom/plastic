@@ -17,6 +17,12 @@ module Plastic
     # names, after each migration, every time the UTC migration left as it was because it names no real moment. plastic.db
     # has no down: the copy in backups/ is the way back.
     class HomeMigration
+      # What each home migration that drops data says the data is, in the words of LegacyKeep::KINDS. The first one drops
+      # the tables backups and locks: the backup folders on disk are the record of each backup, and the node claims of
+      # each store say who holds what, so nothing of the owner's is lost. The second deletes the rows of the retired
+      # setting migrate.drop_document_revisions, which no command reads. A test fails when one is missing here.
+      KINDS = { "20261117000000" => :rebuilt, "20261125090000" => :rebuilt }.freeze
+
       def initialize(home, now)
         @home = home
         @now = now

@@ -51,9 +51,9 @@ class DriverRoleTest < Minitest::Test
     assert_includes ROLE, "with the intent id and the node id"
   end
 
-  def test_the_driver_waits_for_the_notice_and_never_polls
-    assert_includes ROLE, "waits for the harness's notice that a worker ended"
-    assert_includes ROLE, "does not poll in a loop"
+  def test_the_driver_checks_for_lapsed_claims_on_a_timer_and_restarts_the_helper_named
+    assert_includes ROLE, "runs `plastic graph lapsed` on a timer"
+    assert_includes ROLE, "starts a new worker for the node it names"
   end
 
   def test_the_output_file_is_said_to_be_json
