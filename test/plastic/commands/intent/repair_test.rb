@@ -120,6 +120,15 @@ class IntentRepairCommandTest < Plastic::TestCase
     refute File.directory?(File.join(store_root, "store/.sessions"))
   end
 
+  def test_all_removes_the_root_entries_the_layout_marks_remove_and_keeps_the_others
+    write("roadmaps/r1.md", "# Roadmap\n")
+    write("project.yml", "name: global\n")
+
+    assert_equal [true, true], [repair("--all", "--dry-run").out.include?("preview: remove roadmaps/"), File.directory?(File.join(store_root, "roadmaps"))]
+    assert_includes repair("--all").out, "removed roadmaps/"
+    assert_equal [false, true], [File.directory?(File.join(store_root, "roadmaps")), at("project.yml")]
+  end
+
   def test_a_second_run_says_there_is_nothing_to_repair
     repair("--all")
 

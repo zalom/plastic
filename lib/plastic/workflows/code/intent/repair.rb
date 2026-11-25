@@ -5,6 +5,7 @@ require_relative "../../../graph"
 require_relative "../../../graph/knowledge/repair/run"
 require_relative "../../../graph/knowledge/repair/holds"
 require_relative "../../../graph/knowledge/repair/store_leftovers"
+require_relative "../../../graph/knowledge/repair/root_leftovers"
 
 module Plastic
   module Workflows
@@ -40,12 +41,12 @@ module Plastic
 
           def self.reports(context) = context.settings.selection.reports
 
-          def self.leftovers(context) = context.all ? Knowledge::Repair::StoreLeftovers.new(folder(context)) : nil
+          def self.leftovers(context) = context.all ? [Knowledge::Repair::StoreLeftovers, Knowledge::Repair::RootLeftovers].map { |kind| kind.new(folder(context)) } : []
 
           def self.repair(context)
             run = Knowledge::Repair::Run.new(folder(context), graphs(context), reports: reports(context), dirs: dirs(context), held: context.held.to_set,
               links_left: context.links_left)
-            [*run.call, *leftovers(context)&.call]
+            [*run.call, *leftovers(context).flat_map(&:call)]
           end
 
           read "find the folders a claim holds" do |context|

@@ -61,7 +61,7 @@ Everything else the work makes or reads. The agent writes here and no core file.
 
 ## The store folder
 
-What a store folder, stores/SLUG/, may hold beside its intent folders.
+What a store folder, stores/SLUG/, may hold beside its intent folders. `plastic intent repair --all` removes each old entry marked remove.
 
 | Name | Status | Purpose or repair |
 | --- | --- | --- |
