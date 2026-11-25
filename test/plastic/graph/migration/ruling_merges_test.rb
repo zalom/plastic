@@ -79,6 +79,13 @@ class GraphRulingMergesTest < Plastic::TestCase
                                   "run plastic store sync down --project alpha so the index of the store drops its link"
   end
 
+  def test_a_link_from_a_ruling_that_no_row_holds_merges_nothing_and_goes
+    home = seeded(rulings: RULINGS.first(1), links: LINKS.first(1))
+    report = migrate_store(home)
+
+    assert_equal [[["1", "D1", "Old", "t1", "s1"]], [], []], [rulings(home), links(home), report.notes.grep(/merged/)]
+  end
+
   def test_a_store_with_no_ruling_that_replaced_another_says_nothing
     assert_empty migrate_store(previous_home).notes.grep(/merged/)
   end

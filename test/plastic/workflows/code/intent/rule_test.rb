@@ -32,6 +32,14 @@ class AddRulingTest < Plastic::TestCase
     assert_equal ["D1: Keep it smaller", "removed: the additions D1.1, D1.2 and D1.3"], rule(text: "Keep it smaller", rewrites: "D1").last.printed
   end
 
+  def test_a_rewrite_names_the_one_addition_it_removed
+    open_intent
+    rule
+    rule(text: "Under a page", adds: "D1")
+
+    assert_equal ["D1: Keep it smaller", "removed: the addition D1.1"], rule(text: "Keep it smaller", rewrites: "D1").last.printed
+  end
+
   def test_an_unknown_intent_fails_with_no_ruling
     error = assert_raises(Plastic::Failed) { rule(intent_id: "9") }
 
