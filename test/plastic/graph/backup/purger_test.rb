@@ -22,6 +22,14 @@ class GraphBackupPurgerTest < Plastic::TestCase
     assert_empty folder_names(home)
   end
 
+  def test_removing_a_folder_that_is_not_there_changes_nothing
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    Purger.new(File.join(home, "stores", "alpha")).remove("20250101100000")
+
+    assert_equal %w[20260101100000], folder_names(home)
+  end
+
   def test_a_sweep_keeps_the_expired_folders_it_is_told_to_keep
     home = fresh_home
     [at(2026, 1, 1, 10, 0, 0), at(2026, 1, 1, 11, 0, 0), at(2026, 1, 5, 10, 0, 0)].each { |time| backup_at(home, time) }
