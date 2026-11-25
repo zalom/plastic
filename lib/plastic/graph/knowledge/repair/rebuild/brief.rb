@@ -10,6 +10,9 @@ module Plastic
           class Brief
             attr_reader :name, :text
 
+            # A table whose columns include Evidence followed by Result, with any columns before them.
+            EVIDENCE = /^\|(?:[^|\n]*\|)*\s*Evidence\s*\|\s*Result\s*\|/i
+
             def initialize(name, text)
               @name = File.basename(name)
               @text = text
@@ -26,7 +29,7 @@ module Plastic
               body unless body.empty?
             end
 
-            def evidence? = @text.match?(/\|\s*Requirement\s*\|\s*Evidence\s*\|\s*Result\s*\|/i)
+            def evidence? = @text.match?(EVIDENCE)
           end
         end
       end

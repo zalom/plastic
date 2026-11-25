@@ -51,7 +51,7 @@ module Plastic
 
           def repair_plan
             retrieval = @graphs.retrieval
-            Plan.new(@folder, reports: @reports, ruled: ruled(retrieval), closed: Resources::SortPlan.closed(retrieval), states: MissingFiles.states(retrieval.intents), **@plan)
+            Plan.new(@folder, reports: @reports, ruled: ruled(retrieval), closed: Resources::SortPlan.closed(retrieval), states: MissingFiles.states(retrieval.intents), graphed: retrieval.structure.nodes.to_set(&:intent_id), **@plan)
           end
 
           # The text of the rulings of an intent, by its id.

@@ -11,8 +11,11 @@ module Plastic
           class PlanText
             LISTED = /\A\s*(?:\d+[.)]|[-*] \[[ xX]\])\s+(?<title>.*)\z/
 
+            # A fenced block quotes a template or an example; its lines are not the plan.
+            FENCED = /^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*\n?/m
+
             def initialize(text)
-              @text = text
+              @text = text.gsub(FENCED, "")
             end
 
             def steps

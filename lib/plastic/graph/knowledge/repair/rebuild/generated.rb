@@ -9,8 +9,10 @@ module Plastic
           # older end-intent backfilled from the record.
           module Generated
             MARKERS = ["<!-- plastic:placeholder -->", "backfilled from the record by end-intent"].freeze
+            HEAD = 3
 
-            def self.call(text) = text.strip.empty? || MARKERS.any? { |marker| text.include?(marker) }
+            # A generator writes its marker in the first lines; the same words quoted further down are text.
+            def self.call(text) = text.strip.empty? || text.lines.first(HEAD).any? { |line| MARKERS.any? { |marker| line.include?(marker) } }
           end
         end
       end
