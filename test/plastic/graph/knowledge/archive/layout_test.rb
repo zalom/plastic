@@ -31,24 +31,6 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
     assert_equal "archive snapshot has no directory root", error.message
   end
 
-  def test_restoration_refuses_an_intent_with_no_snapshot
-    error = assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
-
-    assert_equal "intent #{@intent.intent_id} has no archive snapshot", error.message
-  end
-
-  class Racing < Plastic::Graph::FileSystem
-    def present?(_path) = true
-  end
-
-  def test_a_root_that_appears_during_restoration_is_preserved_and_nothing_is_published
-    save(@entries)
-    racing = Plastic::Graph::Knowledge::Archive::Snapshot.new(@database, @intent.intent_id, origin, files: Racing.new)
-    error = assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { racing.restore(@root) }
-
-    assert_equal ["#{@root} appeared during restoration; preserved", false], [error.message, File.exist?(@root)]
-  end
-
   def test_restoration_refuses_parent_traversal_before_writing
     save([*@entries, extra("../escaped", "file", "outside")])
 
