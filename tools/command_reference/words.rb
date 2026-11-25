@@ -45,12 +45,6 @@ module CommandReference
 
     def self.cell(text) = plain(text).gsub("|", "\\\\|")
 
-    # Text as an inline code span, long enough fences for a backtick inside.
-    def self.span(text)
-      one = text.to_s.gsub(/\s+/, " ").strip
-      one.include?("`") ? "`` #{one} ``" : "`#{one}`"
-    end
-
     def self.missing(pages) = pages.flat_map { |page| PageWords.new(page).lines }
 
     def self.short(klass) = klass.name.split("::").last
