@@ -93,6 +93,17 @@ class IntentRuleTest < Plastic::TestCase
     assert_equal [[true, []]] * 2, results.map { |result| [result.err.include?("no decision D9 in intent 1"), rulings] }
   end
 
+  def test_a_failed_rule_forgets_its_stop_so_the_next_rule_takes_the_next_number
+    open_intent
+    call("1", "Flowbite styles every delivery")
+    failed = [call("1", "Direct mode only", "--rewrites", "D9"), call("1", "Direct mode only", "--adds", "D9")]
+
+    result = call("1", "Third.")
+
+    assert_equal [1, 1], failed.map(&:code)
+    assert_call result, code: 0, err: "", out: ["D2: Third.", "next: plastic intent brief 1"]
+  end
+
   def test_adds_or_rewrites_naming_an_addition_exits_2
     open_intent
     call("1", "Flowbite styles every delivery")
