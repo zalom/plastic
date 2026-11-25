@@ -23,6 +23,14 @@ class KnowledgeArchiveLayoutTest < Plastic::TestCase
     { path:, kind:, data:, mode: 0o755, mtime: "0/1" }
   end
 
+  def test_restoration_refuses_a_snapshot_with_no_directory_root
+    save(@entries.reject { |entry| entry[:path].empty? })
+
+    error = assert_raises(Plastic::Graph::Knowledge::Archive::Tree::Error) { @snapshot.restore(@root) }
+
+    assert_equal "archive snapshot has no directory root", error.message
+  end
+
   def test_restoration_refuses_parent_traversal_before_writing
     save([*@entries, extra("../escaped", "file", "outside")])
 

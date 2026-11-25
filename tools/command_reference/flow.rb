@@ -19,8 +19,6 @@ module CommandReference
 
     def captions = ["#{lane.upcase} WORKFLOW", short, ":#{key}"]
 
-    def closing_words = agent? ? "hands off, exit #{closing.exit_code}" : "finishes, exit 0"
-
     def files = rows.filter_map(&:file) + [file]
 
     def raising? = lane == "code" && klass.steps.any? { |step| !step.is_a?(Plastic::CodeWorkflow::Gate) }

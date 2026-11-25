@@ -23,6 +23,14 @@ class TraversalTest < Plastic::TestCase
     assert_equal ["finished", %i[code_stamp code_greet]], [kept.status, kept.finished]
   end
 
+  def test_a_printed_value_that_is_another_object_is_kept_in_place_of_the_value
+    ctx = Plastic::Context.new(declared: Fixtures::TwoStep.chain.facts + [:name], facts: { name: "ada" }, graphs: {})
+    saved = []
+    printed = Plastic::Routine::Traversal.new(Fixtures::TwoStep.chain, ctx, Plastic::CommandRun.fresh("kernel test", "ada", FixedClock::AT)) { |run| saved << run }.call(&:dup)
+
+    assert_equal ["finished", true], [saved.last.status, printed.is_a?(Plastic::Finished)]
+  end
+
   def test_a_gate_ends_the_pass_on_its_value_and_keeps_it
     error = assert_raises(Plastic::Refused) { traverse(Fixtures::Gate, mode: "hold") }
 

@@ -3,6 +3,12 @@
 require_relative "../../command_reference_helper"
 
 class CommandReferenceSourceTest < Minitest::Test
+  module Sample
+    def self.checked?(context)
+      context.ready == true
+    end
+  end
+
   include CommandReferenceHelper
 
   def setup = CommandReferenceHelper.pages
@@ -19,6 +25,10 @@ class CommandReferenceSourceTest < Minitest::Test
     code = source.lambda_code(Plastic::Workflows::MoveNode.method(:moved?))
 
     assert_includes code, "context.moved == true"
+  end
+
+  def test_a_method_object_of_several_lines_shows_its_lines_up_to_the_closing_end
+    assert_equal "def self.checked?(context) context.ready == true end", source.lambda_code(Sample.method(:checked?))
   end
 
   def test_a_path_is_relative_to_the_root

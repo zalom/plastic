@@ -47,13 +47,10 @@ module Plastic
           @folders.names.select { |name| STOPPED_STATUSES.include?(@folders.status(name)) && FolderName.before?(name, now - Folders::CLAIM_WINDOW) }
         end
 
-        # Deletes the folder, or leaves it where it was.
+        # Deletes the folder.
         def remove(name)
           aside = move_aside(name)
           FileUtils.rm_rf(aside) if aside
-        rescue
-          File.rename(aside, @folders.path(name)) if aside
-          raise
         end
 
         private

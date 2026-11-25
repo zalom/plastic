@@ -20,11 +20,6 @@ module CommandReference
         @parts << %(<rect #{box.attributes} rx="#{rx}" class="#{css}"/>)
       end
 
-      def raw(markup, bottom)
-        grow(bottom)
-        @parts << markup
-      end
-
       def text(place, words, css) = (@parts << Label.new(place, words, css).markup)
 
       def stack(origin, lines, css, step) = lines.each_with_index { |line, at| text(origin.shift(0, at * step), line, css) }

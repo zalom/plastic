@@ -48,6 +48,13 @@ class InstallationsRemovalTest < Plastic::TestCase
     assert_equal "mine", settings.dig("statusLine", "command")
   end
 
+  def test_removes_the_status_line_plastic_set_when_it_replaced_none
+    write(settings_path, JSON.generate("statusLine" => { "type" => "command", "command" => "plastic-statusline" }))
+    removed(record(status_line: { "command" => "plastic-statusline", "replaced" => nil }))
+
+    refute_path_exists settings_path
+  end
+
   def test_keeps_a_status_line_the_person_set_after_the_install
     write(settings_path, JSON.generate("statusLine" => { "type" => "command", "command" => "mine" }))
     removed(record(status_line: { "command" => "plastic-statusline", "replaced" => nil }))

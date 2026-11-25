@@ -65,7 +65,7 @@ module Plastic
             begin
               Entries.build(stage, saved)
               raise Tree::Error, "archive snapshot verification failed" unless Entries.same?(Tree.read(stage), saved)
-              raise Tree::Error, "#{root} appeared during restoration; preserved" if File.exist?(root) || File.symlink?(root)
+              raise Tree::Error, "#{root} appeared during restoration; preserved" if @files.present?(root)
 
               @files.rename(stage, root)
             ensure

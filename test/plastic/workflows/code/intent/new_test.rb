@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../support/second_load"
 require_relative "../../../../../lib/plastic/workflows/code/intent/new"
 
 class WriteIntentTest < Plastic::TestCase
@@ -104,8 +105,8 @@ class WriteIntentTest < Plastic::TestCase
 
   def test_a_second_load_keeps_one_chain
     before = printed_runs
-    load File.expand_path("../../../../../lib/plastic/workflows/code/intent/new.rb", __dir__)
+    path = File.expand_path("../../../../../lib/plastic/workflows/code/intent/new.rb", __dir__)
 
-    assert_equal [before, [:done]], [printed_runs, WriteIntent.outcome_names]
+    assert SecondLoad.keeps?(path) { printed_runs == before && WriteIntent.outcome_names == [:done] }
   end
 end

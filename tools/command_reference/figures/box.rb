@@ -16,11 +16,6 @@ module CommandReference
 
       def head = Point.new(center, top)
 
-      def route_to(target, drop)
-        turn = bottom + drop
-        [foot, Point.new(center, turn), Point.new(target.center, turn), target.head]
-      end
-
       def branch_to(across, bus) = [foot, Point.new(center, bus), Point.new(across, bus), Point.new(across, bus + 8)]
 
       def drop(gap) = [foot, Point.new(center, bottom + gap)]

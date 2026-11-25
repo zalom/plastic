@@ -8,6 +8,16 @@ class WorkflowTest < Plastic::TestCase
     assert_equal :agent_write_draft, Flows::WriteDraft.key
   end
 
+  module Unregistered
+    class Flow < Plastic::Workflow; end
+  end
+
+  def test_a_workflow_in_no_namespace_that_holds_a_registry_has_no_key
+    error = assert_raises(Plastic::Invalid) { Unregistered::Flow.key }
+
+    assert_equal "WorkflowTest::Unregistered::Flow sits in no namespace that holds a REGISTRY", error.message
+  end
+
   def test_a_workflow_needs_a_lane
     assert_raises(NoMethodError) { Class.new(Plastic::Workflow).lane }
   end

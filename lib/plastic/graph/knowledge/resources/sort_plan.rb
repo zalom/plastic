@@ -52,15 +52,6 @@ module Plastic
           # One line for each report the sort moves out of resources/output/reports/.
           def unasked = unasked_moves.map { |move| "moved #{move.from} to #{move.to}: #{UNASKED}" }
 
-          # The line a dry run prints for `move`; the move of a report says why it moves.
-          def preview(move) = "preview: move #{move.from} -> #{move.to}#{": #{UNASKED}" if unasked_moves.include?(move)}"
-
-          # The lines a sort of `count` files prints: the count, the links it changed, the amendments and the links it left.
-          def report(count)
-            ["sorted: #{count} files moved", *unasked, *changed.map { |link| "link changed #{link}" }, *amendments.map(&:line),
-              *unresolved.map { |link| "link left as it is #{link}" }]
-          end
-
           private
 
           def unasked_moves = (@unasked_moves ||= intents.flat_map(&:unasked).to_set)
