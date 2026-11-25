@@ -19,17 +19,18 @@ class UpdatePlasticTest < Plastic::TestCase
 
   def store_versions(home) = recorded_by_file(home).select { |path, _| path.end_with?("/knowledge_graph.db") }.values.uniq
 
-  # Every store and the home as an alpha build wrote them: the newest layout, stamped 1, with no schema_migrations table.
+  # Every store and the home as an alpha build wrote them: the newest layout before the merge of rulings, stamped 1, with no
+  # schema_migrations table.
   def alpha_layout(home)
     Plastic::Graph::Database::ConnectionPool.release(home)
-    Dir.glob(File.join(home, "{plastic.db,stores/*/knowledge_graph.db}")).each do |path|
-      SQLite3::Database.open(path) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
-    end
-    Dir.glob(File.join(home, "stores/*/work_graph.db")).each do |path|
-      SQLite3::Database.open(path) { |db| PreviousStore.older_work_layout(db) }
-    end
+    each_database(home, "{plastic.db,stores/*/knowledge_graph.db}") { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    each_database(home, "stores/*/knowledge_graph.db") { |db| db.execute("ALTER TABLE rulings ADD COLUMN supersedes TEXT") }
+    each_database(home, "stores/*/work_graph.db") { |db| PreviousStore.older_work_layout(db) }
     home
   end
+
+  # Opens each database file of the home that matches the pattern and gives it to the block.
+  def each_database(home, pattern, &) = Dir.glob(File.join(home, pattern)).each { |path| SQLite3::Database.open(path, &) }
 
   def current(version) = { "PLASTIC_PACKAGE_ROOT" => fake_package(version) }
 
@@ -53,13 +54,15 @@ class UpdatePlasticTest < Plastic::TestCase
 
   def alpha_knowledge(home) = File.join(home, "stores", "alpha", "knowledge_graph.db")
 
-  # A home that reads references, whose alpha store lacks the newest version and keeps the file PAPER.
+  # A home that reads references, whose alpha store lacks the newest version, so it still has the column that version drops,
+  # and keeps the file PAPER.
   def home_reading_references
     home = fresh_home
     seed_config(home, "global:\n  sync:\n    references: true\n")
     Plastic::Graph::Database::ConnectionPool.release(home)
     SQLite3::Database.open(alpha_knowledge(home)) do |database|
       database.execute("DELETE FROM schema_migrations WHERE version = ?", [Plastic::Graph::MIGRATIONS.newest(:store)])
+      database.execute("ALTER TABLE rulings ADD COLUMN supersedes TEXT")
       database.execute("INSERT INTO sqlar (name, mode, mtime, sz, data, origin_id) VALUES (?, 420, 0, 0, x'00', 'o')", [PAPER])
     end
     SQLite3::Database.open(File.join(home, "stores", "alpha", "work_graph.db")) { |db| PreviousStore.older_work_layout(db) }

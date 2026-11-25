@@ -24,14 +24,16 @@ module Plastic
       TRIMS = %w[20261119190000].freeze
       # The versions that keep nothing and that a down undoes by removing the version alone: a sync up reads back every
       # row they drop that the rules still read, or a down of the earlier version rebuilds it.
-      ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000 20261123130000 20261123154000 20261123170000 20261124150000 20261124173000 20261124200000 20261124210000 20261124233000].freeze
+      ALONE = %w[20261119180000 20261119190000 20261120090000 20261123090000 20261123100000 20261123130000 20261123154000 20261123170000 20261124150000 20261124173000 20261124200000 20261124210000 20261124233000
+        20261125100000 20261125110000].freeze
       # What each version that drops data says the data is. `owner`: the owner's own data, kept in legacy.db with an undo.
       # `mistake`: data an agent created by mistake, deleted with no copy and no undo, since legacy.db keeps only the
       # owner's data. `rebuilt`: nothing of the owner's is lost, since the data moved into a new table or column, a sync
       # up reads it back from the files, or there was none. A test fails when a migration that drops data is missing here.
       KINDS = { "20261117000000" => :rebuilt, "20261119000000" => :mistake, "20261119180000" => :rebuilt, "20261119190000" => :mistake,
                 "20261121090000" => :owner, "20261123100000" => :rebuilt, "20261123120000" => :owner, "20261123170000" => :rebuilt,
-                "20261124090000" => :owner, "20261124120000" => :owner, "20261124150000" => :mistake }.freeze
+                "20261124090000" => :owner, "20261124120000" => :owner, "20261124150000" => :mistake,
+                "20261125100000" => :mistake, "20261125110000" => :rebuilt }.freeze
       # The versions that keep the old text of values they rewrite, in a table made only when a value changed; a down
       # undoes one that kept no value by removing the version alone.
       VALUES = %w[20261121090000].freeze

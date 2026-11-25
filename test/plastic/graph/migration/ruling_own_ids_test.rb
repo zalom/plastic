@@ -91,7 +91,8 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
 
   def test_a_down_removes_the_version_alone_and_the_text_stays_stripped
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
-    undone = Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call
+    # The placeholder and merge migrations are newer, so their downs come first.
+    undone = 3.times.map { Plastic::Graph::MigrationDown.new(home, "alpha", MIGRATED_AT).call }.last
 
     assert_equal [VERSION, {}, false, 0], [undone.version, undone.moved, recorded(home).include?(VERSION), own_id_left(home)]
   end

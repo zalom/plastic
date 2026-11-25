@@ -61,6 +61,13 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
     assert_empty unknown_names(File.read(File.join(ROOT, "PLASTIC.md")))
   end
 
+  def test_plastic_md_names_the_options_of_a_decision_and_says_supersedes_is_gone
+    text = File.read(File.join(ROOT, "PLASTIC.md"))
+    phrases = ["`plastic intent rule ID TEXT`", "`--adds D1`", "`--rewrites D1`", "`--supersedes` is gone."]
+
+    assert_equal phrases, phrases.select { |phrase| text.include?(phrase) }
+  end
+
   def test_the_codex_block_names_only_commands_that_exist
     block = Plastic::Installations::CodexInstructions::BODY
 

@@ -9,7 +9,7 @@ class IntentShowCaseTest < Plastic::TestCase
     alpha_specified
     ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
 
-    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (future)", "criteria: 1", "ruling: D1 ship the CLI first",
+    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (future)", "criteria: 1", "D1: ship the CLI first",
       "node: n1 open Build", "Opened: Alpha", "next: plastic intent brief 1"]
   end
 
@@ -41,7 +41,7 @@ class IntentShowTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "log:"]
+    assert_call result, code: 0, out: ["D1: Flowbite styles every delivery", "log:"]
   end
 
   def shown_times(intent_id) = call(intent_id).out.lines.grep(/\Alog: - /).map { |line| line.split[2] }
@@ -54,13 +54,13 @@ class IntentShowTest < Plastic::TestCase
     assert_equal [[], []], [shown_times(intent_id).grep(/Z\z/), stored_times(intent_id).grep_v(/Z\z/)]
   end
 
-  def test_marks_a_superseded_ruling
+  def test_lists_an_addition_after_its_decision
     intent = open_intent
-    plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
-    plastic("intent", "rule", intent.intent_id, "Direct mode only", "--supersedes", "D1", table: Plastic::CLI::TABLE)
+    ["Flowbite styles every delivery", "Direct mode only"].each { |text| plastic("intent", "rule", intent.intent_id, text, table: Plastic::CLI::TABLE) }
+    plastic("intent", "rule", intent.intent_id, "No subagents", "--adds", "D1", table: Plastic::CLI::TABLE)
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery (superseded)", "ruling: D2 Direct mode only\n"]
+    assert_call result, code: 0, out: ["D1: Flowbite styles every delivery", "D1.1: No subagents", "D2: Direct mode only\n"]
   end
 end

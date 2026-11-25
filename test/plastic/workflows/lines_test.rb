@@ -6,7 +6,7 @@ require_relative "../../../lib/plastic/clock"
 
 class LinesTest < Minitest::Test
   Node = Struct.new(:id, :state, :title, :claimed_by, :deadline)
-  Ruling = Struct.new(:id, :text, :supersedes)
+  Ruling = Struct.new(:id, :text)
   Run = Struct.new(:node_id, :number, :agent, :harness, :session_id, :result, :model, :input_tokens, :output_tokens, :cache_read_tokens,
     :cache_write_tokens, :cost_usd, :worker_session, :usage_note, :started_at, :ended_at) do
     def open? = result.nil?
@@ -46,16 +46,20 @@ class LinesTest < Minitest::Test
     assert_equal "ready: n1 Build", lines.ready_node(Node.new(id: "n1", state: "open", title: "Build"))
   end
 
-  def test_a_superseded_ruling_is_marked
-    rulings = [Ruling.new(id: "r1", text: "old"), Ruling.new(id: "r2", text: "new", supersedes: "r1")]
+  def test_an_addition_prints_after_its_decision
+    rulings = %w[D2 D1.1 D1].map { |id| Ruling.new(id: id, text: id.downcase) }
 
-    assert_equal ["ruling: r1 old (superseded)", "ruling: r2 new"], lines.rulings(rulings)
+    assert_equal ["D1: d1", "D1.1: d1.1", "D2: d2"], lines.rulings(rulings)
+  end
+
+  def test_words_are_joined_as_a_person_lists_them
+    assert_equal ["D1", "D1 and D2", "D1, D2 and D3"], [%w[D1], %w[D1 D2], %w[D1 D2 D3]].map { |words| lines.joined(words) }
   end
 
   def test_rulings_print_in_number_order_not_text_order
     rulings = %w[D10 D1 D2].map { |id| Ruling.new(id: id, text: id.downcase) }
 
-    assert_equal ["ruling: D1 d1", "ruling: D2 d2", "ruling: D10 d10"], lines.rulings(rulings)
+    assert_equal ["D1: d1", "D2: d2", "D10: d10"], lines.rulings(rulings)
   end
 
   def test_a_run_line_names_the_agent_the_harness_the_figures_and_the_worker

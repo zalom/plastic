@@ -11,12 +11,6 @@ class KnowledgeLinkTest < Plastic::TestCase
     assert_equal %w[1 4], links.map(&:from_intent_id)
   end
 
-  def test_a_supersedes_row_points_from_the_newer_ruling_to_the_older
-    newer, older = %w[D2 D1].map { |id| Knowledge::Ruling.from_h({ intent_id: "1", id:, at: STAMP }) }
-
-    assert_equal({ from_ref: "1/D2", to_ref: "1/D1", kind: "supersedes", at: STAMP }, Knowledge::Link.supersedes(newer, older))
-  end
-
   def test_a_link_joins_the_ends_and_the_kind_it_was_written_with
     link = Knowledge::Link.from_h({ from_ref: "1", to_ref: "2", kind: "chain" })
 

@@ -75,13 +75,13 @@ Two or more ready nodes have no edge between them, so a driver may work them at 
 | `criterion` | `{key, text}` of the done criterion the node serves. |
 | `inputs` | The input paths the planner wrote on the node, in the order given; `[]` when it has none. |
 | `needs` | One `{id, title, output}` for each node this one needs. `output` is the parsed JSON that node stored, or `null` when it stored none. |
-| `rulings` | The intent's rulings in force as `{id, text}`, the newest 20, with superseded rulings left out. |
+| `rulings` | The intent's decisions as `{id, text}`, in number order with each addition after the decision it adds to, such as `D1`, `D1.1`, `D2`, the last 20. |
 | `constraints` | The bullets under the spec's `## Constraints` heading, the first 20. |
 | `omitted` | How many `rulings` or `constraints` the lists left out; `{}` when none. |
 | `schema` | The absolute path of `resources/tmp/schemas/NODE.json` in the intent folder, or `null` when no such file exists. |
 
 The text claim prints the same facts as lines: `node:`, `criterion:`, `criterion text:`, one `input:`
-line for each input path, `needs:`, `ruling:`, `constraint:`, `omitted:` and `schema:`.
+line for each input path, `needs:`, one `D1: text` line for each decision, `constraint:`, `omitted:` and `schema:`.
 
 ## Keep the output of a node
 

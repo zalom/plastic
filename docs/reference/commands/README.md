@@ -28,7 +28,7 @@ Each page explains one plastic command in six parts: what it does, how to call i
 | [`plastic intent start`](intent-start/README.md) | Start an intent for guided work: set it in progress and print its worktree |
 | [`plastic intent auto`](intent-auto/README.md) | Start an intent for agent delivery: set it in progress and print its worktree |
 | [`plastic intent park`](intent-park/README.md) | Park an intent in progress with the reason it waits; intent start resumes it |
-| [`plastic intent rule`](intent-rule/README.md) | Write an owner ruling, with --supersedes to replace an older one |
+| [`plastic intent rule`](intent-rule/README.md) | Write an owner decision, an addition to one with --adds, or a rewrite of one with --rewrites |
 | [`plastic intent revise`](intent-revise/README.md) | Rewrite an intent's What and Why after grilling, keeping the old text as a revision |
 | [`plastic intent note`](intent-note/README.md) | Add one line to the outcome of an intent, a note under Notes or a record of the delivery or the close under Verification, keeping the earlier text as a revision |
 | [`plastic intent outcome`](intent-outcome/README.md) | Write the summary of the outcome of an intent from a file, keeping its title and every section |

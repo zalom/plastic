@@ -303,6 +303,24 @@ of the migrations before it stay reachable. After `plastic update`, run
 `plastic store sync down --project SLUG`, as its note says, so the printed work.log files carry
 the stripped lines.
 
+Migration `20261125100000` deletes each stored ruling whose whole text is three dots, with every
+link that names it. An old spec template held three dots as a placeholder, and the import of the
+legacy files took each one as a ruling, so the rows are a mistake: `KINDS` names them so, it keeps
+no copy and has no switch. It is in `ALONE`, so its down removes the version alone and the
+rulings stay deleted.
+
+Migration `20261125110000` merges each ruling that replaced another into the decision it
+replaced, now that `plastic intent rule --rewrites` rewrites a decision under its own number. It
+reads the `supersedes` links between rulings and follows each chain from the oldest ruling to the
+newest. The oldest keeps its number and takes the text, the time and the session of the newest;
+the newer rulings and every link that names them are deleted. The `ruled` lines of the work log
+keep every older text, so the deleted rows are rebuilt data in `KINDS`, and it keeps nothing in
+`legacy.db`. Its SQL then drops the column `supersedes` of `rulings`, which held the same pairs
+as the links. It is in `ALONE`, and its down, `RulingSupersedesColumn` in `REBUILDS`, adds the
+column back empty, so the merged rulings stay merged. After `plastic update`, run
+`plastic store sync down --project SLUG`, as its note says, so `store/index.json` drops the
+deleted links.
+
 ## The ledger
 
 The `store_migrations` table of `plastic.db` is the ledger. It holds one row for each up, down

@@ -177,7 +177,7 @@ text that Plastic prints in the planning hand-off.
 | Start | `plastic intent start` or `plastic intent auto` | The intent in progress, for guided work or agent delivery. |
 | Context | `plastic intent discover` | The context the intent starts from. |
 | Grilling | `plastic intent spec` | Nothing. It prints the method and the open decisions. |
-| One spec | `plastic intent rule`, `plastic intent revise` | A ruling, or a new revision of the What and the Why. |
+| One spec | `plastic intent rule`, `plastic intent revise` | A decision, an addition to one or a rewrite of one, or a new revision of the What and the Why. |
 | Go-ahead | `plastic intent approve` | The approval row: the owner gives it in guided work, and the agents record it in auto. `plastic node claim` refuses without it. |
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
 | Work the nodes | `plastic node claim`, `plastic node done` | Each node's claim and run, then its findings. When a run ends, `Harnesses::RunRecord` reads the model, tokens and cost of the worker from the harness's own local record into the run, and never fails the move. |
