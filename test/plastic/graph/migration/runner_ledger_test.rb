@@ -25,17 +25,16 @@ class SchemaRunnerLedgerTest < Plastic::TestCase
     tables.to_h { |name| [name.delete_suffix("_#{DROP}"), legacy(home, "SELECT count(*) FROM \"#{name}\"").flatten.first] }
   end
 
+  # The versions an old store runs, each with whether a down can undo it: the first two cannot.
+  UPS = [["20261117000000", 0], [DROP, 0], ["20261119180000", 1], [TRIM, 1], [PAGES, 1], [UTC, 1], [USAGE, 1], [NODES, 1], [NEEDS, 1],
+    [DRIVERS, 1], [DEADLINE, 1], [INPUTS, 1], [EMPTY_ROADMAPS, 1], [LEFTOVERS, 1], [MISTAKES, 1], [DRIVER_MODE, 1], [DRIVER_AGENT, 1],
+    [WORK_LOG_TEXT, 1], [OWN_IDS, 1], [PLACEHOLDERS, 1], [MERGES, 1]].freeze
+
   def test_each_migration_that_ran_on_a_store_adds_an_up_row_to_the_ledger
     home = old_home
     run_runner(home)
 
-    assert_equal [["alpha", "20261117000000", "up", "2026-11-16T12:00:00Z", 0], ["alpha", DROP, "up", "2026-11-16T12:00:00Z", 0], ["alpha", "20261119180000", "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", TRIM, "up", "2026-11-16T12:00:00Z", 1], ["alpha", PAGES, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", UTC, "up", "2026-11-16T12:00:00Z", 1], ["alpha", USAGE, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", NODES, "up", "2026-11-16T12:00:00Z", 1], ["alpha", NEEDS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVERS, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", DEADLINE, "up", "2026-11-16T12:00:00Z", 1], ["alpha", INPUTS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", EMPTY_ROADMAPS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", LEFTOVERS, "up", "2026-11-16T12:00:00Z", 1], ["alpha", MISTAKES, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", DRIVER_MODE, "up", "2026-11-16T12:00:00Z", 1], ["alpha", DRIVER_AGENT, "up", "2026-11-16T12:00:00Z", 1],
-      ["alpha", WORK_LOG_TEXT, "up", "2026-11-16T12:00:00Z", 1], ["alpha", OWN_IDS, "up", "2026-11-16T12:00:00Z", 1]],
+    assert_equal UPS.map { |version, undoable| ["alpha", version, "up", "2026-11-16T12:00:00Z", undoable] },
       ledger(home).select { |row| row.first == "alpha" }.map { |row| row.values_at(0, 1, 2, 3, 5) }
   end
 

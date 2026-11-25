@@ -16,8 +16,8 @@ require_relative "../edge/remove"
 module Plastic
   module Commands
     module Intent
-      # Prints the goal, the done criteria, the rulings with superseded ones
-      # marked, the ready nodes, the main session steps and the usage of the node
+      # Prints the goal, the done criteria, the rulings with each addition after its
+      # decision, the ready nodes, the main session steps and the usage of the node
       # and edge commands.
       class Brief < Routine
         NODE_AND_EDGE_COMMANDS = [

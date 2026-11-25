@@ -46,8 +46,8 @@ class GraphDriverAgentColumnTest < Plastic::TestCase
 
   def test_a_down_drops_the_column_and_removes_the_version
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
-    # The work log text and ruling own id migrations are newer, so their downs come first.
-    undone = 3.times.map { down(home) }.last
+    # The work log text, ruling own id, placeholder and merge migrations are newer, so their downs come first.
+    undone = 5.times.map { down(home) }.last
 
     assert_equal [DRIVER_AGENT, {}, false, false], [undone.version, undone.moved, columns(home).include?("agent"), recorded(home).include?(DRIVER_AGENT)]
   end
@@ -55,7 +55,7 @@ class GraphDriverAgentColumnTest < Plastic::TestCase
   def test_a_down_and_an_update_give_back_the_migrated_store
     home = seeded.tap { |seeded_home| migrate_store(seeded_home) }
     before = alpha_rows(home, "work_graph.db", "SELECT * FROM drivers")
-    3.times { down(home) }
+    5.times { down(home) }
     migrate_store(home)
 
     assert_equal [fresh_columns, before], [columns(home), alpha_rows(home, "work_graph.db", "SELECT * FROM drivers")]

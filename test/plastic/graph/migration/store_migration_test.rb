@@ -238,13 +238,13 @@ end
 class AlphaStoreMigrationTest < Plastic::TestCase
   include StoreMigrationRuns
 
-  # A store an alpha build wrote: the newest layout, stamped 1, with no schema_migrations table.
+  # A store an alpha build wrote: the newest layout before the merge of rulings, stamped 1, with no schema_migrations table.
   def alpha_home
     home = File.join(Dir.mktmpdir, ".plastic")
     Plastic::Graph.create(home:, store: "alpha")
     Plastic::Graph::Database::ConnectionPool.release(store_root(home))
     Plastic::Graph::Database::ConnectionPool.created.clear
-    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1") }
+    SQLite3::Database.open(store_path(home, "knowledge_graph.db")) { |db| db.execute_batch("DROP TABLE schema_migrations; PRAGMA user_version = 1; ALTER TABLE rulings ADD COLUMN supersedes TEXT") }
     SQLite3::Database.open(store_path(home, "work_graph.db")) { |db| PreviousStore.older_work_layout(db) }
     home
   end

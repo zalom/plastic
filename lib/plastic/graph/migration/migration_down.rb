@@ -17,6 +17,7 @@ require_relative "node_deadline_column"
 require_relative "node_inputs_column"
 require_relative "node_judge_columns"
 require_relative "roadmap_needs_links"
+require_relative "ruling_supersedes_column"
 require_relative "run_usage_columns"
 
 module Plastic
@@ -47,7 +48,8 @@ module Plastic
       REBUILDS = { "20261123090000" => RunUsageColumns, "20261123100000" => NodeJudgeColumns,
                    "20261123154000" => NodeDeadlineColumn, "20261123170000" => NodeInputsColumn, "20261124090000" => RoadmapTables,
                    "20261124120000" => LeftoverWorkTables, "20261124173000" => DriverModeColumn,
-                   "20261124200000" => DriverAgentColumn, "20261124210000" => WorkLogTextColumns }.freeze
+                   "20261124200000" => DriverAgentColumn, "20261124210000" => WorkLogTextColumns,
+                   "20261125110000" => RulingSupersedesColumn }.freeze
       # The versions whose down takes off the links the migration wrote, and answers how many.
       REMOVALS = { "20261123120000" => RoadmapNeedsLinks }.freeze
       NONE = ->(_connection) { {} }

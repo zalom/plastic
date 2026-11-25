@@ -6,9 +6,8 @@ require_relative "../record"
 module Plastic
   module Graph
     module Knowledge
-      # A typed edge between knowledge, named by the ref of each end: a ruling
-      # today, a document or an intent later. This stage writes only
-      # `supersedes`, from a newer ruling's ref to the one it replaces.
+      # A typed edge between knowledge, named by the ref of each end: an intent, such as `4`, or a ruling, such as `4/D2`.
+      # Its kind says how the ends relate, as `supersedes` from a newer intent to the one it replaces.
       Link = Data.define(:from_ref, :to_ref, :kind, :at, :origin_id) do
         include Record
 
@@ -28,8 +27,6 @@ module Plastic
 
           { from_ref:, to_ref:, kind:, at: Plastic.utc(at) || now }
         end
-
-        def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
       end
       Link::KINDS = %w[cites supersedes answers source chain needs].freeze
       Link::ALL_SQL = "SELECT * FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind"

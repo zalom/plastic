@@ -76,6 +76,6 @@ class LocalHistoryGuardTest < Minitest::Test
   end
 
   def test_the_detector_leaves_the_ruling_command_alone
-    assert_empty history("Write an owner ruling, with --supersedes to replace an older one")
+    assert_empty history("Write an owner decision, an addition to one with --adds, or a rewrite of one with --rewrites")
   end
 end

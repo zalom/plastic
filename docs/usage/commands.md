@@ -22,7 +22,9 @@ plastic intent handover 12 13 "TEXT" --owner  # Hand the last gap to follow-up i
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent spec 12 --from FILE    # Write spec.md from a file that holds every section
-plastic intent rule 12 "TEXT"         # Record a ruling, as a row and a work log line
+plastic intent rule 12 "TEXT"         # Record a decision, as a row and a work log line, printed as D3: TEXT
+plastic intent rule 12 "TEXT" --adds D3       # Add to decision D3 as D3.1, then D3.2
+plastic intent rule 12 "TEXT" --rewrites D3   # Rewrite decision D3 and remove its additions
 plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
 plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Note, Review, Commit or Report
 plastic intent note 12 "BRANCH into main at pull request 5" --kind Merged  # Add a delivery line under Verification
