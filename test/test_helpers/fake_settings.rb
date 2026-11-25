@@ -5,7 +5,7 @@ module Plastic
     # The settings a call is given, held in memory: the values by dotted key, the problem and the
     # line the store reports, and every call to set and every harness asked for.
     class FakeSettings
-      Store = Struct.new(:problem, :print_once)
+      Store = Struct.new(:problem, :print_current)
 
       class Values
         def initialize(values, written)
@@ -35,9 +35,9 @@ module Plastic
 
       attr_reader :written, :harnesses
 
-      def initialize(values: {}, problem: nil, print_once: nil)
+      def initialize(values: {}, problem: nil, print_current: nil)
         @values = values
-        @store = Store.new(problem, print_once)
+        @store = Store.new(problem, print_current)
         @written = {}
         @harnesses = []
       end
