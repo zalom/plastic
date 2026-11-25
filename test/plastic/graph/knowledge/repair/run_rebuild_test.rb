@@ -129,6 +129,7 @@ class RepairRunRebuildTest < Plastic::TestCase
     assert_raises(IOError) { Plastic::Graph::Knowledge::Repair::Run.new(folder, failing).call }
     assert_equal before, [files_without_databases, nodes]
   end
+
   def test_a_rebuild_that_fails_after_its_packet_removes_the_packet_and_the_rows
     before = [files_without_databases, nodes]
 

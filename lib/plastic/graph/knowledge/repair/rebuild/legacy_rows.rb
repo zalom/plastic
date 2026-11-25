@@ -36,13 +36,12 @@ module Plastic
             private
 
             def write(rows)
-              database = SQLite3::Database.new(File.join(@root, FILE))
-              database.transaction do
-                database.execute(CREATE)
-                rows.each { |row| database.execute("INSERT OR REPLACE INTO #{TABLE} VALUES (?, ?, ?, ?, ?)", row.values_at("intent_id", "path", "body", "updated_at", "origin_id")) }
+              SQLite3::Database.new(File.join(@root, FILE)) do |database|
+                database.transaction do
+                  database.execute(CREATE)
+                  rows.each { |row| database.execute("INSERT OR REPLACE INTO #{TABLE} VALUES (?, ?, ?, ?, ?)", row.values_at("intent_id", "path", "body", "updated_at", "origin_id")) }
+                end
               end
-            ensure
-              database&.close
             end
           end
         end

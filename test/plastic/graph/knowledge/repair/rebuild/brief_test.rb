@@ -32,4 +32,8 @@ class RebuildBriefTest < Minitest::Test
 
     assert_equal [true, false], [Brief.new("01-x.md", table).evidence?, Brief.new("ACTION_1.md", "# t\n").evidence?]
   end
+
+  def test_an_empty_result_section_has_no_result
+    assert_nil Brief.new("ACTION_1.md", "# t\n\n## Result\n\n## Notes\nx\n").result
+  end
 end

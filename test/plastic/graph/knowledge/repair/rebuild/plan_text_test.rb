@@ -48,4 +48,12 @@ class RebuildPlanTextTest < Minitest::Test
   def test_a_plan_without_a_steps_heading_gives_its_numbered_lines
     assert_equal ["Search the messages.", "Review the tutorials."], PlanText.new("# Plan\n\n1. Search the messages.\n2. Review the tutorials.\n").steps.map(&:title)
   end
+
+  def test_a_plan_with_no_approach_or_an_empty_one_gives_none
+    assert_equal [nil, nil], ["# Plan\n", "# Plan\n\n## Approach\n\n## Steps\n1. a\n"].map { |text| PlanText.new(text).approach }
+  end
+
+  def test_an_indented_line_before_any_item_is_dropped
+    assert_equal ["a"], PlanText.new("# Plan\n\n## Steps\n   stray\n1. a\n").steps.map(&:title)
+  end
 end

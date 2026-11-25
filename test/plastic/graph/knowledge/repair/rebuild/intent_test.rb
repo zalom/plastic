@@ -89,4 +89,11 @@ class RebuildIntentTest < Minitest::Test
 
     assert_equal ["Resume restoration", "done", table, nil], [node.title, node.state, node.findings, node.packet]
   end
+
+  def test_a_ticked_step_takes_the_text_of_an_evidence_file_that_names_it_as_findings
+    table = "# ACTION 1 proof\n\n| Requirement | Evidence | Result |\n| --- | --- | --- |\n| a | b | c |\n"
+    files = { "checklist.md" => "- [x] ACTION_1 - first\n", "actions/ACTION_1.md" => table }
+
+    assert_equal table, rebuild("done", files).nodes.first.findings
+  end
 end
