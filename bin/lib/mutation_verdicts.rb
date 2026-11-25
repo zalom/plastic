@@ -3,6 +3,7 @@
 require "json"
 require "fileutils"
 require "benchmark"
+require "open3"
 require "tmpdir"
 
 # The gate's mutation report: reads the JSON Mutineer wrote, re-runs every
@@ -275,21 +276,28 @@ module MutationVerdicts
       @runner.call("bundle", "exec", "mutineer", "run", *@args, "--only", subject, "--jobs", "1", "--format", "json", "--output", path, chdir: @root)
     end
   end
-end
 
-if $PROGRAM_NAME == __FILE__
-  require "open3"
+  # The command line of bin/mutation-verdicts: reads its arguments, runs Mutineer through the gate and
+  # returns the exit code, 1 when the gate fails.
+  class Cli
+    def initialize(argv, out: $stdout, err: $stderr, mutineer: Mutineer.method(:new))
+      @args = argv.reject.with_index { |word, at| at.zero? && word == "run" }
+      @out = out
+      @err = err
+      @mutineer = mutineer
+    end
 
-  args = ARGV.dup
-  args.shift if args.first == "run"
-  output = args[args.index("--output") + 1]
-  threshold = Integer(args[args.index("--threshold") + 1])
-  mutineer = MutationVerdicts::Mutineer.new(args[(args.index("--") + 1)..])
+    def call
+      mutineer = @mutineer.call(@args[(@args.index("--") + 1)..])
+      Run.new(option("--output"), runner: -> { mutineer.call(option("--output")) }, rerun: mutineer.method(:rerun), out: @out, threshold: Integer(option("--threshold"))).call
+      0
+    rescue Decision::Failure => e
+      @err.puts e.message
+      1
+    end
 
-  begin
-    MutationVerdicts::Run.new(output, runner: -> { mutineer.call(output) }, rerun: mutineer.method(:rerun), threshold:).call
-  rescue MutationVerdicts::Decision::Failure => e
-    warn e.message
-    exit 1
+    private
+
+    def option(name) = @args[@args.index(name) + 1]
   end
 end
