@@ -12,7 +12,7 @@ module Plastic
             STUB = "backfilled from the record by end-intent"
             HEAD = 3
             # The lines a template writes: blanks, comments, headings, an empty table, and the unfilled items.
-            TEMPLATE = /\A(?:|<!--.*|\#.*|\|[-\s|:]*|\|\s*Date\b.*|\{\{.*|\(move items.*|(?:- \[ \] |\d+\. )?(?:Step \d+ — )?\.\.\.)\z/
+            TEMPLATE = /\A(?:|<!--.*|\#.*|\|[-\s|:]*|\|\s*Date\b.*|\{\{.*|\(move items.*|\(implementation notes.*|(?:- \[ \] |\d+\. )?(?:Step \d+ — )?\.\.\.)\z/
 
             # A generator writes its marker in the first lines; the same words quoted further down are text. A file that
             # keeps the placeholder marker but holds a line the template does not write was filled in, and is data.

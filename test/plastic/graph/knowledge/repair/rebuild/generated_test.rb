@@ -33,6 +33,6 @@ def test_a_file_that_keeps_the_placeholder_marker_but_holds_filled_lines_is_not_
 end
 
 def test_a_placeholder_with_only_its_template_lines_is_generated
-  assert Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\n{{GOAL}}\n\n## Steps\n1. Step 1 — ...\n\n- [ ] ...\n| Date | Items Completed | Notes |\n|------|---|---|\n")
+  assert Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\n{{GOAL}}\n\n## Steps\n1. Step 1 — ...\n\n- [ ] ...\n(implementation notes, constraints, decisions)\n(move items here when done)\n| Date | Items Completed | Notes |\n|------|---|---|\n")
 end
 end
