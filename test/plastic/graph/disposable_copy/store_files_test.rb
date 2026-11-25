@@ -10,6 +10,16 @@ module Plastic
 
       def store_file(root, *rest) = File.join(root, "stores", "global", *rest)
 
+      def test_a_store_with_no_folder_has_no_folder_links_and_copies_nothing
+        with_home do |home|
+          none = DisposableCopy::StoreFiles.new(home, File.join(File.dirname(home), "copy"), "absent")
+          none.refuse_folder_links
+          none.call
+
+          refute_path_exists File.join(none.target, "stores")
+        end
+      end
+
       def test_the_store_files_land_in_the_copy_without_the_databases
         with_home do |home|
           seed_intents(home, "Alpha")

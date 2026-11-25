@@ -21,6 +21,14 @@ class SchemaGateTest < Plastic::TestCase
     assert_equal [false, nil], [gate_of(connection).send(:build_layout), recorded_versions(connection.filename)]
   end
 
+  def test_a_call_already_inside_a_transaction_verifies_the_store_without_a_second_lock
+    connection = SQLite3::Database.new(store_path(beta_2_home, "knowledge_graph.db"))
+
+    connection.transaction(:immediate) do
+      assert_raises(Behind) { gate_of(connection).call }
+    end
+  end
+
   def test_a_file_that_is_not_a_database_is_not_called_behind
     path = File.join(Dir.mktmpdir, "knowledge_graph.db")
     File.write(path, "this is not a database" * 100)

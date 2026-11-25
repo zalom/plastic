@@ -34,6 +34,14 @@ class TextOutputTest < Plastic::TestCase
     assert_equal "line\n", @out.string
   end
 
+  def test_rows_flushed_early_print_once_when_flushed_again
+    printer = output.row("id", "7")
+    printer.flush_rows
+    printer.flush_rows
+
+    assert_equal "id  7\n", @out.string
+  end
+
   def test_the_label_goes_on_the_first_line_of_a_value_only
     assert_equal ["ab  x", "    y"], Plastic::CLI::TextOutput.lines_for("ab", %w[x y], 4)
   end

@@ -7,6 +7,13 @@ class FileSystemTest < Plastic::TestCase
 
   def path(name) = File.join(@home, name)
 
+  def test_present_is_true_for_a_file_a_folder_and_a_dangling_link
+    File.write(path("a"), "x")
+    File.symlink(path("nowhere"), path("dangling"))
+
+    assert_equal [true, true, true, false], [path("a"), @home, path("dangling"), path("none")].map { |entry| file_system.present?(entry) }
+  end
+
   def test_rename_moves_the_file
     File.write(path("a"), "x")
     file_system.rename(path("a"), path("b"))

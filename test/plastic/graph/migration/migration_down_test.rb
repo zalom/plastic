@@ -21,6 +21,13 @@ class GraphMigrationDownTest < Plastic::TestCase
       down(migrated_to_owner, keeps: []).refusal
   end
 
+  def test_a_store_whose_newest_migration_is_named_a_keeper_but_has_no_rows_in_legacy_db_is_refused
+    baseline = Plastic::Graph::MIGRATIONS.baseline(:store)
+
+    assert_equal "the legacy rows of migration #{baseline} are not in legacy.db, so a down cannot undo it; restore a backup to go back",
+      down(previous_home, keeps: [baseline]).refusal
+  end
+
   def test_a_store_from_before_the_baseline_is_refused_until_plastic_update_runs_it
     assert_equal "alpha has not run every migration of this release (#{Plastic::Graph::MIGRATIONS.versions(:store).join(", ")}); run plastic update first",
       down(beta_2_home).refusal

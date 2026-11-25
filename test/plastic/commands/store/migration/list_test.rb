@@ -48,6 +48,10 @@ class MigrationListTest < Plastic::TestCase
     assert_equal fresh_lines(home), JSON.parse(result.out).dig("result", "output")
   end
 
+  def test_a_list_of_a_store_whose_newest_migration_cannot_be_undone_prints_the_refusal_of_the_down
+    assert_includes list(previous_home).out, "down: migration #{Plastic::Graph::MIGRATIONS.baseline(:store)} kept nothing in legacy.db, so a down cannot undo it"
+  end
+
   def test_a_list_says_the_newest_migration_that_kept_nothing_puts_back_no_rows
     home = migrated_previous_home_with_times
 
