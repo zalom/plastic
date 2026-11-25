@@ -286,12 +286,12 @@ them back. It writes no value, so it has no switch, and a line it finds keeps ne
 `ALONE`, and its down, `WorkLogTextColumns` in `REBUILDS`, drops the columns again; the backup that
 the down takes first holds any text a line had.
 
-Migration `20261124233000` strips from each stored ruling the leading copies of its own id, each
-with the colon or dash after it, which agents typed into the text before `plastic intent rule`
-stripped them. It
-uses the same function as the command, so a ruling whose text starts a range or a list with its
-own id, such as a first ruling that says the first eight rulings are binding, loses that
-first id too. It strips the copy from the
+Migration `20261124233000` strips from each stored ruling the leading label of its own id, which
+agents typed into the text before `plastic intent rule` stripped it. A label is the id, or copies
+of it, followed by a colon, a period, any dash, or a space and then a capital letter, a backtick, a
+quote or a bracket. It uses the same function as the command, so an id that starts a range or a
+list stays: a range word, a list sign, a lowercase word or another ruling id after the id leaves the
+text alone. It strips the label from the
 `ruled` line of `work_log` that carries the ruling, too. The label was a mistake, so it keeps no
 copy and has no switch. It changes rows only and drops nothing, so it states no kind in `KINDS`. It
 is in `ALONE`: its down removes the version alone, the stripped text stays stripped, and the downs
