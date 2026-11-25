@@ -17,9 +17,8 @@ class ResourcesClassificationTest < Plastic::TestCase
       destinations("reviews/r1.md", "packets/p.json", "nodes/n1/brief.md")
   end
 
-  def test_the_plan_the_checklist_and_the_action_files_go_to_references
-    assert_equal %w[resources/references/plan.md resources/references/checklist.md resources/references/actions/a1.md],
-      destinations("plan.md", "checklist.md", "actions/a1.md")
+  def test_the_plan_the_checklist_and_the_action_files_stay_for_the_rebuild
+    assert_equal [nil] * 3, destinations("plan.md", "checklist.md", "actions/a1.md")
   end
 
   def test_the_old_intent_file_is_renamed_to_intent_md

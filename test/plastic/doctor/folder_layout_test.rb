@@ -23,9 +23,9 @@ class DoctorFolderLayoutTest < Plastic::TestCase
 
   def test_names_a_folder_that_breaks_the_layout_what_is_wrong_and_the_repair
     put(OLD_FILES)
-    outside = MOVES.keys.sort.join(", ")
+    outside = (MOVES.keys - %w[plan.md]).sort.join(", ")
 
-    assert_equal [[LABEL, "outside the layout: #{outside}; retired: delivery.lock", REPAIR]], checks.map(&:to_a)
+    assert_equal [[LABEL, "outside the layout: #{outside}; retired: delivery.lock, plan.md", REPAIR]], checks.map(&:to_a)
   end
 
   def test_a_store_whose_folders_follow_the_layout_is_no_finding
@@ -38,7 +38,7 @@ class DoctorFolderLayoutTest < Plastic::TestCase
     put("plan.md" => "# Plan\n")
     folder.write("store/2--beta/revisions.md", REVISIONS)
 
-    assert_equal [[LABEL, "outside the layout: plan.md", REPAIR], ["layout global 2--beta:", "revisions.md holds entries that belong in the work log", REPAIR]],
+    assert_equal [[LABEL, "retired: plan.md", REPAIR], ["layout global 2--beta:", "revisions.md holds entries that belong in the work log", REPAIR]],
       checks.map(&:to_a)
   end
 
