@@ -27,12 +27,12 @@ class RebuildGeneratedTest < Minitest::Test
     refute Generated.call("# Plan\n\nReal work.\n\nThe stub says `<!-- plastic:placeholder -->` and `backfilled from the record by end-intent`.\n")
   end
 
-def test_a_file_that_keeps_the_placeholder_marker_but_holds_filled_lines_is_not_generated
-  refute Generated.call("<!-- plastic:placeholder -->\n# Checklist: x\n\n| Date | Items Completed | Notes |\n|---|---|---|\n| 2026-07-19 | All items | Wrote the analysis. |\n")
-  refute Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\nReal goal.\n")
-end
+  def test_a_file_that_keeps_the_placeholder_marker_but_holds_filled_lines_is_not_generated
+    refute Generated.call("<!-- plastic:placeholder -->\n# Checklist: x\n\n| Date | Items Completed | Notes |\n|---|---|---|\n| 2026-07-19 | All items | Wrote the analysis. |\n")
+    refute Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\nReal goal.\n")
+  end
 
-def test_a_placeholder_with_only_its_template_lines_is_generated
-  assert Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\n{{GOAL}}\n\n## Steps\n1. Step 1 — ...\n\n- [ ] ...\n(implementation notes, constraints, decisions)\n(move items here when done)\n| Date | Items Completed | Notes |\n|------|---|---|\n")
-end
+  def test_a_placeholder_with_only_its_template_lines_is_generated
+    assert Generated.call("<!-- plastic:placeholder -->\n# Plan: x\n\n## Goal\n{{GOAL}}\n\n## Steps\n1. Step 1 — ...\n\n- [ ] ...\n(implementation notes, constraints, decisions)\n(move items here when done)\n| Date | Items Completed | Notes |\n|------|---|---|\n")
+  end
 end
