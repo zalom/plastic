@@ -77,7 +77,7 @@ class RebuildIntentTest < Minitest::Test
   end
 
   def test_a_placeholder_gives_no_record
-    files = { "checklist.md" => "<!-- plastic:placeholder -->\n- [ ] x\n", "plan.md" => "<!-- plastic:placeholder -->\n" }
+    files = { "checklist.md" => "<!-- plastic:placeholder -->\n- [ ] ...\n", "plan.md" => "<!-- plastic:placeholder -->\n" }
     rebuild = rebuild("future", files)
 
     assert_equal [[], [], []], [rebuild.nodes, rebuild.lines, rebuild.rulings]
