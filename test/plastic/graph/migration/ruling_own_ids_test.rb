@@ -13,9 +13,11 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
   VERSION = "20261124233000"
   RULINGS = [["1", "D1", "D1 D1: One lock serializes the calls"], ["1", "D2", "D2: The lock file sits outside"],
     ["1", "D3", "D3. A call waits"], ["2", "D1", "D1 - Ship it"], ["2", "D2", "Jev chose the lock"],
-    ["2", "D3", "D12 stays binding"]].freeze
+    ["2", "D3", "D12 stays binding"], ["3", "D1", "D1 through D8 in the intent file are binding."], ["3", "D2", "D2 — Retire the store worktrees"],
+    ["3", "D3", "D3..D6: ruled in the intent record"], ["3", "D4", "D4 / D4a: a new skill"]].freeze
   LINES = [[1, "ruled", "D1 D1 D1: One lock serializes the calls"], [2, "ruled", "D2 D2: The lock file sits outside"],
-    [3, "ruled", "D3 Jev chose it"], [4, "noted", "D1 D1 a note"]].freeze
+    [3, "ruled", "D3 Jev chose it"], [4, "noted", "D1 D1 a note"], [5, "ruled", "D2 D2 — Retire the store worktrees"],
+    [6, "ruled", "D1 D1 through D8 in the intent file are binding."]].freeze
 
   def seeded(rulings: RULINGS, lines: LINES)
     previous_home.tap do |home|
@@ -39,7 +41,7 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
     before = own_id_left(home)
     migrate_store(home)
 
-    assert_equal [4, 0, true], [before, own_id_left(home), recorded(home).include?(VERSION)]
+    assert_equal [5, 0, true], [before, own_id_left(home), recorded(home).include?(VERSION)]
   end
 
   def test_the_migration_strips_the_leading_id_and_leaves_every_other_text
@@ -47,20 +49,23 @@ class GraphRulingOwnIdsTest < Plastic::TestCase
     migrate_store(home)
 
     assert_equal [["1", "D1", "One lock serializes the calls"], ["1", "D2", "The lock file sits outside"], ["1", "D3", "A call waits"],
-      ["2", "D1", "Ship it"], ["2", "D2", "Jev chose the lock"], ["2", "D3", "D12 stays binding"]], rulings(home)
+      ["2", "D1", "Ship it"], ["2", "D2", "Jev chose the lock"], ["2", "D3", "D12 stays binding"],
+      ["3", "D1", "D1 through D8 in the intent file are binding."], ["3", "D2", "Retire the store worktrees"], ["3", "D3", "D3..D6: ruled in the intent record"],
+      ["3", "D4", "D4 / D4a: a new skill"]], rulings(home)
   end
 
   def test_the_migration_strips_the_copy_from_each_ruled_line_of_the_work_log
     home = seeded
     migrate_store(home)
 
-    assert_equal ["D1 One lock serializes the calls", "D2 The lock file sits outside", "D3 Jev chose it", "D1 D1 a note"], lines(home)
+    assert_equal ["D1 One lock serializes the calls", "D2 The lock file sits outside", "D3 Jev chose it", "D1 D1 a note", "D2 Retire the store worktrees",
+      "D1 D1 through D8 in the intent file are binding."], lines(home)
   end
 
   def test_the_migration_names_what_it_stripped_and_the_sync_down_to_run
     report = migrate_store(seeded)
 
-    assert_includes report.notes, "migrate: alpha stripped the leading own id from 4 rulings and 2 work log lines, an agent's mistake with no copy " \
+    assert_includes report.notes, "migrate: alpha stripped the leading own id from 5 rulings and 3 work log lines, an agent's mistake with no copy " \
                                   "and no undo; run plastic store sync down --project alpha so the printed work.log files carry them"
   end
 
