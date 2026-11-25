@@ -50,7 +50,29 @@ class InstallerReleaseArchiveEntryTest < Minitest::Test
     assert File.directory?(File.join(root, "package", "bin"))
   end
 
+  def test_write_under_writes_nothing_for_an_extended_header_entry
+    root = File.join(@root, "out")
+    open_entry(header_only_archive("x")) { |entry| entry.write_under(root) }
+
+    refute_path_exists root
+  end
+
+  def test_write_under_writes_nothing_for_a_global_header_entry
+    root = File.join(@root, "out")
+    open_entry(header_only_archive("g")) { |entry| entry.write_under(root) }
+
+    refute_path_exists root
+  end
+
   private
+
+  # A tar of one hand-written header of `typeflag` and no data, so no platform decides what its tar tool adds.
+  def header_only_archive(typeflag)
+    header = Gem::Package::TarHeader.new(name: "PaxHeader/#{typeflag}", mode: 0o644, size: 0, mtime: 0, typeflag:, prefix: "", uid: 0, gid: 0, uname: "", gname: "")
+    path = File.join(@root, "header-#{typeflag}.tgz")
+    Zlib::GzipWriter.open(path) { |gzip| gzip.write(header.to_s, "  def entry_of(&)" * 1024) }
+    path
+  end
 
   def entry_of(&) = open_entry(tar_archive(&)) { |entry| entry }
 
