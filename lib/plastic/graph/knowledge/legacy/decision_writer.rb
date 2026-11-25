@@ -18,7 +18,7 @@ module Plastic
 
           def write(decision)
             intent_id = decision.fetch(:intent_id)
-            decision.fetch(:rulings).each { |id, text| insert(:rulings, { intent_id:, id:, text:, supersedes: nil, at: stamp, session_id: nil }) }
+            decision.fetch(:rulings).each { |id, text| insert(:rulings, { intent_id:, id:, text:, at: stamp, session_id: nil }) }
             links(intent_id, decision.fetch(:source), "source")
             links(intent_id, decision.fetch(:chain), "chain")
           end

@@ -89,9 +89,8 @@ class IntentRuleTest < Plastic::TestCase
 
     results = [call("1", "Direct mode only", "--adds", "D9"), call("1", "Direct mode only", "--rewrites", "D9")]
 
-    assert_equal [[1, ""], [1, ""]], results.map { |result| [result.code, result.out] }
-    assert_equal ["no decision D9 in intent 1"] * 2, results.map { |result| result.err.lines.first.chomp.delete_prefix("plastic: ") }
-    assert_empty rulings
+    assert_equal [[1, ""]] * 2, results.map { |result| [result.code, result.out] }
+    assert_equal [[true, []]] * 2, results.map { |result| [result.err.include?("no decision D9 in intent 1"), rulings] }
   end
 
   def test_adds_or_rewrites_naming_an_addition_exits_2

@@ -48,10 +48,10 @@ module Plastic
         ran("intent start 1", "node add 1 Build --criterion tests-pass")
       end
 
-      # Intent 1 after a full pass of the work graph: two rulings, the second superseding the first,
+      # Intent 1 after a full pass of the work graph: a decision and an addition to it,
       # two nodes with an edge, and the first node failed, released, claimed again and done.
       def work_graph_pass
-        ran("intent new Alpha", 'intent rule 1 "Flowbite styles every delivery"', 'intent rule 1 "Direct mode only" --supersedes D1')
+        ran("intent new Alpha", 'intent rule 1 "Flowbite styles every delivery"', 'intent rule 1 "Direct mode only" --adds D1')
         write("store/1--alpha/spec.md", TWO_KEYED_CRITERIA)
         sync_up
         ran("intent approve 1", "intent start 1", 'node add 1 "do the thing" --criterion it-is-done', 'node add 1 "build it" --criterion it-builds',

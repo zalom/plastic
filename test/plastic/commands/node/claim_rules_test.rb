@@ -26,12 +26,12 @@ class NodeClaimRulesTest < Plastic::TestCase
 
   def claim_lines = cli("node", "claim", "1", "n1", "--agent", "tester").out.lines.map(&:chomp)
 
-  def test_the_packet_carries_the_rulings_in_force_and_leaves_superseded_ones_out
+  def test_the_packet_carries_every_ruling_each_addition_after_its_decision
     rule("Old")
-    rule("New", "--supersedes", "D1")
     rule("Other")
+    rule("New", "--adds", "D1")
 
-    assert_equal [{ "id" => "D2", "text" => "New" }, { "id" => "D3", "text" => "Other" }], packet.fetch("rulings")
+    assert_equal [{ "id" => "D1", "text" => "Old" }, { "id" => "D1.1", "text" => "New" }, { "id" => "D2", "text" => "Other" }], packet.fetch("rulings")
   end
 
   def test_the_packet_carries_the_constraints_of_the_spec
@@ -46,18 +46,18 @@ class NodeClaimRulesTest < Plastic::TestCase
     assert_equal [[], [], {}], [claimed.fetch("rulings"), claimed.fetch("constraints"), claimed.fetch("omitted")]
   end
 
-  def test_the_text_claim_prints_each_ruling_in_force_and_each_constraint
+  def test_the_text_claim_prints_each_ruling_as_rewritten_and_each_constraint
     rule("Old")
-    rule("New", "--supersedes", "D1")
+    rule("New", "--rewrites", "D1")
     write_constraints("No new gem")
 
-    assert_equal ["ruling: D2 New", "constraint: No new gem"], claim_lines.grep(/\A(ruling|constraint):/)
+    assert_equal ["ruling: D1 New", "constraint: No new gem"], claim_lines.grep(/\A(ruling|constraint):/)
   end
 
-  def test_the_packet_rulings_are_the_ones_the_brief_prints_without_the_superseded
+  def test_the_packet_rulings_are_the_ones_the_brief_prints
     rule("Old")
-    rule("New", "--supersedes", "D1")
-    brief = cli("intent", "brief", "1").out.lines.map(&:chomp).grep(/\Aruling:/).reject { |line| line.end_with?("(superseded)") }
+    rule("New", "--adds", "D1")
+    brief = cli("intent", "brief", "1").out.lines.map(&:chomp).grep(/\Aruling:/)
 
     assert_equal brief, claim_lines.grep(/\Aruling:/)
   end

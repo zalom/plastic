@@ -3,20 +3,18 @@
 module Plastic
   module Graph
     module Knowledge
-      # How rulings are ordered and which of them another ruling supersedes. The brief marks the superseded
-      # ones and the node packet leaves them out; both read it here.
+      # How rulings are ordered: by the number of their decision, each addition after its decision, as D1, D1.1, D1.2, D2.
+      # The brief and the node packet both read it here.
       module RulingOrder
+        PARTS = /\AD(\d+)(?:\.(\d+))?/
+
         # The rulings by their number, oldest first.
-        def self.sorted(rulings) = rulings.sort_by { |ruling| ruling.id[/\d+/].to_i }
+        def self.sorted(rulings) = rulings.sort_by { |ruling| parts(ruling.id) }
 
-        # The ids that another ruling supersedes.
-        def self.superseded_ids(rulings) = rulings.filter_map(&:supersedes).to_set
+        # The additions of the whole decision `id`, such as D1.1 and D1.2 of D1, in order.
+        def self.additions(rulings, id) = sorted(rulings.select { |ruling| ruling.id.start_with?("#{id}.") })
 
-        # The sorted rulings that no other ruling supersedes.
-        def self.in_force(rulings)
-          superseded = superseded_ids(rulings)
-          sorted(rulings).reject { |ruling| superseded.include?(ruling.id) }
-        end
+        def self.parts(id) = id.match(PARTS)&.captures&.map(&:to_i) || [0, 0]
       end
     end
   end

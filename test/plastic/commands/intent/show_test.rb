@@ -54,13 +54,13 @@ class IntentShowTest < Plastic::TestCase
     assert_equal [[], []], [shown_times(intent_id).grep(/Z\z/), stored_times(intent_id).grep_v(/Z\z/)]
   end
 
-  def test_marks_a_superseded_ruling
+  def test_lists_an_addition_after_its_decision
     intent = open_intent
-    plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
-    plastic("intent", "rule", intent.intent_id, "Direct mode only", "--supersedes", "D1", table: Plastic::CLI::TABLE)
+    ["Flowbite styles every delivery", "Direct mode only"].each { |text| plastic("intent", "rule", intent.intent_id, text, table: Plastic::CLI::TABLE) }
+    plastic("intent", "rule", intent.intent_id, "No subagents", "--adds", "D1", table: Plastic::CLI::TABLE)
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery (superseded)", "ruling: D2 Direct mode only\n"]
+    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "ruling: D1.1 No subagents", "ruling: D2 Direct mode only\n"]
   end
 end

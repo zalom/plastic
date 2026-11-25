@@ -44,15 +44,15 @@ class ShowBriefTest < Plastic::TestCase
     assert_equal "spec: #{intent.dir}/spec.md; the done criteria are the bullets under its \"## Done criteria\" heading, each written - [c1] text", spec_line(brief.last)
   end
 
-  def test_superseded_rulings_and_ready_nodes_are_listed
+  def test_rulings_with_their_additions_and_ready_nodes_are_listed
     open_intent
     store_graphs.work.add_ruling(intent_id: "1", text: "Old")
-    store_graphs.work.add_ruling(intent_id: "1", text: "New", supersedes: "1/D1")
+    store_graphs.work.add_ruling(intent_id: "1", text: "New", adds: "D1")
     store_graphs.work.add_node(intent_id: "1", title: "Build")
 
     printed = brief.last.printed
 
-    assert_equal ["ruling: D1 Old (superseded)", "ruling: D2 New", "ready: n1 Build"], printed.grep(/\A(ruling|ready):/)
+    assert_equal ["ruling: D1 Old", "ruling: D1.1 New", "ready: n1 Build"], printed.grep(/\A(ruling|ready):/)
   end
 
   def test_the_brief_names_the_main_session_steps

@@ -6,7 +6,7 @@ require_relative "run_times"
 module Plastic
   module Workflows
     # The print lines the show workflows share: one node, one ready node,
-    # the rulings of an intent, each superseded one marked.
+    # the rulings of an intent in their order.
     module Lines
       CRITERIA = 'the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text'
 
@@ -52,15 +52,12 @@ module Plastic
 
       def self.ready_node(node) = "ready: #{node.id} #{node.title}"
 
-      def self.rulings(rulings)
-        superseded = Plastic::Graph::Knowledge::RulingOrder.superseded_ids(rulings)
-        Plastic::Graph::Knowledge::RulingOrder.sorted(rulings).map { |ruling| ruling_line(ruling, superseded) }
-      end
+      def self.rulings(rulings) = Plastic::Graph::Knowledge::RulingOrder.sorted(rulings).map { |ruling| ruling_line(ruling) }
 
-      def self.ruling_line(ruling, superseded)
-        id = ruling.id
-        "ruling: #{id} #{ruling.text}#{" (superseded)" if superseded.include?(id)}"
-      end
+      def self.ruling_line(ruling) = "ruling: #{ruling.id} #{ruling.text}"
+
+      # Words as a person lists them: D1, D1.2 and D1.3.
+      def self.joined(words) = [words[0...-1].join(", "), words.last].reject(&:empty?).join(" and ")
     end
   end
 end

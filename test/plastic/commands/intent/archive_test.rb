@@ -29,7 +29,7 @@ class IntentArchiveTest < Plastic::TestCase
   end
 
   def add_ruling(intent)
-    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: STAMP }
+    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", at: STAMP }
     store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
   end
 
