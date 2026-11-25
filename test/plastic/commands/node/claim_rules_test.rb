@@ -51,15 +51,15 @@ class NodeClaimRulesTest < Plastic::TestCase
     rule("New", "--rewrites", "D1")
     write_constraints("No new gem")
 
-    assert_equal ["ruling: D1 New", "constraint: No new gem"], claim_lines.grep(/\A(ruling|constraint):/)
+    assert_equal ["D1: New", "constraint: No new gem"], claim_lines.grep(/\A(D\d|constraint:)/)
   end
 
   def test_the_packet_rulings_are_the_ones_the_brief_prints
     rule("Old")
     rule("New", "--adds", "D1")
-    brief = cli("intent", "brief", "1").out.lines.map(&:chomp).grep(/\Aruling:/)
+    brief = cli("intent", "brief", "1").out.lines.map(&:chomp).grep(/\AD\d/)
 
-    assert_equal brief, claim_lines.grep(/\Aruling:/)
+    assert_equal brief, claim_lines.grep(/\AD\d/)
   end
 
   def test_the_packet_keeps_the_newest_twenty_rulings_and_counts_the_rest

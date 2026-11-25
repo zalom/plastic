@@ -9,7 +9,7 @@ class IntentShowCaseTest < Plastic::TestCase
     alpha_specified
     ran('intent rule 1 "ship the CLI first"', "node add 1 Build --criterion tests-pass")
 
-    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (future)", "criteria: 1", "ruling: D1 ship the CLI first",
+    assert_case line("intent show 1"), code: 0, out: ["intent: 1 Alpha (future)", "criteria: 1", "D1: ship the CLI first",
       "node: n1 open Build", "Opened: Alpha", "next: plastic intent brief 1"]
   end
 
@@ -41,7 +41,7 @@ class IntentShowTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "log:"]
+    assert_call result, code: 0, out: ["D1: Flowbite styles every delivery", "log:"]
   end
 
   def shown_times(intent_id) = call(intent_id).out.lines.grep(/\Alog: - /).map { |line| line.split[2] }
@@ -61,6 +61,6 @@ class IntentShowTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_call result, code: 0, out: ["ruling: D1 Flowbite styles every delivery", "ruling: D1.1 No subagents", "ruling: D2 Direct mode only\n"]
+    assert_call result, code: 0, out: ["D1: Flowbite styles every delivery", "D1.1: No subagents", "D2: Direct mode only\n"]
   end
 end

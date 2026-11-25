@@ -52,7 +52,7 @@ class ShowBriefTest < Plastic::TestCase
 
     printed = brief.last.printed
 
-    assert_equal ["ruling: D1 Old", "ruling: D1.1 New", "ready: n1 Build"], printed.grep(/\A(ruling|ready):/)
+    assert_equal ["D1: Old", "D1.1: New", "ready: n1 Build"], printed.grep(/\A(D\d|ready:)/)
   end
 
   def test_the_brief_names_the_main_session_steps

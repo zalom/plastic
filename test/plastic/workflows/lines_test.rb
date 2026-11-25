@@ -49,7 +49,7 @@ class LinesTest < Minitest::Test
   def test_an_addition_prints_after_its_decision
     rulings = %w[D2 D1.1 D1].map { |id| Ruling.new(id: id, text: id.downcase) }
 
-    assert_equal ["ruling: D1 d1", "ruling: D1.1 d1.1", "ruling: D2 d2"], lines.rulings(rulings)
+    assert_equal ["D1: d1", "D1.1: d1.1", "D2: d2"], lines.rulings(rulings)
   end
 
   def test_words_are_joined_as_a_person_lists_them
@@ -59,7 +59,7 @@ class LinesTest < Minitest::Test
   def test_rulings_print_in_number_order_not_text_order
     rulings = %w[D10 D1 D2].map { |id| Ruling.new(id: id, text: id.downcase) }
 
-    assert_equal ["ruling: D1 d1", "ruling: D2 d2", "ruling: D10 d10"], lines.rulings(rulings)
+    assert_equal ["D1: d1", "D2: d2", "D10: d10"], lines.rulings(rulings)
   end
 
   def test_a_run_line_names_the_agent_the_harness_the_figures_and_the_worker
