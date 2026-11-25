@@ -1,0 +1,48 @@
+# Reek reads this file. The detectors run at Reek's own defaults on every Ruby
+# file outside test/, except four: NilCheck and IrresponsibleModule are off,
+# LongParameterList allows 5 parameters and TooManyStatements allows 10
+# statements. The exclude lists below were generated with `reek --todo` over
+# older code, so those smells stay hidden, and each entry names a smell that
+# Reek still reports. The lists never gain an entry: a new or changed method
+# that smells is fixed, never listed. The change gate prints the smells of a
+# changed file as a target and fails nothing, unless Reek did not run.
+---
+exclude_paths:
+  - test
+  - tmp
+  - coverage
+detectors:
+  ControlParameter:
+    exclude:
+    - ReleaseGuard#self.check
+  DuplicateMethodCall:
+    exclude:
+    - Plastic::Config::AgentModels#shipped_model_for
+  FeatureEnvy:
+    exclude:
+    - Plastic::VersionNumber#<=>
+  IrresponsibleModule:
+    enabled: false
+  LongParameterList:
+    max_params: 5
+  NestedIterators:
+    exclude:
+    - Plastic::Installations::HookRegistry#claude_launcher_names
+    - Plastic::Installations::HookRegistry#claude_settings_hooks
+  NilCheck:
+    enabled: false
+  TooManyConstants:
+    exclude:
+    - Plastic::Config::AgentModels
+    - Plastic::Installations::HookRegistry
+  TooManyMethods:
+    exclude:
+    - Plastic::Scope
+  TooManyStatements:
+    max_statements: 10
+    exclude:
+    - Plastic::Installations::EnginePermissions#merge_into
+  UncommunicativeVariableName:
+    exclude:
+    - Plastic::Installations::HookRegistry
+    - Plastic::Installations::HookRegistry#claude_launcher_names

@@ -2,29 +2,22 @@
 
 require "minitest/autorun"
 require "varar/minitest"
+require_relative "../lib/plastic/cli/table"
 
 # Turn every Markdown oath matched by varar.config.json into Minitest tests —
 # varar.config.json lives at the project root (the parent of test/).
 Varar::Minitest.generate_tests(Object, root: File.expand_path("..", __dir__))
 
+# The acceptance documents are the end-to-end (e2e) layer, run by `bin/test --e2e`, and the core list: the commands whose whole path through a
+# child process, two homes or a legacy store is the subject. The cases of every other
+# command are kernel tests.
 class VararCoverageTest < Minitest::Test
-  def test_project_new_keeps_every_slug_row
-    assert_equal 4, Var_varar_project_new_md.runnable_methods.grep(/\Atest_the_slug_/).length
-  end
+  REPO = File.expand_path("..", __dir__)
+  CORE = %w[status sync-up sync-down sync-import sync-second-home backup backup-list backup-restore legacy-import].freeze
 
-  def test_intent_end_keeps_every_record_and_mode
-    assert_equal 6, Var_varar_intent_end_md.runnable_methods.grep(/\Atest_the_record_/).length
-  end
+  def documents = Dir.glob(File.join(REPO, "varar", "*.md")).map { |path| File.basename(path, ".md") }.sort
 
-  def test_project_links_keeps_both_harnesses_and_both_modes
-    assert_equal 4, Var_varar_project_links_md.runnable_methods.grep(/\Atest_the_harness_/).length
-  end
-
-  def test_update_safety_keeps_both_harnesses_and_both_commands
-    assert_equal 4, Var_varar_update_safety_md.runnable_methods.grep(/\Atest_the_harness_/).length
-  end
-
-  def test_store_layout_keeps_both_harnesses_and_both_starting_layouts
-    assert_equal 4, Var_varar_store_layout_md.runnable_methods.grep(/\Atest_the_harness_/).length
+  def test_the_acceptance_documents_are_exactly_the_core_list
+    assert_equal CORE.sort, documents
   end
 end

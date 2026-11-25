@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/workflows/agent/install"
+
+class OfferEnolaTest < Plastic::TestCase
+  def offer(reinstall) = run_workflow(Plastic::Workflows::Agent::Install, reinstall:).first
+
+  def test_a_first_install_offers_enola_as_optional
+    outcome = offer(false)
+
+    assert_match(/It is optional: Plastic works without it/, sole(outcome.steps))
+    assert_equal "plastic init", outcome.next_command
+  end
+
+  def test_the_offer_names_the_pinned_enola_release_and_no_branch
+    said = sole(offer(false).steps)
+
+    assert_includes said, "https://github.com/enola-labs/enola/releases/tag/v#{Plastic::Workflows::Agent::Install::ENOLA_VERSION}"
+    refute_includes said, "/main/"
+  end
+
+  def test_the_offer_tells_the_agent_to_set_up_the_hooks_and_the_mcp_server_for_this_harness
+    said = sole(offer(false).steps)
+
+    assert_match(/set up Enola's hooks and its MCP server for this harness/, said)
+  end
+
+  def test_a_reinstall_offers_nothing
+    assert_equal :done, offer(true)
+  end
+end

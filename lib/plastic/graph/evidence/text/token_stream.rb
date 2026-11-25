@@ -1,0 +1,75 @@
+# frozen_string_literal: true
+
+module Plastic
+  module Graph
+    module Retrieval
+      class Evidence
+        module Text
+          # Emits source fragments with their original line numbers, then normalizes them.
+          class TokenStream
+            def initialize(source, pattern)
+              @source = source
+              @pattern = pattern
+            end
+
+            def extract
+              fragments = Fragments.new(@source)
+              scan(fragments) { |match| yield(match) }
+              NormalizedText.new(fragments.values).build
+            end
+
+            private
+
+            def scan(fragments)
+              fragments.append_tail(matches(fragments) { |match| yield(match) })
+            end
+
+            def matches(fragments)
+              cursor = 0
+              while @source.byteindex(@pattern, cursor)
+                cursor = fragments.append_match(cursor, Regexp.last_match) { |found| yield(found) }
+              end
+              cursor
+            end
+
+            # Owns fragment assembly and the source-line accounting for one stream.
+            class Fragments
+              attr_reader :values
+
+              def initialize(source)
+                @source = source
+                @values = []
+                @counted = 0
+                @line = 1
+              end
+
+              def append_match(cursor, match)
+                start, finish = match.byteoffset(0)
+                append(@source.byteslice(cursor...start), line_at(cursor))
+                append(yield(match), line_at(start))
+                finish
+              end
+
+              def append_tail(cursor) = append(@source.byteslice(cursor..), line_at(cursor))
+
+              private
+
+              def append(value, line)
+                value.each_char do |character|
+                  @values << [character, line]
+                  line += 1 if character == "\n"
+                end
+              end
+
+              def line_at(offset)
+                @line += @source.byteslice(@counted...offset).count("\n")
+                @counted = offset
+                @line
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end

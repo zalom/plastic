@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative "../archive"
+
+module Plastic
+  module Graph
+    module Knowledge
+      class Archive
+        # Restores a stored snapshot and clears its archive marker after publication.
+        class Restore
+          def initialize(database, retrieval, folder, snapshot:)
+            @database = database
+            @retrieval = retrieval
+            @folder = folder
+            @snapshot = snapshot
+          end
+
+          def call(intent_id)
+            return unavailable(intent_id) unless retrieval.archives.archived?(intent_id)
+            return elsewhere(intent_id) unless snapshot.call(intent_id).entries.any?
+
+            restore(intent_id)
+            [true, nil, nil]
+          end
+
+          private
+
+          attr_reader :database, :folder, :retrieval, :snapshot
+
+          def unavailable(intent_id) = [false, "intent #{intent_id} is not archived", :refusal]
+
+          def elsewhere(intent_id) = [false, "intent #{intent_id} is archived and its snapshot is on the first home; unarchive it there", :refusal]
+
+          def restore(intent_id)
+            intent = retrieval.intent(intent_id)
+            snapshot.call(intent_id).restore(Location.root(folder, intent))
+            mark_restored(intent_id)
+          end
+
+          def mark_restored(intent_id)
+            database.transaction do |batch|
+              batch.write(:archives, "UPDATE archives SET restored_at = :now WHERE origin_id = :origin AND intent_id = :intent_id",
+                now: Plastic.timestamp(@retrieval.clock.now), origin: retrieval.origin_id, intent_id:)
+            end
+          end
+        end
+      end
+    end
+  end
+end

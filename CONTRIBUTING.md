@@ -5,26 +5,108 @@ commits and releases. This page points to the rest.
 
 | Read | For |
 | ---- | --- |
-| [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | How the `plastic` command is built, and where the system architecture lives. |
-| [docs/contributing/CODING_PRACTICES.md](docs/contributing/CODING_PRACTICES.md) | How Ruby is written and tested here. |
+| [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | The system architecture in drawings, and how the `plastic` command is built. |
+| [docs/contributing/CODING_PRACTICES.md](docs/contributing/CODING_PRACTICES.md) | How Ruby is written, linted and scored here. |
 | [docs/contributing/TECHNICAL.md](docs/contributing/TECHNICAL.md) | The gates, the byte budget and the test layout. |
+| [docs/contributing/MIGRATIONS.md](docs/contributing/MIGRATIONS.md) | How to add a database migration, and the rules the gate enforces on it. |
+
+## Test a change
+
+Every test in this repository follows one of four patterns. Choose the pattern by what the code
+under test touches, open the example and keep its shape.
+
+| The code under test | Pattern | Built on | Example |
+| --- | --- | --- | --- |
+| A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent/new_test.rb` |
+| `install.sh` or an installer script | Installer test | `Minitest::Test` with `InstallShHelper` | `test/install_sh_dependency_test.rb` |
+| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/status.md` |
+| A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
+
+A test file has the path of its source file: `lib/plastic/commands/intent/new.rb` is
+tested by `test/plastic/commands/intent/new_test.rb`.
+
+### Rules for every test
+
+1. Write the test first and commit it red.
+1. Use a throwaway home. `Plastic::TestCase` gives one in `@home` and `@plastic_home`. A child
+   process gets `HOME` and `PLASTIC_HOME` in the hash passed to it. No test reads or writes the
+   real `~/.plastic` or `~/.claude`.
+1. Pass the environment as a value. A test never assigns to `ENV`.
+1. Outside the core acceptance documents, no test starts a child process for a command. A command
+   runs through the `plastic` helper, in the test's own process. The exceptions are the tests of
+   the launcher, of the release package, of the shipped bundle, and of how a fresh process loads a
+   command. A guard test refuses every other test.
+1. Start every child process a test needs through `ChildProcess` (`test/support/child_process.rb`),
+   which serves the acceptance documents, the installer tests and those exceptions. It takes
+   the same arguments as `Open3` and `system`. The child gets only the values the test passes, a
+   fixed `PATH` and `LANG`, and an empty throwaway `HOME` when the test passes none. Nothing of the
+   session that runs the suite reaches it. A guard test refuses every other way to start a process.
+1. Use real SQLite files in the throwaway home, and read the rows back to check them.
+1. Pass a collaborator in as an argument. Do not use a mocking library and do not replace a
+   method on a live class.
+1. Pass the time in. A test never calls `sleep` and never reads the clock to decide a result.
+1. Stay on the machine: no network, no outside API and no key. To stand in for a program such
+   as `curl`, put a fake program first on `PATH`.
+1. Check what a person gets: the exit code, standard output and standard error. A command test
+   checks all three.
+1. Test one behavior in each test, and name the test as a sentence:
+   `test_after_naming_a_missing_intent_fails_with_no_intent_written`.
+1. Give a reason in words for every `skip`.
+1. When code is deleted, delete its tests in the same change.
+
+### Rules for a guard test
+
+1. Read the subjects from the disk, and fail when the list of subjects is empty.
+1. Test the detector on short sample text: one sample that it must catch and one that it must
+   leave alone.
+1. Before the commit, break the rule once on purpose and see the guard fail. Say so in the pull
+   request description.
+
+### Run the tests
+
+```sh
+ruby bin/test --only test/plastic/commands/intent/new_test.rb
+bundle exec ruby bin/verify-change <base commit>
+```
+
+Run the test of each changed file once. When you change a command, workflow or graph class, run
+`ruby tools/command-reference` and commit the pages it rewrites. Then run the gate once before the commit: it runs the
+lint, the tests of the changed files with coverage, and the smell and score steps. The smell and score steps print their result against the target and fail nothing, unless their tool did not run. Just before the pull
+request is created, run the full suite one time with `ruby bin/test` and fix what it finds. After
+the pull request exists, CI takes over: read its failures and fix those, with no more full runs
+on your machine.
+
+## Change search ranking
+
+A change to how `plastic search` ranks, tokenizes or weights reports the hits before and after. Run
+`ruby bin/search-check FILE` on the known-question set of the store (`known-questions.json` in the
+intent folder of intent 529) once on the old code and once on the new, and put both totals in the
+pull request description. The script opens the store databases read-only. A ranking change with no
+before and after is not ready for review.
 
 ## Add a command
 
-1. Add one row to `scripts/lib/cli/table.rb`: the name, the file, the class and the help line.
-2. Add one file under `scripts/lib/cli/commands/` with a `USAGE_LINE` and a public `call`.
-3. Write the tests first and commit them red.
-4. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
-5. Add the command to [README.md](README.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
+1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line. A
+   command of the `node`, `edge`, `graph` or `hook` family goes in
+   `lib/plastic/cli/table/work_families.rb`, which `table.rb` adds to the other families.
+2. Add the class in one file under `lib/plastic/commands/`. Each word of the command is a name in
+   the class path and a folder in the file path: `intent end` is `Commands::Intent::End` in
+   `intent/end.rb`, and `node renew` is `Commands::Node::Renew` in
+   `node/renew.rb`. A group with no command of its own is a module; `backup` and `config`
+   are classes that also hold their subcommands, and a subcommand file requires its parent first.
+   Inside `commands/`, write `Plastic::Graph`, never `Graph`, wherever a group name would shadow a
+   top-level class. Follow `architecture/status.rb` for the smallest example.
+3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
+4. Write the command's reference pages: run `ruby tools/command-reference` and commit the pages under `docs/reference/commands/`.
+5. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
+6. Add the command to [docs/usage/commands.md](docs/usage/commands.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
 
 ## Cut a release
 
-1. Bump the three version files: `package.json`, `.claude-plugin/plugin.json`,
-   `.claude-plugin/marketplace.json`.
-2. Add or update the entry in `deprecations.yml` for anything this release removes or
-   replaces.
-3. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
-   `.github/workflows/publish.yml` creates the tag, the GitHub release, and the npm publish
-   for a version with no tag yet.
-4. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
-   lanes and the stable-line guarantees.
+1. Bump the version in `package.json`.
+2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
+   `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
+   no tag yet. The release carries the three files `install.sh` downloads.
+3. Read [docs/release-lines.md](docs/release-lines.md) for the release flow, how to release
+   a beta or a stable version, the two installs that prove a release, and the stable-line
+   guarantees.

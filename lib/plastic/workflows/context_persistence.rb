@@ -1,0 +1,31 @@
+# frozen_string_literal: true
+
+require "json"
+
+module Plastic
+  module Workflows
+    # Writes the context as a row of the owning store, then prints the intent's files.
+    class ContextPersistence
+      def initialize(context)
+        @context = context
+      end
+
+      def persist(document)
+        intent_id = context.intent_id
+        context.database(:store).transaction do |batch|
+          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.timestamp(context.now) })
+        end
+        document
+      end
+
+      def saved?(document)
+        row = context.database(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: context.intent_id)
+        !row.nil? && row.fetch("data") == JSON.pretty_generate(document)
+      end
+
+      private
+
+      attr_reader :context
+    end
+  end
+end

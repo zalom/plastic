@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+
+class PrinterTest < Plastic::TestCase
+  Print = Plastic::Graph::Prints::Print
+
+  def printer = Plastic::Graph::Printer.new(folder, store_graphs.databases, retrieval)
+
+  # A database that keeps the rows each put_all gives it.
+  class Recording
+    attr_reader :rows
+
+    def initialize = @rows = []
+
+    def transaction = yield(self)
+
+    def put_all(table, rows) = @rows << [table, rows.map { |row| row[:path] }]
+  end
+
+  def test_print_writes_the_files_that_differ_and_returns_their_paths
+    write("a.md", "same\n")
+    prints = [Print.text("a.md", "same\n"), Print.text("b.md", "new\n")]
+
+    assert_equal ["b.md"], printer.print(prints)
+    assert_equal "new\n", folder.read("b.md")
+  end
+
+  def test_print_records_every_hash_in_the_one_printed_table
+    printer.print([Print.text("a.md", "x"), Print.text("b.md", "y")])
+
+    assert_equal({ "b.md" => Digest::SHA256.hexdigest("y"), "a.md" => Digest::SHA256.hexdigest("x") }, retrieval.stored.printed)
+  end
+
+  def test_reprint_forgets_the_recorded_hash_and_records_the_hash_of_the_print
+    printer.print([Print.text("a.md", "x")])
+    printer.reprint([Print.text("a.md", "y")])
+
+    assert_equal({ "a.md" => Digest::SHA256.hexdigest("y") }, retrieval.stored.printed)
+  end
+
+  def test_record_skips_a_hash_already_recorded
+    database = Recording.new
+    stored = Struct.new(:printed).new({ "a.md" => Digest::SHA256.hexdigest("x") })
+    recorded = Data.define(:stored, :clock).new(stored, FixedClock::CLOCK)
+    Plastic::Graph::Printer.new(folder, { store: database }, recorded).record([Print.text("a.md", "x"),
+      Print.text("b.md", "y")])
+
+    assert_equal [[:printed, ["b.md"]]], database.rows
+  end
+
+  def test_record_with_nothing_to_record_writes_nothing
+    database = Recording.new
+    Plastic::Graph::Printer.new(folder, { store: database }, retrieval).record([])
+
+    assert_empty database.rows
+  end
+end

@@ -1,0 +1,113 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+
+class KnowledgeReaderIndexFileTest < Plastic::TestCase
+  fixtures :alpha
+
+  IndexFile = Plastic::Graph::Knowledge::Reader::IndexFile
+
+  def index(intents, clusters) = JSON.generate({ "intents" => intents, "clusters" => clusters })
+
+  def entry(**fields) = retrieval.intent("1").index_h.merge(fields.transform_keys(&:to_s))
+
+  def apply(text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text.dup, origin).apply(batch, FixedClock::STAMP) }
+
+  def apply_in(dirs, text) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch, FixedClock::STAMP) }
+
+  def put_old_cluster = store_graphs.databases.fetch(:store).transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
+
+  def test_a_hand_edit_renames_an_intent_and_leaves_the_clusters_to_their_own_part
+    put_old_cluster
+    apply(index([entry(title: "Renamed")], [{ "name" => "Core", "intents" => ["1"] }]))
+    read = retrieval
+
+    assert_equal ["Renamed", [%w[Old 1]]], [read.intent("1").title, read.clusters.map { |c| [c.name, c.intent_id] }]
+  end
+
+  def test_the_times_of_an_index_written_with_an_offset_are_stored_in_utc
+    apply(index([entry(opened_at: "2026-10-01T10:00:00+02:00", closed_at: "2026-10-02T03:00:00-05:00")], []))
+
+    assert_equal ["2026-10-01T08:00:00Z", "2026-10-02T08:00:00Z"], retrieval.intent("1").to_h.values_at(:opened_at, :closed_at)
+  end
+
+  def test_an_intent_of_another_origin_is_refused
+    file = IndexFile.new(index([{ "intent_id" => "1", "origin_id" => "beef" }], []), "a1b2")
+    error = assert_raises(Plastic::Invalid) { file.apply(nil, FixedClock::STAMP) }
+
+    assert_equal "store/index.json lists 1 of origin beef; a store holds only its own intents", error.message
+  end
+
+  def test_an_index_that_is_not_a_json_object_is_refused_with_its_reason
+    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2").apply(nil, FixedClock::STAMP) }
+
+    assert_equal "store/index.json is not a JSON object", error.message
+  end
+
+  def test_an_index_that_lists_a_value_that_is_not_a_json_object_is_refused_with_its_reason
+    error = assert_raises(Plastic::Invalid) { apply(index([5], [])) }
+
+    assert_equal "store/index.json lists an entry under intents that is not a JSON object", error.message
+  end
+
+  def test_an_entry_with_no_intent_folder_gets_no_row
+    apply_in(["store/1--alpha"], index([entry, entry(intent_id: "2", slug: "ghost")], []))
+
+    assert_equal ["1"], retrieval.intents.map(&:intent_id)
+  end
+
+  def test_an_intent_row_takes_every_index_field_and_a_fresh_time
+    row = IndexFile.intent_row({ "intent_id" => "2", "title" => "T", "extra" => "x" }, Plastic.timestamp(FixedClock::AT))
+
+    assert_equal %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], row.keys
+    assert_equal ["2", "T", nil], row.values_at(:intent_id, :title, :kind)
+    assert_match(/\A\d{4}-\d\d-\d\dT/, row[:updated_at])
+  end
+
+  def test_a_status_printed_as_active_reads_as_in_progress
+    apply(index([entry(status: "active")], []))
+
+    assert_equal "in_progress", retrieval.intent("1").status
+  end
+
+  def test_the_disposition_and_the_reason_of_an_abandoned_intent_read_back
+    apply(index([entry(status: "abandoned", disposition: "cancelled", reason: "the need went away")], []))
+
+    assert_equal %w[abandoned cancelled the\ need\ went\ away], retrieval.intent("1").to_h.values_at(:status, :disposition, :reason)
+  end
+
+  def test_the_reason_of_a_parked_intent_reads_back
+    apply(index([entry(status: "parked", reason: "waiting for the vendor")], []))
+
+    assert_equal ["parked", "waiting for the vendor"], retrieval.intent("1").to_h.values_at(:status, :reason)
+  end
+
+  def test_a_field_the_rows_do_not_hold_is_ignored
+    apply(index([entry(title: "Noted", note: "kept out")], []))
+
+    assert_equal "Noted", retrieval.intent("1").title
+  end
+
+  def printed_elsewhere(entries) = JSON.generate({ "origin_id" => "beef", "intents" => entries.map { |entry| entry.merge("origin_id" => "beef") }, "clusters" => [] })
+
+  def cross(entries) = store_graphs.databases.fetch(:store).transaction { |batch| IndexFile.new(printed_elsewhere(entries), origin, nil, { "1" => retrieval.intent("1") }).apply(batch, FixedClock::STAMP) }
+
+  def test_an_index_another_home_printed_changes_the_title_of_the_row_of_this_home
+    cross([entry(title: "Renamed")])
+
+    assert_equal ["Renamed", FixedClock::STAMP], retrieval.intent("1").to_h.values_at(:title, :updated_at)
+  end
+
+  def test_an_index_another_home_printed_leaves_a_level_row_as_it_was
+    before = retrieval.intent("1").updated_at
+    cross([entry])
+
+    assert_equal before, retrieval.intent("1").updated_at
+  end
+
+  def test_an_index_another_home_printed_adds_no_row_for_an_intent_this_home_does_not_hold
+    cross([entry(intent_id: "9", slug: "ghost")])
+
+    assert_equal ["1"], retrieval.intents.map(&:intent_id)
+  end
+end

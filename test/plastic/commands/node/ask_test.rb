@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+
+class NodeAskTest < Plastic::TestCase
+  def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => "s-1" })
+
+  def setup
+    super
+    open_keyed_intent
+    cli("node", "add", "1", "a", "--criterion", "done")
+  end
+
+  def test_asking_about_a_claimed_node_offers_the_resolution
+    cli("node", "claim", "1", "n1", "--agent", "tester")
+
+    result = cli("node", "ask", "1", "n1", "which way?")
+
+    assert_call result, code: 0,
+      out: "node: n1 needs_info\nwrote:  1 node and 1 work log line in work_graph.db\nfiles:  store/1--alpha/work.log\n        store/1--alpha/graph.json\n\nnext: plastic node resolve 1 n1 TEXT\nbecause: node n1 is needs_info\n"
+  end
+
+  def test_a_question_that_holds_column_names_is_stored_unchanged
+    cli("node", "claim", "1", "n1", "--agent", "tester")
+    cli("node", "ask", "1", "n1", "see :id and :intent_id")
+
+    assert_equal "see :id and :intent_id", retrieval.node("1", "n1").question
+  end
+
+  def test_asking_about_an_open_node_is_refused
+    result = cli("node", "ask", "1", "n1", "which way?")
+
+    assert_call result, code: 3, err: "plastic: refused, node n1 is open; it cannot move to needs_info\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
+  end
+
+  def test_the_text_is_required
+    assert_equal 2, cli("node", "ask", "1", "n1").code
+  end
+end

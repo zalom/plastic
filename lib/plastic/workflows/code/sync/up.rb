@@ -1,0 +1,20 @@
+# frozen_string_literal: true
+
+require_relative "../../../code_workflow"
+require_relative "../../sync_steps"
+
+module Plastic
+  module Workflows
+    module Code
+      module Sync
+        # Sync up: plans, applies, and refuses on the conflicts left.
+        class Up < CodeWorkflow
+          extend SyncSteps
+
+          sync :up
+          summary "Reads the files people changed into rows."
+        end
+      end
+    end
+  end
+end

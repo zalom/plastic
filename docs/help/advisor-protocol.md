@@ -2,7 +2,7 @@
 
 *Companion to the Operating Manual. How to use Fable as your advisor and planner.*
 
-*Adapted for Plastic (intent 185): this is the shipped reference copy, reached with
+*Adapted for Plastic: this is the shipped reference copy, reached with
 `plastic help advisor-protocol`. Two named agents carry it,
 `plastic-primary-advisor` (Primary Advisor) and `plastic-secondary-advisor`
 (Secondary Advisor, the explicit escalation); the

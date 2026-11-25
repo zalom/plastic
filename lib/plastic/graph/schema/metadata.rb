@@ -1,0 +1,26 @@
+# frozen_string_literal: true
+
+module Plastic
+  module Graph
+    module SchemaMetadata
+      NOUNS = {
+        "completions" => ["completion", "completions"],
+        "retrieval_contexts" => ["retrieval context", "retrieval contexts"],
+        "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
+        "command_runs" => ["command run", "command runs"], "intents" => %w[intent intents],
+        "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "runs" => %w[run runs], "edges" => %w[edge edges], "drivers" => %w[driver drivers], "node_inputs" => ["node input", "node inputs"],
+        "work_log" => ["work log line", "work log lines"],
+        "documents" => %w[document documents],
+        "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],
+        "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
+        "sessions" => %w[session sessions],
+        "settings" => %w[setting settings], "chat_messages" => ["chat message", "chat messages"],
+        "store_migrations" => ["store migration", "store migrations"],
+        "archives" => %w[archive archives],
+        "archive_entries" => ["archive entry", "archive entries"], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts],
+        "document_heads" => ["document head", "document heads"], "document_passages" => ["passage", "passages"],
+        "document_fts" => ["search entry", "search entries"]
+      }.freeze
+    end
+  end
+end

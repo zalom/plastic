@@ -1,57 +1,84 @@
 {
   "version": 2,
   "oaths": {
-    "varar/intent-end.md": {
-      "sourceHash": "fnv1a:89038af1",
+    "varar/backup-list.md": {
+      "sourceHash": "fnv1a:2c11a16d",
       "examples": [
         {
-          "name": "Each row gives the record, the mode, the exit and the index section:",
-          "line": 9
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
         }
       ]
     },
-    "varar/next.md": {
-      "sourceHash": "fnv1a:1fac258c",
+    "varar/backup-restore.md": {
+      "sourceHash": "fnv1a:b9713cd9",
       "examples": [
         {
-          "name": "Each row gives the roadmap, the exit code, the result and the reason:",
-          "line": 6
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
         }
       ]
     },
-    "varar/project-links.md": {
-      "sourceHash": "fnv1a:23723867",
+    "varar/backup.md": {
+      "sourceHash": "fnv1a:c889318b",
       "examples": [
         {
-          "name": "Each row gives the harness, mode, legacy tree, audit, and changes:",
-          "line": 7
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
         }
       ]
     },
-    "varar/project-new.md": {
-      "sourceHash": "fnv1a:cf974b54",
+    "varar/legacy-import.md": {
+      "sourceHash": "fnv1a:4889c7a8",
       "examples": [
         {
-          "name": "Each row gives the slug, the path, the exit and the registered slugs:",
-          "line": 9
+          "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
+          "line": 11
         }
       ]
     },
-    "varar/store-layout.md": {
-      "sourceHash": "fnv1a:8aac771e",
+    "varar/status.md": {
+      "sourceHash": "fnv1a:89fc5c74",
       "examples": [
         {
-          "name": "Each row gives the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit:",
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/sync-down.md": {
+      "sourceHash": "fnv1a:327a780b",
+      "examples": [
+        {
+          "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
           "line": 10
         }
       ]
     },
-    "varar/update-safety.md": {
-      "sourceHash": "fnv1a:dea48d10",
+    "varar/sync-import.md": {
+      "sourceHash": "fnv1a:0c8098fc",
       "examples": [
         {
-          "name": "Each row gives the harness, command, exit, installation, and version:",
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 7
+        }
+      ]
+    },
+    "varar/sync-second-home.md": {
+      "sourceHash": "fnv1a:e17cea3d",
+      "examples": [
+        {
+          "name": "Each row gives the state and the comparison of the two homes:",
           "line": 9
+        }
+      ]
+    },
+    "varar/sync-up.md": {
+      "sourceHash": "fnv1a:12c0df71",
+      "examples": [
+        {
+          "name": "Each row gives the change, the exit code, the result and the rows:",
+          "line": 10
         }
       ]
     }

@@ -1,0 +1,7 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/work/.claude/projects/-work-project/00000000-0000-4000-8000-000000000001.jsonl",
+  "cwd": "/work/project",
+  "hook_event_name": "SessionStart",
+  "source": "compact"
+}

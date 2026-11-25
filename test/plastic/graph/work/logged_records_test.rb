@@ -1,0 +1,43 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+
+# The records kept beside an intent: a report from its ReportFile value, and the amendments of a repair.
+class WorkLoggedRecordsTest < Plastic::TestCase
+  include ConfigHomes
+
+  REPORT = "resources/output/reports/page.html"
+
+  def reported = store_database.rows("SELECT intent_id, path, text FROM work_log WHERE kind = 'reported'").map(&:values)
+
+  def setup
+    super
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered.\n")
+    write("#{intent.dir}/#{REPORT}", "<p>page</p>\n")
+    sync_up
+  end
+
+  def test_the_work_writer_records_the_report_file_value_it_is_given
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
+    file = Plastic::Graph::Knowledge::Intent::ReportFile.new(graphs.retrieval.intent("1"), REPORT)
+
+    graphs.work.report_intent(file, "")
+
+    assert_equal [["1", REPORT, ""]], reported
+  end
+  Amendment = Struct.new(:text) { def write(log) = log.line("1", "amended", text, path: "a.md") }
+  Dated = Struct.new(:text) { def write(log) = log.line("1", "amended", text, at: "2026-09-01T00:00:00Z") }
+
+  def test_an_amendment_with_its_own_time_keeps_it
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work.amend_intents([Dated.new("old entry")])
+
+    assert_equal ["2026-09-01T00:00:00Z"], store_database.rows("SELECT at FROM work_log WHERE kind = 'amended'").map { |row| row.fetch("at") }
+  end
+
+  def test_amendments_write_their_lines_in_one_go
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work.amend_intents([Amendment.new("one"), Amendment.new("two")])
+
+    assert_equal [%w[1 a.md one], %w[1 a.md two]], store_database.rows("SELECT intent_id, path, text FROM work_log WHERE kind = 'amended' ORDER BY position").map(&:values)
+  end
+end

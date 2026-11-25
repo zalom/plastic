@@ -2,73 +2,95 @@
 
 This chapter holds what "intent done" means and the End-stage tail.
 
-#### What "intent done" means (intent 93)
+## What "intent done" means
 
-Completion is one law with three signals, and they must agree. INDEX `## Completed` /
-`## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
-session reads first, so it wins on any conflict. `outcome.md` is the "deliverable exists"
-signal, and the savepoint's terminal `delivered|abandoned` line is the audit echo. All three
-must agree; when they disagree, INDEX is authoritative and `doctor` flags the mismatch (the
-`done_signals` check: `outcome.md` real but still under `## Active`, or terminal without a
-real `outcome.md`, or a terminal intent whose savepoint carries no terminal disposition line).
+An intent is done when its row says so: `plastic intent end` sets its status to `done` with the
+disposition `delivered`, and `plastic intent abandon` sets it to `abandoned` with the
+disposition `cancelled`, or `superseded` when another intent supersedes it. `store/index.json`
+prints every intent's status and disposition from those rows.
 
-`outcome.md` is mandatory at every terminal transition, delivered and abandoned alike. It
-self-declares its disposition through a `disposition: delivered|abandoned` frontmatter
-header. The delivered path authors it with the result; the abandoned path authors it with
-the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
+`outcome.md` is required when an intent is done or abandoned, and the layout file says so.
+`plastic intent outcome ID --from FILE` writes its summary, and `plastic intent note ID TEXT --kind
+KIND` adds each line under Verification. The delivered path writes the result and its delivery line.
+An abandoned intent writes why it is dropped, with an `Abandoned:` line, and one that started also
+writes a `Reverted:` line. A guard hook refuses an agent write to outcome.md, so these commands are
+the way to write it.
 
-The canonical End tail runs in this order: `outcome.md -> INDEX terminal -> the terminal
-savepoint line -> commit -> disarm (Worktree.release -> Lock.release)`. `plastic intent end`
-runs all of it through `scripts/end-intent`. The close does not reindex QMD: no public close
-path calls `qmd-sync`, so the QMD index catches up only when you run `qmd-sync` yourself.
+`plastic intent end ID` takes no options. It closes the intent when the rows allow it:
+every live node done, every criterion covered, an accepted verdict at or after the newest live
+node change, and one delivery line under `## Verification` in outcome.md, as
+[Store the delivered work](#store-the-delivered-work) describes. With `review.pull_request` set to `required`, it also needs a
+`Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
+(exit 3), and a live node claim of another session is a refusal (exit 3). Anything else that is
+missing comes back as a handoff with exit 1, and nothing closes.
+Plastic never merges or runs version control.
 
-`scripts/end-intent` never merges code, and never checks that it is merged (intent 390:
-Plastic runs no version control command). A delivered close authors the record and
-disarms; it does not ask Git whether the code worktree's branch landed anywhere. If code
-work is still open, merge it yourself, on your own schedule, before or after the intent
-closes -- the close no longer blocks on it.
+The completion row holds the judge `verdict` and the evidence built from the rows: each
+criterion key with its done nodes and their findings. The close,
+prints the intent files, and hands the agent the steps that stop the processes and agents the
+intent started. `plastic intent abandon ID` closes an intent that will not ship, once
+outcome.md holds its summary and an `Abandoned:` bullet, which `plastic intent note ID TEXT
+--kind Abandoned` writes. An intent that started also needs a `Reverted:` bullet first; a future
+or open intent with no node has nothing to revert. It writes no completion row.
 
-A delivered close still refuses, as exit 1, an untouched scaffold (script exit 8) and a hollow
-report whose `## Delivered` rows do not match the action files (script exit 7). A live foreign
-lock is script exit 4, which `plastic intent end` reports as exit 3. The dirty-worktree
-check (former exit 5) and the unmerged-branch check (former exit 9) are retired: both
-required a real `git status` or `git merge-base`, which Plastic no longer runs.
-`--discard-worktree-changes` is still accepted for backward compatibility but changes
-nothing.
+Once the intent is closed, it takes no more rulings, nodes or verdicts: a done intent is never
+moved back to active.
 
-`scripts/end-intent` performs this order's disarm step as its own step 5, mechanically,
-since intent 188: a session no longer needs a separate one-liner for it, and the script's own
-exit code (0) is the single fact a caller needs that the intent is closed AND its delivery
-lock is gone. A pre-flight lock guard runs before anything is written (refuses a live
-foreign session, reclaims a stale one with an audit line). Disarm itself only clears the
-delivery lock; when a worktree was provisioned for the intent, it never removes that
-worktree (intent 390) -- it names the `git worktree remove` instruction, and end-intent
-prints it for the closer to run by hand, after committing and merging.
+A delivery produces `outcome.md`. It adds a report only by the rule in "Which work records a
+report" below, and no other step restates either.
 
-The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
-the completing session keeps full read and write access to the terminal directory (108's
-lock-held keep-guard holds it open while `delivery.lock` exists). Once the lock is released
-the window closes and the directory is frozen. A crash mid-tail is recovered by stale-lock
-reclaim plus finishing the tail; `doctor` surfaces this as a "stalled completion" (terminal in
-INDEX but the lock is still present or stale). Finishing the tail is FINISHING a completion, never a reactivation:
-a done intent is never moved back to `## Active`.
+## You land the code
 
-One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
-no other step restates either (see `plastic help human-report-contract`).
+Plastic writes no commit itself and runs no version control. The agent commits in the
+project's repository the way that repository's own `AGENTS.md` says, and records what landed
+with `plastic intent note ID TEXT --kind Commit`, a line under Notes in `outcome.md`.
 
-#### session commit records the item, you land it
+## Store the delivered work
 
-`plastic session commit "SUMMARY" [--ref REF]` is how a verified checklist item gets recorded.
-It runs `scripts/session-commit`, which appends one `Item` savepoint line to the day ledger and
-prints, as its `next:` line, the exact instruction to run. Plastic writes no commit itself: no
-`git`, no `gh`, no `glab`.
+`plastic intent end` closes an intent once outcome.md records how its work was delivered. The
+Verification section holds one of three delivery lines, each written with `plastic intent note ID TEXT
+--kind KIND`, where the kind is `Merged`, `Committed` or `Delivered`:
 
-Outside a registered project the instruction points at this page and names no repository.
-Inside one, it names the project's path and says to commit there the way that repository's own
-`AGENTS.md` says -- the project owns its own commit conventions, this page does not restate
-them.
+| Line | Records | Also needs |
+| --- | --- | --- |
+| `Merged: <branch> into <base> at <commit or pull request>` | Code merged by a pull request | Nothing more |
+| `Committed: <branch> at <commit>` | Code committed straight to its branch, with a commit of 7 to 40 hexadecimal characters | Nothing more |
+| `Delivered: resources/output/<path> because <reason>` | Work that no version control holds, such as a report or a document | Nothing more |
 
-#### The pull request description
+Delivered files go in the intent folder: reports under `resources/output/reports`, and other
+files under `resources/output/files`. Record a report with `plastic intent report ID PATH`. The
+command adds the line `- PATH` under `## Reports` in outcome.md, and the sync reads the report.
+A report the setting `reports.mandatory` names takes the same command. The `Delivered:` line
+counts only when the path it names exists there. Code always takes `Merged:` or `Committed:`,
+never `Delivered:`.
+
+### Which work records a report
+
+The rule lives in this guidance. The command checks the path, the file type and that the intent
+is open, and then records; it does not judge whether the work needed a report.
+
+| Kind of result | Report? |
+| --- | --- |
+| Research, a comparison of options, a review or audit where the review is the work, a proposal for a ruling | Yes, with no ask |
+| A plan, a delivery report, an explainer | Only when the owner asks for one, or `reports.mandatory` names it |
+| A product file the work makes | No: it goes to `resources/output/files` |
+| A working file, a link list, a part of a research job | No: it goes to `resources/tmp`; only the synthesis is the report |
+
+To tell which kind the work is, read three things:
+
+- The words of the request. "Report", "artifact" and "html" ask for a report. "Research",
+  "compare", "audit" and "verify" name the work, whose synthesis is the report.
+- The kind or the title of the intent.
+- Whether the result is a finding or code. A finding is reported; code is merged or committed.
+
+Tool output, packets, plans and notes go to `resources/tmp`, and copies of outside material go
+to `resources/references`.
+
+A line counts only when it is filled in: one that starts with a denying word such as `no`,
+`pending` or `n/a`, or still holds a placeholder such as `<commit>`, is refused, and the handoff
+names it. Write the line again with `plastic intent note`, then run `plastic intent end ID` again.
+
+## The pull request description
 
 A pull request that closes a delivery carries four headings, in this order:
 
@@ -79,10 +101,6 @@ A pull request that closes a delivery carries four headings, in this order:
 
 Plain words throughout. No AI attribution anywhere in the title or the body.
 
-A repository's own pull request template is honored, never rewritten. `session commit`
-detects one for you: when the project's repository holds a template at any path GitHub or
-GitLab reads it from, the printed instruction includes the exact command that uses it --
-`gh pr create --template NAME.md` or `glab mr create --template NAME` -- one line per template
-found. A repository with no detected template gets a line pointing back at this page instead.
-Either way, filling in the four headings above, and writing the description to a file before
-passing it to the pull request tool, is the agent's own step; Plastic only names the command.
+A repository's own pull request template is honored, never rewritten: the four headings go
+after it. Writing the description to a file before passing it to the pull request tool is the
+agent's own step.

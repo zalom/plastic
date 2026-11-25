@@ -1,7 +1,7 @@
 .DS_Store
-node_modules/
 *.log
 .claude/worktrees/
+.claude/settings.local.json
 
 .serena/
 .enola/
@@ -11,3 +11,7 @@ tmp/rubycritic/
 
 # Varar per-run results; varar.lock.json is the tracked conformance lock.
 .varar/
+
+# The standalone bundle that release activation builds beside runtime/Gemfile.
+runtime/bundle/
+runtime/.bundle/

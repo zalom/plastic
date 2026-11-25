@@ -1,0 +1,141 @@
+# frozen_string_literal: true
+
+module Plastic
+  module Installations
+    # HookRegistry: THE single source of truth for Plastic's hook registration.
+    # ClaudeHooks builds settings.json entries from it, and
+    # CodexHooks purges the hooks.json entries it names; nothing else may
+    # hand-roll a matcher. Change registrations HERE and only here.
+    #
+    # `events` registers no launcher hook: the kernel hooks are written by the
+    # install itself. RETIRED_HOOK_NAMES below lists the hooks that older
+    # installs registered, for the purge.
+    module HookRegistry
+      module_function
+
+      # MCP tools that MUTATE files. The record hook must match them, or a symbolic
+      # edit never reaches the savepoint ledger or the day ledger.
+      SERENA_EDIT_TOOLS = %w[
+        mcp__serena__replace_content
+        mcp__serena__replace_symbol_body
+        mcp__serena__insert_after_symbol
+        mcp__serena__insert_before_symbol
+        mcp__serena__safe_delete_symbol
+        mcp__serena__rename_symbol
+      ].freeze
+
+      WRITE_MATCHER = (%w[Write Edit NotebookEdit] + SERENA_EDIT_TOOLS).join("|")
+
+      # event => ordered list of { "matcher" =>, "hooks" => [{ "name" =>, "status" => }] }
+      # The name is the hooks/<name> launcher; the flat install ships it as
+      # ~/.claude/hooks/plastic-<name>.
+      def events
+        {}
+      end
+
+      # Flattened, deduplicated Claude launcher names for every hook `events`
+      # registers: each hook name maps to a hooks/<name> launcher
+      # installed as ~/.claude/hooks/plastic-<name>. The single derivation doctor's
+      # hooks_exist/hooks_executable/hooks_no_orphans checks read from, so a
+      # hand-kept list of launchers can never drift out of step with `events`
+      # again (the gap that once let 8 of 15 launchers go unchecked).
+      def claude_launcher_names(registered = events)
+        registered.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
+          .uniq.sort.map { |name| "plastic-#{name}" }
+      end
+
+      # Launchers the installer places in the agent's hooks dir that `events` does not
+      # register: plastic-statusline is the settings["statusLine"] command.
+      # Defined here rather than in doctor_core so the installer's purge can recognise it
+      # without depending on the doctor; Doctor::CLAUDE_NON_HOOK_LAUNCHERS aliases it.
+      CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
+
+      # Hook names Plastic HAS registered and no longer does. Purge-only:
+      # an old install still carries these entries in settings.json / hooks.json, and
+      # nothing else can tell us they were ever ours.
+      #
+      # MAINTENANCE DUTY: renaming or removing a hook from `events` means adding its old
+      # name here in the SAME change. Skip it and every existing install keeps a dead
+      # registration no update will ever clean up.
+      #
+      # Never merge these into claude_launcher_names: that method is what doctor's
+      # hooks_exist demands be present on disk, so a retired name there makes a correct
+      # install report missing launchers.
+      # The qmd-search name stays only so an old QMD hook can be removed.
+      RETIRED_HOOK_NAMES = %w[
+        edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget
+        qmd-search retrieval-gate model-instructions opus-manual
+        continue future-intent-check auto-arm gate-check
+        power-tools check-update
+        session-start savepoint record close capture message-display stop
+      ].freeze
+
+      RETIRED_CLAUDE_LAUNCHERS = RETIRED_HOOK_NAMES.map { |n| "plastic-#{n}" }.freeze
+
+      # Filenames of Plastic's Codex dispatcher, current and retired. Codex hooks are
+      # not per-hook launcher files: every command is `"<dispatcher>" <name>`, so the
+      # dispatcher's own filename is what identifies an entry as ours.
+      CODEX_DISPATCHER_BASENAMES = %w[codex-hook].freeze
+
+      # Every launcher name the installer may purge from settings.json: what we register
+      # now, the non-hook launchers we place, and what we used to register.
+      def claude_purgeable_launcher_names
+        (claude_launcher_names + CLAUDE_NON_HOOK_LAUNCHERS + RETIRED_CLAUDE_LAUNCHERS).uniq.sort
+      end
+
+      # Is this settings.json hook command one of OURS?
+      #
+      # Ownership is registry membership, never a substring: the substring test this
+      # replaced deleted a user's own ~/.claude/hooks/plastic-writing-style hook on
+      # update. Tokenised rather than first-token-only because legacy entries take the
+      # form `ruby <path>/plastic-<name>.rb`, and those must still be purged.
+      def claude_purge_command?(cmd)
+        known = claude_purgeable_launcher_names
+        command_basenames(cmd).any? { |name| known.include?(name) }
+      end
+
+      # Is this ~/.codex/hooks.json command one of ours? Every Plastic Codex entry
+      # invokes our dispatcher by path (`"<plastic_home>/scripts/codex-hook" <name>`),
+      # so the dispatcher's filename identifies it. Basename EQUALITY, so a user's
+      # ~/bin/codex-hook-wrapper is not ours; the argument is not filtered on, because
+      # a command that already runs our dispatcher is ours whatever gate it names, and
+      # filtering would strand any name we forgot to retire.
+      #
+      # Tokenised the same way claude_purge_command? is (command_basenames), NOT a
+      # naive cmd.split.first: a first-token split breaks whenever plastic_home
+      # contains a space, since the shell-quoted dispatcher path then splits across
+      # multiple whitespace tokens and the true first token is only half the path.
+      # command_basenames strips quote characters per token, so whichever token
+      # carries the dispatcher's trailing `/codex-hook"` still resolves to the bare
+      # basename "codex-hook" after its trailing quote is stripped.
+      def codex_purge_command?(cmd)
+        command_basenames(cmd).any? { |name| CODEX_DISPATCHER_BASENAMES.include?(name) }
+      end
+
+      # Each whitespace-separated token reduced to a comparable launcher name:
+      # quotes stripped, directories dropped, a trailing .rb removed.
+      def command_basenames(cmd)
+        cmd.to_s.split(/\s+/).reject(&:empty?).map do |token|
+          File.basename(token.delete("\"'")).sub(/\.rb\z/, "")
+        end
+      end
+
+      # The settings.json shape merge_claude_hooks expects: single-group events map
+      # to a Hash, multi-group events to an Array (the merge loop handles both).
+      def claude_settings_hooks(hook_dir:, registered: events)
+        registered.transform_values do |groups|
+          mapped = groups.map { |group| settings_group(group, hook_dir) }
+          (mapped.length == 1) ? mapped.first : mapped
+        end
+      end
+
+      def settings_group(group, hook_dir)
+        { "matcher" => group["matcher"], "hooks" => group["hooks"].map { |hook| settings_command(hook, hook_dir) } }
+      end
+
+      def settings_command(hook, hook_dir)
+        { "type" => "command", "command" => File.join(hook_dir, "plastic-#{hook["name"]}"), "statusMessage" => hook["status"] }
+      end
+    end
+  end
+end

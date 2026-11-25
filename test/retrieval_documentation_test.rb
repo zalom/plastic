@@ -1,0 +1,76 @@
+# frozen_string_literal: true
+
+require_relative "test_helper"
+require_relative "support/child_process"
+
+class RetrievalDocumentationTest < Minitest::Test
+  ROOT = File.expand_path("..", __dir__)
+
+  def test_public_docs_describe_only_the_retrieval_commands
+    public_docs.each do |path|
+      content = File.read(File.join(ROOT, path))
+
+      refute_match(/plastic index|search --ask|plastic query SQL/, content, path)
+    end
+  end
+
+  def test_tools_guide_says_the_architecture_commands_only_instruct_the_agent
+    content = File.read(File.join(ROOT, "docs/help/tools.md"))
+
+    assert_includes content, "plastic architecture refresh"
+    assert_includes content, "print instructions only"
+    assert_includes content, "does not run Enola"
+  end
+
+  def test_examples_use_context_from
+    commands = File.read(File.join(ROOT, "docs/usage/commands.md"))
+
+    assert_includes commands, "intent context 12 --from selected-context.json"
+  end
+
+  KEPT_QMD_FILES = %w[
+    CHANGELOG.md
+    lib/plastic/installations/hook_registry.rb
+    lib/plastic/installations/hook_ownership.rb
+  ].freeze
+
+  SKIPPED_FOLDERS = %w[.git .claude .varar .enola coverage tmp node_modules runtime/bundle runtime/.bundle test].freeze
+
+  def test_no_shipped_file_names_qmd_outside_the_kept_places
+    shipped = shipped_files
+
+    assert_includes shipped, "PLASTIC.md", "the file listing is empty or wrong"
+    named = (shipped - KEPT_QMD_FILES).select { |path| File.read(File.join(ROOT, path)).force_encoding("UTF-8").scrub.match?(/qmd/i) }
+
+    assert_empty named
+  end
+
+  def shipped_files
+    Dir.glob("**/*", File::FNM_DOTMATCH, base: ROOT).select do |path|
+      File.file?(File.join(ROOT, path)) && SKIPPED_FOLDERS.none? { |folder| path == folder || path.start_with?("#{folder}/") }
+    end
+  end
+
+  def test_tools_help_has_no_qmd_section_and_still_names_enola
+    content = File.read(File.join(ROOT, "docs/help/tools.md"))
+
+    refute_match(/qmd/i, content)
+    assert_includes content, "Enola"
+  end
+
+  def test_the_installed_plastic_template_points_to_the_store_search
+    assert_includes File.read(File.join(ROOT, "PLASTIC.md")), "plastic search TERMS"
+  end
+
+  def test_the_installed_plastic_template_has_no_qmd
+    refute_match(/qmd/i, File.read(File.join(ROOT, "PLASTIC.md")))
+  end
+
+  private
+
+  def public_docs
+    %w[
+      README.md
+    ]
+  end
+end

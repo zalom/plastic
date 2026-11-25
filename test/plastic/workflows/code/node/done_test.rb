@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/workflows/code/node/done"
+
+class WorkflowDoneNodeTest < Plastic::TestCase
+  def setup
+    super
+    open_intent
+    store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs")
+    store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
+  end
+
+  def finish(text: "green")
+    run_workflow(Plastic::Workflows::Code::Node::Done, intent_id: "1", id: "n1", text:, files: [], output: nil).first
+  end
+
+  def node = retrieval.node("1", "n1")
+
+  def test_a_claimed_node_is_done_with_its_findings
+    outcome = finish
+
+    assert_equal [:done, "done", "green"], [outcome, node.state, node.findings]
+  end
+
+  def test_a_second_done_by_the_holder_writes_nothing
+    finish
+
+    before = node.to_h
+    stop_workflow(Plastic::Workflows::Code::Node::Done, Plastic::Refused, intent_id: "1", id: "n1", text: "rechecked", files: [], output: nil)
+
+    assert_equal before, node.to_h
+  end
+end

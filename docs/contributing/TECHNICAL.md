@@ -1,7 +1,7 @@
 # Technical reference
 
-The internals of the whole system are in [docs/internals.md](../internals.md). This page
-covers the tools around the `plastic` command.
+The system and its parts are in [ARCHITECTURE.md](ARCHITECTURE.md). This page covers the
+tools around the `plastic` command.
 
 ## The gates
 
@@ -9,44 +9,162 @@ covers the tools around the `plastic` command.
 bundle exec ruby bin/verify-change <base commit>
 ```
 
-`bin/verify-change` runs five steps on the lines changed since the base commit.
+`bin/verify-change` checks only the lines changed since the base commit.
+
+It finds the merge base, lists the changed Ruby sources under `scripts/`, `lib/`, `tools/`
+and `bin/lib/` with their tests, and stops with exit 1 when a changed source has no test file.
+In a throwaway home it then runs the steps of the following table in order. Red tests stop the
+gate at the second step, because a failing test kills every mutant. It prints "Change
+verified" or the names of the failed steps, and exits 0 verified, 1 a check failed, or 2 a
+usage or git error.
+
+The following table says when each step passes.
 
 | Step | Passes when |
 | ---- | ----------- |
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
 | Patch coverage | Every changed line and branch is covered. |
-| Mutation | Mutineer kills at least 75 percent of the mutants on the changed code. |
-| CRAP | No changed method scores above 30. |
+| Mutation testing | Frozen, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
+| CRAP scores | No changed method scores above 30. |
+| Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
+| RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
+
+Before the steps, the gate runs the migration guard, `bin/lib/migration_guard.rb`, against the
+tip of the base it is given. CI passes `origin/$GITHUB_BASE_REF`. The guard fails the gate when a
+migration that is on the base was changed, renamed or deleted, or when an added migration does
+not sort after the newest migration of its kind on the base. [MIGRATIONS.md](MIGRATIONS.md)
+holds the rules.
+
+A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells and RubyCritic score steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
+
+The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
+the run, and the gate prints that it skipped the step. The step itself stays in the code. When
+it is not frozen, it runs `bin/mutation-verdicts`, which removes any report left
+under the sandbox `PLASTIC_TMP` from an earlier run, runs Mutineer with `--format json
+--output` into that same path, and reads only what this run wrote. A mutant Mutineer could not
+give a verdict is re-run alone, one subject at a time with `--only NAME --jobs 1` and the same
+sources and tests, and the gate prints each re-run's subject and seconds. A mutant still
+without a verdict after its re-run fails the step by name; a mutant with no subject to isolate
+(a failure before a worker forked) fails at once, with no re-run.
+
+Reruns must exit successfully and write a report. Each resolved verdict needs the
+mutant's id in an explicit result list. Mutineer 1.0 reports killed mutants only
+as a total, so a rerun cannot prove an individual kill from that format. Such an
+id stays unresolved and fails the gate; missing or uncovered ids never count as kills.
+
+Lint reads `.rubocop_with_todo.yml`. It is `.rubocop.yml` plus `.rubocop_todo.yml`, the
+generated list of offenses in older code, which never gains an entry. So a lint run reports
+what the change did and nothing else. Reek reads `.reek.yml` the same way: its exclude lists
+hold the smells of that older code and never gain an entry. RubyCritic runs Reek, Flay and
+Flog, and scores the changed sources from their smells, duplication and complexity. It leaves
+out a file that `.rubocop_todo.yml` or `.reek.yml` lists, because that file is older code, and
+it prints the names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
-into a live call, and the throwaway home keeps that call away from the real one.
+into a live call, and the throwaway home keeps that call away from the real one. The mutation
+report Mutineer writes lives under that same `PLASTIC_TMP`, so a mutant that reaches for it
+finds only the throwaway copy.
 
 Use the merge base with the target branch as the base commit. An older base makes the gate
-measure lines that the branch did not change.
+measure lines that the branch did not change. For a branch of `alpha`, the base is
+`origin/alpha`.
 
-## The full suite
+## The tests
 
-```bash
-bin/test
-```
+The patterns and the rules for every test are in
+[Test a change](../../CONTRIBUTING.md#test-a-change). This section tells how the runs are built.
 
-Run it once per pull request, just before the pull request opens. CI runs it on every push to
-`main` and `alpha` and on every pull request into them.
+CI runs the full suite on every push to `main` and `alpha`, and on every pull request
+into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --e2e` for
+the end-to-end (e2e) layer, the acceptance documents.
+
+On a full run, `bin/test` splits the test files in two. It runs the kernel tests under
+`test/plastic/` in a process of their own first, then every other test file in its own
+process. The kernel defines some of the same constant names as the live command line, so the
+two cannot load into one process. The run fails when either process fails. The split ends when
+the live command line retires.
+
+The kernel has two layers of tests:
+
+- **Unit tests** under `test/plastic/` call public methods only. Each class inherits
+`Plastic::TestCase` from `test/test_helper.rb`, as Rails tests inherit one base class. Each
+process builds one home per fixture under `test/fixtures/homes/` and opens its databases
+once. Every test runs inside a transaction on each of those databases and rolls it back in
+teardown, as Rails does with transactional tests. Teardown also resets the home's other
+files: it compares each file's type, size, mode, link target and change time against a
+snapshot taken when the home was built, and touches only what a test changed, instead of
+copying the whole fixture back every time. A restored file's new state is recorded, so a later
+test that leaves it alone does not pay to have it restored again. It never follows a symlink,
+so a link a test made to a folder outside the home never carries the reset into that folder; a
+tracked database and its rollback journal are left to the transaction rollback instead of this
+file comparison. Teardown also closes any database the test opened. The tests run the real
+`Graph::Database` through the `sqlite3` gem, so each one reads and writes the state the
+commands would.
+- **Acceptance documents** under `varar/` are the 9 core documents: `status`, `sync-up`,
+  `sync-down`, `sync-import`, `sync-second-home`, `backup`, `backup-list`, `backup-restore` and
+  `legacy-import`. Each runs its command in a child Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
+  gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
+  steps call it either through the packaged executable or the kernel's own command line
+  directly, by the case. `bin/test --e2e` runs them through `test/varar_test.rb`. The change
+  gate never passes that file to the mutation run.
+
+## The chat history
+
+`plastic.db` in the home holds the `chat_messages` table: one row for each prompt or reply, with
+the session, harness, store, intent, role, time and text. `Graph::Work::Chat::Writer` writes it
+from `hook prompt` and `hook stop`, and `Graph::Work::Chat::Reader` reads it for `chat list`.
 
 ## The byte budget
 
-`bin/plastic-bench` is the one script that measures every standing surface, the agent catalog
-included. `test/context_budget_bench_test.rb` fails when a surface crosses its ceiling.
+`test/standing_surface_test.rb` sums what every session carries before the person types:
+`PLASTIC.md`, the name and description of each agent and skill, and the context that
+`plastic hook start` prints. The sum stays under 5,000 bytes, and a crossed cap turns the
+suite red.
 
 ## Layout
 
 | Path | Holds |
 | ---- | ----- |
-| `bin/plastic` | The launcher. |
-| `scripts/lib/cli.rb` | The dispatcher. |
-| `scripts/lib/cli/` | The shared classes. |
-| `scripts/lib/cli/commands/` | One file per command. |
-| `test/cli/` | The tests for the dispatcher, the shared classes and the commands. |
-| `varar/` | The acceptance documents. |
-| `test/varar/` | The step files for the acceptance documents. |
+| `exe/plastic` | The launcher; points at the kernel. |
+| `lib/plastic.rb` | The entry of the tri-graph kernel. |
+| `lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
+| `lib/plastic/cli.rb` | The dispatcher. |
+| `lib/plastic/cli/` | The shared classes. |
+| `lib/plastic/commands/` | One file per command. |
+| `lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
+| `test/plastic/` | The kernel tests, which run in their own process. |
+| `test/cli/` | The acceptance test of the packaged executable, `exe/plastic`, run as installed. |
+| `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |
+| `test/test_helpers/` | The helpers `Plastic::TestCase` includes, and the builder of the home fixtures. |
+| `test/fixtures/homes/` | The homes the kernel tests start from, one file each. |
+| `test/fixtures/routines.rb` | The routines, workflows and hooks that exist only for the kernel tests. |
+| `test/fixtures/legacy_store/` | A copy of a store written before `store/index.json`, for the import tests. |
+| `tools/architecture_figures*` | The plain Ruby that draws the architecture figures. |
+| `bin/architecture-figures` | Rebuilds the figures: `ruby bin/architecture-figures`. |
+| `docs/contributing/figures/` | The generated SVG figures of `ARCHITECTURE.md`. |
+| `tools/command_reference*` | The plain Ruby that reads the kernel and writes the command pages. |
+| `tools/command-reference` | Rebuilds the pages: `ruby tools/command-reference`. |
+| `docs/reference/commands/` | The generated command pages, six parts each: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. |
+| `varar/` | The 9 core acceptance documents. |
+| `test/varar/` | The step files for the core acceptance documents. |
+| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the core documents. |
+
+## Run from source
+
+`ruby exe/plastic` runs the code of the checkout you are in. Against the real `~/.plastic` it
+migrates the stores to the newest migration of that branch. An `alpha` checkout can hold a
+migration newer than every release, so one run moves the store past the release you have
+installed, and the installed `plastic` then refuses every command with
+`Plastic::Graph::Ahead`. `plastic update` still runs on such a store and installs a newer
+release when one exists; when none exists it exits 1 and says the store came from unreleased
+code. Run from source only against a scratch home.
+
+Set the two variables of a scratch home from a literal path, never from `$HOME` in the same line:
+
+```bash
+S=/path/to/scratch; export HOME=$S PLASTIC_HOME=$S/.plastic
+```
+
+In `export HOME=x PLASTIC_HOME=$HOME/.plastic` the shell expands `$HOME` before it sets `HOME`,
+so `PLASTIC_HOME` names the real `~/.plastic`.

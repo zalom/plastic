@@ -1,0 +1,35 @@
+# frozen_string_literal: true
+
+require "stringio"
+
+module Plastic
+  class TestCase
+    # One call of the kernel command line, against the test's home.
+    module CommandHelper
+      Result = Data.define(:out, :err, :code)
+
+      def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new, clock: Time)
+        Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env),
+          input: input.respond_to?(:gets) ? input : StringIO.new(input), out:, err:, home: @home, directory: @home, clock:)
+      end
+
+      def plastic(*argv, env: {}, input: "", table: Fixtures::TABLE, clock: Time)
+        out = StringIO.new
+        err = StringIO.new
+        code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:, clock:), table:)
+        Result.new(out.string, err.string, code)
+      end
+
+      def plastic_bin(*argv, table: Fixtures::TABLE)
+        out = StringIO.new
+        err = StringIO.new
+        code = Plastic::CLI.bin_call(argv, environment: environment(out:, err:), table:)
+        Result.new(out.string, err.string, code)
+      end
+
+      def command_run(tool, subject)
+        Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.command_run(tool, subject)
+      end
+    end
+  end
+end

@@ -1,0 +1,96 @@
+# The node lifecycle
+
+![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim names the session that holds it. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](../contributing/figures/node-lifecycle.svg)
+
+A node is one unit of work in an intent's work graph. Only the main session, the session the
+person talks to, moves a node. The agents it dispatches do the work and report back.
+
+| State | How a node gets there | What moves it on |
+| ----- | --------------------- | ---------------- |
+| `open` | `plastic node add ID TITLE --criterion KEY` | `plastic node claim`, `plastic node remove` |
+| `claimed` | `plastic node claim ID NODE --agent NAME` | `plastic node done`, `plastic node fail`, `plastic node ask`, `plastic node impede`, `plastic node release` |
+| `done` | `plastic node done ID NODE TEXT` | Nothing. The node is finished. |
+| `failed` | `plastic node fail ID NODE TEXT` | `plastic node release` |
+| `needs_info` | `plastic node ask ID NODE TEXT` | `plastic node resolve` |
+| `impeded` | `plastic node impede ID NODE TEXT` | `plastic node resolve` |
+| `removed` | `plastic node remove ID NODE` | Nothing. The node has left the graph. |
+
+## Added
+
+`plastic node add` writes an `open` node, keyed to one done criterion of `spec.md`.
+`plastic edge add ID FROM TO` says that one node needs another. A node is ready when every node
+it needs is done, and `plastic graph ready ID` lists the ready nodes, and for a failed, needs_info or impeded node a `repair:` line naming the nodes that wait on it, the region to re-plan. Only an `open` node can be
+removed.
+
+After `plastic node done` the nodes that are now ready are named on `ready:` lines, and the `next:` line claims the first of them: `plastic node claim ID NODE --agent NAME`. When no node is ready, or the intent is complete, the `next:` line stays `plastic graph ready ID`.
+
+A node can carry a deadline: `plastic node add ID TITLE --criterion KEY --deadline MINUTES` stores the
+minutes a claim on it may run. The value is a whole number above 0; any other value exits 2 and adds
+no node. `plastic graph show` prints it on the node line as `deadline 30 minutes`. A node without one
+has none.
+
+A node can read files: `plastic node add ID TITLE --criterion KEY --input PATH` names one, and repeating `--input` names
+several. The paths keep the order given, and a repeated path is stored as given. An empty path exits 2 and adds no node.
+`plastic graph show` prints each path on its own `input: PATH` line under the node. The claim packet carries them as `inputs`,
+a list that is empty for a node with no path, and the text claim prints one `input:` line for each.
+
+Work found while doing a node is added with `plastic node add ID TITLE --criterion KEY --found-in NODE`. The node must be in the same intent: a missing node exits 1 and a removed node exits 3, each naming it. The link is a `found_in` edge from the new node to the node it was found in: `plastic graph show` prints it as `found in NODE` on the new node, and it adds no need and changes no readiness.
+
+## Claimed
+
+The main session runs `plastic node claim ID NODE --agent NAME` as it dispatches the agent for that node. `--agent` is required: a claim without it exits 2 and names the flag. The
+claim names the main session and prints the node's brief, which the main session hands to the
+agent.
+
+Each claim opens a run that also records the harness of the claiming session. When the run ends,
+Plastic reads the model, the tokens and the cost of the work from the harness's own local record (Claude Code transcripts under `~/.claude/projects`, Codex logs under `~/.codex/sessions`), including the worker's own session when a subagent ran the claim. The run stores its start and its end in whole seconds, so the read takes in the whole second of each. Plastic starts nothing and calls no API. Claude Code writes its cost total about once per session, at the stop, so the done command finds a cost only when the transcript already holds a total after the run; otherwise the run records no cost and the note says so. The cost is filled later, from the same transcript, in two places: when the session ends (`plastic hook end`, the SessionEnd hook, after it releases the session's claims) for the runs that session claimed, and when `plastic intent end` closes the intent, for every run of the intent. Each reads the main session file once and stores the cost for each ended Claude Code run that still has none, when the transcript holds it by then. Only a run of a main session gets a cost: the session's own runs, and a headless worker started with `claude -p`, whose own session writes its cost. Claude Code writes its cost total only in the main session file, never in a subagent's, so a run a subagent worked keeps no cost and its note says the harness records no cost for a subagent. The total is the session's running total, so a run takes its share only when it is all the work since the last total before it, or the whole session so far when none comes before; a run after other work with no total between stays empty and its note says so. A run that already has a cost keeps it. Codex writes no cost in its session log, so a Codex run keeps no cost. Plastic never estimates or prices one. A headless worker's own `total_cost_usd` is not taken through `plastic node done --output`: the worker cannot know its cost before it finishes, and the output is the worker's text, not the harness record. When the record is missing or unreadable, the run keeps what is known and a note says what was not found; the claim and the done never fail for it. `plastic graph show ID` prints one `run:` line for each run, with when it started, when it ended and its length (`4m 12s`, `1h 2m 3s`, `under 1s` for a run shorter than a second), the times in the zone of the machine with their offset such as `2026-11-23T10:00:00+01:00`, or `running` for a run with no end yet; `--json` carries them under `result.runs` as `started_at`, `ended_at` and `length_seconds`; the times read the same as on the screen and the length counts the stored seconds. A run written after the work stands out by its length. A claim in an intent that is not in progress is refused with exit 3 and offers
+`plastic intent start ID`. A claim before the owner's go-ahead is refused with exit 3. A node that waits on another node is refused, also with exit 3. After three runs, the next claim moves the
+node to `needs_info` with a standing question, and the owner decides.
+
+## Done
+
+The agent ends with its report. The main session judges the report and records it with
+`plastic node done ID NODE TEXT`, where the text is the node's findings. A report that names a
+failure, a question or an impediment goes in with `plastic node fail`, `plastic node ask` or
+`plastic node impede` instead. `plastic node release` sets a claimed or failed node back to
+`open`, and `plastic node resolve` reopens a `needs_info` or `impeded` node with its answer.
+
+Each of `node done`, `node fail`, `node ask` and `node impede` takes `--file PATH`, repeated for
+more than one file. The call reads the changed files of the intent folder, limited to the named
+paths, in the same transaction as the move, so the node's result and the files it changed land
+together. A call without `--file` reads every changed file of the folder.
+
+## How a claim stays live
+
+A claim names the session that holds the node, and its run names the agent from `--agent`. A claim
+lapses after 900 seconds without a renewal. Each `plastic` command and the stop hook renew the claims
+of the agent that runs them: the name the environment variable `PLASTIC_AGENT` gives, or the
+session's own agent when it is not set. `plastic node renew ID NODE` renews that one node when the
+same agent holds it. Another agent of the session is refused with exit 3, and the claim stays as it
+was.
+
+- Helpers of one session share its session id, so each helper sets `PLASTIC_AGENT` to the name
+  it gave `--agent`. In an intent in agent delivery (`plastic intent auto`), a command renews only
+  the claims of its own agent, so the claim of a helper that stopped lapses even while the
+  orchestrator still runs commands. A command with no `PLASTIC_AGENT` renews the driver claim the
+  session's own agent took, and in guided work every claim of the session, as one agent holds them.
+- A claim whose `--agent` differs from a set `PLASTIC_AGENT` fails with exit 1 and claims nothing,
+  because no command of that agent would renew it.
+
+- Another session can take a lapsed claim with `plastic node claim`. The old run closes as
+  `lapsed` and a new run opens.
+- The old holder's next node command exits 3, names the new holder and changes nothing.
+- A lapsed claim that nobody took still completes for its holder.
+
+## When a claim runs past its deadline
+
+A claimed node whose claim started more than its deadline ago is overdue. `plastic graph ready ID`
+prints a line for each, such as `overdue: n3 Build claimed 42 minutes ago, deadline 30`, and `--json`
+lists them under `result.overdue`. The minutes are rounded up, so a claim 30 minutes and 30 seconds
+old on a 30-minute deadline reads `claimed 31 minutes ago`. The time is the time of the call. A node with no deadline is never
+overdue. Plastic only reports it: the node stays claimed by its session, and the driver checks on the
+worker. The lapse finds a worker that stopped renewing; the deadline finds a worker that still runs
+but runs too long.
+
+Each claim opens one run of the node, and each move out of `claimed` closes it with the move's
+result. `plastic graph show ID` names the holder of each claimed node and its runs.

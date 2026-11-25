@@ -1,0 +1,97 @@
+# frozen_string_literal: true
+
+require "digest"
+require_relative "../reports"
+require_relative "../sync_selection"
+require_relative "../../evidence/text"
+require_relative "outcome_section"
+
+module Plastic
+  module Graph
+    module Knowledge
+      class Intent
+        # One report of an intent: the intent that holds it and its path under resources/output/reports/. The intent and
+        # the path travel together, so the Reporter takes one value, not two.
+        ReportFile = Data.define(:intent, :path)
+
+        class ReportFile
+          MANDATORY = "mandatory"
+
+          def id = intent.intent_id
+
+          # The file, relative to the store folder.
+          def file = "#{intent.dir}/#{path}"
+
+          # `- PATH`, or `- PATH (mandatory)` for a report the setting names.
+          def line(text) = "- #{path} (#{text})".delete_suffix(" ()")
+
+          # The outcome with this path listed once, in the form `text` names, or nil when the outcome lists it so already.
+          # The line of the other form of the setting is replaced, and an older line with other words stays.
+          def outcome(body, text, heading)
+            wanted = line(text)
+            return if body.lines.map(&:chomp).include?(wanted)
+
+            OutcomeSection.for(without_stale(body, wanted), heading).add(wanted)
+          end
+
+          # The outcome with the line of the other form of the setting replaced, or nil when the outcome has no such line:
+          # a report it does not list stays unlisted.
+          def restated(body, text, heading)
+            stale = [line(""), line(MANDATORY)] - [line(text)]
+            outcome(body, text, heading) if (body.lines.map(&:chomp) & stale).any?
+          end
+
+          # The outcome with the line of this path taken out of its section, in either form of the setting, or nil when the
+          # section does not list it. A section left with no line goes with its heading.
+          def unlisted(body, heading)
+            listed = [line(""), line(MANDATORY)]
+            return unless body.lines.map(&:chomp).intersect?(listed)
+
+            OutcomeSection.for(body, heading).without(listed).then { |unlisted| unlisted unless unlisted == body }
+          end
+
+          # Why the file cannot be recorded, or nil: the questions the sync asks of `selection` before it reads a file
+          # into documents, and the resolved file stays inside the reports folder of the intent.
+          def problem(selection, folder)
+            Reports.path_problem(path) || type_problem(selection) || file_problem(folder) ||
+              ("#{path} is not text; the sync keeps it as an attachment, not as a report" unless text?(folder))
+          end
+
+          # The columns that find the record of this report in the work log.
+          def key = { intent_id: id, path: }
+
+          # The sha256 of the bytes of the file.
+          def digest(folder) = Digest::SHA256.hexdigest(body(folder))
+
+          # The bytes of the file.
+          def body(folder) = folder.read(file).force_encoding(Encoding::UTF_8)
+
+          private
+
+          # The outcome with the line of the other form of the setting taken out, and the blank lines it leaves at the end.
+          def without_stale(body, wanted)
+            stale = [line(""), line(MANDATORY)] - [wanted]
+            lines = body.lines
+            kept = lines.reject { |each| stale.include?(each.chomp) }
+            (kept.size == lines.size) ? body : "#{kept.join.rstrip}\n"
+          end
+
+          def type_problem(selection)
+            "the sync does not read .#{SyncSelection.type_of(path)} files; #{path} cannot be a report" unless selection.reads_type?(path)
+          end
+
+          def file_problem(folder)
+            return "no file #{file}" unless folder.exist?(file)
+
+            "#{path} leads outside #{intent.dir}/#{Reports::FOLDER}" unless inside?(folder)
+          end
+
+          # Whether the file, with every link resolved, is still inside the reports folder of the intent.
+          def inside?(folder) = folder.real(file).start_with?("#{folder.real("#{intent.dir}/#{Reports::FOLDER}")}/")
+
+          def text?(folder) = Retrieval::Evidence::Text.classify(path, folder.read(file)) == :text
+        end
+      end
+    end
+  end
+end

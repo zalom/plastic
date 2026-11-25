@@ -1,0 +1,59 @@
+# frozen_string_literal: true
+
+require_relative "knowledge/intent"
+require_relative "rows/cluster"
+require_relative "knowledge/document"
+require_relative "knowledge/legacy_intents_data"
+require_relative "rows/log_line"
+require_relative "rows/node"
+require_relative "rows/node_input"
+require_relative "rows/run"
+require_relative "rows/edge"
+require_relative "rows/approval"
+require_relative "rows/verdict"
+require_relative "rows/completion_row"
+require_relative "rows/archive_row"
+require_relative "knowledge/ruling"
+require_relative "knowledge/retrieval_row"
+require_relative "knowledge/archive/kept_file"
+
+module Plastic
+  module Graph
+    # Node ids sort by their prefix, then by the number after it, then by their text.
+    NODE_ORDER = "rtrim(id, '0123456789'), length(id), id"
+
+    # Where each kind of row lives: the record, the table, the
+    # columns and the order. A read with no intent id reads every intent.
+    Source = Data.define(:record, :table, :columns, :order)
+
+    # The rows of one source that this installation wrote.
+    class Source
+      def read(databases, **values) = databases.fetch(:store).rows(sql, **values).map { |row| record.from_h(row) }
+
+      def sql = "SELECT #{columns} FROM #{table} WHERE origin_id = :origin AND " \
+                "(:intent_id IS NULL OR intent_id = :intent_id) ORDER BY #{order}"
+    end
+
+    # The named sources RetrievalGraph#read picks from.
+    SOURCES = {
+      intents: Source.new(Knowledge::Intent, "intents", "*", "intent_id"),
+      clusters: Source.new(Work::Cluster, "clusters", "*", "name, intent_id"),
+      documents: Source.new(Knowledge::Document, "documents", "*", "intent_id, path"),
+      legacy_intents_data: Source.new(Knowledge::LegacyIntentsData, "legacy_intents_data", "*", "intent_id, path"),
+      work_log: Source.new(Work::LogLine, "work_log", "*", "intent_id, position"),
+      nodes: Source.new(Work::Node, "nodes", "*", "intent_id, #{NODE_ORDER}"),
+      node_inputs: Source.new(Work::NodeInput, "node_inputs", "*", "intent_id, rtrim(node_id, '0123456789'), length(node_id), node_id, position"),
+      runs: Source.new(Work::Run, "runs", "*", "intent_id, rtrim(node_id, '0123456789'), length(node_id), node_id, number"),
+      edges: Source.new(Work::Edge, "edges", "*", 'intent_id, "from", "to", kind'),
+      approvals: Source.new(Work::Approval, "approvals", "*", "intent_id"),
+      verdicts: Source.new(Work::Verdict, "verdicts", "*", "intent_id, round"),
+      completions: Source.new(Work::CompletionRow, "completions", "*", "intent_id"),
+      archives: Source.new(Work::ArchiveRow, "archives", "*", "intent_id"),
+      contexts: Source.new(Knowledge::RetrievalContext, "retrieval_contexts", "*", "intent_id"),
+      discoveries: Source.new(Knowledge::RetrievalDiscovery, "retrieval_discoveries", "*", "intent_id"),
+      rulings: Source.new(Knowledge::Ruling, "rulings", "*", "intent_id, id"),
+      kept_files: Source.new(Knowledge::Archive::KeptFile, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
+        "intent_id, name")
+    }.freeze
+  end
+end

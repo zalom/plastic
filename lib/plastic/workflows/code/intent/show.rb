@@ -1,0 +1,55 @@
+# frozen_string_literal: true
+
+require_relative "../../../code_workflow"
+require_relative "../../../graph/knowledge/spec"
+require_relative "../../lines"
+
+module Plastic
+  module Workflows
+    module Code
+      module Intent
+        # Prints one intent's status, criteria count, open decisions, rulings,
+        # nodes and last work log lines; refuses an unknown id.
+        class Show < CodeWorkflow
+          clear_declarations
+
+          sets :intent
+
+          read "find the intent" do |context|
+            context[:intent] = context.retrieval.intent(context.intent_id)
+          end
+
+          gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
+
+          read "print the intent" do |context|
+            context.print("intent: #{context.intent.heading}")
+            print_spec(context)
+            print_rulings(context)
+            print_nodes(context)
+            print_log(context)
+          end
+
+          def self.print_spec(context)
+            spec = Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
+            context.print("criteria: #{spec.done_criteria.size}")
+            spec.open_decisions.each { |decision| context.print("open decision: #{decision}") }
+          end
+
+          def self.print_rulings(context)
+            Lines.rulings(context.retrieval.rulings(context.intent_id)).each { |line| context.print(line) }
+          end
+
+          def self.print_nodes(context)
+            context.retrieval.structure.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
+          end
+
+          def self.print_log(context)
+            context.retrieval.structure.work_log(context.intent_id).last(3).each { |line| context.print("log: #{line.shown}") }
+          end
+
+          outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is shown"
+        end
+      end
+    end
+  end
+end

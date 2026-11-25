@@ -17,8 +17,7 @@ C_OK=''                             # default   - meter below 70%
 C_WARN=$'\033[33m'                  # yellow    - meter at 70% and above
 C_CRIT=$'\033[38;2;231;76;60m'      # red       - meter at 90% and above
 C_COST=$'\033[37m'                  # white     - session cost
-C_VER=$'\033[37m'                   # white     - "Plastic {version}" and update arrow
-C_NEXT=$'\033[33m'                  # yellow    - next version
+C_VER=$'\033[37m'                   # white     - "Plastic {version}"
 C_PATH=$'\033[38;2;128;134;144m'    # gray      - path (matches dim UI text)
 C_SEP=$'\033[38;2;128;134;144m'     # gray      - separators
 RST=$'\033[0m'
@@ -247,22 +246,6 @@ if [ -f "$HOME/.plastic/VERSION" ]; then
   IFS= read -r VERSION < "$HOME/.plastic/VERSION"
 fi
 
-# --- Update (next version when one is available); pure-bash regex, no fork ---
-NEXT=""
-CACHE_FILE="$HOME/.plastic/.cache/update-check.json"
-if [ -f "$CACHE_FILE" ]; then
-  IFS= read -r -d '' CACHE_JSON < "$CACHE_FILE" || true
-  if [[ "$CACHE_JSON" =~ \"updateAvailable\"[[:space:]]*:[[:space:]]*true ]]; then
-    if [[ "$CACHE_JSON" =~ \"latest\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
-      LATEST="${BASH_REMATCH[1]}"
-      case "$LATEST" in
-        *-*) NEXT="${LATEST##*-}" ;;   # 1.0.0-beta.3 -> beta.3
-        *)   NEXT="$LATEST" ;;
-      esac
-    fi
-  fi
-fi
-
 # --- Context window (stdin context_window) ---
 # used_percentage is the documented input-side figure (input + cache creation +
 # cache read), so it wins for the percentage. The token count in parentheses comes
@@ -304,7 +287,7 @@ meter_seg() {   # $1 = label, $2 = raw percentage
 M5=$(meter_seg "5h" "$M5_PCT")
 M7=$(meter_seg "7d" "$M7_PCT")
 
-# --- Rate-limits cache for MeterWatch (graph.md D11) ---
+# --- Rate-limits cache for MeterWatch ---
 # Written only when the payload carries a meter at all; an API-key session
 # with no rate_limits section leaves the cache untouched. A present meter
 # with no matching value writes null rather than dropping the key, so
@@ -350,7 +333,6 @@ add "$M7"
 add "$COST_SEG"
 if [ -n "$VERSION" ]; then
   vseg="${C_VER}Plastic ${VERSION}${RST}"
-  [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"
   add "$vseg"
 fi
 [ -n "$CWD" ] && add "${C_PATH}${CWD}${RST}"

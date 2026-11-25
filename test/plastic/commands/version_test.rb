@@ -1,0 +1,68 @@
+# frozen_string_literal: true
+
+require_relative "installer_helper"
+
+class VersionCommandTest < Plastic::TestCase
+  include InstallerHelper
+
+  def test_reports_the_running_package_version_and_its_channel
+    result = call("version", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("9.1.0-alpha.2") })
+
+    assert_equal 0, result.code
+    assert_match(/version:\s+9\.1\.0-alpha\.2/, result.out)
+    assert_match(/channel:\s+alpha/, result.out)
+  end
+
+  def test_a_version_file_wins_over_the_package_manifest
+    root = fake_package("9.1.0")
+    File.write(File.join(root, "VERSION"), "9.2.0-beta.1\n")
+    result = call("version", "--json", env: { "PLASTIC_PACKAGE_ROOT" => root })
+
+    assert_equal "9.2.0-beta.1", JSON.parse(result.out).fetch("result").fetch("version")
+  end
+
+  def test_fails_when_the_package_has_no_version_file
+    root = FileUtils.mkdir_p(File.join(@home, "empty")).first
+    result = call("version", env: { "PLASTIC_PACKAGE_ROOT" => root })
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no VERSION file and no package.json"
+  end
+
+  def test_reading_the_version_writes_nothing_under_the_home
+    before = tree_snapshot(@plastic_home)
+    call("version")
+
+    assert_equal before, tree_snapshot(@plastic_home)
+  end
+
+  def test_the_installer_commands_ship_with_the_core_files
+    require "plastic/installations/installer"
+    files = Plastic::Installations::Installer.new(Plastic::Installations::Package.new(PACKAGE_ROOT, @plastic_home, "0", Plastic::Wiring.settings(@plastic_home))).core_files
+
+    %w[version install update rollback uninstall].each do |name|
+      assert Plastic::CLI.find([name]), "plastic #{name} is missing from the command table"
+      assert_includes files, "lib/plastic/commands/#{name}.rb"
+    end
+  end
+
+  def test_a_home_whose_installation_check_fails_still_exits_0_with_the_version
+    damaged_installation
+    result = call("version")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_match(/version:\s+\S+/, result.out)
+    refute_match(/repair:|installer lock:|launcher:/, result.out)
+  end
+
+  def damaged_installation
+    activated("99.0.0-alpha.1")
+    hooks_pointing_at(File.join(@plastic_home, "bin", "plastic"))
+    FileUtils.mkdir_p(File.join(share, "activation"))
+  end
+
+  def hooks_pointing_at(launcher)
+    command = { "type" => "command", "command" => "env -u RUBYOPT \"#{launcher}\" hook resume --harness claude-code || true" }
+    File.write(File.join(claude_folder, "settings.json"), JSON.generate("hooks" => { "SessionStart" => [{ "matcher" => "", "hooks" => [command] }] }))
+  end
+end

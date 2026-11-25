@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 921" width="834" height="921" role="img" xml:space="preserve">
+<title>The workflows of one call of plastic uninstall, in words</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic uninstall: its workflows and its endings</text>
+<rect x="290" y="56" width="254" height="66" rx="6" class="lane-code"/>
+<text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="96" class="t" text-anchor="start">Chooses which installations to</text>
+<text x="302" y="113" class="t" text-anchor="start">remove.</text>
+<rect x="24" y="56" width="222" height="117" rx="6" class="stop-end"/>
+<text x="36" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="36" y="96" class="t" text-anchor="start">Plastic is installed into</text>
+<text x="36" y="113" class="t" text-anchor="start">no harness and no</text>
+<text x="36" y="130" class="t" text-anchor="start">registered harness was</text>
+<text x="36" y="147" class="t" text-anchor="start">found.</text>
+<text x="36" y="164" class="t" text-anchor="start">next: plastic init</text>
+<rect x="24" y="181" width="222" height="83" rx="6" class="stop-end"/>
+<text x="36" y="201" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="36" y="221" class="t" text-anchor="start">The person left with no</text>
+<text x="36" y="238" class="t" text-anchor="start">change.</text>
+<text x="36" y="255" class="t" text-anchor="start">next: plastic uninstall</text>
+<path d="M 290 89 L 268 89" class="wire-end"/>
+<path d="M 268 89 L 268 222" class="wire-end"/>
+<path d="M 268 114 L 246 114" class="wire-end"/>
+<path d="M 254 109 L 246 114 L 254 119 Z" class="head"/>
+<path d="M 268 222 L 246 222" class="wire-end"/>
+<path d="M 254 217 L 246 222 L 254 227 Z" class="head"/>
+<path d="M 417 122 L 417 294 L 417 294 L 417 302" class="wire"/>
+<text x="417" y="316" class="k" text-anchor="middle">remove Plastic from &lt;harnesses&gt;</text>
+<path d="M 417 326 L 417 340" class="wire"/>
+<path d="M 412 332 L 417 340 L 422 332 Z" class="head"/>
+<rect x="290" y="340" width="254" height="83" rx="6" class="lane-code"/>
+<text x="302" y="360" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="380" class="t" text-anchor="start">Shows what an uninstall would</text>
+<text x="302" y="397" class="t" text-anchor="start">remove before anything is</text>
+<text x="302" y="414" class="t" text-anchor="start">removed.</text>
+<rect x="24" y="340" width="222" height="83" rx="6" class="stop-end"/>
+<text x="36" y="360" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="36" y="380" class="t" text-anchor="start">The preview changed no</text>
+<text x="36" y="397" class="t" text-anchor="start">file.</text>
+<text x="36" y="414" class="t" text-anchor="start">next: &lt;original command&gt;</text>
+<path d="M 290 381 L 268 381" class="wire-end"/>
+<path d="M 268 381 L 268 381" class="wire-end"/>
+<path d="M 268 381 L 246 381" class="wire-end"/>
+<path d="M 254 376 L 246 381 L 254 386 Z" class="head"/>
+<path d="M 417 423 L 417 453 L 417 453 L 417 461" class="wire"/>
+<text x="417" y="475" class="k" text-anchor="middle">remove Plastic from &lt;harnesses&gt;</text>
+<path d="M 417 485 L 417 499" class="wire"/>
+<path d="M 412 491 L 417 499 L 422 491 Z" class="head"/>
+<rect x="290" y="499" width="254" height="66" rx="6" class="lane-code"/>
+<text x="302" y="519" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="539" class="t" text-anchor="start">Removes what the record of each</text>
+<text x="302" y="556" class="t" text-anchor="start">chosen harness lists.</text>
+<path d="M 417 565 L 417 591" class="wire"/>
+<path d="M 412 583 L 417 591 L 422 583 Z" class="head"/>
+<rect x="290" y="591" width="254" height="100" rx="6" class="stop-end"/>
+<text x="302" y="611" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="631" class="t" text-anchor="start">Plastic is removed from</text>
+<text x="302" y="648" class="t" text-anchor="start">&lt;harnesses&gt;, launcher included;</text>
+<text x="302" y="665" class="t" text-anchor="start">install.sh installs it again,</text>
+<text x="302" y="682" class="t" text-anchor="start">and the home stays.</text>
+<rect x="290" y="699" width="254" height="117" rx="6" class="stop-end"/>
+<text x="302" y="719" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="739" class="t" text-anchor="start">No record lists what Plastic</text>
+<text x="302" y="756" class="t" text-anchor="start">wrote for &lt;harnesses&gt;, so</text>
+<text x="302" y="773" class="t" text-anchor="start">nothing was removed.</text>
+<text x="302" y="790" class="t" text-anchor="start">next: plastic install</text>
+<text x="302" y="807" class="t" text-anchor="start">--reinstall</text>
+<rect x="290" y="824" width="254" height="83" rx="6" class="stop-end"/>
+<text x="302" y="844" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="864" class="t" text-anchor="start">Plastic is removed from</text>
+<text x="302" y="881" class="t" text-anchor="start">&lt;harnesses&gt;; the home stays.</text>
+<text x="302" y="898" class="t" text-anchor="start">next: plastic init</text>
+</svg>

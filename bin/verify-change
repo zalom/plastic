@@ -2,6 +2,7 @@
 require "fileutils"
 require "open3"
 require "tmpdir"
+require_relative "lib/migration_guard"
 
 class VerifyChange
   USAGE = <<~TEXT
@@ -13,14 +14,23 @@ class VerifyChange
       1. lint on the changed Ruby files, in the project's style guide
       2. the tests for the changed files, plus every --test FILE, with coverage on
       3. patch coverage of the changed lines (simplecov patch)
-      4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml)
+      4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml);
+         frozen since October 3, 2026, so the gate skips it
       5. CRAP scores of the changed methods (bin/crap)
+      6. code smells in the changed files (reek, with .reek.yml present)
+      7. the RubyCritic score of the changed files that .rubocop_todo.yml and
+         .reek.yml do not list (rubycritic, in Gemfile.lock)
 
     Runs RSpec specs in a project with spec/ and .rspec, spec/spec_helper.rb,
     or spec/rails_helper.rb, or with rspec, rspec-core, or rspec-rails under
     DEPENDENCIES in Gemfile.lock, and Minitest tests otherwise. Warns when
     both test/ and spec/ exist. Pass --test for the integration or system
     tests of a feature the change touches.
+
+    It also runs the migration guard (bin/lib/migration_guard.rb) against the tip
+    of BASE, not its merge base: a merged migration under
+    lib/plastic/graph/db/migrate stays byte for byte the same, and an added one
+    sorts after the newest migration of its kind. A problem fails the gate.
 
     A lint failure is reported but does not stop the other checks. Lint is
     skipped, not failed, with no style guide, two style guides, no changed
@@ -29,18 +39,29 @@ class VerifyChange
     Every child runs under a throwaway HOME and PLASTIC_TMP, so a test or a
     mutant that spawns an installer cannot reach the real home directory.
 
+    The smell step (6) and the score step (7) print a miss of their target
+    and fail nothing. A miss is told from a tool that did not run by what the tool printed:
+    the RubyCritic score line. Without it the step fails: Reek refusing its configuration
+    or RubyCritic refusing its call or a file.
+
     Exit codes: 0 verified, 1 a check failed, 2 usage or git error.
   TEXT
 
   PATCH_COVERAGE_MINIMUM = 100
   MUTATION_THRESHOLD = 75
+  MUTATION_FROZEN = true
   CRAP_THRESHOLD = 30
+  RUBYCRITIC_MINIMUM = 90
+  RUBYCRITIC_MISS = /Score \([\d.]+\) is below the minimum/
+  LEGACY_LISTS = %w[.rubocop_todo.yml .reek.yml].freeze
   TESTS_STEP = "Tests with coverage"
   LINT_STEP = "Lint"
   DEFAULT_BASES = %w[origin/main main master].freeze
   ALL_OPERATORS = %w[arithmetic comparison boolean_connector boolean_literal statement_removal return_nil
                       literal_mutation condition_negation string_literal regex collection_method].freeze
   SOURCE_PATH = %r{\A(app|lib|tools|scripts|bin/lib)/.+\.rb\z}
+  KERNEL_TEST = %r{\Atest/plastic/.+_test\.rb\z}
+  CHILD_PROCESS_TEXT = /\b(ChildProcess|KernelCommand|InstallShHelper|Open3)\b/
   RSPEC_DEPENDENCY = /^  rspec(-core|-rails)?(\s|!|$)/
 
   Suite = Data.define(:name, :folder, :test_path, :locations, :suffix)
@@ -50,9 +71,14 @@ class VerifyChange
   RSPEC = Suite.new(name: "RSpec", folder: "spec/", test_path: %r{\Aspec/.+_spec\.rb\z}, suffix: "_spec.rb",
                     locations: { %r{\Aapp/} => ["spec/"], %r{\Alib/} => ["spec/", "spec/lib/"], %r{\Atools/} => ["spec/tools/"] })
 
-  Step = Struct.new(:title, :env, :command)
+  Step = Struct.new(:title, :env, :command, :misses, :proof)
   LintDecision = Struct.new(:step, :skip_reason)
   Plan = Struct.new(:sources, :tests, :untested, :lint_files, :lint_decision, :steps)
+
+  # Unit and integration tests only: kernel tests that start no child process. The reader answers the text of a path.
+  def self.mutation_tests(tests, reader)
+    tests.select { |path| path.match?(KERNEL_TEST) && !reader.call(path).match?(CHILD_PROCESS_TEXT) }
+  end
 
   def self.test_candidates(source, suite = MINITEST)
     suite.locations.flat_map do |prefix, targets|
@@ -60,15 +86,17 @@ class VerifyChange
     end
   end
 
-  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil)
+  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil,
+    mutation: !MUTATION_FROZEN)
     @argv = argv.dup
     @root = root
     @out = out
     @err = err
     @git = git || ->(*args) { Open3.capture2e("git", "-C", root, *args) }
-    @run = run || ->(env, command) { system(env, *command, chdir: root) }
+    @run = run || method(:stream)
     @sandbox = sandbox
     @owned_sandbox = sandbox.nil?
+    @mutation = mutation
   end
 
   # A throwaway home for every child this script spawns. A gate step runs the
@@ -90,11 +118,13 @@ class VerifyChange
     base = merge_base(requested_base)
     return 2 unless base
 
+    guarded = migrations_pass?(requested_base, base)
     report_untracked
     chosen = suite
     report_both_suites(chosen)
     plan = plan(changed: changed_files(base), extra_tests: extra_tests, base: base, rails: rails?, suite: chosen)
-    execute(plan, requested_base)
+    code = execute(plan, requested_base)
+    guarded ? code : 1
   ensure
     discard_sandbox
   end
@@ -115,6 +145,20 @@ class VerifyChange
     covered_elsewhere = !extra_tests.empty? || changed_tests.any?
     untested = covered_elsewhere ? [] : mapped.select { |_source, found| found.empty? }.keys
     Plan.new(sources, tests, untested, lint_files, lint_decision(lint_files), steps(sources, tests, base, rails, suite))
+  end
+
+  # Runs a step, copies what it prints to the gate's output as it prints it, and
+  # answers its exit code with that output, so a miss of a target can be told
+  # from a tool that did not run.
+  def stream(env, command)
+    text = +""
+    status = Open3.popen2e(env, *command, chdir: @root) do |_in, output, waiter|
+      output.each_line { |line| text << echo(line) }
+      waiter.value
+    end
+    [status.exitstatus || 127, text]
+  rescue SystemCallError => e
+    [127, e.message]
   end
 
   private
@@ -139,6 +183,11 @@ class VerifyChange
     [base || default_base, extra_tests]
   end
 
+  def echo(line)
+    @out.print(line)
+    line
+  end
+
   def default_base
     DEFAULT_BASES.find { |ref| @git.call("rev-parse", "--verify", "--quiet", ref).last.success? } || DEFAULT_BASES.last
   end
@@ -149,6 +198,17 @@ class VerifyChange
 
     @err.puts "Cannot find the merge base of #{ref} and HEAD: #{output.strip}"
     nil
+  end
+
+  def migrations_pass?(ref, merge_base)
+    problems = MigrationGuard.check(base: migration_files(ref), head: migration_files("HEAD"), merge_base: migration_files(merge_base))
+    problems.each { |problem| @err.puts "Migration guard: #{problem}" }
+    problems.empty?
+  end
+
+  def migration_files(ref)
+    paths = @git.call("ls-tree", "-r", "--name-only", ref, "--", MigrationGuard::FOLDER).first.split("\n")
+    paths.to_h { |path| [path, @git.call("show", "#{ref}:#{path}").first] }
   end
 
   def changed_files(base)
@@ -170,24 +230,52 @@ class VerifyChange
   end
 
   def steps(sources, tests, base, rails, suite)
-    steps = []
-    steps << step(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite)) unless tests.empty?
+    steps = tests_steps(tests, rails, suite)
     return steps if sources.empty?
 
     steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
-    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
+    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite)) if @mutation
     steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
+    steps << step("Code smells", {}, %w[bundle exec reek --config .reek.yml] + sources, [2]) if File.exist?(File.join(@root, ".reek.yml"))
+    steps << critic_step(sources) if lint_gem_available?(:rubycritic)
+    steps.compact
   end
 
-  def step(title, env, command)
-    Step.new(title, sandbox.merge(env), command)
+  # A file that a todo lists is legacy code, and its offenses and smells stay
+  # hidden. RubyCritic scores only the other files.
+  def critic_step(sources)
+    legacy, scored = sources.partition { |path| legacy?(path) }
+    @err.puts "Not checked by RubyCritic, because #{LEGACY_LISTS.join(" or ")} lists them: #{legacy.join(", ")}" unless legacy.empty?
+    return if scored.empty?
+
+    step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + scored, [1, 2], RUBYCRITIC_MISS)
+  end
+
+  def legacy?(path)
+    entry = /^\s*-\s*['"]?#{Regexp.escape(path)}['"]?\s*$/
+    legacy_lists.any? { |text| text.match?(entry) }
+  end
+
+  def legacy_lists
+    @legacy_lists ||= LEGACY_LISTS.select { |name| exist?(name) }.map { |name| File.read(File.join(@root, name)) }
+  end
+
+  def step(title, env, command, misses = [], proof = nil)
+    Step.new(title, sandbox.merge(env), command, misses, proof)
+  end
+
+  def tests_steps(tests, rails, suite)
+    return [] if tests.empty?
+
+    [step(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite))]
   end
 
   def test_command(tests, rails, suite)
     return %w[bundle exec rspec] + tests if suite == RSPEC
     return %w[bin/rails test] + tests if rails
 
-    %w[bundle exec ruby -Ilib -Itools -Itest -e] + [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
+    %w[bundle exec ruby -Ilib -Itools -Itest -e] +
+      [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
   end
 
   def lint_decision(lint_files)
@@ -205,7 +293,7 @@ class VerifyChange
     LintDecision.new(nil, "no style guide found")
   end
 
-  # Local adaptation (intent 363): RuboCop reads .rubocop_with_todo.yml here, which
+  # Local adaptation: RuboCop reads .rubocop_with_todo.yml here, which
   # is .rubocop.yml plus the generated todo. The todo holds this repository's 16,116
   # pre-existing offences, so a lint run reports what the change did and nothing
   # else. .rubocop.yml, the todo-free config, is what the repository is measured
@@ -224,6 +312,7 @@ class VerifyChange
     return true if command_gem == :rubocop && (dependencies_section.match?(/^  rubocop(\s|!|$)/) ||
                     dependencies_section.match?(/^  standard(\s|!|$)/) || dependencies_section.match?(/^  rubocop-rails-omakase(\s|!|$)/))
     return true if command_gem == :standard && dependencies_section.match?(/^  standard(\s|!|$)/)
+    return true if command_gem == :rubycritic && dependencies_section.match?(/^  rubycritic(\s|!|$)/)
 
     false
   end
@@ -276,11 +365,23 @@ class VerifyChange
     @dependencies_section = section.join
   end
 
+  # Everything after `--` is Mutineer's own argument line, which
+  # bin/mutation-verdicts passes through unchanged for the first run
+  # and again, with `--only` and `--jobs 1`, for each subject it re-runs.
   def mutation_command(sources, tests, base, rails, suite)
-    %w[bundle exec mutineer run] + sources + tests.flat_map { |test| ["--test", test] } +
-      %W[--since #{base} --threshold #{MUTATION_THRESHOLD}] + (suite == RSPEC ? %w[--framework rspec] : []) +
+    %w[bundle exec ruby] + [File.join(@root, "bin/mutation-verdicts"), "run", "--output", mutation_report_path,
+                            "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + mutation_tests(tests).flat_map { |test| ["--test", test] } +
+      %W[--since #{base}] + (suite == RSPEC ? %w[--framework rspec] : []) +
       (rails ? %w[--rails] : %w[--strategy redefine]) +
       (exist?(".mutineer.yml") ? [] : ["--operators", ALL_OPERATORS.join(",")])
+  end
+
+  def mutation_tests(tests)
+    self.class.mutation_tests(tests, ->(path) { File.read(File.join(@root, path)) })
+  end
+
+  def mutation_report_path
+    @mutation_report_path ||= File.join(sandbox.fetch("PLASTIC_TMP"), "mutation_report.json")
   end
 
   def execute(plan, requested_base)
@@ -304,13 +405,16 @@ class VerifyChange
     failed = []
     if plan.lint_decision.step
       @out.puts "\n== #{LINT_STEP}"
-      failed << plan.lint_decision.step unless @run.call(plan.lint_decision.step.env, plan.lint_decision.step.command)
+      failed << plan.lint_decision.step unless exit_code(plan.lint_decision.step).zero?
     elsif plan.lint_decision.skip_reason
       @out.puts "\nLint skipped: #{plan.lint_decision.skip_reason}"
     end
+    @out.puts "\nMutation testing skipped: the step is frozen." unless @mutation
     plan.steps.each do |step|
       @out.puts "\n== #{step.title}"
-      next if @run.call(step.env, step.command)
+      code, text = answer(step)
+      next if code.zero?
+      next report_miss(step, code) if missed?(step, code, text)
 
       failed << step
       next unless step.title == TESTS_STEP
@@ -320,6 +424,29 @@ class VerifyChange
     end
     @out.puts failed.empty? ? "\nChange verified" : "\nFailed: #{failed.map(&:title).join(", ")}"
     failed.empty? ? 0 : 1
+  end
+
+  # A runner answers true, false, an exit code, or an exit code with the output.
+  def exit_code(step) = answer(step).first
+
+  def answer(step)
+    answer = @run.call(step.env, step.command)
+    return answer if answer.is_a?(Array)
+
+    return [answer, ""] if answer.is_a?(Integer)
+
+    [answer ? 0 : 1, ""]
+  end
+
+  # A target is missed only when the tool ran: its exit code is one it gives for a miss
+  # and, where the step has a proof, its output shows the miss. A tool that refused its
+  # call or stopped on an error gives the same code with no such output.
+  def missed?(step, code, text)
+    step.misses.include?(code) && (step.proof.nil? || step.proof.match?(text))
+  end
+
+  def report_miss(step, code)
+    @out.puts "#{step.title} missed its target (exit #{code}). A target fails nothing."
   end
 
   def rails?

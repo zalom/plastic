@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+require_relative "intent_file"
+require_relative "../intent"
+require_relative "../legacy/index"
+require_relative "../reader/index_file"
+
+module Plastic
+  module Graph
+    module Knowledge
+      class Sync
+        # One intent folder of a store: its number, the row its own intent
+        # file gives, and the reason it cannot give one.
+        class IntentFolder
+          attr_reader :dir
+
+          def initialize(dir, folder, listed = nil, clock:)
+            @dir = dir
+            @folder = folder
+            @listed = listed
+            @clock = clock
+          end
+
+          def number = File.basename(dir).split("--", 2).first
+
+          # Why no row can be read from this folder, as one line naming it, or nil.
+          def problem
+            return "#{dir}: no intent file #{Intent::FILE} or #{File.basename(dir)}.md" unless @folder.exist?(file)
+
+            reason = intent_file.problem
+            "#{dir}: its intent file does not parse: #{reason}" if reason
+          end
+
+          # Why this folder cannot be read for sharing its number with another of `folders`, or nil.
+          def clash_among(folders)
+            twins = folders.select { |other| number == other.number && !equal?(other) }
+            "#{dir}: its number #{number} is also the number of #{twins.map(&:dir).join(", ")}" if twins.any?
+          end
+
+          def intent
+            now = Plastic.timestamp(@clock.now)
+            return Intent.from_h(Reader::IndexFile.intent_row(@listed, now)) if @listed
+
+            front = intent_file.front
+            entry = Legacy::Index::Entry.new(front["id"], front["intent"], dir, "open", nil, nil, nil)
+            Intent.from_h(entry.row(front, now))
+          end
+
+          private
+
+          def file = @folder.own_file(dir)
+
+          def intent_file = (@intent_file ||= IntentFile.new(@folder.read(file), number))
+        end
+      end
+    end
+  end
+end

@@ -21,3 +21,29 @@ AllCops:
 # the repository reports nothing about a change.
 Style/Encoding:
   Enabled: false
+
+# Standard turns the Metrics cops off. They are on for the whole repository:
+# a method or class that trips one is split, never excused.
+Metrics/AbcSize:
+  Enabled: true
+Metrics/BlockNesting:
+  Enabled: true
+Metrics/ClassLength:
+  Enabled: true
+  CountAsOne: [array, hash]
+Metrics/CyclomaticComplexity:
+  Enabled: true
+Metrics/MethodLength:
+  Enabled: true
+# A data table, such as the workflow registry, is one hash literal; its rows
+# are data, not code, so a table counts as one line of the class or module.
+Metrics/ModuleLength:
+  Enabled: true
+  CountAsOne: [array, hash]
+Metrics/ParameterLists:
+  Enabled: true
+Metrics/PerceivedComplexity:
+  Enabled: true
+
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: space

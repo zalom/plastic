@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "open3"
+require_relative "support/child_process"
 
 # Guards the release-gate runner (bin/test) against the intent-30 bug:
 # `ruby -Itest test/*_test.rb` runs only the FIRST glob-expanded file, so the
@@ -13,19 +13,28 @@ class ReleaseVerifyTest < Minitest::Test
 
   def test_bin_test_exists_and_is_executable
     path = File.join(ROOT, "bin", "test")
-    assert File.exist?(path), "bin/test must exist"
+
+    assert_path_exists path, "bin/test must exist"
     assert File.executable?(path), "bin/test must be executable"
   end
 
-  def test_bin_test_discovers_every_test_file
-    listed, status = Open3.capture2("ruby", "bin/test", "--list", chdir: ROOT)
-    assert status.success?, "bin/test --list failed: #{listed}"
+  SYSTEM_RUNNER = "test/varar_test.rb"
 
-    discovered = listed.split("\n").sort
-    expected = Dir.glob("test/**/*_test.rb", base: ROOT).sort
+  def listing(*argv)
+    listed, status = ChildProcess.capture2("ruby", "bin/test", *argv, "--list", chdir: ROOT)
+
+    assert_predicate status, :success?, "bin/test #{argv.join(" ")} --list failed: #{listed}"
+    listed.split("\n").sort
+  end
+
+  def test_bin_test_discovers_every_unit_test_file
+    expected = Dir.glob("test/**/*_test.rb", base: ROOT).sort - [SYSTEM_RUNNER]
 
     assert_operator expected.length, :>, 1, "sanity: suite has more than one test file"
-    assert_equal expected, discovered,
-      "bin/test must discover every test file, not just the first"
+    assert_equal expected, listing, "bin/test must discover every unit test file, not just the first"
+  end
+
+  def test_bin_test_e2e_lists_the_varar_runner
+    assert_equal [SYSTEM_RUNNER], listing("--e2e")
   end
 end

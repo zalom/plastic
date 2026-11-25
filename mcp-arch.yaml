@@ -1,4 +1,4 @@
-# Enola snapshot config (intent 187).
+# Enola snapshot config.
 #
 # Enola discovers this file from the working directory of the `enola` process,
 # not from the repo_path passed to generate_snapshot. Keep it at the repo root.

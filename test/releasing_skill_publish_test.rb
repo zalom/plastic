@@ -4,7 +4,7 @@
 require "minitest/autorun"
 require "yaml"
 
-# ReleasingSkillPublishTest (intent 347, S4): the release doctrine names the publish workflow.
+# The release doctrine names the publish workflow.
 class ReleasingSkillPublishTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   AGENTS_PATH = File.join(REPO, "AGENTS.md")
@@ -12,15 +12,36 @@ class ReleasingSkillPublishTest < Minitest::Test
   def test_agents_md_describes_the_publish_workflow
     content = File.read(AGENTS_PATH)
     assert_includes content, "publish.yml",
-      "AGENTS.md's release doctrine line must name the publish workflow, not just describe a hand-run npm publish"
+      "AGENTS.md's release doctrine line must name the publish workflow, not describe a release made by hand"
+  end
+
+  def test_the_publish_workflow_runs_no_suite
+    steps = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "publish.yml")), aliases: false)["jobs"].values.flat_map { |job| Array(job["steps"]) }
+    suite_runs = steps.map { |step| step["run"].to_s }.grep(/\bruby bin\/test\b/)
+
+    refute_empty steps
+    assert_empty suite_runs
+  end
+
+  def test_the_release_job_waits_for_a_test_job_that_calls_the_test_workflow
+    jobs = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "publish.yml")), aliases: false)["jobs"]
+    test_job = jobs["test"]
+
+    refute_nil test_job, "expected a job named test"
+    assert_equal "./.github/workflows/test.yml", test_job["uses"]
+    assert_includes Array(jobs["release"]["needs"]), "test"
+  end
+
+  def test_the_test_workflow_can_be_called_by_another_workflow
+    parsed = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "test.yml")), aliases: false)
+    triggers = parsed["on"] || parsed[true]
+
+    assert triggers.key?("workflow_call"), "expected workflow_call among the triggers of test.yml"
   end
 end
 
-# CiWorkflowTest (intent 347, S6): test.yml has run green on `main` only, and
-# `main` has never received the 2.0 alpha line, so the suite has not proven
-# itself on a hosted runner in its current form since 2026-08-25. Extends the
-# trigger to `alpha` and to manual dispatch, and points it at the same
-# `ruby bin/test` the release gate runs (D7).
+# The CI workflow test.yml triggers on `alpha` and on manual dispatch, and runs
+# the same `ruby bin/test` the release gate runs.
 class CiWorkflowTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   PATH = File.join(REPO, ".github", "workflows", "test.yml")
@@ -49,5 +70,23 @@ class CiWorkflowTest < Minitest::Test
 
   def test_ci_supports_manual_dispatch
     assert triggers.key?("workflow_dispatch"), "expected workflow_dispatch among the triggers"
+  end
+
+  def test_ci_checks_the_packaged_executable_from_the_release_builder
+    run = steps.find { |s| s["name"] == "Verify the packaged executable" }["run"]
+
+    assert_includes run, "ruby bin/build-release"
+    assert_includes run, "PLASTIC_ACCEPTANCE_BIN=\"$release/package/bin/plastic\" ruby bin/test --only test/cli/release_contract_test.rb"
+  end
+
+  def test_every_ruby_file_a_workflow_runs_is_tracked
+    runs = Dir.glob(File.join(REPO, ".github", "workflows", "*.yml")).flat_map { |path| File.read(path).scan(/\bruby\s+((?:bin|scripts|tools|exe)\/[\w.\/-]+)/).flatten }
+
+    refute_empty runs
+    assert_empty(runs.uniq.reject { |path| File.file?(File.join(REPO, path)) })
+  end
+
+  def test_ci_sets_up_no_node
+    refute_match(/\bnpm\b|setup-node/, File.read(PATH))
   end
 end

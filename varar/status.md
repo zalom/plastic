@@ -1,0 +1,11 @@
+# plastic status
+
+`plastic status` lists each store with its intents by group, and counts each intent's nodes by state. With `--project NAME` it lists only that store. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+
+Each row gives the setup, the call, the exit code, the result and the next line:
+
+| setup                                                                                                                                                                                          | call   | exit | result                                                           | next line    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---- | ---------------------------------------------------------------- | ------------ |
+| none                                                                                                                                                                                           | status | 0    | store: global                                                    | none |
+| intent new Alpha ; intent new Beta                                                                                                                                                             | status | 0    | store: global / future: 1 Alpha (future), no nodes / future: 2 Beta (future), no nodes | plastic next |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] the CLI ships\n" ; store sync up ; intent approve 1 ; intent auto 1 ; node add 1 Build --criterion tests-pass | status | 0    | store: global / active: 1 Alpha (in_progress), open: 1                         | plastic next |

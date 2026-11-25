@@ -1,0 +1,31 @@
+# frozen_string_literal: true
+
+require_relative "../../routine"
+
+module Plastic
+  module Commands
+    module Intent
+      # Closes a delivered intent once the rows, the verdict and outcome.md allow it, and hands over what is missing.
+      class End < Routine
+        intent_subject
+        writes :work, :retrieval
+        prints :intent
+        reads :knowledge
+        backs_up_first
+
+        workflow :code_prepare_ending do
+          on :unverified, next: :agent_check_delivery
+          on :closed, next: :noop
+          on :ready, next: :code_close_intent
+          on :agent_needed, next: :agent_finish_intent
+        end
+        workflow :agent_finish_intent, next: :noop
+        workflow :agent_check_delivery, next: :noop
+        workflow :code_close_intent do
+          on :done, next: :agent_wind_down_intent
+        end
+        workflow :agent_wind_down_intent, next: :noop
+      end
+    end
+  end
+end

@@ -41,7 +41,7 @@ class CrapTest < Minitest::Test
     assert_equal ["Shop::Order#plain", "Shop::Order#branchy", "Shop::Order.build"], found.map { _1[:name] }
   end
 
-  def test_counts_cyclomatic_complexity
+  def test_it_counts_the_cyclomatic_complexity_of_a_method
     assert_equal [1, 7, 3], found.map { _1[:complexity] }
   end
 
@@ -49,96 +49,33 @@ class CrapTest < Minitest::Test
     assert_equal [[3, 5], [7, 16], [18, 23]], found.map { [_1[:first_line], _1[:last_line]] }
   end
 
-  def test_formula_matches_crap4j
-    assert_equal 6.0, Crap.formula(6, 1.0)
-    assert_equal 42.0, Crap.formula(6, 0.0)
-    assert_equal 10.5, Crap.formula(6, 0.5)
+  def test_the_score_formula_matches_crap4j
+    scores = [[6, 1.0], [6, 0.0], [6, 0.5]].map { |complexity, coverage| Crap::Score.new("m", "f.rb", 1, 2, complexity, coverage).crap }
+
+    assert_equal [6.0, 42.0, 10.5], scores
   end
 
   def test_method_coverage_ignores_def_and_end_lines
     lines = [nil, nil, 1, 0, nil]
-    assert_equal 0.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, lines)
-    assert_equal 1.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, [nil, nil, 1, 1, nil])
+
+    assert_in_delta(0.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, lines))
+    assert_in_delta(1.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, [nil, nil, 1, 1, nil]))
   end
 
   def test_method_without_coverage_data_counts_as_uncovered
-    assert_equal 0.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, nil)
+    assert_in_delta(0.0, Crap.method_coverage({ first_line: 3, last_line: 5 }, nil))
   end
 
   def test_merges_runs_by_taking_the_highest_hit_count
     resultset = { "a" => { "coverage" => { "/x.rb" => { "lines" => [nil, 0, 2] } } },
                   "b" => { "coverage" => { "/x.rb" => { "lines" => [nil, 3, 0] } } } }.to_json
+
     assert_equal({ "/x.rb" => [nil, 3, 2] }, Crap.line_coverage(resultset))
   end
 
-  def test_reads_changed_lines_from_a_zero_context_diff
-    diff = <<~DIFF
-      +++ b/lib/shop/order.rb
-      @@ -7,0 +8,3 @@ class Order
-      @@ -20 +23 @@ def self.build
-      +++ b/lib/shop/cart.rb
-      @@ -4,2 +4,0 @@
-    DIFF
-    assert_equal({ "lib/shop/order.rb" => [8, 9, 10, 23], "lib/shop/cart.rb" => [4] }, Crap.changed_lines(diff))
-  end
-
-  def test_touched_when_a_changed_line_falls_inside_the_method
-    changed = { "lib/shop/order.rb" => [9] }
-    assert Crap.touched?({ file: "lib/shop/order.rb", first_line: 7, last_line: 16 }, changed)
-    refute Crap.touched?({ file: "lib/shop/order.rb", first_line: 3, last_line: 5 }, changed)
-  end
-
-  def test_cli_reports_methods_and_fails_above_the_threshold
-    Dir.mktmpdir do |root|
-      FileUtils.mkdir_p(File.join(root, "lib/shop"))
-      File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
-      out = StringIO.new
-      status = Crap::CLI.new(["--threshold", "30", "lib/shop/order.rb"], root: root, out: out).run
-      assert_equal 1, status
-      assert_includes out.string, "56.0    7          0%        Shop::Order#branchy"
-      assert_includes out.string, "3 methods, 1 above CRAP 30"
-    end
-  end
-
-  def test_cli_scores_only_touched_methods_with_since
-    Dir.mktmpdir do |root|
-      FileUtils.mkdir_p(File.join(root, "lib/shop"))
-      File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
-      out = StringIO.new
-      git = ->(*) { "+++ b/lib/shop/order.rb\n@@ -3 +3 @@\n" }
-      status = Crap::CLI.new(["--since", "main", "lib/shop/order.rb"], root: root, out: out, git: git).run
-      assert_equal 0, status
-      assert_includes out.string, "1 methods, 0 above CRAP 30"
-    end
-  end
-
-  def test_cli_prints_usage_with_help
-    out = StringIO.new
-    assert_equal 0, Crap::CLI.new(["--help"], root: Dir.pwd, out: out).run
-    assert_includes out.string, "Exit codes: 0 no method above the threshold"
-  end
-
-  def test_cli_rejects_an_unknown_option_with_usage
-    out = StringIO.new
-    assert_equal 2, Crap::CLI.new(["--bogus"], root: Dir.pwd, out: out).run
-    assert_includes out.string, "Usage: bin/crap"
-  end
-
-  def test_cli_rejects_an_option_missing_its_value_at_the_end_of_the_arguments
-    out = StringIO.new
-    assert_equal 2, Crap::CLI.new(["--threshold"], root: Dir.pwd, out: out).run
-    assert_includes out.string, "Usage: bin/crap"
-  end
-
-  def test_cli_rejects_an_option_missing_its_value_before_another_option
-    out = StringIO.new
-    assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).run
-    assert_includes out.string, "Usage: bin/crap"
-  end
-
-  # Intent 363 added these: they are the branches of the vendored tool that its
-  # own tests leave open, and the patch-coverage gate counts every line of a
-  # file on the commit that brings it in.
+  # These cover the branches of the vendored tool that its own tests leave open;
+  # the patch-coverage gate counts every line of a file on the commit that brings
+  # it in.
   def test_an_empty_body_has_no_decisions
     assert_equal 0, Crap.decisions(nil)
   end
@@ -160,6 +97,26 @@ class CrapTest < Minitest::Test
 
     assert_in_delta 1.0, Crap.method_coverage(found, [nil, nil, nil])
   end
+end
+
+class CrapDiffTest < Minitest::Test
+  def test_reads_changed_lines_from_a_zero_context_diff
+    diff = <<~DIFF
+      +++ b/lib/shop/order.rb
+      @@ -7,0 +8,3 @@ class Order
+      @@ -20 +23 @@ def self.build
+      +++ b/lib/shop/cart.rb
+      @@ -4,2 +4,0 @@
+    DIFF
+    assert_equal({ "lib/shop/order.rb" => [8, 9, 10, 23], "lib/shop/cart.rb" => [4] }, Crap.changed_lines(diff))
+  end
+
+  def test_touched_when_a_changed_line_falls_inside_the_method
+    changed = { "lib/shop/order.rb" => [9] }
+
+    assert Crap.touched?({ file: "lib/shop/order.rb", first_line: 7, last_line: 16 }, changed)
+    refute Crap.touched?({ file: "lib/shop/order.rb", first_line: 3, last_line: 5 }, changed)
+  end
 
   def test_a_diff_hunk_with_no_count_marks_the_single_line_it_names
     diff = "+++ b/lib/a.rb\n@@ -1 +7 @@\n+one\n"
@@ -173,27 +130,100 @@ class CrapTest < Minitest::Test
     assert_equal({ "lib/a.rb" => [7] }, Crap.changed_lines(diff))
   end
 
+  def test_a_changed_comment_or_blank_line_marks_nothing
+    diff = "+++ b/lib/a.rb\n@@ -7 +7,2 @@\n-  # old note\n+  # new note\n+\n@@ -20,0 +21 @@\n+  total = 1\n"
+
+    assert_equal({ "lib/a.rb" => [21] }, Crap.changed_lines(diff))
+  end
+
+  def test_a_removed_line_of_code_marks_the_hunk_start
+    diff = "+++ b/lib/a.rb\n@@ -7,2 +6,0 @@\n-  # note\n-  total = 1\n"
+
+    assert_equal({ "lib/a.rb" => [6] }, Crap.changed_lines(diff))
+  end
+end
+
+class CrapCLITest < Minitest::Test
+  SOURCE = CrapTest::SOURCE
+
+  def write_covered_source(root)
+    source = File.join(root, "lib", "a.rb")
+    FileUtils.mkdir_p([File.dirname(source), File.join(root, "coverage")])
+    File.write(source, "def a(x)\n  x ? 1 : 2\nend\n")
+    File.write(File.join(root, "coverage", ".resultset.json"), { "run" => { "coverage" => { source => { "lines" => [1, 0, nil] } } } }.to_json)
+  end
+
+  def test_cli_reports_methods_and_fails_above_the_threshold
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "lib/shop"))
+      File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
+      out = StringIO.new
+      status = Crap::CLI.new(["--threshold", "30", "lib/shop/order.rb"], root: root, out: out).call
+
+      assert_equal 1, status
+      assert_includes out.string, "56.0    7          0%        Shop::Order#branchy"
+      assert_includes out.string, "3 methods, 1 above CRAP 30"
+    end
+  end
+
+  def test_cli_scores_only_touched_methods_with_since
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "lib/shop"))
+      File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
+      out = StringIO.new
+      git = ->(*) { "+++ b/lib/shop/order.rb\n@@ -3 +3 @@\n" }
+      status = Crap::CLI.new(["--since", "main", "lib/shop/order.rb"], root: root, out: out, git: git).call
+
+      assert_equal 0, status
+      assert_includes out.string, "1 methods, 0 above CRAP 30"
+    end
+  end
+
+  def test_cli_prints_usage_with_help
+    out = StringIO.new
+
+    assert_equal 0, Crap::CLI.new(["--help"], root: Dir.pwd, out: out).call
+    assert_includes out.string, "Exit codes: 0 no method above the threshold"
+  end
+
+  def test_cli_rejects_an_unknown_option_with_usage
+    out = StringIO.new
+
+    assert_equal 2, Crap::CLI.new(["--bogus"], root: Dir.pwd, out: out).call
+    assert_includes out.string, "Usage: bin/crap"
+  end
+
+  def test_cli_rejects_an_option_missing_its_value_at_the_end_of_the_arguments
+    out = StringIO.new
+
+    assert_equal 2, Crap::CLI.new(["--threshold"], root: Dir.pwd, out: out).call
+    assert_includes out.string, "Usage: bin/crap"
+  end
+
+  def test_cli_rejects_an_option_missing_its_value_before_another_option
+    out = StringIO.new
+
+    assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).call
+    assert_includes out.string, "Usage: bin/crap"
+  end
+
   def test_the_cli_globs_the_default_directories_when_no_path_is_given
     Dir.mktmpdir("crap-default-paths") do |root|
       FileUtils.mkdir_p(File.join(root, "lib"))
       File.write(File.join(root, "lib", "a.rb"), "def a\n  1\nend\n")
       out = StringIO.new
 
-      assert_equal 0, Crap::CLI.new([], root: root, out: out).run
+      assert_equal 0, Crap::CLI.new([], root: root, out: out).call
       assert_includes out.string, "#a"
     end
   end
 
   def test_the_cli_reads_a_resultset_that_is_on_disk
     Dir.mktmpdir("crap-resultset") do |root|
-      FileUtils.mkdir_p(File.join(root, "lib"))
-      FileUtils.mkdir_p(File.join(root, "coverage"))
-      File.write(File.join(root, "lib", "a.rb"), "def a(x)\n  x ? 1 : 2\nend\n")
-      File.write(File.join(root, "coverage", ".resultset.json"),
-        { "run" => { "coverage" => { File.join(root, "lib", "a.rb") => { "lines" => [1, 0, nil] } } } }.to_json)
+      write_covered_source(root)
       out = StringIO.new
 
-      assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).run
+      assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).call
       assert_includes out.string, "0%"
     end
   end

@@ -1,0 +1,76 @@
+# frozen_string_literal: true
+
+module CommandReference
+  # The tools a command reading needs, built once.
+  Kit = Data.define(:source, :root, :table, :endings)
+
+  # A command's class name from the table, loaded on demand.
+  CommandName = Data.define(:full) do
+    def klass
+      return Object.const_get(full) if full.start_with?("Fixtures::")
+
+      require "plastic/#{Plastic::CLI.file_of(full)}"
+      full.split("::").inject(Plastic) { |scope, segment| scope.const_get(segment, false) }
+    end
+  end
+
+  # Reads one command from the kernel into a Page.
+  class CommandReading
+    KINDS = [[Plastic::Routine, :routine], [Plastic::CLI::Hook, :hook]].freeze
+
+    def self.of(kit, value)
+      table = kit.table
+      return new(kit, value, CommandName.new(table.fetch(value).first).klass) if value.is_a?(String)
+
+      new(kit, table.find { |_words, (name, _summary)| value.name.end_with?(name) }.first, value)
+    end
+
+    def initialize(kit, words, klass)
+      @kit = kit
+      @words = words
+      @klass = klass
+    end
+
+    def page
+      reach = Reach.new(kind:, files: end_files, flows:, own_call:)
+      Page.new(**identity, **reach.to_h.slice(:kind, :own_call, :flows), **found(reach))
+    end
+
+    private
+
+    def found(reach)
+      { edges:, endings: @kit.endings.call(reach), changes: Changes.new(@klass, reach.flows).rows }
+    end
+
+    def identity
+      { words: @words, klass: @klass, file:, line:, summary: @kit.table.dig(@words, 1),
+        usage: @klass.usage_line(@words), description: @klass.long_description, arguments: @klass.arguments, options: @klass.options, entry: chain&.entry }
+    end
+
+    def file = @kit.source.relative(Object.const_source_location(@klass.name).first)
+
+    def line = Object.const_source_location(@klass.name).last
+
+    def kind = KINDS.find { |type, _| @klass <= type }&.last || :command
+
+    def routine? = @klass <= Plastic::Routine
+
+    def hook? = @klass <= Plastic::CLI::Hook
+
+    def chain = (@klass.chain if routine?)
+
+    def flows = Array(chain&.then { |found| FlowReader.new(@kit.source, found).all })
+
+    def edges
+      Array(chain&.edges).group_by { |edge| [edge.from, edge.to] }.reject { |(_from, to), _| to == :noop }
+        .map { |(from, to), group| Edge.new(from, to, group.map(&:on)) }
+    end
+
+    def end_files
+      home = file
+      [home, own_call&.file, *(HookFiles.new(@kit, home).call if hook?)].compact.uniq
+    end
+
+    def own_call = OwnCallReading.new(@kit.source, @klass).call
+  end
+end

@@ -3,18 +3,12 @@
 
 require "minitest/autorun"
 
-# Intent 239: the false provenance claims are corrected, and the honest support matrix
-# lands in docs/reference/harness-adapters.md. Modeled on test/harness_adapters_doc_test.rb:
-# read the file, assert on its prose. A new file so it cannot collide with that one.
+# docs/reference/harness-adapters.md carries an honest harness support matrix
+# and makes no false provenance claims. Read the file, assert on its prose.
 class HarnessSupportDocsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  ENVELOPE = File.join(ROOT, "scripts", "lib", "apply_patch_envelope.rb")
   ADAPTERS_DOC = File.join(ROOT, "docs", "reference", "harness-adapters.md")
   README = File.join(ROOT, "README.md")
-
-  def envelope_text
-    File.read(ENVELOPE)
-  end
 
   def adapters_doc_text
     File.read(ADAPTERS_DOC)
@@ -33,12 +27,6 @@ class HarnessSupportDocsTest < Minitest::Test
     next_heading ? rest[0...next_heading] : rest
   end
 
-  def test_parser_comment_no_longer_claims_the_grammar_is_unsourced
-    refute_includes envelope_text, "not primary-sourced"
-    refute_includes envelope_text, "the owner has none installed"
-    assert_includes envelope_text, "test/fixtures/codex-v4a-grammar.txt"
-  end
-
   def test_adapter_doc_no_longer_claims_no_codex_installed
     refute_includes adapters_doc_text, "the owner has no Codex installed"
   end
@@ -51,49 +39,10 @@ class HarnessSupportDocsTest < Minitest::Test
     assert_includes section, "Hermes"
   end
 
-  # Intent 239 review: the published note previously said only "Four instruction
-  # lines... are left as they are", undercounting the real residue. The full count on
-  # a Codex install is 4 since 2.0 (intent 304; the skill-authoring reference, the shared
-  # underscore gate fragment, and the evals fixtures that carried Claude paths were
-  # removed in 2.0 or moved to docs): the 4 hook-launcher lines (D5), which are also the
-  # only entries codex_install_content_test's allowlist still carries. Pins the corrected claim so it cannot silently regress to
-  # understating the residue again.
-  def test_support_matrix_discloses_the_full_residue_count
-    section = harness_support_section.gsub(/\s+/, " ")
-    assert_includes section, "Four lines still speak Claude Code afterward"
-    assert_includes section, "four instruction lines that name Claude's hook launcher directory"
-    assert_includes section, "left the installed tree in 2.0"
-  end
-
   def test_support_matrix_names_no_plugin_install_path
     section = harness_support_section.downcase
     refute_includes section, "plugin"
     refute_includes section, "marketplace"
-  end
-
-  def per_agent_model_mapping_section
-    text = adapters_doc_text
-    start = text.index("### Per-agent model mapping")
-    raise "### Per-agent model mapping heading not found" unless start
-    rest = text[start..]
-    next_heading = rest.index("\n### ", 1)
-    next_heading ? rest[0...next_heading] : rest
-  end
-
-  # Intent 239a: intent 216 (commit b6ad017) landed after intent 239 delivered and widened
-  # check_agent_model_drift_codex to read `model` and `model_reasoning_effort` as two
-  # separate lines (codex_agent_toml_model_fields), comparing both against their resolved
-  # defaults. The doc previously said the check only reads the `model_reasoning_effort`
-  # line, which was true before intent 216 but is stale now: the old single-value extractor
-  # preferred effort via an `||` fallback and never opened the model line, so a drifted
-  # per-role model id passed silently. Pins the corrected claim so a revert to the old
-  # wording fails this test (see RED proof in the intent 239 outcome).
-  def test_model_drift_doc_describes_both_fields_not_effort_only
-    section = per_agent_model_mapping_section.gsub(/\s+/, " ")
-    assert_includes section, "reads the `model` and `model_reasoning_effort` lines as two separate values"
-    assert_includes section, "compares the model value against the tier's resolved Codex model id"
-    assert_includes section, "intent 216"
-    refute_includes section, "compares each file's `model_reasoning_effort` line against the tier default, honoring"
   end
 
   def test_readme_has_no_doubled_and

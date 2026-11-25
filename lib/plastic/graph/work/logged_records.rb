@@ -1,0 +1,96 @@
+# frozen_string_literal: true
+
+require_relative "../knowledge/intent/reporter"
+require_relative "../knowledge/intent/unreporter"
+require_relative "../knowledge/intent/document_writer"
+require_relative "../../layout"
+
+module Plastic
+  module Graph
+    module Work
+      # The writes of what an intent keeps beside its goal (rulings, verdicts, notes, reports, amendments), each leaving
+      # its work log line.
+      class LoggedRecords
+        DOCUMENT_KINDS = { Layout.name(:spec) => "specified", Layout.name(:outcome) => "summarized" }.freeze
+
+        def initialize(writers, log)
+          @writers = writers
+          @log = log
+        end
+
+        def add_ruling(intent_id:, **fields)
+          @log.recorded do
+            @writers.rulings.add_ruling(intent_id:, **fields).tap { |ruling| ruling && @log.line(intent_id, "ruled", "#{ruling.id}: #{ruling.text}") }
+          end
+        end
+
+        def add_verdict(intent_id:, **fields)
+          @log.recorded do
+            @writers.verdicts.add_verdict(intent_id:, **fields).tap do |verdict|
+              verdict && @log.line(intent_id, "verdict", "round #{verdict.round} #{verdict.verdict}: #{verdict.findings}")
+            end
+          end
+        end
+
+        def note_intent(intent, kind, text)
+          intent_id = intent.intent_id
+          @log.recorded do
+            noter.write(intent, kind, text).tap do
+              @log.line(intent_id, "noted", "#{kind}: #{text}", path: Knowledge::Intent::Noter::FILE,
+                body: @writers.retrieval.fetch(intent_id, Knowledge::Intent::Noter::FILE).body)
+            end
+          end
+        end
+
+        # Writes the whole text of one core file of an intent, spec.md or the summary of outcome.md, as its new revision.
+        def write_document(intent_id, file, body)
+          @log.recorded do
+            Knowledge::Intent::DocumentWriter.new(@writers.databases, @writers.retrieval).write(intent_id, file, body).tap do
+              @log.line(intent_id, DOCUMENT_KINDS.fetch(file), "wrote #{file}", path: file, body:)
+            end
+          end
+        end
+
+        # Writes the `amended` lines of the changes a repair made to intent folders, all in one transaction.
+        def amend_intents(amendments)
+          @log.recorded { amendments.each { |amendment| amendment.write(@log) } }
+        end
+
+        # Records a report, a ReportFile; `text` is Reporter::MANDATORY for a report the setting names, else empty.
+        def report_intent(report, text)
+          @log.recorded do
+            reporter.record(report, text).tap do
+              @log.line(report.id, "reported", text, path: report.path, body: report.body(@writers.folder))
+            end
+          end
+        end
+
+        # Removes a report recorded by mistake, a ReportFile, and writes the `removed` line with `reason`; a closed intent
+        # whose outcome changed also gets an `amended` line with the new outcome. Returns the Unreporter::Removed.
+        def unreport_intent(report, reason, to_tmp: false)
+          removed = @log.recorded do
+            unreporter.remove(report, to_tmp).tap { |done| unreported(done, reason) }
+          end
+          removed.tap { @writers.retrieval.reindex([report.id]) }
+        end
+
+        def reporter = (@reporter ||= Knowledge::Intent::Reporter.new(@writers.databases, @writers.retrieval, @writers.folder))
+
+        def unreporter = (@unreporter ||= Knowledge::Intent::Unreporter.new(@writers.databases, @writers.retrieval, @writers.folder))
+
+        private
+
+        def unreported(removed, reason)
+          report = removed.report
+          id = report.id
+          @log.line(id, "removed", reason, path: report.path)
+          return unless removed.amends?
+
+          @log.line(id, "amended", removed.amendment, path: Knowledge::Intent::Unreporter::FILE, body: removed.outcome, old_text: report.line(""), new_text: "")
+        end
+
+        def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
+      end
+    end
+  end
+end

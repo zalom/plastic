@@ -1,0 +1,76 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+
+class KnowledgeIntentWriterTest < Plastic::TestCase
+  def writer(session: nil) = Plastic::Graph::Knowledge::Intent::Writer.new(store_graphs.databases, retrieval, folder, session:)
+
+  def test_a_plain_call_has_no_problem
+    assert_nil writer.problem
+  end
+
+  def test_an_intent_that_is_not_in_the_store_takes_nothing
+    assert_equal "no intent 9 in this store", writer.open_problem("9", "nodes")
+  end
+
+  def test_an_open_intent_takes_what_it_is_given
+    open_intent
+
+    assert_nil writer.open_problem("1", "nodes")
+  end
+
+  def test_a_legacy_store_must_be_imported_first
+    write("INDEX.md", "# Index\n")
+
+    assert_equal "this store still has INDEX.md; run plastic store sync up to import it first", writer.problem
+  end
+
+  def test_write_stores_the_reason_of_a_parked_intent
+    parked = writer.write(title: "Wait", status: "parked", reason: "waiting for the vendor")
+
+    assert_equal ["parked", "waiting for the vendor"], parked.to_h.values_at(:status, :reason)
+  end
+
+  def test_park_moves_an_intent_in_progress_and_says_a_row_changed
+    writer.write(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+
+    assert_equal [true, "parked", "waits on review"], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
+  def test_park_of_an_intent_not_in_progress_changes_no_row_and_says_so
+    writer.write(title: "Alpha")
+
+    assert_equal [false, "open", nil], [writer.park("1", "waits on review"), *retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
+  def test_the_parent_must_exist
+    assert_equal "no intent 9 in this store to be the parent", writer.problem(parent_id: "9")
+    open_intent
+
+    assert_nil writer.problem(parent_id: "1")
+  end
+
+  def test_a_ref_to_a_missing_intent_of_this_installation_is_a_problem
+    assert_equal ["no intent 5 of this installation for the ref", nil], ["5-#{origin}", "ENG-1"].map { |ref| writer.problem(ref:) }
+  end
+
+  def test_write_takes_the_next_id_and_the_defaults
+    first = writer.write(title: "Build the thing")
+    child = writer.write(title: "Child", parent_id: "1", kind: "research", status: nil, slug: "kid")
+
+    assert_equal ["1", nil, "build-the-thing", "work", "open"], first.to_h.values_at(:intent_id, :parent_id, :slug, :kind, :status)
+    assert_equal %w[1a 1 kid research open], child.to_h.values_at(:intent_id, :parent_id, :slug, :kind, :status)
+    assert_equal first.opened_at, first.updated_at
+  end
+
+  def test_write_adds_the_own_file_and_no_log_line
+    writer.write(title: "Alpha")
+
+    assert_equal [["intent.md"], []], [retrieval.documents("1").map(&:path), retrieval.structure.work_log("1")]
+  end
+
+  def test_the_ref_line_says_what_a_ref_names
+    assert_equal ["ref: intent 1 of this installation", "ref: ENG-1"], ["1-#{origin}", "ENG-1"].map { |ref| writer.ref_line(ref) }
+  end
+end

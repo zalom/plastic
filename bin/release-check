@@ -1,0 +1,102 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# release-check - deterministic CLI over ReleaseGuard.
+#
+# Guards a release before the workflow builds it: the tag must equal `v`
+# plus the version in package.json, the branch must release the channel the
+# version names, and a stable version must carry no pre-release suffix.
+# Writes the version, the channel and the tag to $GITHUB_OUTPUT. The channel
+# comes from InstallerRelease::Manifest.identity, the rule the manifest and
+# install.sh share.
+#
+# Usage:
+#   release-check (--tag <tag> | --branch <branch>)
+#                  [--github-output <path>] [--root <dir>]
+#
+# Exit codes: 0 (clean), 1 (violations; reported on stderr, one per line,
+# each naming the specific thing that is wrong), 2 (usage).
+
+require "json"
+
+require_relative "lib/release_guard"
+require_relative "../scripts/lib/installer_release"
+
+KNOWN_FLAGS = %w[--tag --branch --github-output --root].freeze
+
+def usage
+  warn "usage: release-check (--tag <tag> | --branch <branch>) [--github-output <path>] [--root <dir>]"
+  exit 2
+end
+
+def parse_args(argv)
+  opts = {}
+  i = 0
+  while i < argv.length
+    flag = argv[i]
+    usage unless KNOWN_FLAGS.include?(flag)
+
+    value = argv[i + 1]
+    usage if value.nil?
+
+    opts[flag] = value
+    i += 2
+  end
+  opts
+end
+
+def read_version(path)
+  JSON.parse(File.read(path))["version"]
+rescue Errno::ENOENT, JSON::ParserError
+  nil
+end
+
+opts = parse_args(ARGV)
+usage unless opts["--tag"] || opts["--branch"]
+
+root = opts["--root"] ? File.expand_path(opts["--root"]) : File.expand_path("..", __dir__)
+package_json_path = File.join(root, "package.json")
+
+violations = []
+
+canonical_version = read_version(package_json_path)
+violations << "could not read a version from #{package_json_path}" if canonical_version.nil?
+
+branch = opts["--branch"]
+channel = nil
+
+if canonical_version
+  expected_tag = "v#{canonical_version}"
+  tag = opts.fetch("--tag", expected_tag).sub(%r{\Arefs/tags/}, "")
+  if tag != expected_tag
+    violations << "tag #{tag} does not match package.json version #{canonical_version} (expected #{expected_tag})"
+  end
+
+  channel = InstallerRelease::Manifest.identity(canonical_version).fetch("channel")
+  if branch && ReleaseGuard::CHANNELS[branch] != channel
+    violations << "branch #{branch} releases #{ReleaseGuard::CHANNELS[branch] || "nothing"}, and version #{canonical_version} is #{channel}"
+  end
+
+  result = ReleaseGuard.check(package_json: package_json_path, stable: channel == "latest")
+
+  unless result.ok?
+    violations << "stable cut #{canonical_version} carries the pre-release suffix -#{result.prerelease_suffix}"
+  end
+end
+
+if violations.empty?
+  if opts["--github-output"]
+    File.open(opts["--github-output"], "a") do |f|
+      f.puts "version=#{canonical_version}"
+      f.puts "channel=#{channel}"
+      f.puts "tag=#{tag}"
+    end
+  end
+  puts "OK: tag #{tag}, version #{canonical_version}, channel #{channel}"
+  exit 0
+end
+
+warn "VIOLATIONS:"
+violations.each { |v| warn "- #{v}" }
+exit 1

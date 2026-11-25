@@ -1,0 +1,112 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+require_relative "../../../../support/second_load"
+require_relative "../../../../../lib/plastic/workflows/code/intent/new"
+
+class WriteIntentTest < Plastic::TestCase
+  WriteIntent = Plastic::Workflows::Code::Intent::New
+  DECLARED = %i[title parent_id ref after kind problem intent_id linked].freeze
+
+  # The work graph as WriteIntent calls it, keeping each call.
+  class Work
+    Written = Data.define(:intent_id)
+
+    attr_reader :calls
+
+    def initialize(problem)
+      @problem = problem
+      @calls = []
+    end
+
+    def intent_problem(**call) = (@calls << [:problem, call]) && @problem
+
+    def write_intent(**intent) = (@calls << [:write, intent]) && Written.new("1a")
+
+    def add_link(**link) = (@calls << [:link, link])
+
+    def ref_line(ref) = "ref: #{ref}, in words"
+  end
+
+  class Retrieval
+    def initialize(*ids, store: "global")
+      @ids = ids
+      @store = store
+    end
+
+    attr_reader :store
+
+    def intent(id) = (id if @ids.include?(id))
+  end
+
+  def flow_context(problem, retrieval, facts)
+    work = Work.new(problem)
+    context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", kind: "work" }.merge(facts),
+      graphs: { work:, retrieval: })
+    [context, work]
+  end
+
+  def run_flow(problem: nil, retrieval: Retrieval.new, **facts)
+    context, work = flow_context(problem, retrieval, facts)
+    [WriteIntent.call(context), context.printed, work.calls]
+  end
+
+  def stop_flow(problem: nil, retrieval: Retrieval.new, **facts)
+    context, work = flow_context(problem, retrieval, facts)
+    [assert_raises(Plastic::Failed) { WriteIntent.call(context) }, context.printed, work.calls]
+  end
+
+  def test_the_intent_is_written_then_named
+    outcome, printed, calls = run_flow(parent_id: "1", ref: "ENG-1")
+
+    assert_equal :done, outcome
+    assert_equal ["intent: 1a", "store: global, because no project names this folder", "ref: ENG-1, in words"], printed
+    assert_equal [[:problem, { parent_id: "1", ref: "ENG-1" }],
+      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "future" }]], calls
+  end
+
+  def test_no_ref_prints_no_ref_line
+    assert_equal ["intent: 1a", "store: global, because no project names this folder"], run_flow[1]
+  end
+
+  def test_an_intent_of_a_project_store_names_that_store
+    assert_equal ["intent: 1a", "store: blog"], run_flow(retrieval: Retrieval.new(store: "blog"))[1]
+  end
+
+  def test_a_problem_fails_the_call_before_any_write
+    error, printed, calls = stop_flow(problem: "no intent 9 in this store to be the parent")
+
+    assert_equal "no intent 9 in this store to be the parent", error.message
+    assert_equal [[], [:problem]], [printed, calls.map(&:first)]
+  end
+
+  def test_an_after_that_names_no_intent_fails_the_call
+    error = stop_flow(after: "9").first
+
+    assert_equal [Plastic::Failed, "no intent 9 in this store to link after"], [error.class, error.message]
+  end
+
+  def test_an_after_that_names_an_intent_passes_the_check_and_writes
+    _, _, calls = run_flow(after: "9", retrieval: Retrieval.new("9"))
+
+    assert_includes calls.map(&:first), :write
+  end
+
+  def test_the_outcome_offers_no_command_and_names_the_starts
+    outcome = WriteIntent.outcomes.first
+
+    assert_equal [:done, nil, "intent %{intent_id} is future; plastic intent start %{intent_id} or plastic intent auto %{intent_id} starts it"],
+      [outcome.name, outcome.offers, outcome.because]
+  end
+
+  def printed_runs
+    [run_flow(ref: "ENG-1")[1], run_flow[1], run_flow(retrieval: Retrieval.new(store: "blog"))[1]]
+  end
+
+  def test_a_second_load_keeps_one_chain
+    before = printed_runs
+    path = File.expand_path("../../../../../lib/plastic/workflows/code/intent/new.rb", __dir__)
+
+    assert SecondLoad.keeps?(path) { printed_runs == before && WriteIntent.outcome_names == [:done] }
+  end
+end

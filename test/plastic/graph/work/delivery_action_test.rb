@@ -1,0 +1,156 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/work/delivery_action"
+
+# An intent in progress, the way every delivery action test starts.
+class WorkDeliveryActionCase < Plastic::TestCase
+  def setup
+    super
+    @work = store_graphs.work
+    @work.write_intent(title: "Alpha")
+    @work.activate_intent("1")
+  end
+
+  def action(intent_id = "1", work: :general) = Plastic::Graph::Work::DeliveryAction.new(retrieval, intent_id, work:).call
+
+  def plan(*titles) = titles.each { |title| @work.add_node(intent_id: "1", title:) }
+
+  def claim(id) = @work.claim_node(intent_id: "1", id:, by: "worker")
+end
+
+class WorkDeliveryActionTest < WorkDeliveryActionCase
+  def test_an_intent_with_no_live_node_asks_the_harness_to_plan
+    plan("Gone")
+    @work.remove_node(intent_id: "1", id: "n1")
+    command, reason, instructions = action
+
+    assert_equal [nil, "the harness must plan this intent"], [command, reason]
+    assert_includes instructions, "plastic node add 1 TITLE --criterion KEY"
+  end
+
+  def test_the_planning_instruction_of_code_work_starts_with_mapping_the_code_and_reading_agents_md
+    assert action(work: :code).last.start_with?("Before you plan, map the code with an architecture mapping tool such as Enola, and read the project's AGENTS.md, " \
+      "so you plan the graph from the real architecture; Plastic runs no tool. Read the intent's goal")
+  end
+
+  def test_the_planning_instruction_of_work_with_no_repository_starts_with_the_goal_and_names_no_mapping_tool
+    assert action.last.start_with?("Read the intent's goal")
+    refute_includes action.last, "architecture"
+  end
+
+  def test_the_planning_instruction_carries_the_planning_directive
+    assert_includes action.last, Plastic::Graph::Work::PlanningDirective::TEXT
+  end
+
+  def test_the_planning_directive_names_the_research_attempts_and_both_stops
+    text = Plastic::Graph::Work::PlanningDirective::TEXT
+
+    assert_equal [true, true, true], ["at least 3 attempts", "plastic node ask ID NODE TEXT", "plastic node impede ID NODE TEXT"].map { |part| text.include?(part) }
+  end
+
+  def test_the_claimed_node_instruction_carries_the_planning_directive
+    plan("Build")
+    claim("n1")
+
+    assert_equal [true, true, true], ["Principle of Least Surprise", "plastic node done 1 n1 TEXT", "plastic node fail 1 n1 TEXT"].map { |part| action.last.include?(part) }
+  end
+
+  def test_a_ready_node_is_claimed
+    plan("Build")
+
+    assert_equal ["plastic node claim 1 n1 --agent NAME", "node n1 is ready", nil], action
+  end
+
+  def test_a_failed_node_is_released_before_anything_else
+    plan("Build", "Test")
+    claim("n1")
+    @work.fail_node(intent_id: "1", id: "n1", reason: "red")
+
+    assert_equal ["plastic node release 1 n1", "node n1 failed; release it before retrying", nil], action
+  end
+
+  def test_a_needs_info_node_asks_the_owner_its_question
+    plan("Build")
+    claim("n1")
+    @work.ask_node(intent_id: "1", id: "n1", question: "Which store?")
+
+    assert_equal [nil, "the owner must answer node n1"], action.first(2)
+    assert_includes action.last, "Ask the owner: Which store?."
+    refute_includes action.last, "architecture map"
+  end
+
+  def test_an_impeded_node_names_its_impediment
+    plan("Build")
+    claim("n1")
+    @work.impede_node(intent_id: "1", id: "n1", reason: "no access")
+
+    assert_equal [nil, "node n1 is impeded"], action.first(2)
+    assert_includes action.last, "no access"
+    assert_includes action.last, "plastic node resolve 1 n1 TEXT"
+  end
+
+  def test_a_claimed_node_names_its_worker
+    plan("Build")
+    claim("n1")
+
+    assert_equal [nil, "node n1 is already claimed"], action.first(2)
+    assert_includes action.last, "with its worker worker"
+    refute_includes action.last, "architecture map"
+  end
+
+  def test_a_claimed_node_with_no_worker_name_never_prints_an_empty_name
+    plan("Build")
+    @work.claim_node(intent_id: "1", id: "n1", by: "")
+    instructions = action.last
+
+    refute_includes instructions, "worker ."
+    assert_includes instructions, "Continue node n1. Record the result"
+  end
+
+  def test_nodes_waiting_on_a_claimed_node_report_the_claim
+    plan("Build", "Test")
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    claim("n1")
+
+    assert_equal "node n1 is already claimed", action[1]
+  end
+
+  def test_a_node_needing_a_removed_node_asks_for_the_dependencies_to_be_repaired
+    plan("Build", "Test")
+    @work.add_edge(intent_id: "1", from: "n1", to: "n2")
+    @work.remove_node(intent_id: "1", id: "n1")
+
+    assert_equal [nil, "dependencies block the remaining nodes"], action.first(2)
+    refute_includes action.last, "architecture map"
+  end
+
+  def test_all_nodes_done_points_to_the_intent_end
+    plan("Build")
+    claim("n1")
+    @work.done_node(intent_id: "1", id: "n1", findings: "green")
+
+    assert_equal ["plastic intent end 1", "the nodes are done; verify the intent's criteria", nil], action
+  end
+end
+
+# The action of an intent that is not in progress.
+class WorkDeliveryActionStatusTest < WorkDeliveryActionCase
+  def test_an_intent_that_is_not_in_progress_offers_intent_start
+    @work.write_intent(title: "Beta", status: "future")
+
+    assert_equal ["plastic intent start 2", "intent 2 is future", nil], action("2")
+  end
+
+  def test_a_parked_intent_offers_no_command_and_names_its_reason
+    @work.write_intent(title: "Beta", status: "parked", reason: "waits on review")
+
+    assert_equal [nil, "intent 2 is parked: waits on review; plastic intent start 2 resumes the work once the reason is resolved", nil], action("2")
+  end
+
+  def test_a_closed_intent_has_no_action
+    @work.write_intent(title: "Beta", status: "done")
+
+    assert_equal [nil, "intent 2 is closed", nil], action("2")
+  end
+end

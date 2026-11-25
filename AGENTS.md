@@ -6,23 +6,21 @@ Intent-driven state management for AI coding sessions.
 
 Wrong data (a blank record, a junk field, a failed fetch or import) is fixed first. When it
 cannot be fixed, the erroneous records are removed. Never design, code, test, or screenshot
-around broken data. A legitimately absent value is not broken data. Owner ruling 2026-09-05,
-global rule.
+around broken data. A legitimately absent value is not broken data.
 
 ## Stack
-- Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
-- Framework: npm package that ships the installer and the `plastic` command (`bin/plastic`). The
-  former workflow skills no longer ship; `skills/` keeps only the shared `_decision-tables.md`.
-- Testing: Minitest. See the Testing section below for the correct full-suite command.
-- Source: this repository. The source command line runs as `ruby bin/plastic`.
+- Language: Ruby (scripts, installer, the `plastic` command)
+- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`exe/plastic`).
+- Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows. `bin/test` runs the unit layer, and `bin/test --e2e` runs the Varar end-to-end (e2e) layer.
+- Source: this repository. The source command line runs as `ruby exe/plastic`.
 - Remote: git@github.com:zalom/plastic.git
 
 ## Defaults
-- Release process: commit_and_push, github_release, npm_publish
-- Version files: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json
+- Release process: commit_and_push, github_release
+- Version file: package.json
 - Tag format: v{{version}}
 - All bash scripts must work under macOS /bin/bash 3.2 (no bash 4.x features)
-- Bump all 3 version files on every fix/feature release
+- Each branch carries its own version suffix; `docs/release-lines.md` says when to raise it
 
 ## Searching Plastic's stores
 
@@ -30,23 +28,22 @@ global rule.
 install-time checked dependency as git (see the Stack section above). Search it before
 re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
-QMD, Serena, and Enola are companion tools a person can run by hand beside Plastic; see
-`plastic help tools` (`docs/help/tools.md`) for what each one does and how to reach for it.
-Intent 391 (2.0) dissolved every Plastic-owned integration with the three: no Plastic
-command, hook, or script starts, registers with, reindexes, or reads from any of them. When
-QMD is set up, its own `qmd query` (structured intent/lex/vec/hyde) or `qmd search` (BM25,
-no model downloads) runs directly against the store files, outside Plastic, the same as it
-would against any other directory of markdown.
+Plastic's own `plastic search` and the retrieval graph are the search over the stores. Enola is
+the companion tool a person or an agent runs beside Plastic for the structure of the code. `plastic
+architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
+the architecture map with a tool it chooses. For code work only, the planning handoff tells the agent
+to map the code and read this file before it plans; nothing is asked after delivery. Plastic runs no
+such tool and stores no map.
 
-## Working on Plastic
+## Contributor rules
 
 Rules for any agent (or human) contributing to this repository.
 
 ### Documentation
 - Know which doc owns what. `PLASTIC.md` owns how Plastic works; it is plugin-maintained and overwritten on `plastic update`, so do not edit it. `AGENTS.md` (this file) owns how to work on this repository. Release history lives in `CHANGELOG.md` at the repo root.
 - Keep docs in sync with the framework. When you change the architecture, the lifecycle,
-  conventions, skills, hooks, templates, or harnesses, update `docs/architecture.md` and
-  `docs/internals.md` in the same change.
+  conventions, hooks or harnesses, update `docs/contributing/ARCHITECTURE.md` and its figures in
+  the same change, and rebuild the figures with `ruby bin/architecture-figures`.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
 - Writing follows the `plain-writing` skill. It owns the wording rules for every document in this repository; this file does not restate them.
@@ -54,51 +51,49 @@ Rules for any agent (or human) contributing to this repository.
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump
   straight to code.
-- Create intents through `plastic intent new` (which wraps `scripts/new-intent`), never by
-  hand-authoring the files. One call scaffolds a born-complete intent
-  plus sentinel placeholder lifecycle files. `new-intent` validates the file it writes and
-  `end-intent` checks it again at close, so hand-authoring is unnecessary.
-- Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
-  never in the project tree.
+- Create intents through `plastic intent new`, which runs the kernel's own command
+  (`lib/plastic/commands/intent/new.rb`), never by hand-authoring the files or its rows.
+- Specs, work graphs, and outcomes live in the store's databases and the intent folder under
+  `~/.plastic/`, never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed
-  artifacts (spec.md, plan.md, checklist.md, outcome.md, test results, the diff). Everything
+  artifacts (spec.md, graph.json, outcome.md, test results, the diff). Everything
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
-- Run each change's tests once, on the changed files only: `ruby bin/test --only test/FILE_test.rb`.
-  Then run the change gate once: `bin/verify-change origin/alpha`.
-- The full suite runs once for each pull request, just before the pull request opens, and again in CI.
-  Never run it after every change. When a deletion breaks tests widely, find them with a search
-  for the deleted names, not with the suite.
-- The full suite command is:
-  ```
-  ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
-  ```
-- Do NOT use `ruby -Itest test/*_test.rb`. The shell expands the glob into many arguments,
-  and Ruby runs only the FIRST file as the program (the rest land in `ARGV`, unloaded), so
-  Minitest reports just that one file's tests and you get a falsely small green run. The
-  loader command above requires every `test/*_test.rb` file, so the whole suite runs.
-- Confirm that the changed files' tests and the change gate are green before committing code changes.
-- Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
-  never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
-### Worktrees and the single-owner lock
-- Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
-  time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
-  is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
-  heartbeat is older than the TTL); the lock file is the truth of ownership. If you find a fresh lock owned by another session, back
-  off. The public commands refuse a foreign lock with exit 3; inspect it with
-  `plastic auto lock status ID`. A stale lock is reclaimed only through the internal
-  `plastic-lock reclaim`, an owner step (audited in
-  savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
-  corrupt or legacy state.
+@CONTRIBUTING.md
+
+Before you write or change a test, read the section "Test a change" in `CONTRIBUTING.md` at
+the root of this checkout, and follow the pattern it names for that kind of test. Run the
+test of each changed file once, then the gate once. Just before the pull request is created, run
+the full suite one time and fix what it finds. After the pull request exists, run no more full
+suites on your machine: read the CI failures and fix those.
+
+#### Kernel style
+
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` lists the offenses of older code, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` lists the smells of older code and never gains an entry, and the change gate prints the smells and the score of a change as targets, against a RubyCritic score of 90 that `bin/verify-change` sets: they fail nothing, but a Reek run that did not run fails the gate. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once.
+
+#### Branches
+
+`beta` holds the line being tested: once work moves from `alpha` to `beta`, it is built and fixed on `beta`, and `beta` is merged into `alpha` after each change lands. `alpha` holds new feature work that does not belong to that line. When the owner says a release is coming, `beta` is merged into `main` and released, `beta` moves to `main`, and `main` is merged into `alpha`. A fix to a stable release lands on `main`. `main` has no freeze. Every change goes to its branch by its own pull request, and CI runs the suite on each. `alpha` releases `-alpha.N`, `beta` releases `-beta.N` on the `beta` channel, and `main` releases a version with no suffix on the `latest` channel. `bin/release-check` enforces the branch-to-suffix pairing. `docs/release-lines.md` holds the full rules.
+
+### Worktrees and node claims
+- One session drives an intent at a time. `plastic intent start` and `plastic intent auto` take the driver claim, which lapses after 15 minutes without a renewal, as a node claim does, and goes when the session ends. Another session is refused with exit 3 and the driver is named; the owner's word, `--take-over REASON`, takes it over.
+- One session works a node at a time. A node claim, `plastic node claim ID NODE --agent NAME`, names the
+  session that holds it and opens one run of the node. The session renews its claims at every
+  `plastic` command, except `plastic console`, and at the stop hook, and a claim lapses after 15 minutes without a
+  renewal. If a node is claimed by another session, back off. A session that finds a lapsed
+  claim takes it with `plastic node claim`, which closes the old run as `lapsed`. The old
+  holder's next node command exits 3 and changes nothing. `plastic graph show ID` names the
+  holder of each claimed node.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic runs no version control command, so it does not create this worktree:
-  at arm time (`plastic auto start ID`, the only public arm), it resolves the repo from
-  `projects.yml`, computes the expected path and branch, and prints the exact
-  `git -C <repo> worktree add <path> -b <branch>` for the agent to run. The code worktree lives
+  when the intent starts (`plastic intent start ID` or `plastic intent auto ID`), it resolves the repo from
+  `projects.yml`, computes the expected path and branch, and prints the path and the branch
+  as `worktree:` and `branch:` rows. The agent makes the worktree at the printed path on the printed
+  branch. The code worktree lives
   at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`. It is the only
-  worktree: store-write safety for lifecycle docs comes from intent 197's branch-from-main plus
+  worktree: store-write safety for lifecycle docs comes from branch-from-main plus
   scoped commits, not a second worktree.
 - Do isolated feature work in that worktree, not the shared checkout, so parallel sessions and
   the main working copy stay clean. Run and test inside it, then merge the branch back.
@@ -127,18 +122,19 @@ written.
   `commit-msg` git hook refuses the commit if one slips through; if it rejects you, rewrite the
   message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
-- Bump all version files listed in Defaults on every fix or feature release.
-- A push to `alpha`, `beta` or `main` is the release (intent 376). `.github/workflows/publish.yml`
-  creates the tag, the GitHub release and the npm publish for a version with no tag yet (OIDC
-  trusted publishing, intent 347). Do not run `npm publish` or create a tag by hand.
+- `package.json` is the one version file. Raise it only to cut a release, as `docs/release-lines.md` says.
+- A push to `alpha`, `beta` or `main` is the release. `.github/workflows/publish.yml`
+  creates the tag and the GitHub release for a version with no tag yet. It builds the release
+  files with `bin/build-release`. Do not create a tag or a release by hand.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
-- Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
-  channel, real-use verification, then main). Read
-  `docs/release-lines.md` for the routing rule, the stable-line
-  guarantees, and the intent-41 re-land playbook.
+- Plastic follows the owner's release flow of 24 November 2026. `beta` holds the line being
+  tested and takes its fixes, `alpha` holds new work, and `main` takes `beta` on the owner's word,
+  with no freeze. A migration ships clean, with no config switch, and every beta and stable
+  release first passes a clean install in an empty home and an update from the previous release.
+  Read `docs/release-lines.md` for the rules, the steps of each merge and release, and the
+  stable-line guarantees.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
-  and the three version files always agree (checked by `scripts/lib/release_guard.rb`).
-
+  and the tag always matches the version in `package.json` (checked by `bin/lib/release_guard.rb`).

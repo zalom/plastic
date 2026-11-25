@@ -1,109 +1,185 @@
-# Release Lines and Channels
+# Release lines and channels
 
-The two release lanes, the version-line map, and the intent-41 re-land playbook. This page
-was written for the 1.x releasing skill, which intent 372 retired. In 2.0 a push to `alpha`,
-`beta`, or `main` is the release: `.github/workflows/publish.yml` creates the tag, the GitHub
-release, and the npm publish for a version that has no tag yet. The lanes, the routing rule,
-and the stable-line guarantees still apply. The version-line map and the intent-41 playbook
-are 1.x history, kept as they stood.
+Plastic has three release branches. `beta` holds the line being tested, `alpha` holds new work
+that does not belong to that line yet, and `main` holds the stable release. The owner ruled this
+flow on 24 November 2026. `main` has no freeze: it takes `beta` when the owner says a release is
+coming.
 
-## Table of Contents
+A push to `alpha`, `beta`, or `main` is the release: `.github/workflows/publish.yml` creates
+the tag and the GitHub release for a version that has no tag yet. A push whose version already
+has a tag publishes nothing. `install.sh` and `plastic update` install from those releases.
 
-- [The two lanes](#the-two-lanes)
-- [Routing rule](#routing-rule)
-- [Stable-line guarantees](#stable-line-guarantees)
-- [Version-line map](#version-line-map)
-- [Intent 41 re-land playbook](#intent-41-re-land-playbook)
+| Branch | Channel | Version | What it holds |
+| --- | --- | --- | --- |
+| `alpha` | `alpha` | `-alpha.N` | New feature work that does not belong to the line on `beta`, such as connecting Plastic with another project. |
+| `beta` | `beta` | `-beta.N` | The line being tested. The work on it is built and fixed there. |
+| `main` | `latest` | no suffix | The stable release. It takes `beta` on the owner's word. |
 
-## The two lanes
+`bin/release-check` enforces the branch-to-suffix pairing, and the test workflow runs the suite
+on every push and every pull request to the three branches.
 
-**Default lane.** Branch, merge to `main` with `--no-ff`, bump the version files, and push:
-the push to `main` publishes to npm `latest`. It is the path for additive,
-suite-verifiable, low-blast-radius work: new skills, prose, deterministic scripts, anything a
-green Minitest run can fully vouch for.
+## The rules
 
-**Beta-verified lane.** Branch, merge to the `beta` branch, publish to the npm `beta` dist-tag,
-verify in real use, then merge `beta` into `main` and cut stable. It sits on top of the
-promotion mechanics (a push to each branch in turn, linear only); it names when to use them,
-not new machinery.
+1. **Every change has its own pull request.** A change lands on its branch once CI passes.
+2. **The tested line lives on `beta`.** Once work moves from `alpha` to `beta`, building and
+   fixing that work continue on `beta`. A bug found in a beta is fixed on `beta`.
+3. **`alpha` always holds what ships first.** After each change lands on `beta`, `beta` is
+   merged into `alpha`.
+4. **`main` releases on the owner's word.** When the owner says a release is coming, `beta` is
+   merged into `main` and released. `beta` then moves to `main`, and `main` is merged into
+   `alpha`.
+5. **A fix to a stable release lands on `main`.** It is merged into `beta` or `alpha`, where the
+   next work carries it.
+6. **A branch moves only by a merge or a fast-forward.** No branch is force-pushed, and a pushed
+   branch is never rebased.
+7. **A migration ships clean, with no config switch.** The owner ruled so on 24 November 2026.
+   A clean install and an update from the previous release prove each release, as the section
+   [Prove a release before the push](#prove-a-release-before-the-push) says.
 
-## Routing rule
+## Merge one branch into another
 
-Work rides the beta-verified lane when it changes operational substrate, carries data,
-migration, lock, or state-format risk, or cannot be fully validated by a hermetic suite alone.
-Everything else merges straight to main.
+Each branch keeps its own version in `package.json`. When a merge between two branches stops on
+that file, keep the version of the branch that receives the merge. In `CHANGELOG.md`, keep the
+lines of both sides. Make each merge by its own pull request, so CI runs the suite on the result.
 
-Intent 41's DB layer is the archetypal beta-lane case: it replaces the lock and session
-file formats with a new persistent SQLite substrate. A green suite proves the code correct; it
-cannot prove the new substrate survives real, uncontrolled usage, so real-use verification on
-beta comes first.
+## Move work from alpha to beta
 
-The manual-first roadmap's eight 1.1.0 intents (158a, 163, 161, 164, 165, 168, 166, 159) are all
-default-lane: skill directory renames, prose rewrites, deterministic step scripts. Additive, and
-fully suite-verified.
+The owner decides which work moves to `beta`, and when.
+
+1. Branch from `beta` and merge `alpha` into that branch, keeping the version of `beta`.
+2. Open a pull request into `beta`. From then on, the work is built and fixed on `beta`.
+
+## Release a beta
+
+1. Branch from `beta`. Move the entries under `## Unreleased` in `CHANGELOG.md` to a heading for
+   the next `-beta.N` version, set `package.json` to that version, and commit
+   `chore: release X.Y.Z-beta.N`.
+2. Prove the release with the two installs of the next section.
+3. Open a pull request into `beta` and merge it once CI passes. The push to `beta` publishes the
+   beta.
+4. Merge `beta` into `alpha` by its own pull request, keeping the version of `alpha`.
+
+Raise the version on `alpha` when an alpha release is wanted: the push that carries it publishes
+it.
+
+## Release main
+
+1. On the owner's word, branch from `beta`. Move the beta headings of `CHANGELOG.md` that the
+   release collects under one heading for the stable version, set `package.json` to that
+   version with no suffix, and commit `chore: release X.Y.Z`.
+2. Prove the release with the two installs of the next section.
+3. Open a pull request into `main` and merge it once CI passes. The push to `main` publishes the
+   stable release.
+4. Move `beta` to `main`: fast-forward `beta` to `main`, or merge `main` into `beta` when `beta`
+   took a change after step 1. The version on `main` already has its tag, so this push publishes
+   nothing.
+5. Merge `main` into `alpha` by its own pull request, keeping the version of `alpha`.
+
+The next beta release sets `package.json` on `beta` to the first `-beta.N` version of the next
+release.
+
+## Fix a stable release
+
+1. Branch from `main`, fix the bug, and set `package.json` to the next patch version.
+2. Prove the release with the two installs of the next section.
+3. Open a pull request into `main` and merge it once CI passes. The push publishes the fix.
+4. Merge `main` into `beta` or `alpha`, where the next work carries the fix, keeping the version
+   of the branch that receives it.
+
+## Prove a release before the push
+
+Every beta and every stable release passes two installs in a throwaway home before the push that
+publishes it: a clean install in an empty home, and an update from the previous release with that
+release's own installer. Both must pass.
+
+Set each variable from a literal path, never from `$HOME` in the same line. Build the release
+files from the release branch first:
+
+```bash
+V=X.Y.Z-beta.N; R=/path/to/scratch/release
+ruby bin/build-release --version "$V" --directory "$R"
+```
+
+### The clean install
+
+The clean install runs every migration from nothing, as a new user's first install does. Install
+the build in an empty home, then start Plastic in it:
+
+```bash
+S=/path/to/scratch/clean; mkdir -p "$S/boot" "$S/.claude"
+tar -xzf "$R/plastic.tgz" -C "$S/boot" package/scripts package/lib
+ruby --disable-gems "$S/boot/package/scripts/install-release" --directory "$R" --version "$V" \
+  --home "$S/share" --bin "$S/bin" --plastic-home "$S/.plastic" --user-home "$S"
+export HOME=$S PLASTIC_HOME=$S/.plastic
+"$S/bin/plastic" init a
+"$S/bin/plastic" version
+"$S/bin/plastic" status
+```
+
+`plastic version` must name the new version, and each command must exit 0.
+
+### The update from the previous release
+
+`plastic update` runs the installer of the release already installed, not that of the new one.
+So the update proof installs the previous release first and updates it with its own
+`scripts/install-release`, the line that `plastic update` prints. Download the previous release,
+install it as the clean install does, and give it some work:
+
+```bash
+P=/path/to/scratch/previous; U=/path/to/scratch/update; OLD=X.Y.Z-beta.M
+gh release download "v$OLD" --dir "$P"
+mkdir -p "$U/boot" "$U/.claude" "$U/demo"
+tar -xzf "$P/plastic.tgz" -C "$U/boot" package/scripts package/lib
+ruby --disable-gems "$U/boot/package/scripts/install-release" --directory "$P" --version "$OLD" \
+  --home "$U/share" --bin "$U/bin" --plastic-home "$U/.plastic" --user-home "$U"
+export HOME=$U PLASTIC_HOME=$U/.plastic
+"$U/bin/plastic" init a
+"$U/bin/plastic" project new demo "$U/demo"
+"$U/bin/plastic" intent new "A first intent" --project demo
+```
+
+Then update it to the build with the installer of the previous release, and read the work back:
+
+```bash
+ruby --disable-gems -rrbconfig "$U/share/active/scripts/install-release" --directory "$R" \
+  --version "$V" --home "$U/share" --bin "$U/bin" --plastic-home "$U/.plastic" --user-home "$U"
+"$U/bin/plastic" version
+"$U/bin/plastic" status --project demo
+```
+
+`plastic version` must name the new version, and `plastic status` must show the intent.
+
+## Follow a pre-release channel
+
+`install.sh` installs the stable release only. To follow a beta or an alpha release, install the
+stable release, then name the channel:
+
+```bash
+plastic update --channel beta
+plastic update --channel alpha
+plastic update --channel stable   # Back to the stable channel
+```
+
+`plastic update` keeps the release it replaces, so `plastic rollback` can return to it. Without
+`--channel`, an update stays on the channel of the active release. `plastic version` prints the
+channel.
+
+A store that a run of unreleased code has moved past every release is newer than the installed
+code, and every command but `plastic update` refuses it with exit 3. `plastic update` and
+`plastic update --dry-run` still run: they leave the store as it is, and an update installs the
+newest release of the channel. When no release is newer, `plastic update` and its dry run exit 1
+and say the store came from unreleased code; wait for a release that holds its migration.
 
 ## Stable-line guarantees
 
-What an external `latest` user can rely on:
+What a user on the `latest` channel can rely on:
 
 1. `main` is always green and releasable. No pending revert awaiting re-land sits on `main`.
-   When something needs beta verification, it comes out of `main` the same day that need is
-   found (the 226023f precedent), never left half-landed.
-2. A stable release carries no pre-release suffix, publishes to npm `latest`, and the newest
-   stable release always carries the GitHub "Latest" badge (`gh release create --latest` on
-   every cut).
-3. The three repo version files (`package.json`, `.claude-plugin/plugin.json`,
-   `.claude-plugin/marketplace.json`) always agree. Checked mechanically by
-   `scripts/lib/release_guard.rb`.
-4. A stable cut collects only intents that cleared their lane's bar: default-lane intents by a
-   green suite, beta-lane intents by suite green plus their lane's own verification (real-use
-   signal, owner sign-off).
-5. Channel semantics are fixed: `latest` is stable and what an external user should run; `beta`
-   is the verification line, published but expected to move; `alpha` is experimental,
-   pre-verification.
-
-## Version-line map
-
-| Line | State | What lands here |
-|---|---|---|
-| `1.1.x` | Current stable line (main) | Additive or low-risk work merged straight to main; interim stable cuts, including 171's wave-6 cut, stay in this line |
-| `1.2.0-beta.1` | On beta (`9ec194b`, unpublished) | Intent 41's DB layer, restored over 1.1.0 by revert-of-revert (`c48601a` then `9ec194b`) |
-| `1.2.0` | Reserved | The stable graduation of the DB layer, once beta verification passes; not claimed by any interim `1.1.x` cut |
-
-A beta-graduated substrate change claims its reserved minor at the moment it actually merges to
-main, not before. Nothing else on the `1.1.x` line is blocked waiting for `1.2.0`.
-
-## Intent 41 re-land playbook
-
-Written for the wave-6 cut intent (171) and any future reader to pick a version without
-re-deriving this decision.
-
-**Current state.** The revert-of-revert already sits on the `beta` branch at `9ec194b`, on top
-of 1.1.0, versioned `1.2.0-beta.1` (`c48601a`). There is nothing left to execute on the git side;
-this playbook describes what happens next, not a pending action.
-
-**Preconditions**, both required before any publish of `1.2.0-beta.1`:
-
-- (a) One documentation pass over beta-line skills and docs for the hybrid savepoint contract:
-  on beta, only the terminal savepoint line still writes a live `savepoint.md`; every other
-  milestone lives in `savepoint_events` plus a committed JSONL export. Beta-line prose that
-  still assumes an always-live ledger needs updating first, so a beta-line reader does not
-  mistake an empty ledger for a broken one.
-- (b) The owner's manual verification of the DB layer in real use. This is a dogfood signal,
-  distinct from the independently-reviewed green suite that already exists on beta.
-
-**Trigger**, owner-gated: the owner publishes `1.2.0-beta.1` to the npm `beta` dist-tag. This is
-explicitly not this intent's, nor any agent's, call to make.
-
-**Verification.** An external tester plus the owner verify the DB layer on the beta channel.
-
-**Completion.** Once verified, `beta` merges into `main`, `1.2.0` is cut stable, and it publishes
-to npm `latest`.
-
-**Version mechanics.** `1.2.0` is reserved for this graduation. The `1.1.x` line stays the
-stable line until `1.2.0` actually lands. `1.2.0-beta.1` graduates to `1.2.0` stable by dropping
-the pre-release suffix; nothing else about the version number changes.
-
-**Consumed by 171.** The wave-6 consistency-dividend cut stays in the `1.1.x` line. It does not
-ride intent 41 and needs no further derivation: intent 41 keeps its own `1.2.0` line on beta,
-independent of whatever `1.1.x` number 171 lands on.
+2. A stable release carries no pre-release suffix, releases on the `latest` channel, and the
+   newest stable release always carries the GitHub "Latest" badge.
+3. The release tag always matches the version in `package.json`. `bin/lib/release_guard.rb`
+   checks it.
+4. A stable release collects only work that a beta carried in real use, with the owner's
+   sign-off.
+5. The channels keep their meaning: `latest` is stable, `beta` is the line being tested,
+   published but expected to move, and `alpha` holds new work that no beta carries yet.

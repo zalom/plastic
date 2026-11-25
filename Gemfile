@@ -1,12 +1,17 @@
 source "https://rubygems.org"
 
+gem "sqlite3", "~> 2.9"
+gem "benchmark", "~> 0.4"
+gem "tty-prompt", "~> 0.23.1"
+gem "irb", "~> 1.19"
+
 group :development, :test do
   gem "minitest", "~> 6.0"
   gem "simplecov", "~> 1.0"
   gem "mutineer", "~> 1.0"
-  gem "skunk", "~> 0.5"
   gem "rubycritic", "~> 4.12"
   gem "flog", "~> 4.9"
+  gem "reek", "~> 6.5", require: false
   gem "ostruct", "~> 0.6"
   gem "rdoc"
   gem "standard", require: false

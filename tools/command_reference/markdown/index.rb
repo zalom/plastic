@@ -1,0 +1,36 @@
+# frozen_string_literal: true
+
+module CommandReference
+  module Markdown
+    # The README that lists every command, in groups.
+    class Index
+      def initialize(pages)
+        @pages = pages
+      end
+
+      def to_s
+        ["# Command reference", "", INTRO, "", *groups.flat_map { |title, pages| Index.section(title, pages) }].join("\n")
+      end
+
+      INTRO = "Each page explains one plastic command in six parts: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. " \
+        "A script writes every page from the command classes, so a page always matches the code it links to."
+
+      def self.group(words)
+        family = Plastic::CLI.family_of(words)
+        (family == "core") ? "Core" : family
+      end
+
+      def self.section(title, pages)
+        ["## #{title}", "", "| Command | What it does |", "| --- | --- |",
+          *pages.map { |page| "| [`plastic #{page.words}`](#{page.slug}/README.md) | #{page.summary} |" }, ""]
+      end
+
+      private
+
+      def groups
+        titles = Plastic::CLI::FAMILIES.keys.map { |family| (family == "core") ? "Core" : family }
+        @pages.group_by { |page| Index.group(page.words) }.sort_by { |title, _| titles.index(title) }
+      end
+    end
+  end
+end

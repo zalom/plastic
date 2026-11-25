@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+require_relative "shapes/anchored"
+require_relative "shapes/arrow"
+require_relative "shapes/box"
+require_relative "shapes/cylinder"
+require_relative "shapes/key"
+require_relative "shapes/label"
+require_relative "shapes/mark"
+require_relative "shapes/matrix"
+require_relative "shapes/matrix_row"
+require_relative "shapes/palette"
+require_relative "shapes/terminal"
+require_relative "shapes/text"
+require_relative "shapes/zone"

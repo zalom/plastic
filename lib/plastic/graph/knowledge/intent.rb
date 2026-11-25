@@ -1,0 +1,102 @@
+# frozen_string_literal: true
+
+require "json"
+require_relative "../../clock"
+require_relative "../record"
+require_relative "../intent_status"
+require_relative "luhmann_id"
+require_relative "../../layout"
+
+module Plastic
+  module Graph
+    module Knowledge
+      # An intent: one piece of work. `id` is the row's local number;
+      # `intent_id` is the Luhmann id people use, and with `origin_id` it names
+      # the intent across installations. `ref` points at a ticket, a link or
+      # another intent as `{intent_id}-{origin_id}`, and is never a copy.
+      # `parent_id` is the Luhmann id the last run was appended to.
+      Intent = Data.define(:id, :intent_id, :parent_id, :ref, :origin_id, :slug, :title, :kind, :status, :disposition,
+        :reason, :opened_at, :closed_at, :updated_at)
+
+      # What an intent derives from its fields: its folder, its rows and its own file.
+      class Intent
+        include Record
+
+        FILE = Layout.name(:intent)
+        OPEN = %w[open in_progress].freeze
+        UNSTARTED = %w[open future].freeze
+        ARCHIVABLE = %w[done abandoned future].freeze
+
+        # Open or in progress: the work a resume lists.
+        def open? = OPEN.include?(status)
+
+        # Open or future: the work has not begun, so it is a candidate to start once what it needs is finished.
+        def unstarted? = UNSTARTED.include?(status)
+
+        # Done or abandoned: the work is over.
+        def closed? = GROUPS.fetch("finished").include?(status)
+
+        # Why the intent cannot archive, or nil when its status allows it.
+        def archive_refusal
+          return if ARCHIVABLE.include?(status)
+
+          "intent #{intent_id} is #{status}; only done, abandoned and future intents archive"
+        end
+
+        # The id and the title, as people name the intent.
+        def label = "#{intent_id} #{title}"
+
+        # The label and the status.
+        def heading = "#{label} (#{status})"
+
+        # The state a stored word means today: the old word for work under way reads in_progress.
+        def self.stored_state(word) = (word == "active") ? "in_progress" : word
+
+        # The named fields of an index entry, with its status in the stored word.
+        def self.stored_fields(entry, names) = Plastic.utc_fields(names.to_h { |field| [field, entry[field.to_s]] }).merge(status: stored_state(entry["status"]))
+
+        def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(Layout.slug_words).join("-")
+
+        def segments = LuhmannId.segments(intent_id)
+
+        # The intent's folder, relative to the store folder.
+        def dir = "store/#{Layout.folder_name(intent_id, slug)}"
+
+        def file = FILE
+
+        def closed_problem(takes) = ("intent #{intent_id} is #{status}; it takes no #{takes}" if closed?)
+
+        def key_among(paths) = [intent_id, paths.include?(file) ? file : "#{Layout.folder_name(intent_id, slug)}.md"]
+
+        # The row a new intent writes; the database gives `id` and stamps `origin_id`.
+        def new_row = to_h.except(:id, :origin_id)
+
+        # The row of the intent's own file in the knowledge graph.
+        def document(origin_id) = { intent_id:, path: file, body: page(origin_id), updated_at: opened_at }
+
+        # The intent's own file: front matter, then the sections a person fills.
+        def page(origin_id)
+          ["---", *front_matter(origin_id), "---", "", "# #{intent_id} - #{title}", "", *sections].join("\n")
+        end
+
+        # The front matter lines, in the order the layout lists the fields; a field with no value is left out.
+        def front_matter(origin_id)
+          fields = { "id" => intent_id, "intent" => title, "parent" => parent_id, "ref" => ref, "origin" => origin_id, "created" => opened_at }
+          Layout.file(:intent).front_matter.filter_map { |name| "#{name}: #{JSON.generate(fields.fetch(name))}" unless fields.fetch(name).nil? }
+        end
+
+        # The sections a person fills, in the order the layout lists them; the first holds the title.
+        def sections
+          first, *rest = Layout.file(:intent).headings.map(&:name)
+          ["## #{first}", "", title, "", *rest.flat_map { |name| ["## #{name}", ""] }]
+        end
+
+        # The fields store/index.json lists, in order.
+        def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }
+      end
+      Intent::GROUPS = { "active" => %w[open in_progress parked], "future" => %w[future], "finished" => %w[done abandoned] }.freeze
+      Intent::CROSSING_FIELDS = %i[title status disposition reason closed_at].freeze
+      Intent::INDEX_FIELDS = %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at].freeze
+    end
+  end
+end

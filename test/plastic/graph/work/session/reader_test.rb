@@ -1,0 +1,117 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+
+class WorkSessionReaderTest < Plastic::TestCase
+  def graphs(session: nil, store: "plastic") = Plastic::Graph.create(home: @plastic_home, store:, session:)
+
+  def reader = graphs.retrieval
+
+  def opened(session_id, directory: "/a")
+    graphs.work.open_session(session_id, harness: "claude-code", directory:)
+  end
+
+  def closed_run(subject, at: nil)
+    run = Plastic::CommandRun.fresh("intent end", subject, FixedClock::AT).close(Plastic::Finished.new(next_command: nil, because: "done"), {}, FixedClock::AT)
+    at ? run.with(updated_at: at) : run
+  end
+
+  def test_a_session_with_no_row_reads_as_nil
+    assert_nil reader.session("missing")
+  end
+
+  def test_previous_session_is_the_latest_other_session_of_the_store
+    opened("s-1")
+    opened("s-2")
+
+    assert_equal "s-1", reader.previous_session("s-2").session_id
+  end
+
+  def test_a_predecessor_prefers_the_session_that_ended_for_the_reason_asked
+    opened("s-1")
+    graphs.work.end_session("s-1", reason: "clear")
+    opened("s-2")
+    opened("s-3")
+
+    assert_equal "s-1", reader.predecessor("s-3", directory: "/a", prefer_reason: "clear").session_id
+  end
+
+  def test_a_predecessor_falls_back_to_any_directory_when_none_matches
+    opened("s-1", directory: "/b")
+    opened("s-2")
+
+    assert_equal "s-1", reader.predecessor("s-2", directory: "/a").session_id
+  end
+
+  def test_a_lone_session_has_no_predecessor
+    opened("s-1")
+
+    assert_nil reader.predecessor("s-1")
+  end
+
+  def test_command_run_reads_the_run_of_one_tool_on_one_subject
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
+
+    assert_equal ["intent end", "1"], reader.command_run("intent end", "1").then { |run| [run.tool, run.subject] }
+  end
+
+  def test_touched_names_the_intents_a_session_wrote_to
+    session = graphs(session: "s-1")
+    intent = session.work.write_intent(title: "Alpha")
+    session.work.print_intent(intent.intent_id)
+
+    assert_equal [intent.intent_id], session.retrieval.touched("s-1")
+  end
+
+  def test_touched_finds_nothing_for_a_session_with_no_rows
+    assert_empty reader.touched("nobody")
+  end
+
+  def test_touched_counts_a_run_whose_subject_is_a_title_through_its_facts_intent_id
+    run = Plastic::CommandRun.fresh("intent new", "Alpha", FixedClock::AT)
+      .close(Plastic::Finished.new(next_command: "plastic continue", because: "done"), { intent_id: "1" }, FixedClock::AT)
+    graphs(session: "s-1").work.save_command_run(run)
+
+    assert_equal ["1"], reader.touched("s-1")
+  end
+
+  def test_touched_orders_the_most_recent_intent_first
+    session = graphs(session: "s-1")
+    session.work.save_command_run(closed_run("1", at: STAMP))
+    session.work.save_command_run(closed_run("2", at: "2026-10-05T10:00:01+02:00"))
+
+    assert_equal %w[2 1], session.retrieval.touched("s-1")
+  end
+
+  def test_last_run_reads_the_latest_command_run_naming_the_intent
+    graphs.work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
+
+    assert_equal "1", reader.last_run("1").subject
+  end
+
+  def ran(session, intent_id, tool = "intent rule") = graphs(session:).work.save_command_run(Plastic::CommandRun.fresh(tool, intent_id, FixedClock::AT))
+
+  def test_sessions_on_names_each_session_that_ran_a_command_on_the_intent_since_a_time
+    ran("s-1", "1")
+    ran("s-2", "1", "intent note")
+    ran("s-3", "2")
+
+    assert_equal %w[s-1 s-2], reader.sessions_on("1", since: Plastic.timestamp(FixedClock::AT - 60)).sort
+  end
+
+  def test_sessions_on_leaves_out_a_command_run_older_than_the_time
+    ran("s-1", "1")
+
+    assert_empty reader.sessions_on("1", since: Plastic.timestamp(FixedClock::AT + 60))
+  end
+
+  def test_last_run_finds_nothing_for_an_untouched_intent
+    assert_nil reader.last_run("9")
+  end
+
+  def test_last_run_stays_in_its_own_store
+    graphs(store: "other").work.save_command_run(Plastic::CommandRun.fresh("intent end", "1", FixedClock::AT))
+
+    assert_nil reader.last_run("1")
+  end
+end

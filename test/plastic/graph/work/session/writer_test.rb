@@ -1,0 +1,76 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+
+class WorkSessionWriterTest < Plastic::TestCase
+  def work = Plastic::Graph.create(home: @plastic_home, store: "plastic").work
+
+  def reader = Plastic::Graph.create(home: @plastic_home, store: "plastic").retrieval
+
+  def test_open_session_sets_started_at_once_and_keeps_it_on_a_second_open
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    first = reader.session("s-1")
+    work.open_session("s-1", harness: "codex", directory: "/a")
+    second = reader.session("s-1")
+
+    assert_equal [first.started_at, "codex"], [second.started_at, second.harness]
+  end
+
+  def test_stamp_turn_keeps_the_harness_the_session_opened_with
+    work.open_session("s-1", harness: "codex", directory: "/a")
+    work.stamp_turn("s-1", directory: "/a")
+
+    assert_equal "codex", reader.session("s-1").harness
+  end
+
+  def test_stamp_turn_on_a_session_with_no_row_opens_one_with_no_harness
+    work.stamp_turn("s-1", directory: "/a")
+
+    assert_equal [nil, false], [reader.session("s-1").harness, reader.session("s-1").started_at.nil?]
+  end
+
+  def test_stamp_turn_sets_the_last_turn_at_and_keeps_started_at
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    opened = reader.session("s-1")
+    work.stamp_turn("s-1", directory: "/a")
+    stamped = reader.session("s-1")
+
+    assert_equal opened.started_at, stamped.started_at
+    refute_nil stamped.last_turn_at
+  end
+
+  def test_end_session_touches_only_ended_at_and_the_reason
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    work.end_session("s-1", reason: "clear")
+    session = reader.session("s-1")
+
+    assert_equal ["s-1", "claude-code", "/a", "clear"], [session.session_id, session.harness, session.directory, session.end_reason]
+    assert_predicate session, :ended?
+  end
+
+  def test_a_note_on_a_session_with_no_row_writes_the_row
+    work.write_note("s-9", "picked up the review")
+
+    assert_equal "picked up the review", reader.session("s-9").note
+  end
+
+  def test_reopening_an_ended_session_clears_its_end
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    work.end_session("s-1", reason: "clear")
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    session = reader.session("s-1")
+
+    assert_equal [nil, nil], [session.ended_at, session.end_reason]
+    refute_predicate session, :ended?
+  end
+
+  def test_stamping_a_turn_after_the_end_keeps_the_session_ended
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    work.end_session("s-1", reason: "clear")
+    work.stamp_turn("s-1", directory: "/a")
+    session = reader.session("s-1")
+
+    assert_predicate session, :ended?
+    assert_equal "clear", session.end_reason
+  end
+end

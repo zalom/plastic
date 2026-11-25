@@ -1,0 +1,56 @@
+# frozen_string_literal: true
+
+require_relative "../cli/command"
+require_relative "../cli/screen"
+require_relative "../cli/config_scope"
+
+module Plastic
+  module Commands
+    # Shows the on/off settings on the choice screen, the ones that are on
+    # already picked, and writes each one the person changed. See
+    # docs/help/choice-screen.md.
+    class Config < CLI::Command
+      include CLI::ConfigScope
+
+      QUESTION = "Which settings are on?"
+
+      argument :answer, label: "ANSWER", text: "the person's answer to the numbered list", optional: true
+
+      changes(home: "Each setting the person switched is written to the settings rows in plastic.db, and config.yml is printed from them")
+
+      def self.toggled(toggles, picked)
+        toggles.to_h { |key, _on| [key, picked.include?(key)] }.reject { |key, on| toggles[key] == on }
+      end
+
+      def call
+        result = pick(choices)
+        save(result.labels) if result.is_a?(Chosen)
+        output.next_step("plastic config list#{harness_words}", because: "the person left with no change") if result.is_a?(Left)
+      end
+
+      private
+
+      def toggles = config.entries.select { |_key, value| ON_OFF.include?(value) }
+
+      def choices = toggles.map { |key, on| Choice.new(label: key, chosen: on) }
+
+      def pick(choices)
+        text = parsed[:answer]
+        return Answer.new(choices).call(text) if text
+
+        CLI::Screen.for(environment, output:).ask(QUESTION, choices, command: "plastic config#{harness_words}")
+      end
+
+      def save(picked)
+        changed = self.class.toggled(toggles, picked)
+        changed.each { |key, on| write(key, on) }
+        output.next_step("plastic config list#{harness_words}", because: changed.empty? ? "nothing changed" : "the changed settings are written")
+      end
+
+      def write(key, on)
+        config.set(key, on)
+        output.row(key, on.to_s)
+      end
+    end
+  end
+end

@@ -1,0 +1,132 @@
+# frozen_string_literal: true
+
+require "digest"
+require "json"
+require "rubygems/package"
+require "zlib"
+require_relative "../../../scripts/lib/installer_release"
+require_relative "../../test_helper"
+require_relative "../../../lib/plastic/installations"
+require_relative "../../support/child_process"
+
+# A throwaway package, home and agent folder for the installer commands.
+module InstallerHelper
+  PACKAGE_ROOT = File.expand_path("../../..", __dir__)
+
+  def call(*argv, env: {}) = plastic(*argv, env:, table: Plastic::CLI::TABLE)
+
+  def package_version = JSON.parse(File.read(File.join(PACKAGE_ROOT, "package.json"))).fetch("version")
+
+  def fake_package(version)
+    root = File.join(@home, "package")
+    FileUtils.mkdir_p(root)
+    File.write(File.join(root, "package.json"), JSON.generate("version" => version))
+    root
+  end
+
+  def installed(version, ledger: [])
+    FileUtils.mkdir_p(@plastic_home)
+    File.write(File.join(@plastic_home, "VERSION"), "#{version}\n")
+    lines = ledger.map { |number| JSON.generate("version" => number, "action" => "install", "at" => "2026-10-03T12:00:00+02:00") }
+    File.write(File.join(@plastic_home, "versions.json"), lines.map { |line| "#{line}\n" }.join)
+  end
+
+  def share = File.join(@home, ".local", "share", "plastic")
+
+  def activation = InstallerRelease::Activation.new(home: share)
+
+  def activated(*versions)
+    versions.each { |version| activation.activate(release_package(File.join(@home, "stage-#{version}"), version), version: version) }
+  end
+
+  def release_package(path, version)
+    FileUtils.mkdir_p(File.join(path, "bin"))
+    File.write(File.join(path, "VERSION"), "#{version}\n")
+    File.write(File.join(path, "bin", "plastic"), recording_launcher(version))
+    File.chmod(0o755, File.join(path, "bin", "plastic"))
+    FileUtils.mkdir_p(File.join(path, "exe"))
+    FileUtils.cp(File.join(path, "bin", "plastic"), File.join(path, "exe", "plastic"))
+    path
+  end
+
+  def recording_launcher(version) = <<~RUBY
+    #!/usr/bin/env ruby
+    if ARGV == %w[version --json]
+      puts '{"result":{"version":"#{version}"}}'
+      exit
+    end
+    File.open(File.join(Dir.home, "launcher-calls"), "a") { |calls| calls.puts(ARGV.join(" ")) }
+    puts "#{version}"
+  RUBY
+
+  def local_release(version)
+    directory = File.join(@home, "release-#{version}")
+    release_package(File.join(directory, "package"), version)
+    archive = File.join(directory, "plastic.tgz")
+    write_archive(archive, directory, "package")
+    identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
+    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
+    File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
+    directory
+  end
+
+  # A gzip tar of one folder under its own name, as the release archive is: plain file entries
+  # only, no folder entries, each mode masked to its permission bits.
+  def write_archive(archive, base, folder)
+    Zlib::GzipWriter.open(archive) do |gzip|
+      Gem::Package::TarWriter.new(gzip) do |tar|
+        files = Dir.glob("#{folder}/**/*", File::FNM_DOTMATCH, base: base).select { |name| File.file?(File.join(base, name)) }
+        files.sort.each { |name| tar_entry(tar, name, File.join(base, name)) }
+      end
+    end
+  end
+
+  def tar_entry(tar, name, path)
+    tar.add_file_simple(name, File.stat(path).mode & 0o777, File.size(path)) { |entry| entry.write(File.binread(path)) }
+  end
+
+  def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
+
+  def installed_home_without_stores
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    call("init", "1")
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+  end
+
+  # A record of one harness that lists only its VERSION file, written with no install.
+  def written_record(harness, folder)
+    root = File.join(@home, folder)
+    file = File.join(root, "plastic", "VERSION")
+    FileUtils.mkdir_p(File.dirname(file))
+    File.write(file, "2.0.5\n")
+    Plastic::Installations.write(@plastic_home, Plastic::Installations::Record.new(harness:, version: "2.0.5", roots: [root],
+      files: [file], folders: [], settings: File.join(root, "settings.json"), hooks: [], status_line: nil, permissions: [], sections: []))
+  end
+
+  def claude_folder = FileUtils.mkdir_p(File.join(@home, ".claude")).first
+
+  def tree_snapshot(path)
+    return [] unless Dir.exist?(path)
+
+    Dir.chdir(path) do
+      Dir.glob("**/*", File::FNM_DOTMATCH).reject { |entry| entry.end_with?(".") }.sort.map do |entry|
+        File.file?(entry) ? [entry, File.binread(entry)] : [entry, :directory]
+      end
+    end
+  end
+end
+
+# A home of its own for a test whose install closes and reopens the home's connections: the rows it writes are committed, and the shared template home would keep them for the next test.
+module OwnHome
+  def setup
+    @home = File.realpath(Dir.mktmpdir("install-own-home"))
+    @plastic_home = File.join(@home, ".plastic")
+    Plastic::Graph.create(home: @plastic_home, store: "global")
+  end
+
+  def teardown
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(@home)
+  end
+end

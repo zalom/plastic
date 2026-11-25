@@ -1,0 +1,2 @@
+# A home whose global store is a copy of the legacy store, INDEX.md and all.
+store: legacy_store

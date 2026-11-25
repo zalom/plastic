@@ -1,0 +1,55 @@
+# frozen_string_literal: true
+
+module Plastic
+  module Graph
+    # Prints files from rows: writes each file whose bytes differ from its
+    # rows, and records the hash of every print in the `printed` table of the store. The next call compares a file with that
+    # hash to know whether it changed by hand.
+    class Printer
+      attr_reader :written
+
+      def initialize(folder, databases, retrieval)
+        @folder = folder
+        @databases = databases
+        @retrieval = retrieval
+        @written = []
+      end
+
+      def print(prints)
+        paths = prints.reject { |print| print.level?(@folder) }.each { |print| print.write_to(@folder) }.map(&:path)
+        record(prints)
+        remember(paths)
+      end
+
+      # Prints again files the store holds already: a file is written when its rows differ from the file, whatever was recorded for it.
+      def reprint(prints)
+        keys = prints.map { |print| { path: print.path } }
+        @databases.fetch(:store).transaction { |batch| batch.remove_all(:printed, keys) }
+        print(prints)
+      end
+
+      # Records the hash of each print, so the next sync knows the file is level.
+      def record(prints)
+        recorded = @retrieval.stored.printed
+        fresh = with_part(prints).reject { |print| print.recorded?(recorded) }
+        record_in(fresh.map { |print| print.printed_row(@retrieval.clock.now) }) unless fresh.empty?
+      end
+
+      private
+
+      # The clusters and the links are parts of the index: its print records their rows too.
+      def with_part(prints)
+        return prints unless prints.any? { |print| print.path == Knowledge::StoreFolder::INDEX }
+
+        [*prints, *Prints.parts(@retrieval)].uniq(&:path)
+      end
+
+      def remember(paths)
+        @written |= paths
+        paths
+      end
+
+      def record_in(rows) = @databases.fetch(:store).transaction { |batch| batch.put_all(:printed, rows) }
+    end
+  end
+end

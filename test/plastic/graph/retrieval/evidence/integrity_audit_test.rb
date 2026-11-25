@@ -1,0 +1,47 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+require_relative "../../../../../lib/plastic/graph/evidence/writer"
+
+class RetrievalEvidenceIntegrityAuditTest < Plastic::TestCase
+  def setup
+    super
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_database, origin, clock: FixedClock::CLOCK).write("1", "plan.md", "Audited evidence\n")
+    reindex
+  end
+
+  def report
+    snapshot = Plastic::Graph::Retrieval::Evidence::IntegritySnapshot.new(store_database, origin).capture
+    Plastic::Graph::Retrieval::Evidence::IntegrityAudit.report(snapshot)
+  end
+
+  def change(sql) = store_database.transaction { |batch| batch.add(sql) }
+
+  def test_matching_rows_report_no_drift
+    assert_equal({ repairable: false }, report)
+  end
+
+  def test_a_head_with_the_wrong_hash_drifts
+    change("UPDATE document_heads SET sha256 = 'wrong'")
+
+    assert report.fetch(:repairable)
+  end
+
+  def test_a_lost_passage_drifts
+    change("DELETE FROM document_passages")
+
+    assert report.fetch(:repairable)
+  end
+
+  def test_an_extra_search_row_drifts
+    change("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES ('x', '1', 'plan.md', 's', 9, '#{origin}')")
+
+    assert report.fetch(:repairable)
+  end
+
+  def test_a_document_whose_body_changed_drifts
+    change("UPDATE documents SET body = 'edited'")
+
+    assert report.fetch(:repairable)
+  end
+end

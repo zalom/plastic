@@ -1,0 +1,6 @@
+# A home with Alpha opened, its spec written by hand, and one sync up after.
+intents:
+  - title: Alpha
+    files:
+      spec.md: "# Spec\n"
+sync: up

@@ -1,0 +1,464 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+require "minitest/autorun"
+require "tmpdir"
+require "sqlite3"
+
+class DatabaseTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  SQL = Plastic::Graph::SQL
+
+  def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
+
+  def test_the_schema_state_of_a_file_that_does_not_exist_is_nil
+    assert_nil scratch("absent.db").schema_state
+  end
+
+  def test_a_database_with_no_schema_track_has_no_key
+    assert_nil scratch("untracked.db").key
+  end
+
+  def test_rows_returns_the_rows_of_one_statement
+    assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a")
+  end
+
+  def test_a_read_with_no_rows_returns_none
+    assert_empty scratch("x.db").rows("CREATE TABLE t(a)")
+  end
+
+  def test_a_failed_statement_commits_nothing_of_its_transaction
+    error = assert_raises(Plastic::Graph::Database::Error) do
+      database.transaction do |batch|
+        batch.insert(:command_runs, { name: "a" })
+        batch.add("INSERT INTO nowhere VALUES (1)")
+      end
+    end
+
+    assert_equal "work_graph.db: no such table: nowhere", error.message
+    assert_equal [], database.rows("SELECT name FROM command_runs")
+  end
+
+  def test_a_folder_that_cannot_be_made_names_the_file
+    File.write(File.join(@home, "taken"), "")
+    error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "local.db"), "").rows("SELECT 1") }
+
+    assert_match(/\Alocal\.db: /, error.message)
+  end
+
+  def test_a_failed_write_inside_an_open_transaction_undoes_only_itself
+    insert("a")
+    connection = Database::ConnectionPool.for(database.path)
+    connection.execute("BEGIN")
+    insert("b")
+    assert_raises(Database::Error) { database.transaction { |batch| batch.add("INSERT INTO nowhere VALUES (1)") } }
+
+    assert_equal %w[a b], database.rows("SELECT name FROM command_runs ORDER BY id").map { |row| row["name"] }
+    connection.rollback
+  end
+
+  def test_open_local_opens_the_local_database
+    databases = Database.open_local("/home")
+
+    assert_equal [:local], databases.keys
+    assert_equal ["/home/plastic.db", "plastic.db"], [databases[:local].path, databases[:local].file]
+  end
+
+  def test_the_schema_is_made_on_the_first_read
+    assert_empty database.rows("SELECT name FROM notes")
+  end
+
+  def test_rows_and_row_read_with_values
+    insert("a")
+    insert("b")
+
+    assert_equal [{ "name" => "a" }, { "name" => "b" }], database.rows("SELECT name FROM command_runs ORDER BY id")
+    assert_equal({ "name" => "b" }, database.row("SELECT name FROM command_runs WHERE name = :name", name: "b"))
+    assert_nil database.row("SELECT name FROM command_runs WHERE name = 'c'")
+  end
+
+  def test_an_empty_transaction_runs_nothing
+    database = Database.new(File.join(@home, "x.db"), "")
+
+    assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@home, "x.db"))]
+  end
+
+  def test_an_empty_immediate_transaction_runs_no_derived_write
+    database = Database.new(File.join(@home, "immediate.db"), "")
+
+    assert_nil database.immediate_transaction { |_batch, _connection| nil }
+    assert_empty database.written
+  end
+
+  def test_returning_rows_come_back_in_order
+    returned = database.transaction do |batch|
+      batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name) RETURNING name", name: "a")
+      batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name) RETURNING name", name: "b")
+    end
+
+    assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
+    assert_equal({ "tallies" => 2 }, database.written)
+  end
+
+  def test_a_conflict_clause_skips_the_duplicate
+    insert("a")
+    database.transaction { |batch| batch.insert(:command_runs, { name: "a" }, conflict: "NOTHING") }
+
+    assert_equal 1, database.row("SELECT count(*) AS n FROM command_runs")["n"]
+  end
+
+  def test_the_record_names_the_columns_in_order
+    database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
+
+    assert_equal({ "store" => "plastic", "name" => "x" }, database.row("SELECT * FROM stored"))
+  end
+
+  def test_a_blob_of_every_byte_reads_back_equal
+    bytes = (0..255).map(&:chr).join.b
+    database.transaction { |batch| batch.insert(:command_runs, { name: "b", data: SQLite3::Blob.new(bytes) }) }
+    row = database.row("SELECT data, typeof(data) AS kind FROM command_runs")
+
+    assert_equal [bytes, "blob"], [row["data"].b, row["kind"]]
+  end
+
+  def test_a_binary_string_is_stored_as_text
+    database.transaction { |batch| batch.insert(:command_runs, { name: "t", data: "café".b }) }
+    row = database.row("SELECT data, typeof(data) AS kind FROM command_runs")
+
+    assert_equal ["text", "café"], [row["kind"], row["data"].dup.force_encoding("UTF-8")]
+  end
+
+  def test_a_new_database_makes_its_folder
+    scratch("local.db").rows("CREATE TABLE t(a)")
+
+    assert_path_exists File.join(@home, "scratch", "local.db")
+  end
+
+  def test_puts_and_applies_return_the_batch_so_writes_chain
+    batch = Plastic::Graph::Database::Batch.new
+
+    assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
+  end
+end
+
+class DatabaseDryRunTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  BROKEN = "INSERT INTO nowhere VALUES (1)"
+
+  def tally(batch, name = "a") = batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name)", name:)
+
+  def names(table) = database.rows("SELECT name FROM #{table} ORDER BY 1").map { |row| row["name"] }
+
+  def test_a_dry_run_writes_no_row_and_counts_none
+    database.dry_run { |batch| tally(batch) }
+
+    assert_equal [[], {}], [names("tallies"), database.written]
+  end
+
+  def test_a_dry_run_raises_the_error_of_a_failed_statement
+    error = assert_raises(Database::Error) do
+      database.dry_run do |batch|
+        tally(batch)
+        batch.add(BROKEN)
+      end
+    end
+
+    assert_equal "work_graph.db: no such table: nowhere", error.message
+    assert_equal [[], {}], [names("tallies"), database.written]
+  end
+
+  def test_a_dry_run_inside_an_open_transaction_undoes_only_itself
+    insert("a")
+    connection = Database::ConnectionPool.for(database.path)
+    connection.execute("BEGIN")
+    insert("b")
+    database.dry_run { |batch| tally(batch) }
+    found = [names("command_runs"), names("tallies")]
+    connection.rollback
+
+    assert_equal [%w[a b], []], found
+  end
+
+  def refused(method)
+    assert_raises(Database::Error) do
+      database.public_send(method) do |batch, *|
+        tally(batch)
+        batch.add(BROKEN)
+      end
+    end
+  end
+
+  def test_a_failed_transaction_counts_no_rows
+    refused(:transaction)
+    refused(:immediate_transaction)
+
+    assert_empty database.written
+  end
+
+  def test_a_failed_transaction_keeps_the_counts_of_the_writes_before_it
+    database.transaction { |batch| tally(batch) }
+    assert_raises(Database::Error) { database.transaction { |batch| tally(batch, "b").add(BROKEN) } }
+
+    assert_equal({ "tallies" => 1 }, database.written)
+  end
+end
+
+module NoteHelpers
+  def note(value) = database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES (:name)", name: value) }
+
+  def stored = database.rows("SELECT name, typeof(name) AS kind FROM notes ORDER BY rowid").map(&:values)
+end
+
+class DatabaseBindingTest < Plastic::TestCase
+  include NoteHelpers
+
+  Database = Plastic::Graph::Database
+  SQL = Plastic::Graph::SQL
+
+  def test_awkward_text_round_trips
+    values = ["it's \"quoted\"", "a\0b", "one\ntwo", "see :id and :intent_id", "日本語 текст"]
+    values.each { |value| note(value) }
+
+    assert_equal values, stored.map(&:first)
+  end
+
+  def test_each_kind_of_value_is_stored_as_the_literal_stored_it
+    values = [true, false, { "a" => 1 }, [1, 2], :sym, nil, 3, 1.5]
+    kinds = values.map { |value| database.row("SELECT :v AS v, typeof(:v) AS kind", v: value).values }
+
+    assert_equal [[1, "integer"], [0, "integer"], ['{"a":1}', "text"], ["[1,2]", "text"], ["sym", "text"], [nil, "null"], [3, "integer"], [1.5, "real"]], kinds
+  end
+
+  def test_a_statement_with_an_extra_key_runs
+    database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES (:name)", name: "a", other: "b") }
+
+    assert_equal [["a", "text"]], stored
+  end
+
+  def test_a_statement_with_a_missing_key_raises_invalid_and_writes_nothing
+    error = assert_raises(Plastic::Invalid) { database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES (:name)") } }
+
+    assert_match(/work_graph\.db: .*:name/, error.message)
+    assert_empty stored
+  end
+
+  class Unbindable
+    def to_s = raise("no text")
+  end
+
+  def test_a_value_that_cannot_bind_raises_invalid_and_the_next_write_succeeds
+    assert_raises(Plastic::Invalid) { note(Unbindable.new) }
+    note("after")
+
+    assert_equal [["after", "text"]], stored
+  end
+
+  def test_a_value_that_cannot_bind_inside_an_open_transaction_rolls_back_its_savepoint
+    connection = Database::ConnectionPool.for(database.path)
+    database.rows("SELECT 1")
+    connection.execute("BEGIN")
+    assert_raises(Plastic::Invalid) { note(Unbindable.new) }
+    note("after")
+    connection.rollback
+
+    assert_empty stored
+  end
+
+  def test_a_list_of_three_ids_finds_all_three_with_named_placeholders_only
+    %w[a b c d].each { |value| note(value) }
+    list = SQL.list(%w[a c d], "f")
+
+    found = database.rows("SELECT name FROM notes WHERE name IN (#{list.sql}) ORDER BY name", **list.values)
+
+    assert_equal %w[a c d], found.map { |row| row["name"] }
+  end
+end
+
+class DatabaseRollbackTest < Plastic::TestCase
+  include NoteHelpers
+
+  Database = Plastic::Graph::Database
+
+  def test_rows_refuses_text_that_holds_two_statements
+    error = assert_raises(Plastic::Invalid) { database.rows("INSERT INTO notes(name) VALUES ('a'); INSERT INTO notes(name) VALUES ('b')") }
+
+    assert_includes error.message, "one statement"
+    assert_empty stored
+  end
+
+  def test_rows_takes_one_statement_that_ends_with_a_semicolon
+    assert_equal [{ "a" => 1 }], database.rows("SELECT 1 AS a; \n")
+  end
+
+  def test_a_batch_refuses_text_that_holds_two_statements_and_writes_nothing
+    assert_raises(Plastic::Invalid) do
+      database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES ('a'); INSERT INTO notes(name) VALUES ('b')") }
+    end
+
+    assert_empty stored
+  end
+
+  def committed_file
+    Database.new(File.join(@home, "scratch", "commit.db"), "CREATE TABLE IF NOT EXISTS t(a);")
+  end
+
+  def second_connection_rows(file)
+    other = SQLite3::Database.new(file.path)
+    other.execute("SELECT a FROM t ORDER BY a").flatten
+  ensure
+    other&.close
+  end
+
+  def test_a_batch_whose_last_statement_fails_leaves_nothing_for_a_second_connection
+    file = committed_file
+    assert_raises(Database::Error) do
+      file.transaction do |batch|
+        batch.add("INSERT INTO t(a) VALUES (1)")
+        batch.add("INSERT INTO nowhere VALUES (1)")
+      end
+    end
+
+    assert_empty second_connection_rows(file)
+  end
+
+  def test_a_batch_that_succeeds_is_visible_to_a_second_connection
+    file = committed_file
+    file.transaction { |batch| batch.add("INSERT INTO t(a) VALUES (1)") }
+
+    assert_equal [1], second_connection_rows(file)
+  end
+
+  def test_an_interrupt_inside_a_batch_leaves_no_row_and_the_next_write_succeeds
+    file = committed_file
+    assert_raises(Interrupt) do
+      file.immediate_transaction { |_batch, connection| connection.read("INSERT INTO t(a) VALUES (1)") && raise(Interrupt) }
+    end
+    file.transaction { |batch| batch.add("INSERT INTO t(a) VALUES (2)") }
+
+    assert_equal [2], second_connection_rows(file)
+  end
+
+  def test_an_interrupt_inside_a_savepoint_leaves_no_row_and_the_next_write_succeeds
+    connection = Database::ConnectionPool.for(database.path)
+    database.rows("SELECT 1")
+    connection.execute("BEGIN")
+    assert_raises(Interrupt) do
+      database.immediate_transaction { |_batch, inner| inner.read("INSERT INTO notes(name) VALUES ('a')") && raise(Interrupt) }
+    end
+    note("after")
+    written = stored.map(&:first)
+    connection.rollback
+
+    assert_equal ["after"], written
+  end
+
+  def test_an_interrupt_inside_a_savepoint_keeps_the_rows_written_before_it
+    connection = Database::ConnectionPool.for(database.path)
+    database.rows("SELECT 1")
+    connection.execute("BEGIN")
+    note("before")
+    assert_raises(Interrupt) do
+      database.immediate_transaction { |_batch, inner| inner.read("INSERT INTO notes(name) VALUES ('a')") && raise(Interrupt) }
+    end
+
+    assert_equal ["before"], stored.map(&:first)
+    connection.rollback
+  end
+end
+
+class DatabaseWriteLogTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+
+  def test_an_upsert_twice_with_different_values_leaves_the_second
+    work = store_graphs.databases.fetch(:store)
+    %w[h1 h2].each { |sha| work.transaction { |batch| batch.put(:printed, { path: "p", sha256: sha, at: STAMP }) } }
+
+    assert_equal [{ "sha256" => "h2" }], work.rows("SELECT sha256 FROM printed WHERE path = 'p'")
+  end
+
+  def test_the_counts_ignore_writes_that_changed_no_row
+    work = store_graphs.databases.fetch(:store)
+    2.times { work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) } }
+    work.transaction { |batch| batch.remove(:clusters, name: "missing", intent_id: "1") }
+
+    assert_equal({ "clusters" => 1 }, work.written)
+  end
+
+  def test_a_log_then_a_remove_counts_the_remove_only
+    work = store_graphs.databases.fetch(:store)
+    work.transaction { |batch| batch.put(:clusters, { name: "C", intent_id: "1" }) }
+    work.transaction { |batch| batch.remove(:clusters, name: "C", intent_id: "1") }
+
+    assert_equal({ "clusters" => 2 }, work.written)
+  end
+
+  def test_a_double_write_of_command_runs_counts_the_larger
+    database.transaction do |batch|
+      batch.write(:command_runs, "INSERT INTO command_runs(name) VALUES (:name)", name: "a")
+      batch.write(:command_runs, "INSERT INTO command_runs(name) VALUES (:name)", name: "b")
+    end
+
+    assert_equal({ "command_runs" => 1 }, database.written)
+  end
+
+  def test_eight_thousand_statements_in_one_batch_all_land
+    database.transaction do |batch|
+      8000.times { |n| batch.add("INSERT INTO notes(name) VALUES (:name)", name: "n#{n}") }
+    end
+
+    assert_equal 8000, database.row("SELECT count(*) AS n FROM notes")["n"]
+  end
+end
+
+class WrittenPhraseTest < Plastic::TestCase
+  def test_nothing_written_has_no_phrase
+    assert_nil database.written_phrase
+  end
+
+  def test_one_table_written_is_one_phrase
+    insert("a", table: :tallies)
+    insert("b", table: :tallies)
+
+    assert_equal "2 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_two_tables_join_with_and
+    insert("t", table: :tallies)
+    insert("n", table: :notes)
+
+    assert_equal "1 tallies and 1 notes in work_graph.db", database.written_phrase
+  end
+
+  def test_the_command_run_row_is_left_out_of_the_phrase
+    insert("a")
+    insert("t", table: :tallies)
+
+    assert_equal "1 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_only_the_command_run_row_written_has_no_phrase
+    insert("a")
+
+    assert_nil database.written_phrase
+  end
+
+  def test_three_tables_join_with_commas
+    insert("a", table: :tallies)
+    insert("t", table: :notes)
+    insert("n", table: :stored)
+
+    assert_equal "1 tallies, 1 notes, and 1 stored in work_graph.db", database.written_phrase
+  end
+
+  def test_an_uncounted_write_is_kept_off_the_phrase
+    database.transaction { |batch| batch.add("INSERT INTO notes VALUES ('x')") }
+
+    assert_nil database.written_phrase
+  end
+
+  def test_a_write_that_changes_nothing_counts_nothing
+    database.transaction { |batch| batch.write(:notes, "DELETE FROM notes") }
+
+    assert_nil database.written_phrase
+  end
+end

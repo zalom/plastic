@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 558" width="834" height="558" role="img" xml:space="preserve">
+<title>The workflows of one call of plastic intent abandon, in words</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic intent abandon: its workflows and its endings</text>
+<rect x="290" y="56" width="254" height="83" rx="6" class="lane-code"/>
+<text x="302" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="302" y="96" class="t" text-anchor="start">Reads the intent and its claims</text>
+<text x="302" y="113" class="t" text-anchor="start">and checks that it can be</text>
+<text x="302" y="130" class="t" text-anchor="start">abandoned.</text>
+<rect x="588" y="56" width="222" height="100" rx="6" class="stop-refusal"/>
+<text x="600" y="76" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
+<text x="600" y="96" class="t" text-anchor="start">A check fails or the step</text>
+<text x="600" y="113" class="t" text-anchor="start">belongs to the owner. The</text>
+<text x="600" y="130" class="t" text-anchor="start">events below show each</text>
+<text x="600" y="147" class="t" text-anchor="start">check.</text>
+<path d="M 544 97 L 588 97" class="wire-refusal"/>
+<path d="M 580 92 L 588 97 L 580 102 Z" class="head"/>
+<path d="M 417 139 L 417 178 L 284 178 L 284 186" class="wire"/>
+<text x="284" y="200" class="k" text-anchor="middle">the work of the intent is not</text>
+<text x="284" y="214" class="k" text-anchor="middle">reverted yet</text>
+<path d="M 284 224 L 284 238" class="wire"/>
+<path d="M 279 230 L 284 238 L 289 230 Z" class="head"/>
+<rect x="157" y="238" width="254" height="83" rx="6" class="lane-agent"/>
+<text x="169" y="258" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="169" y="278" class="t" text-anchor="start">Has the agent undo what the</text>
+<text x="169" y="295" class="t" text-anchor="start">intent changed and record it in</text>
+<text x="169" y="312" class="t" text-anchor="start">outcome.md.</text>
+<path d="M 284 321 L 284 347" class="wire"/>
+<path d="M 279 339 L 284 347 L 289 339 Z" class="head"/>
+<rect x="157" y="347" width="254" height="83" rx="6" class="stop-end"/>
+<text x="169" y="367" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="169" y="387" class="t" text-anchor="start">The agent reverts the intent&#39;s</text>
+<text x="169" y="404" class="t" text-anchor="start">changes and records it in</text>
+<text x="169" y="421" class="t" text-anchor="start">outcome.md.</text>
+<rect x="157" y="438" width="254" height="49" rx="6" class="stop-end"/>
+<text x="169" y="458" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="169" y="478" class="t" text-anchor="start">The revert is recorded.</text>
+<path d="M 417 139 L 417 178 L 550 178 L 550 186" class="wire"/>
+<text x="550" y="200" class="k" text-anchor="middle">no work of the intent is left to</text>
+<text x="550" y="214" class="k" text-anchor="middle">revert, so the intent can be</text>
+<text x="550" y="228" class="k" text-anchor="middle">marked abandoned</text>
+<path d="M 550 238 L 550 252" class="wire"/>
+<path d="M 545 244 L 550 252 L 555 244 Z" class="head"/>
+<rect x="423" y="252" width="254" height="66" rx="6" class="lane-code"/>
+<text x="435" y="272" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="435" y="292" class="t" text-anchor="start">Marks the intent abandoned and</text>
+<text x="435" y="309" class="t" text-anchor="start">ends its run of work.</text>
+<path d="M 550 318 L 550 340 L 550 340 L 550 348" class="wire"/>
+<text x="550" y="362" class="k" text-anchor="middle">intent &lt;intent id&gt; is abandoned</text>
+<path d="M 550 372 L 550 386" class="wire"/>
+<path d="M 545 378 L 550 386 L 555 378 Z" class="head"/>
+<rect x="423" y="386" width="254" height="66" rx="6" class="lane-agent"/>
+<text x="435" y="406" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="435" y="426" class="t" text-anchor="start">Has the agent stop what the</text>
+<text x="435" y="443" class="t" text-anchor="start">intent started.</text>
+<path d="M 550 452 L 550 478" class="wire"/>
+<path d="M 545 470 L 550 478 L 555 470 Z" class="head"/>
+<rect x="423" y="478" width="254" height="66" rx="6" class="stop-end"/>
+<text x="435" y="498" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="435" y="518" class="t" text-anchor="start">The agent stops the processes</text>
+<text x="435" y="535" class="t" text-anchor="start">and agents the intent started.</text>
+</svg>

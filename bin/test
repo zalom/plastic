@@ -2,29 +2,45 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Runs the Minitest suite in a single process, either the whole suite or a
-# named subset via --only (intent 355, n4, D5). Every run, named or full,
+# Runs the Minitest unit suite in a single process, either the whole suite or a
+# named subset via --only. --e2e runs the Varar
+# acceptance documents instead. Every run, named or full,
 # goes through FailuresReporter, so a green run costs one line and a red run
 # prints only the failures plus that line, never a dot per test.
 #
 # `release.verify` used to be `ruby -Itest test/*_test.rb`, but Ruby runs only
 # the first glob-expanded file as the program — the rest land in ARGV and are
 # never required. The release gate exercised one test file, reported green, and
-# let releases ship over real failures (intent 30). Pointing verify at this
+# let releases ship over real failures. Pointing verify at this
 # script keeps the runner in version control and guarantees every test file is
 # loaded.
 
 root = File.expand_path("..", __dir__)
-discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort }
+kernel_dir = File.join(root, "test", "plastic", "")
+kernel = []
+system_runner = File.join(root, "test", "varar_test.rb")
+discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort - [system_runner] }
 
-# `bin/test --list` prints the discovered files without running them, so the
+# `bin/test --e2e` runs the Varar acceptance documents: each command
+# through a child process, apart from the unit layer.
+e2e_layer = ARGV.delete("--e2e")
+
+unknown = ARGV.take_while { |arg| arg != "--only" }.grep(/\A-/) - ["--list"]
+unless unknown.empty?
+  warn "unknown option: #{unknown.first}"
+  exit 2
+end
+
+# `bin/test --list` prints the files of the layer without running them, so the
 # discovery logic can be tested cheaply (no full-suite execution).
 if ARGV.delete("--list")
-  files = discover.call
+  files = e2e_layer ? [system_runner] : discover.call
   abort "No test files found under #{File.join(root, "test")}" if files.empty?
   puts files.map { |f| f.sub("#{root}/", "") }
   exit 0
 end
+
+ARGV.concat(["--only", system_runner]) if e2e_layer
 
 only_index = ARGV.index("--only")
 if only_index
@@ -34,15 +50,27 @@ if only_index
   files = named.map { |f| File.expand_path(f, root) }
   missing = files.reject { |f| File.exist?(f) }
   unless missing.empty?
-    warn "no such test file: #{missing.map { |f| f.sub("#{root}/", "") }.join(', ')}"
+    warn "no such test file: #{missing.map { |f| f.sub("#{root}/", "") }.join(", ")}"
     exit 2
   end
 else
   files = discover.call
   abort "No test files found under #{File.join(root, "test")}" if files.empty?
+
+  # The kernel under lib/plastic/ defines the same constants as the
+  # live command line, so its tests run in a process of their own until the
+  # live one retires.
+  kernel, files = files.partition { |f| f.start_with?(kernel_dir) }
 end
+kernel_passed = kernel.empty? || system(RbConfig.ruby, __FILE__, "--only", *kernel)
 
 $LOAD_PATH.unshift File.join(root, "test")
 require_relative "../test/lib/failures_reporter"
 require "minitest/autorun"
+Minitest.after_run do
+  next if kernel_passed
+
+  puts "the kernel suite in test/plastic/ failed: its failures are above"
+  exit false
+end
 files.each { |f| require f }

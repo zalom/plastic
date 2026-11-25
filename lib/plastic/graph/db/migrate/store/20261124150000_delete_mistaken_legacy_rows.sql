@@ -1,0 +1,3 @@
+-- An agent added the table document_revisions by mistake. Migration 20261119000000 dropped it and kept a copy in legacy.db.
+-- legacy.db keeps only the owner's data, so the data step of this version deletes that copy, with no copy and no undo.
+-- No table of the live store changes.

@@ -1,0 +1,2 @@
+-- The sync reads a report only when plastic intent report recorded it or reports.mandatory names it.
+-- The data step of this version drops the rows of every other report; the files stay on disk.

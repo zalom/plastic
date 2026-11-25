@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+require_relative "integrity_audit"
+require_relative "integrity_rebuilder"
+require_relative "integrity_snapshot"
+require_relative "../index"
+
+module Plastic
+  module Graph
+    module Retrieval
+      class Evidence
+        # Diagnoses and rebuilds the rows that are derived from the current documents.
+        class Integrity
+          # Holds the collaborators that read, assess, and rebuild derived rows.
+          Components = Data.define(:snapshot, :audit, :rebuilder)
+
+          def initialize(store, origin_id, before_rebuild: -> {})
+            @database = store
+            @index = Retrieval::Index.new(store, origin_id)
+            @before_rebuild = before_rebuild
+            @components = Components.new(Evidence::IntegritySnapshot.new(store, origin_id), Evidence::IntegrityAudit,
+              Evidence::IntegrityRebuilder.new(origin_id))
+          end
+
+          # Rebuilds the heads in one immediate transaction, then the passages and search entries in a deferred one.
+          def repair
+            @database.immediate_transaction { |batch, connection| repair_snapshot(batch, connection) }
+            @index.rebuild
+            report
+          end
+
+          def report = components.audit.report(components.snapshot.capture)
+
+          private
+
+          attr_reader :components
+
+          def current_report(connection)
+            snapshot = components.snapshot.capture_transaction(connection)
+            [components.audit.report(snapshot), snapshot]
+          end
+
+          def repair_snapshot(batch, connection)
+            @before_rebuild.call
+            report, snapshot = current_report(connection)
+            components.rebuilder.rebuild(batch, snapshot)
+            report
+          end
+        end
+      end
+    end
+  end
+end

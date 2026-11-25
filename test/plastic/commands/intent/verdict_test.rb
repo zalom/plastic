@@ -1,0 +1,195 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+
+class IntentVerdictCaseTest < Plastic::TestCase
+  def test_an_accept_after_the_work_is_done_prints_round_1_and_offers_the_end
+    alpha_with_node
+    ran("intent auto 1", "node claim 1 n1 --agent tester", "node done 1 n1 Built")
+
+    assert_case line('intent verdict 1 accept "Every criterion holds"'), code: 0,
+      out: ["verdict: accept round 1", "next: plastic intent end 1"]
+  end
+
+  def test_a_revise_prints_round_1_and_offers_a_new_node
+    ran("intent new Alpha")
+
+    assert_case line('intent verdict 1 revise "One edge fails"'), code: 0,
+      out: ["verdict: revise round 1", "next: plastic node add 1 TITLE --criterion KEY"]
+  end
+end
+
+class IntentVerdictTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def verdicts = work_rows("verdicts").sort_by { |row| row.fetch("round") }
+
+  def verdict(*args) = cli("intent", "verdict", "1", *args)
+
+  def setup
+    super
+    specified
+    delivered_nodes
+  end
+
+  def test_an_unknown_verdict_exits_2_with_no_row
+    result = verdict("maybe", "x")
+
+    assert_equal [2, []], [result.code, verdicts]
+    assert_includes result.err, "the verdict takes accept or revise"
+  end
+
+  def test_a_verdict_without_findings_exits_2_with_no_row
+    assert_equal [2, []], [verdict("accept").code, verdicts]
+  end
+
+  def test_blank_findings_exit_2_with_no_row
+    assert_equal [2, []], [verdict("accept", "  ").code, verdicts]
+  end
+
+  def test_an_accept_writes_round_1
+    result = verdict("accept", "Every criterion holds")
+
+    assert_equal 0, result.code
+    assert_equal [[1, "accept", "Every criterion holds"]], verdicts.map { |row| row.values_at("round", "verdict", "findings") }
+  end
+
+  def test_an_accept_offers_the_end
+    assert_match(/^next: plastic intent end 1/, verdict("accept", "fine").out)
+  end
+
+  def test_a_revise_names_the_fix_node_command
+    result = verdict("revise", "The edge case fails")
+
+    assert_equal 0, result.code
+    assert_match(/^next: plastic node add 1/, result.out)
+  end
+
+  def test_a_second_revise_is_written_and_refused_with_exit_3
+    verdict("revise", "one")
+    result = verdict("revise", "two")
+
+    assert_equal [1, 2], verdicts.map { |row| row.fetch("round") }
+    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent with plastic intent abandon 1, a follow-up intent with plastic intent handover 1 FOLLOW_UP REASON --owner, and one more round with plastic intent grant 1 REASON --owner"]
+    refute_match(/^next:/, result.out)
+  end
+
+  def test_a_third_verdict_is_refused_with_two_rows
+    verdict("revise", "one")
+    verdict("revise", "two")
+    result = verdict("accept", "three")
+
+    assert_equal [3, 2], [result.code, verdicts.size]
+  end
+
+  def test_a_judge_call_then_a_verdict_call_writes_the_row
+    cli("intent", "judge", "1")
+    verdict("accept", "fine")
+
+    assert_equal 1, verdicts.size
+  end
+
+  def test_a_verdict_row_keeps_the_session
+    verdict("accept", "fine")
+
+    assert_equal "delivery", verdicts.first.fetch("session_id")
+  end
+
+  def test_the_verdicts_print_into_the_graph_file
+    verdict("accept", "fine")
+
+    graph = JSON.parse(File.read(store_path("store/1--alpha/graph.json")))
+
+    assert_equal ["accept"], graph.fetch("verdicts").map { |row| row.fetch("verdict") }
+  end
+end
+
+class IntentVerdictAcceptGateTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def verdicts = work_rows("verdicts")
+
+  def verdict(kind) = cli("intent", "verdict", "1", kind, "Checked")
+
+  def claimed_node
+    specified
+    cli("intent", "approve", "1")
+    cli("intent", "auto", "1")
+    cli("node", "add", "1", "Deliver", "--criterion", KEY)
+    cli("node", "claim", "1", "n1", "--agent", "tester")
+  end
+
+  def test_an_accept_with_a_claimed_node_exits_1_names_the_graph_show_command_and_writes_no_row
+    claimed_node
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_match(/^next: plastic graph show 1/, result.out)
+  end
+
+  def test_an_accept_with_an_open_unclaimed_node_exits_1_names_the_graph_show_command_and_writes_no_row
+    claimed_node
+    released = cli("node", "release", "1", "n1")
+
+    result = verdict("accept")
+
+    assert_equal [0, 1, []], [released.code, result.code, verdicts]
+    assert_match(/^next: plastic graph show 1/, result.out)
+  end
+
+  def test_an_accept_with_no_done_criterion_exits_1_names_the_spec_command_and_writes_no_row
+    open_intent
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_includes result.err, "intent 1 names no done criterion; an accept needs one"
+    assert_match(/^next: plastic intent spec 1/, result.out)
+  end
+
+  def test_an_accept_with_no_node_exits_1_names_the_node_add_command_and_writes_no_row
+    specified
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_match(/^next: plastic node add 1/, result.out)
+  end
+
+  def test_a_revise_with_a_claimed_node_still_records_the_verdict
+    claimed_node
+
+    result = verdict("revise")
+
+    assert_equal [0, ["revise"]], [result.code, verdicts.map { |row| row.fetch("verdict") }]
+  end
+
+  def test_an_accept_with_every_node_done_records_the_verdict
+    specified
+    delivered_nodes
+
+    assert_equal [0, 1], [verdict("accept").code, verdicts.size]
+  end
+end
+
+class IntentVerdictRefusalTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def test_a_missing_intent_fails_with_no_row
+    result = cli("intent", "verdict", "9", "accept", "x")
+
+    assert_equal [1, []], [result.code, work_rows("verdicts")]
+    assert_includes result.err, "no intent 9 in this store"
+    refute_match(/^next:/, result.out)
+  end
+
+  %w[done abandoned].each do |status|
+    define_method(:"test_a_#{status}_intent_fails_with_no_row") do
+      open_intent(status:)
+      result = cli("intent", "verdict", "1", "accept", "x")
+
+      assert_equal [3, []], [result.code, work_rows("verdicts")]
+    end
+  end
+end

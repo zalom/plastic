@@ -1,0 +1,35 @@
+# frozen_string_literal: true
+
+require_relative "../../../command_reference_helper"
+
+class CommandReferenceMarkdownIndexTest < Minitest::Test
+  include CommandReferenceHelper
+
+  def text = CommandReference::Markdown::Index.new(CommandReferenceHelper.pages.values).to_s
+
+  def test_there_is_one_group_for_each_family
+    assert_equal Plastic::CLI::FAMILIES.size, text.scan(/^## /).size
+    assert_equal Plastic::CLI::FAMILIES.keys.map { |family| (family == "core") ? "Core" : family }, text.scan(/^## (.+)$/).flatten
+    assert_includes text, "## Core"
+  end
+
+  def test_the_intro_names_the_six_parts
+    assert_includes text.lines.first(4).join, "six parts: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets"
+  end
+
+  def test_every_table_command_is_linked_once
+    Plastic::CLI::TABLE.each_key do |words|
+      assert_equal 1, text.scan("(#{words.tr(" ", "-")}/README.md)").size, words
+    end
+  end
+
+  def test_the_core_group_holds_the_distribution_and_entry_commands
+    core = text[/## Core.*?(?=\n## )/m]
+
+    %w[install update rollback uninstall version doctor status next search].each { |word| assert_includes core, "`plastic #{word}`" }
+  end
+
+  def test_store_backup_is_in_the_store_family
+    assert_includes text[/## store.*?(?=\n## )/m], "`plastic store backup`"
+  end
+end

@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+require_relative "../../../code_workflow"
+
+module Plastic
+  module Workflows
+    module Code
+      module Edge
+        # Writes one guarded edge. An end of the edge that is not a node of the intent fails with exit 1;
+        # a self edge, a duplicate edge, a loop back to its own start, or a removed node is refused with exit 3.
+        class Add < CodeWorkflow
+          clear_declarations
+
+          sets :intent, :problem, :kind, :added
+
+          read "find the intent" do |context|
+            context[:intent] = context.retrieval.intent(context.intent_id)
+          end
+
+          gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
+
+          read("forget a refusal of an earlier call") { |context| context[:added] = nil if context.added == false }
+
+          step "add the edge", done: ->(context) { !context.added.nil? },
+            changes: { work: "An edge between two nodes of the intent is added" } do |context|
+            context[:added], context[:problem], context[:kind] = context.work.add_edge(intent_id: context.intent_id, from: context.from, to: context.to)
+          end
+
+          gate "%{problem}", stops: :failure,
+            words: "an end of the edge is not a node of the intent",
+            pass: ->(context) { context.kind != :missing }
+
+          gate "%{problem}", stops: :refusal,
+            words: "the edge is a self edge, a duplicate, would make a loop, or an end of the edge is a removed node",
+            pass: ->(context) { context.problem.nil? }
+
+          read "say what was added" do |context|
+            context.print("edge: #{context.from} to #{context.to}")
+          end
+
+          outcome :done, offers: "plastic graph check %{intent_id}", because: "edge %{from} to %{to} is written; the check finds what the graph still lacks"
+        end
+      end
+    end
+  end
+end

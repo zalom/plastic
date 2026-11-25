@@ -1,0 +1,104 @@
+# frozen_string_literal: true
+
+require_relative "../test_helper"
+
+class ContextTest < Plastic::TestCase
+  Graphs = Data.define(:work, :retrieval, :databases)
+
+  def context(declared: %i[id title], facts: { id: "7" }, graphs: {}, session: nil)
+    Plastic::Context.new(declared:, facts:, graphs:, harness: Plastic::Context::Harness.new(session))
+  end
+
+  def test_the_settings_a_call_was_given_are_read_through_the_context
+    settings = Object.new
+
+    assert_same settings, Plastic::Context.new(declared: [], facts: {}, graphs: {}, harness: Plastic::Context::Harness.new(nil, nil, settings)).settings
+  end
+
+  def test_a_declared_fact_reads_as_a_method
+    assert_equal "7", context.id
+    assert_nil context.title
+  end
+
+  def test_an_undeclared_fact_is_dropped
+    assert_equal({ id: "7" }, context(facts: { id: "7", stray: 1 }).facts)
+  end
+
+  def test_writing_an_undeclared_fact_raises
+    error = assert_raises(Plastic::Invalid) { context[:stray] = 1 }
+
+    assert_equal "fact stray is not declared", error.message
+  end
+
+  def test_writing_a_declared_fact_sets_it
+    ctx = context
+    ctx[:title] = "Kernel"
+
+    assert_equal "Kernel", ctx.title
+  end
+
+  def test_facts_are_a_copy
+    ctx = context
+    ctx.facts[:id] = "8"
+
+    assert_equal "7", ctx.id
+  end
+
+  def test_print_keeps_the_lines_in_order
+    ctx = context
+
+    assert_same ctx, ctx.print("one")
+    ctx.print("two")
+
+    assert_equal %w[one two], ctx.printed
+  end
+
+  def test_row_keeps_its_place_among_the_printed_lines
+    ctx = context
+
+    assert_same ctx, ctx.row("results", [1])
+    ctx.print("after")
+
+    assert_equal %w[after], ctx.printed
+  end
+
+  def test_print_to_gives_lines_raw_and_rows_labelled
+    output = Struct.new(:calls) do
+      def raw(line) = calls << [:raw, line]
+      def row(label, value) = calls << [:row, label, value]
+    end.new([])
+
+    context.print("one").row("results", [1]).print_to(output)
+
+    assert_equal [[:raw, "one"], [:row, "results", [1]]], output.calls
+  end
+
+  def test_the_harness_gives_the_session_and_the_scope
+    harness = Plastic::Context::Harness.new("abc", :scope)
+    ctx = Plastic::Context.new(declared: [], facts: {}, graphs: {}, harness:)
+
+    assert_equal ["abc", :scope], [ctx.session, ctx.scope]
+  end
+
+  def test_fill_puts_the_facts_in_the_template
+    assert_equal "intent 7", context.fill("intent %{id}")
+  end
+
+  def test_fill_refuses_a_fact_with_no_value
+    error = assert_raises(Plastic::Invalid) { context.fill("%{id} %{title}") }
+
+    assert_equal "no value for title in \"%{id} %{title}\"", error.message
+  end
+
+  def test_a_fact_named_like_a_context_method_raises
+    error = assert_raises(Plastic::Invalid) { context(declared: %i[print facts]) }
+
+    assert_equal "fact names print, facts are Context methods", error.message
+  end
+
+  def test_the_context_holds_the_graphs_and_the_session
+    ctx = context(graphs: Graphs.new(work: :work, retrieval: :retrieval, databases: {}), session: "s-1")
+
+    assert_equal [:work, :retrieval, "s-1"], [ctx.work, ctx.retrieval, ctx.session]
+  end
+end

@@ -1,0 +1,85 @@
+# frozen_string_literal: true
+
+require_relative "../up"
+require_relative "../../../../code_workflow"
+require_relative "../../../sync_steps"
+require_relative "../../../sync_words"
+require_relative "../../../sync_refusals"
+
+module Plastic
+  module Workflows
+    module Code
+      module Sync
+        class Up
+          # Previews the same sync in a copy before the normal write workflow, and refuses what the real run refuses.
+          class Preview < CodeWorkflow
+            clear_declarations
+            summary "Previews the sync of the store folder into rows in a disposable copy."
+
+            DRY_RUN = ->(context) { context.dry_run }
+
+            # Prints the lines of the dry run, and keeps what the real run would refuse as the facts its gates read.
+            def self.show(context, direction)
+              note(context, printed(context, context.work.preview_sync({ overwrite: context.overwrite, merge: context.merge }, direction:)))
+            rescue Invalid => error
+              context[:failure] = error.message
+            end
+
+            def self.printed(context, run)
+              [*run.lines, "preview complete; the original store was not changed"].each { |line| context.print(line) }
+              run
+            end
+
+            def self.note(context, run)
+              context[:conflicts] = run.conflicts.join(" ")
+              context[:merging] = run.merging
+              context[:unreadable] = run.unreadable.join("\n")
+              SyncSteps.note_files(context, run.unreadable_files, run.rowless_files)
+            end
+
+            # A gate that a real run passes untouched; a dry run passes it as the real run's own gate would.
+            def self.as_real?(context, name) = !DRY_RUN.call(context) || SyncSteps.public_send(name, context)
+
+            # The steps of a preview in `direction`: the dry run, then the gates of the real run in its order.
+            def self.preview(direction)
+              sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless
+              read("preview the sync in an isolated copy") { |context| show(context, direction) if DRY_RUN.call(context) }
+              real_gates(direction)
+              outcomes_of(direction)
+            end
+
+            def self.outcomes_of(direction)
+              outcome :done, if: DRY_RUN, offers: "%{original_command}", because: "the preview wrote only to a disposable copy"
+              outcome :continue, offers: "plastic store sync #{direction}", because: "apply the requested sync"
+            end
+
+            def self.real_gates(direction)
+              gate "%{failure}", stops: :failure,
+                words: "an overwrite path names no file and no rows",
+                pass: ->(context) { as_real?(context, :runs?) }
+              conflict_gates(direction)
+              readable_gates
+            end
+
+            # The gates of the conflicts, before and after the real run writes.
+            def self.conflict_gates(direction)
+              gate SyncRefusals::REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
+              gate SyncRefusals::REFUSED_AFTER.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
+            end
+
+            # The gates of the files that sync up reads.
+            def self.readable_gates
+              gate SyncWords::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
+              gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
+                offers: "plastic store sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
+              gate SyncWords::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :rowless_read?) },
+                because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
+            end
+
+            preview :up
+          end
+        end
+      end
+    end
+  end
+end

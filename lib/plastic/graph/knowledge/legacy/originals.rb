@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+require "digest"
+
+module Plastic
+  module Graph
+    module Knowledge
+      module Legacy
+        # Keeps original bytes when an import rewrites a legacy file.
+        class Originals
+          INTENT = %r{\Astore/(.*?)(?:--|/)}
+
+          def initialize(databases, counts, clock:)
+            @databases = databases
+            @counts = counts
+            @clock = clock
+          end
+
+          def keep_changed_originals(folder, originals)
+            originals.each { |path, before| keep_original(path, before, path[INTENT, 1]) unless folder.digest(path) == Digest::SHA256.hexdigest(before) }
+          end
+
+          def keep_original(path, bytes, intent_id)
+            row = { name: "originals/#{path}", mode: 0o644, mtime: @clock.now.to_i, sz: bytes.bytesize,
+                    data: SQLite3::Blob.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
+            @databases.fetch(:store).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
+            @counts[:kept] += 1
+          end
+        end
+      end
+    end
+  end
+end

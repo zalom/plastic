@@ -1,0 +1,42 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+require_relative "../../../lib/plastic/workflows/context_persistence"
+
+class ContextPersistenceTest < Plastic::TestCase
+  DOCUMENT = { "intent_id" => "1", "evidence" => [] }.freeze
+
+  def setup
+    super
+    open_intent
+  end
+
+  def persist = Plastic::Workflows::ContextPersistence.new(call_context(intent_id: "1")).persist(DOCUMENT)
+
+  def test_the_context_is_written_as_a_row
+    persist
+    row = store_graphs.databases.fetch(:store).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+
+    assert_equal DOCUMENT, JSON.parse(row.fetch("data"))
+  end
+
+  def test_nothing_is_written_at_the_store_root
+    persist
+
+    refute_path_exists store_path("context/1.json")
+  end
+
+  def test_a_document_is_saved_once_it_is_written_and_not_before
+    persistence = Plastic::Workflows::ContextPersistence.new(call_context(intent_id: "1"))
+
+    refute persistence.saved?(DOCUMENT)
+    persistence.persist(DOCUMENT)
+
+    assert persistence.saved?(DOCUMENT)
+    refute persistence.saved?(DOCUMENT.merge("evidence" => ["other"]))
+  end
+
+  def test_the_document_comes_back_unchanged
+    assert_equal DOCUMENT, persist
+  end
+end

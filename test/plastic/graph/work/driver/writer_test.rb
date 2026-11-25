@@ -1,0 +1,235 @@
+# frozen_string_literal: true
+
+require_relative "../../../../test_helper"
+
+# The driver claim of an intent works like a node claim: one live holder, a lapse after 15 minutes without a renewal,
+# a release when the session ends, and a take-over that the work log records.
+class WorkDriverWriterTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
+  def setup
+    super
+    @clock = Clock.new(START)
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def graphs(session) = Plastic::Graph.open(home: @plastic_home, store: "global", session:, clock: @clock)
+
+  def work(session = "s-1") = graphs(session).work
+
+  def at(minutes) = @clock.now = START + (minutes * 60)
+
+  def drive(session = "s-1", **fields) = work(session).drive_intent(intent_id: "1", by: session, **fields)
+
+  def driver_row = store_graphs.databases.fetch(:store).row("SELECT * FROM drivers WHERE intent_id = '1'")
+
+  def driver_lines = retrieval.structure.work_log("1").select { |line| line.kind == "driver" }.map(&:text)
+
+  def test_the_first_call_makes_its_session_the_driver
+    status, = drive
+
+    assert_equal [:driving, "s-1", "2026-11-23T08:00:00Z"], [status, driver_row["session_id"], driver_row["claimed_at"]]
+  end
+
+  def test_the_first_call_logs_the_new_driver
+    drive
+
+    assert_equal ["Driver s-1"], driver_lines
+  end
+
+  def test_the_driver_calling_again_logs_nothing_more
+    drive
+    at(5)
+    drive
+
+    assert_equal ["Driver s-1"], driver_lines
+  end
+
+  def test_another_session_is_held_while_the_driver_is_live
+    drive
+    at(14)
+    status, holder = drive("s-2")
+
+    assert_equal [:held, "s-1", "s-1"], [status, holder, driver_row["session_id"]]
+  end
+
+  def test_the_problem_of_a_held_call_names_the_live_driver
+    drive
+
+    assert_includes work("s-2").driver_problem("1", "s-2"), "intent 1 is driven by session s-1"
+  end
+
+  def test_the_driver_has_no_problem_with_its_own_intent
+    drive
+
+    assert_nil work.driver_problem("1", "s-1")
+  end
+
+  def test_a_driver_not_renewed_for_15_minutes_lapses_and_another_session_takes_over
+    drive
+    at(16)
+    status, = drive("s-2")
+
+    assert_equal [:driving, "s-2"], [status, driver_row["session_id"]]
+  end
+
+  def test_a_renewal_keeps_the_claim_live
+    drive
+    at(10)
+    work.renew_claims("s-1")
+    at(20)
+
+    assert_equal :held, drive("s-2").first
+  end
+
+  def test_a_renewal_of_another_session_leaves_the_claim
+    drive
+    at(10)
+    work("s-2").renew_claims("s-2")
+
+    assert_equal "2026-11-23T08:00:00Z", driver_row["seen_at"]
+  end
+
+  def test_a_driver_whose_session_ended_is_released_at_once
+    drive
+    at(1)
+    work.end_session("s-1", reason: "logout")
+    work.release_claims("s-1")
+
+    assert_nil driver_row
+  end
+
+  def test_a_driver_whose_session_ended_without_a_release_does_not_hold_the_intent
+    drive
+    at(1)
+    work.end_session("s-1", reason: "logout")
+
+    assert_equal :driving, drive("s-2").first
+  end
+
+  def test_a_take_over_with_a_reason_takes_a_live_claim
+    drive
+    at(1)
+    status, = drive("s-2", take_over: "the owner asked for Codex")
+
+    assert_equal [:took_over, "s-2"], [status, driver_row["session_id"]]
+  end
+
+  def test_a_take_over_logs_the_old_and_the_new_driver_and_the_reason
+    drive
+    drive("s-2", take_over: "the owner asked for Codex")
+
+    assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the owner asked for Codex"], driver_lines
+  end
+
+  def test_a_take_over_of_a_free_intent_is_a_plain_claim
+    status, = drive("s-2", take_over: "the owner asked")
+
+    assert_equal [:driving, ["Driver s-2"]], [status, driver_lines]
+  end
+
+  def test_a_lapsed_claim_taken_by_another_session_logs_the_old_and_the_new_driver
+    drive
+    at(16)
+    drive("s-2")
+
+    assert_equal ["Driver s-1", "Driver s-2 took over from s-1: the claim lapsed"], driver_lines
+  end
+
+  def test_the_claim_records_no_mode_or_the_mode_it_names_and_a_retake_records_the_new_one
+    modes = [nil, "guided", "auto"].each_with_index.map { |mode, minute| at(minute) && drive(**{ mode: }.compact) && driver_row["mode"] }
+
+    assert_equal [nil, "guided", "auto"], modes
+  end
+end
+
+# The driver row records the agent that took the claim, and in agent delivery only that agent renews it.
+class WorkDriverWriterAgentTest < Plastic::TestCase
+  Clock = Struct.new(:now)
+
+  START = Time.utc(2026, 11, 23, 8, 0, 0)
+
+  def setup
+    super
+    @clock = Clock.new(START)
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def work = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1", clock: @clock).work
+
+  def at(minutes) = @clock.now = START + (minutes * 60)
+
+  def drive(**fields) = work.drive_intent(intent_id: "1", by: "s-1", **fields)
+
+  def driver_row = store_graphs.databases.fetch(:store).row("SELECT * FROM drivers WHERE intent_id = '1'")
+
+  def test_the_driver_row_records_the_agent_that_took_the_claim
+    drive(agent: "deliver")
+
+    assert_equal "deliver", driver_row["agent"]
+  end
+
+  def test_a_driver_claim_taken_with_no_agent_records_none
+    drive
+
+    assert_nil driver_row["agent"]
+  end
+
+  def test_in_agent_delivery_the_agent_that_took_the_driver_claim_renews_it
+    drive(mode: "auto", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1", agent: "deliver")
+
+    assert_equal "2026-11-23T08:10:00Z", driver_row["seen_at"]
+  end
+
+  def test_in_agent_delivery_another_agent_of_the_session_leaves_the_driver_claim
+    drive(mode: "auto", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1")
+    work.renew_claims("s-1", agent: "other")
+
+    assert_equal "2026-11-23T08:00:00Z", driver_row["seen_at"]
+  end
+
+  def test_in_guided_work_a_call_that_names_no_agent_renews_the_driver_claim
+    drive(mode: "guided", agent: "deliver")
+    at(10)
+    work.renew_claims("s-1")
+
+    assert_equal "2026-11-23T08:10:00Z", driver_row["seen_at"]
+  end
+end
+
+# Two sessions take a driver claim at once: the write is guarded by the holder each read, so the one that read a
+# holder that is gone by its write loses and is told who holds the claim.
+class WorkDriverWriterRaceTest < Plastic::TestCase
+  # A writer whose first read of the holder came before another session took the claim.
+  class StaleRead < Plastic::Graph::Work::Driver::Writer
+    private
+
+    def holder(intent_id)
+      return super if @read
+
+      @read = true
+      nil
+    end
+  end
+
+  def setup
+    super
+    store_graphs.work.write_intent(title: "Alpha")
+    store_graphs.work.activate_intent("1")
+  end
+
+  def test_a_claim_that_loses_the_race_is_held_by_the_session_that_won
+    Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2").work.drive_intent(intent_id: "1", by: "s-2", mode: "auto")
+    writer = StaleRead.new(store_graphs.databases, store_graphs.retrieval)
+
+    assert_equal [:held, "s-2", nil], writer.claim(intent_id: "1", by: "s-1", mode: "auto", agent: "deliver")
+  end
+end

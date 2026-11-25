@@ -5,8 +5,7 @@ description: |
   the user or main session for normal expensive reasoning, never by the auto
   pipeline. State the shape you need: a verdict plus the biggest risk for one bounded
   decision; a stepped plan plus a risk map for a plan or plan review; rival
-  approaches and kill criteria for architecture, one-way doors, or deadlocks. Model is set by config
-  (agents.models.claude.plastic-primary-advisor); fable is the shipped default.
+  approaches and kill criteria for architecture, one-way doors, or deadlocks.
 model: fable
 effort: medium
 ---
@@ -53,3 +52,7 @@ return. No shape stated: answer as one bounded decision and say so.
 
 Plain language, no em-dashes. The full protocol you serve is the help chapter
 that `plastic help advisor-protocol` prints.
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker, and the main session records each one from your report. An ambiguity gets at least 3 research attempts, then goes in your report as a question with what was tried. An impediment stops your step at once and goes in your report with its reason. A newly found issue goes in your report as new work, naming the node it was found in, and work tried and failed as a failure with its reason.

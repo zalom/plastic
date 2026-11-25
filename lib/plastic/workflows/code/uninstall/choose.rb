@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+require_relative "../../../screen_choice"
+require_relative "../../../answer"
+require_relative "../uninstall"
+require_relative "../../../code_workflow"
+require_relative "../../../installations"
+
+module Plastic
+  module Workflows
+    module Code
+      class Uninstall
+        # Reads the person's answer against the harnesses Plastic is installed
+        # into or found in.
+        class Choose < CodeWorkflow
+          clear_declarations
+          summary "Chooses which installations to remove."
+
+          sets :found, :picked, :harnesses
+
+          read "list the recorded and the found harnesses and read the person's answer" do |context|
+            found = Installations.listed(context.scope)
+            choices = found.map { |name| Choice.new(label: name, chosen: true) }
+            result = Answer.new(choices).call(context.answer) if found.any?
+            context[:found] = found
+            context[:picked] = result.is_a?(Chosen) ? result.labels : []
+            context[:harnesses] = context.picked.join(", ")
+          end
+
+          outcome :none, if: ->(context) { context.found.empty? }, offers: "plastic init",
+            because: "Plastic is installed into no harness and no registered harness was found"
+          outcome :left, if: ->(context) { context.picked.empty? }, offers: "plastic uninstall",
+            because: "the person left with no change"
+          outcome :chosen, offers: "plastic uninstall %{answer}", because: "remove Plastic from %{harnesses}"
+        end
+      end
+    end
+  end
+end
