@@ -12,6 +12,8 @@ module Plastic
         @utils = utils
       end
 
+      def present?(path) = @file.exist?(path) || @file.symlink?(path)
+
       def rename(from, to) = @file.rename(from, to)
 
       def remove_entry(path) = @utils.remove_entry(path)

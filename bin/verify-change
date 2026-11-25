@@ -366,10 +366,10 @@ class VerifyChange
   end
 
   # Everything after `--` is Mutineer's own argument line, which
-  # bin/lib/mutation_verdicts.rb passes through unchanged for the first run
+  # bin/mutation-verdicts passes through unchanged for the first run
   # and again, with `--only` and `--jobs 1`, for each subject it re-runs.
   def mutation_command(sources, tests, base, rails, suite)
-    %w[bundle exec ruby] + [File.join(@root, "bin/lib/mutation_verdicts.rb"), "run", "--output", mutation_report_path,
+    %w[bundle exec ruby] + [File.join(@root, "bin/mutation-verdicts"), "run", "--output", mutation_report_path,
                             "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + mutation_tests(tests).flat_map { |test| ["--test", test] } +
       %W[--since #{base}] + (suite == RSPEC ? %w[--framework rspec] : []) +
       (rails ? %w[--rails] : %w[--strategy redefine]) +

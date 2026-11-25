@@ -33,6 +33,33 @@ class KnowledgeArchiveSnapshotTest < Plastic::TestCase
     assert_equal ["archive snapshot verification failed", []], [error.message, stages]
   end
 
+  def test_restoring_over_no_tree_publishes_the_saved_one_and_leaves_no_stage
+    save(@entries)
+    FileUtils.remove_entry(@root)
+    @snapshot.restore(@root)
+
+    assert_equal [@entries, []], [Plastic::Graph::Knowledge::Archive::Tree.read(@root), stages]
+  end
+
+  def test_restoring_an_intent_with_no_snapshot_refuses
+    error = assert_raises(TreeError) { @snapshot.restore(@root) }
+
+    assert_equal "intent #{@intent.intent_id} has no archive snapshot", error.message
+  end
+
+  class Racing < Plastic::Graph::FileSystem
+    def present?(_path) = true
+  end
+
+  def test_a_root_that_appears_during_restoration_is_preserved_and_no_stage_stays
+    save(@entries)
+    FileUtils.remove_entry(@root)
+    racing = Plastic::Graph::Knowledge::Archive::Snapshot.new(@database, @intent.intent_id, origin, files: Racing.new)
+    error = assert_raises(TreeError) { racing.restore(@root) }
+
+    assert_equal ["#{@root} appeared during restoration; preserved", false, []], [error.message, File.exist?(@root), stages]
+  end
+
   private
 
   def save(entries) = @database.transaction { |batch| @snapshot.capture(batch, entries) }

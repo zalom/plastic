@@ -40,7 +40,7 @@ A lint failure does not stop the other steps. Only red tests stop the gate early
 
 The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
 the run, and the gate prints that it skipped the step. The step itself stays in the code. When
-it is not frozen, it runs `bin/lib/mutation_verdicts.rb`, which removes any report left
+it is not frozen, it runs `bin/mutation-verdicts`, which removes any report left
 under the sandbox `PLASTIC_TMP` from an earlier run, runs Mutineer with `--format json
 --output` into that same path, and reads only what this run wrote. A mutant Mutineer could not
 give a verdict is re-run alone, one subject at a time with `--only NAME --jobs 1` and the same

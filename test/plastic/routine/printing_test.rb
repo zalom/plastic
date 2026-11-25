@@ -117,6 +117,23 @@ class RoutinePrintingTest < Plastic::TestCase
     store_graphs.work.print_intent("1")
   end
 
+  class Printer
+    include Plastic::Routine::Printing
+
+    def self.prints = %i[intent index]
+
+    attr_reader :graphs
+
+    def initialize(graphs) = @graphs = graphs
+  end
+
+  def test_no_intent_file_is_printed_when_the_call_names_no_intent
+    printer = Printer.new(store_graphs)
+    ctx = Struct.new(:facts).new({})
+
+    assert_equal %i[intent index], printer.send(:print_files, ctx)
+  end
+
   def test_a_dry_run_is_not_checked
     intent = specified
     write("#{intent.dir}/spec.md", "#{keyed_spec}\nEdited.\n")

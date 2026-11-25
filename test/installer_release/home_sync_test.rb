@@ -22,6 +22,20 @@ module HomeSyncPaths
   end
 end
 
+class InstallerReleaseHomeSyncRunTest < Minitest::Test
+  def test_the_default_run_gives_the_output_and_whether_the_command_succeeded
+    output, success = InstallerRelease::HomeSync::RUN.call({ "SYNC_WORD" => "ok" }, ["sh", "-c", "printf %s \"$SYNC_WORD\""])
+
+    assert_equal ["ok", true], [output, success]
+  end
+
+  def test_the_default_run_reports_a_failing_command
+    _output, success = InstallerRelease::HomeSync::RUN.call({}, ["sh", "-c", "exit 3"])
+
+    refute success
+  end
+end
+
 class InstallerReleaseHomeSyncTest < Minitest::Test
   include ReleaseHelper
   include HomeSyncPaths

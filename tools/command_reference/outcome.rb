@@ -7,8 +7,6 @@ module CommandReference
 
     def ends? = to == :noop
 
-    def exit_words = (name == :handoff) ? "hands off, exit #{exit_code}" : "finishes, exit 0"
-
     def next_words = Array(offers).map { |each| "next: #{each}" }.first || Endings::NONE
 
     def shown? = ends? && !unreachable

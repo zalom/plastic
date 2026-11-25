@@ -28,6 +28,18 @@ class DistributionTest < Plastic::TestCase
     refute_path_exists File.join(plastic, "CHANGELOG.md")
   end
 
+  class MissingListed < Plastic::Installations::Distribution
+    private
+
+    def files = { "ghost" => "lib/ghost.rb" }
+  end
+
+  def test_a_listed_file_that_is_missing_from_the_package_root_is_not_copied
+    capture_io { MissingListed.new(shipped_package("2.0.3"), tmp_dirs: []).install }
+
+    refute_path_exists File.join(plastic, "lib", "ghost.rb")
+  end
+
   def test_the_first_install_and_an_update_say_what_they_do
     assert_equal ["  Installing core files to #{plastic}\n", "  Core files synced (v2.0.3)\n"], distribute.lines
     assert_equal "  Updating core files to #{plastic}\n", distribute(:update).lines.first
